@@ -1,0 +1,12 @@
+using Perpetuum.Services.Weather;
+using Perpetuum.Threading.Process;
+
+namespace Perpetuum.Zones
+{
+    public interface IWeatherService : IObservable<Packet>, IProcess
+    {
+        [NotNull]
+        WeatherInfo GetCurrentWeather();
+        void SetCurrentWeather(WeatherInfo weather);
+    }
+}

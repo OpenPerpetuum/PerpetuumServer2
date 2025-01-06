@@ -1,0 +1,9 @@
+.vs/
+obj/
+src/Perpetuum.Bootstrapper/bin/
+src/Perpetuum.ExportedTypes/bin/
+src/Perpetuum.RequestHandlers/bin/
+src/Perpetuum.Server/bin/Debug/net8.0/Autofac.dll
+src/Perpetuum.Server/bin/
+src/Perpetuum.ServerService2/bin/
+src/Perpetuum/bin/

@@ -1,0 +1,206 @@
+﻿using Perpetuum.Log;
+using Perpetuum.StateMachines;
+using Perpetuum.Units;
+using Perpetuum.Zones.NpcSystem.Flocks;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
+{
+    public abstract class CancellableState
+    {
+        private static readonly TimeSpan MAX_WAIT = TimeSpan.FromSeconds(2);
+        protected CancellationToken _token;
+        private CancellationTokenSource _source;
+        private Task _task;
+
+        protected bool IsRunningTask { get; private set; }
+
+        protected void OnEnter()
+        {
+            IsRunningTask = false;
+            _source = new CancellationTokenSource();
+            _token = _source.Token;
+        }
+        protected void OnExit()
+        {
+            if (IsRunningTask && _task != null)
+            {
+                Logger.Warning($"Cancelling task on RoamingState");
+                _source.Cancel();
+                _task.Wait(MAX_WAIT);
+                Logger.Warning($"Cancelled!");
+            }
+        }
+        protected bool IsCancelled => _token.IsCancellationRequested;
+
+        protected void RunTask(Action action, Action<Task> continuation)
+        {
+            IsRunningTask = true;
+            _task = Task.Run(action, _token).ContinueWith(continuation).ContinueWith(t => IsRunningTask = false);
+        }
+    }
+
+    public class SpawnState : CancellableState, IState
+    {
+        protected readonly IRoamingPresence _presence;
+        protected TimeSpan _delay = TimeSpan.Zero;
+
+        protected bool _spawned;
+        protected double _repawnDelayModifier = 0.0;
+
+        protected readonly int _playerMinDist;
+
+        public SpawnState(IRoamingPresence presence, int playerMinDist = 200)
+        {
+            _presence = presence;
+            _playerMinDist = playerMinDist;
+        }
+
+        protected virtual void SetSpawnDelay()
+        {
+            _delay = TimeSpan.FromSeconds(_presence.Configuration.RoamingRespawnSeconds * _repawnDelayModifier);
+            _repawnDelayModifier = FastRandom.NextDouble(1.0, 2.0);
+        }
+
+        public void Enter()
+        {
+            OnEnter();
+            _spawned = false;
+
+            _presence.SpawnOrigin = Position.Empty;
+            _presence.CurrentRoamingPosition = Position.Empty;
+
+            _elapsed = TimeSpan.Zero;
+
+            SetSpawnDelay();
+        }
+
+        public void Exit()
+        {
+            OnExit();
+        }
+
+        protected virtual void OnSpawned()
+        {
+            _presence.OnSpawned();
+            _presence.StackFSM.Push(new RoamingState(_presence));
+        }
+
+        private TimeSpan _elapsed;
+
+        private bool CheckElapsed(TimeSpan time)
+        {
+            _elapsed += time;
+            return _elapsed < _delay;
+        }
+
+        //updated
+        public void Update(TimeSpan time)
+        {
+            if (IsRunningTask)
+                return;
+
+            if (_spawned)
+            {
+                OnSpawned();
+                return;
+            }
+
+            if (CheckElapsed(time))
+                return;
+
+            RunTask(() => SpawnFlocks(), t => _spawned = true);
+        }
+
+        protected virtual bool IsInRange(Position position, int range)
+        {
+            return _presence.Zone.Players.WithinRange(position, range).Any();
+        }
+
+        protected virtual bool IsValidSpawnPosition(Position position, int range)
+        {
+            return !IsInRange(position, range);
+        }
+
+        protected virtual Position FindSpawnPosition()
+        {
+            return _presence.PathFinder.FindSpawnPosition(_presence).ToPosition();
+        }
+
+        private void SpawnFlocks()
+        {
+            Position spawnPosition;
+            int range = _playerMinDist;
+            bool isValidSpawnLocation;
+            do
+            {
+                if (IsCancelled)
+                {
+                    Logger.Warning("SpawnFlocks() cancelled");
+                    return;
+                }
+                spawnPosition = FindSpawnPosition();
+                isValidSpawnLocation = IsValidSpawnPosition(spawnPosition, range);
+                range--;
+            } while (!isValidSpawnLocation && range > 0);
+
+            if (!isValidSpawnLocation)
+            {
+                _presence.Log("FAILED to resolve spawn position out of range of players: " + spawnPosition);
+                return;
+            }
+
+            DoSpawning(spawnPosition);
+        }
+
+        private void DoSpawning(Position spawnPosition)
+        {
+            _presence.SpawnOrigin = spawnPosition;
+            _presence.CurrentRoamingPosition = spawnPosition;
+            _presence.Log("spawn position: " + spawnPosition);
+
+            //spawn all flocks
+            foreach (var flock in _presence.Flocks)
+            {
+                flock.SpawnAllMembers();
+            }
+        }
+    }
+
+    public class NullRoamingState : CancellableState, IState
+    {
+        protected readonly IRoamingPresence _presence;
+
+        public NullRoamingState(IRoamingPresence presence)
+        {
+            _presence = presence;
+        }
+
+        public virtual void Enter() { OnEnter(); }
+        public virtual void Exit() { OnExit(); }
+
+        protected Npc[] GetAllMembers()
+        {
+            return _presence.Flocks.GetMembers().ToArray();
+        }
+
+        protected bool IsDeadAndExiting(Npc[] members)
+        {
+            if (members.Length <= 0)
+            {
+                _presence.StackFSM.Pop();
+                return true;
+            }
+            return false;
+        }
+
+        public virtual void Update(TimeSpan time)
+        {
+            var members = GetAllMembers();
+            IsDeadAndExiting(members);
+        }
+    }
+}
