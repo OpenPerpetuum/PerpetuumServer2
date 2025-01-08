@@ -1,0 +1,5 @@
+﻿<Project Sdk="WixToolset.Sdk/5.0.2">
+  <ItemGroup>
+    <ProjectReference Include="..\Perpetuum.ServerService2\Perpetuum.ServerService2.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+	  <ComponentGroup Id="PerpetuumServer2Components" Directory="INSTALLFOLDER">
+		  <Component Id="PerpetuumServer2" Guid="0D6CA7B4-789B-4894-9DFA-7882AC8D21A0">
+			  <File Source="publish/win-x64/appsettings.json" />
+			  <File Source="publish/win-x64/Microsoft.Data.SqlClient.SNI.dll" />
+			  <File Source="publish/win-x64/Perpetuum.ServerService2.exe" KeyPath="yes" />
+
+			  <!-- Remove all files from the INSTALLFOLDER on uninstall -->
+			  <RemoveFile Id="ALLFILES" Name="*.*" On="both" />
+
+			  <!-- Tell WiX to install the Service -->
+			  <ServiceInstall Id="ServiceInstaller"
+							  Type="ownProcess"
+							  Name="Perpetuum.ServerService2"
+							  DisplayName="Perpetuum Server Service 2"
+							  Description="Perpetuum Game Server v2"
+							  Start="auto"
+							  ErrorControl="normal" />
+
+			  <!-- Tell WiX to start the Service -->
+			  <ServiceControl Id="StartService"
+							  Start="install"
+							  Stop="both"
+							  Remove="uninstall"
+							  Name="Perpetuum.ServerService2"
+							  Wait="false" />
+		  </Component>
+	  </ComponentGroup>
+  </Fragment>
+</Wix>

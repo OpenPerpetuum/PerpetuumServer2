@@ -7,3 +7,7 @@ src/Perpetuum.Server/bin/Debug/net8.0/Autofac.dll
 src/Perpetuum.Server/bin/
 src/Perpetuum.ServerService2/bin/
 src/Perpetuum/bin/
+src/Perpetuum.ServerService2/Properties/PublishProfiles/
+*.user
+packages/
+src/Perpetuum.ServerService2Installer/bin/
