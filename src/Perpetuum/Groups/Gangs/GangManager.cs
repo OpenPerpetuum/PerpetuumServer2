@@ -1,58 +1,56 @@
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Transactions;
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Data;
 using Perpetuum.Services.Channels;
+using System.Collections.Concurrent;
+using System.Transactions;
 
 namespace Perpetuum.Groups.Gangs
 {
-    public class GangManager : IGangManager
+    public class GangManager(IGangRepository gangRepository, IChannelManager channelManager, Gang.Factory gangFactory) : IGangManager
     {
-        private readonly IGangRepository _gangRepository;
-        private readonly IChannelManager _channelManager;
-        private readonly Gang.Factory _gangFactory;
-        private readonly ConcurrentDictionary<Guid,Gang> _gangs = new ConcurrentDictionary<Guid, Gang>();
+        private readonly IGangRepository _gangRepository = gangRepository;
+        private readonly IChannelManager _channelManager = channelManager;
+        private readonly Gang.Factory _gangFactory = gangFactory;
+        private readonly ConcurrentDictionary<Guid, Gang> _gangs = [];
 
-        public GangManager(IGangRepository gangRepository,IChannelManager channelManager,Gang.Factory gangFactory)
+        public Gang? GetGang(Guid gangID)
         {
-            _gangRepository = gangRepository;
-            _channelManager = channelManager;
-            _gangFactory = gangFactory;
-        }
-
-        public Gang GetGang(Guid gangID)
-        {
-            var gang = _gangs.GetOrAdd(gangID, _ => _gangRepository.Get(gangID));
+            Gang gang = _gangs.GetOrAdd(gangID, _ => _gangRepository.Get(gangID));
             if (gang != null)
+            {
                 return gang;
+            }
 
             _gangs.Remove(gangID);
             return null;
         }
 
-        public Gang GetGangByMember(Character member)
+        public Gang? GetGangByMember(Character member)
         {
-            var gang = _gangs.Values.FirstOrDefault(g => g.IsMember(member));
+            Gang? gang = _gangs.Values.FirstOrDefault(g => g.IsMember(member));
             if (gang != null)
+            {
                 return gang;
+            }
 
-            var gangID = _gangRepository.GetGangIDByMember(member);
+            Guid gangID = _gangRepository.GetGangIDByMember(member);
             if (gangID == Guid.Empty)
+            {
                 return null;
+            }
 
             gang = GetGang(gangID);
             return gang;
         }
 
-        public Gang CreateGang(string gangName,Character leader)
+        public Gang CreateGang(string gangName, Character leader)
         {
             if (string.IsNullOrEmpty(gangName))
+            {
                 throw new PerpetuumException(ErrorCodes.GangNameTooShort);
+            }
 
-            var gang = _gangFactory();
+            Gang gang = _gangFactory();
             gang.Id = Guid.NewGuid();
             gang.Name = gangName;
             gang.Leader = leader;
@@ -60,12 +58,19 @@ namespace Perpetuum.Groups.Gangs
 
             _gangRepository.Insert(gang);
 
-            void Finish() => _channelManager.CreateAndJoinChannel(ChannelType.Gang, gang.ChannelName, gang.Leader);
+            void Finish()
+            {
+                _channelManager.CreateAndJoinChannel(ChannelType.Gang, gang.ChannelName, gang.Leader);
+            }
 
             if (Transaction.Current != null)
+            {
                 Transaction.Current.OnCommited(Finish);
+            }
             else
+            {
                 Finish();
+            }
 
             return gang;
         }
@@ -83,32 +88,40 @@ namespace Perpetuum.Groups.Gangs
             }
 
             if (Transaction.Current != null)
+            {
                 Transaction.Current.OnCommited(Finish);
+            }
             else
+            {
                 Finish();
+            }
         }
 
         public event Action<Gang> GangDisbanded;
 
-        public void RemoveMember(Gang gang, Character member,bool isKick)
+        public void RemoveMember(Gang gang, Character member, bool isKick)
         {
             if (gang == null)
+            {
                 return;
+            }
 
-            if ( !gang.IsMember(member) )
+            if (!gang.IsMember(member))
+            {
                 throw new PerpetuumException(ErrorCodes.CharacterNotInTheCurrentGang);
+            }
 
-            _gangRepository.DeleteMember(gang,member);
+            _gangRepository.DeleteMember(gang, member);
 
             void Finish()
             {
-                var data = new Dictionary<string, object>
+                Dictionary<string, object> data = new()
                 {
                     {k.data, gang.GetGangData()},
                     {k.memberID, member.Id}
                 };
 
-                var cmd = isKick ? Commands.GangKickMember : Commands.GangRemoveMember;
+                Command cmd = isKick ? Commands.GangKickMember : Commands.GangRemoveMember;
                 Message.Builder.SetCommand(cmd).WithData(data).ToCharacters(gang.GetMembers()).Send();
 
                 gang.RemoveMember(member);
@@ -119,16 +132,20 @@ namespace Perpetuum.Groups.Gangs
             }
 
             if (Transaction.Current != null)
+            {
                 Transaction.Current.OnCommited(Finish);
+            }
             else
+            {
                 Finish();
+            }
         }
 
         protected virtual void OnGangMemberRemoved(Gang gang, Character member)
         {
             try
             {
-                var members = gang.GetMembers().ToArray();
+                Character[] members = gang.GetMembers().ToArray();
 
                 if (members.Length <= 0)
                 {
@@ -137,13 +154,15 @@ namespace Perpetuum.Groups.Gangs
                 }
 
                 if (gang.Leader != member)
+                {
                     return;
+                }
 
                 // nincs leader
-                var newLeader = members.FirstOrDefault(mm => gang.HasRole(mm, GangRole.Assistant)) ?? Character.None;
+                Character newLeader = members.FirstOrDefault(mm => gang.HasRole(mm, GangRole.Assistant)) ?? Character.None;
                 if (newLeader == Character.None)
                 {
-                    var firstMember = members.First();
+                    Character firstMember = members.First();
                     newLeader = firstMember;
                 }
 
@@ -158,10 +177,12 @@ namespace Perpetuum.Groups.Gangs
 
         public void ChangeLeader(Gang gang, Character newLeader)
         {
-            if ( !gang.IsMember(newLeader))
+            if (!gang.IsMember(newLeader))
+            {
                 throw new PerpetuumException(ErrorCodes.CharacterNotInTheCurrentGang);
+            }
 
-            _gangRepository.UpdateLeader(gang,newLeader);
+            _gangRepository.UpdateLeader(gang, newLeader);
 
             void Finish()
             {
@@ -175,22 +196,26 @@ namespace Perpetuum.Groups.Gangs
             }
 
             if (Transaction.Current != null)
+            {
                 Transaction.Current.OnCommited(Finish);
+            }
             else
+            {
                 Finish();
+            }
         }
 
         public event Action<Gang> GangLeaderChanged;
 
-        public void JoinMember(Gang gang, Character member,bool joinChannel)
+        public void JoinMember(Gang gang, Character member, bool joinChannel)
         {
-            _gangRepository.InsertMember(gang,member);
+            _gangRepository.InsertMember(gang, member);
 
             void Finish()
             {
                 gang.SetMember(member);
 
-                var data = new Dictionary<string, object>
+                Dictionary<string, object> data = new()
                 {
                     {k.data,gang.GetGangData()},
                     {k.memberID, member.Id}
@@ -207,23 +232,31 @@ namespace Perpetuum.Groups.Gangs
             }
 
             if (Transaction.Current != null)
+            {
                 Transaction.Current.OnCommited(Finish);
+            }
             else
+            {
                 Finish();
+            }
         }
 
-        public event Action<Gang,Character> GangMemberJoined;
+        public event Action<Gang, Character> GangMemberJoined;
         public event Action<Gang, Character> GangMemberRemoved;
 
         public void SetRole(Gang gang, Character member, GangRole newRole)
         {
             if (gang.Leader == member)
+            {
                 return;
+            }
 
             if (!gang.IsMember(member))
+            {
                 throw new PerpetuumException(ErrorCodes.CharacterNotInTheCurrentGang);
+            }
 
-            _gangRepository.UpdateMemberRole(gang,member,newRole);
+            _gangRepository.UpdateMemberRole(gang, member, newRole);
 
             void Finish()
             {
@@ -234,14 +267,18 @@ namespace Perpetuum.Groups.Gangs
                     { k.role, (int)newRole }
                 }).ToCharacters(gang.GetMembers()).Send();
 
-                var channelMemberRole = gang.HasRole(member, GangRole.Assistant) ? ChannelMemberRole.Operator : ChannelMemberRole.Undefined;
+                ChannelMemberRole channelMemberRole = gang.HasRole(member, GangRole.Assistant) ? ChannelMemberRole.Operator : ChannelMemberRole.Undefined;
                 _channelManager.SetMemberRole(gang.ChannelName, member, channelMemberRole);
             }
 
             if (Transaction.Current == null)
+            {
                 Transaction.Current.OnCommited(Finish);
+            }
             else
+            {
                 Finish();
+            }
         }
 
     }

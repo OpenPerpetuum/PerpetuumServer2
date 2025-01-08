@@ -1,19 +1,16 @@
-using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Reflection;
 
 namespace Perpetuum
 {
     public static class Commands
     {
-        private static Dictionary<string, Command> _commands;
+        private static readonly Dictionary<string, Command> _commands;
 
         static Commands()
         {
             _commands = typeof(Commands).GetFields(BindingFlags.Static | BindingFlags.Public)
-                .Select(info => (Command) info.GetValue(null))
+                .Select(info => (Command)info.GetValue(null))
                 .ToDictionary(cmd => cmd.Text);
         }
 
@@ -25,24 +22,24 @@ namespace Perpetuum
             return _commands.GetOrDefault(commandText);
         }
 
-        public static readonly Command Welcome = new Command
+        public static readonly Command Welcome = new()
         {
             Text = "welcome"
         };
 
-        public static readonly Command MarketCleanUp = new Command
+        public static readonly Command MarketCleanUp = new()
         {
             Text = "marketCleanUp",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneDrawAllDecors = new Command
+        public static readonly Command ZoneDrawAllDecors = new()
         {
             Text = "zoneDrawAllDecors",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ReloadStandingForCharacter = new Command
+        public static readonly Command ReloadStandingForCharacter = new()
         {
             Text = "reloadStandingForCharacter",
             AccessLevel = AccessLevel.admin,
@@ -52,7 +49,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDrawDecorEnvByDef = new Command
+        public static readonly Command ZoneDrawDecorEnvByDef = new()
         {
             Text = "zoneDrawDecorEnvByDef",
             AccessLevel = AccessLevel.admin,
@@ -62,7 +59,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneMakeGotoXY = new Command
+        public static readonly Command ZoneMakeGotoXY = new()
         {
             Text = "zoneMakeGotoXY",
             AccessLevel = AccessLevel.admin,
@@ -72,7 +69,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneUpdateStructure = new Command
+        public static readonly Command ZoneUpdateStructure = new()
         {
             Text = "zoneUpdateStructure",
             AccessLevel = AccessLevel.admin,
@@ -83,7 +80,7 @@ namespace Perpetuum
         };
 
         //[22:30:34] ERR [UREQ] NoSuchCommand Data = {command=zoneDrawRamp} ip: 127.0.0.1 account: 9 character: 4 Req: zoneDrawRamp:zone_39:#max=n0#size=n60#range=f0.494141#positionx=n1411#positiony=n916#blend=f0.500000
-        public static readonly Command ZoneDrawRamp = new Command
+        public static readonly Command ZoneDrawRamp = new()
         {
             Text = "zoneDrawRamp",
             AccessLevel = AccessLevel.admin,
@@ -98,119 +95,119 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSmooth = new Command
+        public static readonly Command ZoneSmooth = new()
         {
             Text = "zoneSmooth",
             AccessLevel = AccessLevel.admin,
         };
 
-        public static readonly Command ZoneDisplayMissionSpots = new Command
+        public static readonly Command ZoneDisplayMissionSpots = new()
         {
             Text = "zoneDisplayMissionSpots",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZonePBSFixOrphaned = new Command
+        public static readonly Command ZonePBSFixOrphaned = new()
         {
             Text = "zonePBSFixOrphaned",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneDisplayMissionRandomPoints = new Command
+        public static readonly Command ZoneDisplayMissionRandomPoints = new()
         {
             Text = "zoneDisplayMissionRandomPoints",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionStartedFromFieldTerminal = new Command
+        public static readonly Command MissionStartedFromFieldTerminal = new()
         {
             Text = "missionStartedFromFieldTerminal",
         };
 
-        public static readonly Command MissionResolveTest = new Command
+        public static readonly Command MissionResolveTest = new()
         {
             Text = "missionResolveTest",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionSpotPlace = new Command
+        public static readonly Command MissionSpotPlace = new()
         {
             Text = "missionSpotPlace",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionSpotUpdate = new Command
+        public static readonly Command MissionSpotUpdate = new()
         {
             Text = "missionSpotUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneKillNPlants = new Command
+        public static readonly Command ZoneKillNPlants = new()
         {
             Text = "zoneKillNPlants",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command BaseSelect = new Command
+        public static readonly Command BaseSelect = new()
         {
             Text = "baseSelect",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneSwitchDegrade = new Command
+        public static readonly Command ZoneSwitchDegrade = new()
         {
             Text = "zoneSwitchDegrade",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneRestoreOriginalGamma = new Command
+        public static readonly Command ZoneRestoreOriginalGamma = new()
         {
             Text = "zoneRestoreOriginalGamma",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ExtensionTest = new Command
+        public static readonly Command ExtensionTest = new()
         {
             Text = "extensionTest",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneSetReinforceCounter = new Command
+        public static readonly Command ZoneSetReinforceCounter = new()
         {
             Text = "zoneSetReinforceCounter",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ExtensionPointsIncreased = new Command
+        public static readonly Command ExtensionPointsIncreased = new()
         {
             Text = "extensionPointsIncreased",
         };
 
-        public static readonly Command ZoneForceDeconstruct = new Command
+        public static readonly Command ZoneForceDeconstruct = new()
         {
             Text = "zoneForceDeconstruct",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneFixPBS = new Command
+        public static readonly Command ZoneFixPBS = new()
         {
             Text = "zoneFixPBS",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneTerraformTest = new Command
+        public static readonly Command ZoneTerraformTest = new()
         {
             Text = "zoneTerraformTest",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionBonusUpdate = new Command
+        public static readonly Command MissionBonusUpdate = new()
         {
             Text = "missionBonusUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionAdminTake = new Command
+        public static readonly Command MissionAdminTake = new()
         {
             Text = "missionAdminTake",
             AccessLevel = AccessLevel.admin,
@@ -220,168 +217,168 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MissionAdminListAll = new Command
+        public static readonly Command MissionAdminListAll = new()
         {
             Text = "missionAdminListAll",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketRemoveItems = new Command
+        public static readonly Command MarketRemoveItems = new()
         {
             Text = "marketRemoveItems",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneResetMissions = new Command
+        public static readonly Command ZoneResetMissions = new()
         {
             Text = "zoneResetMissions",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketCreateGammaPlasmaOrders = new Command
+        public static readonly Command MarketCreateGammaPlasmaOrders = new()
         {
             Text = "marketCreateGammaPlasmaOrders",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command CorporationBulletinUpdate = new Command
+        public static readonly Command CorporationBulletinUpdate = new()
         {
             Text = "corporationBulletinUpdate",
         };
 
-        public static readonly Command SparkTeleportBaseDeleted = new Command
+        public static readonly Command SparkTeleportBaseDeleted = new()
         {
             Text = "sparkTeleportBaseDeleted",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TransportAssignmentRetrieved = new Command
+        public static readonly Command TransportAssignmentRetrieved = new()
         {
             Text = "transportAssignmentRetrieved",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TransportAssignmentExpired = new Command
+        public static readonly Command TransportAssignmentExpired = new()
         {
             Text = "transportAssignmentExpired",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TransportAssignmentAccepted = new Command
+        public static readonly Command TransportAssignmentAccepted = new()
         {
             Text = "transportAssignmentAccepted",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TransportAssignmentBaseDeleted = new Command
+        public static readonly Command TransportAssignmentBaseDeleted = new()
         {
             Text = "transportAssignmentBaseDeleted",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TransportAssignmentFailed = new Command
+        public static readonly Command TransportAssignmentFailed = new()
         {
             Text = "transportAssignmentFailed",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TransportAssignmentDelivered = new Command
+        public static readonly Command TransportAssignmentDelivered = new()
         {
             Text = "transportAssignmentDelivered",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TransportAssignmentGaveUp = new Command
+        public static readonly Command TransportAssignmentGaveUp = new()
         {
             Text = "transportAssignmentGaveUp",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TransportAssignmentContainerRetrieved = new Command
+        public static readonly Command TransportAssignmentContainerRetrieved = new()
         {
             Text = "transportAssignmentContainerRetrieved",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionLineDead = new Command
+        public static readonly Command ProductionLineDead = new()
         {
             Text = "productionLineDead",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command NpcCheckCondition = new Command
+        public static readonly Command NpcCheckCondition = new()
         {
             Text = "NPCCheckCondition",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionFacilityState = new Command
+        public static readonly Command ProductionFacilityState = new()
         {
             Text = "productionFacilityState",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command CorporationInfoFlushCache = new Command
+        public static readonly Command CorporationInfoFlushCache = new()
         {
             Text = "corporationInfoFlushCache",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TeleportEnabled = new Command
+        public static readonly Command TeleportEnabled = new()
         {
             Text = "teleportEnabled",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionUpdate = new Command
+        public static readonly Command ProductionUpdate = new()
         {
             Text = "productionUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command PbsEvent = new Command
+        public static readonly Command PbsEvent = new()
         {
             Text = "PBSEvent",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZonePBSTest = new Command
+        public static readonly Command ZonePBSTest = new()
         {
             Text = "zonePBSTest",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneHealAllWalls = new Command
+        public static readonly Command ZoneHealAllWalls = new()
         {
             Text = "zoneHealAllWalls",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZonePlaceWall = new Command
+        public static readonly Command ZonePlaceWall = new()
         {
             Text = "zonePlaceWall",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneClearWalls = new Command
+        public static readonly Command ZoneClearWalls = new()
         {
             Text = "zoneClearWalls",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TeleportTargetSet = new Command
+        public static readonly Command TeleportTargetSet = new()
         {
             Text = "teleportTargetSet",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneSapActivityEnd = new Command
+        public static readonly Command ZoneSapActivityEnd = new()
         {
             Text = "zoneSapActivityEnd",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneRemoveByDefinition = new Command
+        public static readonly Command ZoneRemoveByDefinition = new()
         {
             Text = "zoneRemoveByDefinition",
             AccessLevel = AccessLevel.admin,
@@ -391,73 +388,73 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneServerMessage = new Command
+        public static readonly Command ZoneServerMessage = new()
         {
             Text = "zoneServerMessage",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command CharacterForcedToBase = new Command
+        public static readonly Command CharacterForcedToBase = new()
         {
             Text = "characterForcedToBase",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command SparkSetDefault = new Command
+        public static readonly Command SparkSetDefault = new()
         {
             Text = "sparkSetDefault",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneCheckRoaming = new Command
+        public static readonly Command ZoneCheckRoaming = new()
         {
             Text = "zoneCheckRoaming",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProximityProbeUpdate = new Command
+        public static readonly Command ProximityProbeUpdate = new()
         {
             Text = "proximityProbeUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProximityProbeCreated = new Command
+        public static readonly Command ProximityProbeCreated = new()
         {
             Text = "proximityProbeCreated",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProximityProbeDead = new Command
+        public static readonly Command ProximityProbeDead = new()
         {
             Text = "proximityProbeDead",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProximityProbeInfo = new Command
+        public static readonly Command ProximityProbeInfo = new()
         {
             Text = "proximityProbeInfo",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionRemoteStart = new Command
+        public static readonly Command ProductionRemoteStart = new()
         {
             Text = "productionRemoteStart",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionRemoteEnd = new Command
+        public static readonly Command ProductionRemoteEnd = new()
         {
             Text = "productionRemoteEnd",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionRemoteCancel = new Command
+        public static readonly Command ProductionRemoteCancel = new()
         {
             Text = "productionRemoteCancel",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneSetRuntimeZoneEntityName = new Command
+        public static readonly Command ZoneSetRuntimeZoneEntityName = new()
         {
             Text = "zoneSetRuntimeZoneEntityName",
             AccessLevel = AccessLevel.admin,
@@ -468,7 +465,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDrawBeam = new Command
+        public static readonly Command ZoneDrawBeam = new()
         {
             Text = "zoneDrawBeam",
             AccessLevel = AccessLevel.admin,
@@ -479,13 +476,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MissionError = new Command
+        public static readonly Command MissionError = new()
         {
             Text = "missionError",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ContainerMover = new Command
+        public static readonly Command ContainerMover = new()
         {
             Text = "containerMover",
             AccessLevel = AccessLevel.admin,
@@ -497,7 +494,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ServerShutDown = new Command
+        public static readonly Command ServerShutDown = new()
         {
             Text = "serverShutDown",
             AccessLevel = AccessLevel.admin,
@@ -508,19 +505,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ServerShutDownCancel = new Command
+        public static readonly Command ServerShutDownCancel = new()
         {
             Text = "serverShutDownCancel",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ServerShutDownState = new Command
+        public static readonly Command ServerShutDownState = new()
         {
             Text = "serverShutDownState",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command TriggerMissionStructure = new Command
+        public static readonly Command TriggerMissionStructure = new()
         {
             Text = "triggerMissionStructure",
             AccessLevel = AccessLevel.admin,
@@ -530,7 +527,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command JumpAnywhere = new Command
+        public static readonly Command JumpAnywhere = new()
         {
             Text = "jumpAnywhere",
             AccessLevel = AccessLevel.admin,
@@ -542,7 +539,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MovePlayer = new Command
+        public static readonly Command MovePlayer = new()
         {
             Text = "movePlayer",
             AccessLevel = AccessLevel.admin,
@@ -555,37 +552,37 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MissionTargetUpdate = new Command
+        public static readonly Command MissionTargetUpdate = new()
         {
             Text = "missionTargetUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionTargetCompleted = new Command
+        public static readonly Command MissionTargetCompleted = new()
         {
             Text = "missionTargetCompleted",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionTargetActivated = new Command
+        public static readonly Command MissionTargetActivated = new()
         {
             Text = "missionTargetActivated",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command StandingSetOnMyCorporation = new Command
+        public static readonly Command StandingSetOnMyCorporation = new()
         {
             Text = "standingSetOnMyCorporation",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command AlarmOver = new Command
+        public static readonly Command AlarmOver = new()
         {
             Text = "alarmOver",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command RemoveMissionStructure = new Command
+        public static readonly Command RemoveMissionStructure = new()
         {
             Text = "removeMissionStructure",
             AccessLevel = AccessLevel.admin,
@@ -595,13 +592,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command BaseReown = new Command
+        public static readonly Command BaseReown = new()
         {
             Text = "baseReown",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ExtensionRevert = new Command
+        public static readonly Command ExtensionRevert = new()
         {
             Text = "extensionRevert",
             AccessLevel = AccessLevel.admin,
@@ -612,13 +609,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelCreateForTerminals = new Command
+        public static readonly Command ChannelCreateForTerminals = new()
         {
             Text = "channelCreateForTerminals",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TeleportConnectColumns = new Command
+        public static readonly Command TeleportConnectColumns = new()
         {
             Text = "teleportConnectColumns",
             AccessLevel = AccessLevel.admin,
@@ -629,19 +626,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command NpcAddSafeSpawnPoint = new Command
+        public static readonly Command NpcAddSafeSpawnPoint = new()
         {
             Text = "npcAddSafeSpawnPoint",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command NpcListSafeSpawnPoint = new Command
+        public static readonly Command NpcListSafeSpawnPoint = new()
         {
             Text = "npcListSafeSpawnPoint",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command NpcDeleteSafeSpawnPoint = new Command
+        public static readonly Command NpcDeleteSafeSpawnPoint = new()
         {
             Text = "npcDeleteSafeSpawnPoint",
             AccessLevel = AccessLevel.admin,
@@ -651,7 +648,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command NpcPlaceSafeSpawnPoint = new Command
+        public static readonly Command NpcPlaceSafeSpawnPoint = new()
         {
             Text = "npcPlaceSafeSpawnPoint",
             AccessLevel = AccessLevel.admin,
@@ -662,7 +659,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command NpcSetSafeSpawnPoint = new Command
+        public static readonly Command NpcSetSafeSpawnPoint = new()
         {
             Text = "npcSetSafeSpawnPoint",
             AccessLevel = AccessLevel.admin,
@@ -674,19 +671,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterUpdate = new Command
+        public static readonly Command CharacterUpdate = new()
         {
             Text = "characterUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionReset = new Command
+        public static readonly Command MissionReset = new()
         {
             Text = "missionReset",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command SetMaxUserCount = new Command
+        public static readonly Command SetMaxUserCount = new()
         {
             Text = "setMaxUserCount",
             AccessLevel = AccessLevel.admin,
@@ -696,31 +693,31 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command DecorCategoryList = new Command
+        public static readonly Command DecorCategoryList = new()
         {
             Text = "decorCategoryList",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command NpcCheckFlocks = new Command
+        public static readonly Command NpcCheckFlocks = new()
         {
             Text = "npcCheckFlocks",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionCorporationInsuranceList = new Command
+        public static readonly Command ProductionCorporationInsuranceList = new()
         {
             Text = "productionCorporationInsuranceList",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketListFacilities = new Command
+        public static readonly Command MarketListFacilities = new()
         {
             Text = "marketListFacilities",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketInsertStats = new Command
+        public static readonly Command MarketInsertStats = new()
         {
             Text = "marketInsertStats",
             AccessLevel = AccessLevel.admin,
@@ -733,7 +730,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketInsertAverageForCF = new Command
+        public static readonly Command MarketInsertAverageForCF = new()
         {
             Text = "marketInsertAverageForCF",
             AccessLevel = AccessLevel.admin,
@@ -745,25 +742,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionGetInsurance = new Command
+        public static readonly Command ProductionGetInsurance = new()
         {
             Text = "productionGetInsurance",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionSetInsurance = new Command
+        public static readonly Command ProductionSetInsurance = new()
         {
             Text = "productionSetInsurance",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ReturnCorporateOwnedItems = new Command
+        public static readonly Command ReturnCorporateOwnedItems = new()
         {
             Text = "returnCorporateOwnedItems",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ForceFactionStandings = new Command
+        public static readonly Command ForceFactionStandings = new()
         {
             Text = "forceFactionStandings",
             AccessLevel = AccessLevel.admin,
@@ -773,19 +770,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneTest = new Command
+        public static readonly Command ZoneTest = new()
         {
             Text = "zoneTest",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command DockAll = new Command
+        public static readonly Command DockAll = new()
         {
             Text = "dockAll",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command CharacterSetCredit = new Command
+        public static readonly Command CharacterSetCredit = new()
         {
             Text = "characterSetCredit",
             AccessLevel = AccessLevel.admin,
@@ -795,19 +792,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneCreateTeleportColumn = new Command
+        public static readonly Command ZoneCreateTeleportColumn = new()
         {
             Text = "zoneCreateTeleportColumn",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command State = new Command
+        public static readonly Command State = new()
         {
             Text = "state",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command RobotTemplateAdd = new Command
+        public static readonly Command RobotTemplateAdd = new()
         {
             Text = "robotTemplateAdd",
             AccessLevel = AccessLevel.admin,
@@ -818,7 +815,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command RobotTemplateUpdate = new Command
+        public static readonly Command RobotTemplateUpdate = new()
         {
             Text = "robotTemplateUpdate",
             AccessLevel = AccessLevel.admin,
@@ -830,7 +827,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command RobotTemplateDelete = new Command
+        public static readonly Command RobotTemplateDelete = new()
         {
             Text = "robotTemplateDelete",
             AccessLevel = AccessLevel.admin,
@@ -840,13 +837,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command RobotTemplateList = new Command
+        public static readonly Command RobotTemplateList = new()
         {
             Text = "robotTemplateList",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command RobotTemplateBuild = new Command
+        public static readonly Command RobotTemplateBuild = new()
         {
             Text = "robotTemplateBuild",
             AccessLevel = AccessLevel.admin,
@@ -856,13 +853,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command FittingPresetList = new Command
+        public static readonly Command FittingPresetList = new()
         {
             Text = "fittingPresetList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command FittingPresetSave = new Command
+        public static readonly Command FittingPresetSave = new()
         {
             Text = "fittingPresetSave",
             AccessLevel = AccessLevel.normal,
@@ -873,7 +870,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command FittingPresetDelete = new Command
+        public static readonly Command FittingPresetDelete = new()
         {
             Text = "fittingPresetDelete",
             AccessLevel = AccessLevel.normal,
@@ -883,7 +880,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command FittingPresetApply = new Command
+        public static readonly Command FittingPresetApply = new()
         {
             Text = "fittingPresetApply",
             AccessLevel = AccessLevel.normal,
@@ -895,7 +892,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ServerMessage = new Command
+        public static readonly Command ServerMessage = new()
         {
             Text = "serverMessage",
             AccessLevel = AccessLevel.admin,
@@ -908,7 +905,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command UpdateMoodMessage = new Command
+        public static readonly Command UpdateMoodMessage = new()
         {
             Text = "update_moodMessage",
             AccessLevel = AccessLevel.admin,
@@ -919,19 +916,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command DecorUpdate = new Command
+        public static readonly Command DecorUpdate = new()
         {
             Text = "decorUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command DecorDelete = new Command
+        public static readonly Command DecorDelete = new()
         {
             Text = "decorDelete",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command CharacterSetAvatar = new Command
+        public static readonly Command CharacterSetAvatar = new()
         {
             Text = "characterSetAvatar",
             AccessLevel = AccessLevel.admin,
@@ -942,7 +939,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterGetZoneInfo = new Command
+        public static readonly Command CharacterGetZoneInfo = new()
         {
             Text = "characterGetZoneInfo",
             AccessLevel = AccessLevel.admin,
@@ -952,19 +949,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ExtensionGive = new Command
+        public static readonly Command ExtensionGive = new()
         {
             Text = "extensionGive",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ExtensionReset = new Command
+        public static readonly Command ExtensionReset = new()
         {
             Text = "extensionReset",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command AddNews = new Command
+        public static readonly Command AddNews = new()
         {
             Text = "addNews",
             AccessLevel = AccessLevel.admin,
@@ -977,7 +974,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command UpdateNews = new Command
+        public static readonly Command UpdateNews = new()
         {
             Text = "updateNews",
             AccessLevel = AccessLevel.admin,
@@ -992,13 +989,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarRentExpired = new Command
+        public static readonly Command CorporationHangarRentExpired = new()
         {
             Text = "corporationHangarRentExpired",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command CorporationForceInfo = new Command
+        public static readonly Command CorporationForceInfo = new()
         {
             Text = "corporationForceInfo",
             AccessLevel = AccessLevel.admin,
@@ -1009,79 +1006,79 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GangAddMember = new Command
+        public static readonly Command GangAddMember = new()
         {
             Text = "gangAddMember",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command GangRemoveMember = new Command
+        public static readonly Command GangRemoveMember = new()
         {
             Text = "gangRemoveMember",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command GangKickMember = new Command
+        public static readonly Command GangKickMember = new()
         {
             Text = "gangKickMember",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionExpired = new Command
+        public static readonly Command MissionExpired = new()
         {
             Text = "missionExpired",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionDone = new Command
+        public static readonly Command MissionDone = new()
         {
             Text = "missionDone",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionStartItems = new Command
+        public static readonly Command MissionStartItems = new()
         {
             Text = "missionStartItems",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionReloadCache = new Command
+        public static readonly Command MissionReloadCache = new()
         {
             Text = "missionReloadCache",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MissionFlush = new Command
+        public static readonly Command MissionFlush = new()
         {
             Text = "missionFlush",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command RelayOpen = new Command
+        public static readonly Command RelayOpen = new()
         {
             Text = "relayOpen",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command RelayClose = new Command
+        public static readonly Command RelayClose = new()
         {
             Text = "relayClose",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ContainerUpdate = new Command
+        public static readonly Command ContainerUpdate = new()
         {
             Text = "containerUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command CreateItem = new Command
+        public static readonly Command CreateItem = new()
         {
             Text = "createItem",
             AccessLevel = AccessLevel.normal
         }; //%%% na ez egy sechole, fix it!!!
 
-        public static readonly Command CreateCorporationHangarStorage = new Command
+        public static readonly Command CreateCorporationHangarStorage = new()
         {
             Text = "createCorporationHangarStorage",
             AccessLevel = AccessLevel.admin,
@@ -1091,7 +1088,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ForceStanding = new Command
+        public static readonly Command ForceStanding = new()
         {
             Text = "forceStanding",
             AccessLevel = AccessLevel.admin,
@@ -1103,25 +1100,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneGetQueueInfo = new Command
+        public static readonly Command ZoneGetQueueInfo = new()
         {
             Text = "zoneGetQueueInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ZoneSetQueueLength = new Command
+        public static readonly Command ZoneSetQueueLength = new()
         {
             Text = "zoneSetQueueLength",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ZoneCancelEnterQueue = new Command
+        public static readonly Command ZoneCancelEnterQueue = new()
         {
             Text = "zoneCancelEnterQueue",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ZoneEntityChangeState = new Command
+        public static readonly Command ZoneEntityChangeState = new()
         {
             Text = "zoneEntityChangeState",
             AccessLevel = AccessLevel.admin,
@@ -1134,7 +1131,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDecorAdd = new Command
+        public static readonly Command ZoneDecorAdd = new()
         {
             Text = "zoneDecorAdd",
             AccessLevel = AccessLevel.admin,
@@ -1153,7 +1150,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDecorSet = new Command
+        public static readonly Command ZoneDecorSet = new()
         {
             Text = "zoneDecorSet",
             AccessLevel = AccessLevel.admin,
@@ -1174,7 +1171,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDecorDelete = new Command
+        public static readonly Command ZoneDecorDelete = new()
         {
             Text = "zoneDecorDelete",
             AccessLevel = AccessLevel.admin,
@@ -1184,7 +1181,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDecorLock = new Command
+        public static readonly Command ZoneDecorLock = new()
         {
             Text = "zoneDecorLock",
             AccessLevel = AccessLevel.admin,
@@ -1195,19 +1192,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneEnvironmentDescriptionList = new Command
+        public static readonly Command ZoneEnvironmentDescriptionList = new()
         {
             Text = "zoneEnvironmentDescriptionList",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneDrawDecorEnvironment = new Command
+        public static readonly Command ZoneDrawDecorEnvironment = new()
         {
             Text = "zoneDrawDecorEnvironment",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneSampleDecorEnvironment = new Command
+        public static readonly Command ZoneSampleDecorEnvironment = new()
         {
             Text = "zoneSampleDecorEnvironment",
             AccessLevel = AccessLevel.admin,
@@ -1218,7 +1215,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneCreateIsland = new Command
+        public static readonly Command ZoneCreateIsland = new()
         {
             Text = "zoneCreateIsland",
             AccessLevel = AccessLevel.admin,
@@ -1228,7 +1225,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneCreateTerraformLimit = new Command
+        public static readonly Command ZoneCreateTerraformLimit = new()
         {
             Text = "ZoneCreateTerraformLimit",
             AccessLevel = AccessLevel.admin,
@@ -1239,7 +1236,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSetLayerWithBitMap = new Command
+        public static readonly Command ZoneSetLayerWithBitMap = new()
         {
             Text = "ZoneSetLayerWithBitMap",
             AccessLevel = AccessLevel.admin,
@@ -1250,7 +1247,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSampleEnvironment = new Command
+        public static readonly Command ZoneSampleEnvironment = new()
         {
             Text = "zoneSampleEnvironment",
             AccessLevel = AccessLevel.admin,
@@ -1261,7 +1258,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSetPlantsSpeed = new Command
+        public static readonly Command ZoneSetPlantsSpeed = new()
         {
             Text = "zoneSetPlantsSpeed",
             AccessLevel = AccessLevel.admin,
@@ -1271,7 +1268,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSetPlantsMode = new Command
+        public static readonly Command ZoneSetPlantsMode = new()
         {
             Text = "zoneSetPlantsMode",
             AccessLevel = AccessLevel.admin,
@@ -1281,13 +1278,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneGetPlantsMode = new Command
+        public static readonly Command ZoneGetPlantsMode = new()
         {
             Text = "zoneGetPlantsMode",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneCreateGarden = new Command
+        public static readonly Command ZoneCreateGarden = new()
         {
             Text = "zoneCreateGarden",
             AccessLevel = AccessLevel.admin,
@@ -1298,7 +1295,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneClearLayer = new Command
+        public static readonly Command ZoneClearLayer = new()
         {
             Text = "zoneClearLayer",
             AccessLevel = AccessLevel.admin,
@@ -1308,7 +1305,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneCopyGroundType = new Command
+        public static readonly Command ZoneCopyGroundType = new()
         {
             Text = "zoneCopyGroundType",
             AccessLevel = AccessLevel.admin,
@@ -1319,7 +1316,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneFillGroundTypeRandom = new Command
+        public static readonly Command ZoneFillGroundTypeRandom = new()
         {
             Text = "zoneFillGroundTypeRandom",
             AccessLevel = AccessLevel.admin,
@@ -1330,7 +1327,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSetBaseDetails = new Command
+        public static readonly Command ZoneSetBaseDetails = new()
         {
             Text = "zoneSetBaseDetails",
             AccessLevel = AccessLevel.admin,
@@ -1340,7 +1337,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZonePutPlant = new Command
+        public static readonly Command ZonePutPlant = new()
         {
             Text = "zonePutPlant",
             AccessLevel = AccessLevel.admin,
@@ -1353,7 +1350,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDrawBlockingByEid = new Command
+        public static readonly Command ZoneDrawBlockingByEid = new()
         {
             Text = "zoneDrawBlockingByEid",
             AccessLevel = AccessLevel.admin,
@@ -1363,7 +1360,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDrawBlockingByDefinition = new Command
+        public static readonly Command ZoneDrawBlockingByDefinition = new()
         {
             Text = "zoneDrawBlockingByDefinition",
             AccessLevel = AccessLevel.admin,
@@ -1373,7 +1370,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneCleanBlockingByDefinition = new Command
+        public static readonly Command ZoneCleanBlockingByDefinition = new()
         {
             Text = "zoneCleanBlockingByDefinition",
             AccessLevel = AccessLevel.admin,
@@ -1383,19 +1380,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneDrawStatMap = new Command
+        public static readonly Command ZoneDrawStatMap = new()
         {
             Text = "zoneDrawStatMap",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneCleanObstacleBlocking = new Command
+        public static readonly Command ZoneCleanObstacleBlocking = new()
         {
             Text = "zoneCleanObstacleBlocking",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneMoveUnit = new Command
+        public static readonly Command ZoneMoveUnit = new()
         {
             Text = "zoneMoveUnit",
             AccessLevel = AccessLevel.admin,
@@ -1407,25 +1404,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneListPresences = new Command
+        public static readonly Command ZoneListPresences = new()
         {
             Text = "zoneListPresences",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneNpcFlockSet = new Command
+        public static readonly Command ZoneNpcFlockSet = new()
         {
             Text = "zoneNPCFlockSet",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneNpcFlockSetParameter = new Command
+        public static readonly Command ZoneNpcFlockSetParameter = new()
         {
             Text = "zoneNPCFlockSetParameter",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneNpcFlockKill = new Command
+        public static readonly Command ZoneNpcFlockKill = new()
         {
             Text = "zoneNPCFlockKill",
             AccessLevel = AccessLevel.admin,
@@ -1436,13 +1433,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneNpcFlockNew = new Command
+        public static readonly Command ZoneNpcFlockNew = new()
         {
             Text = "zoneNPCFlockNew",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneNpcFlockDelete = new Command
+        public static readonly Command ZoneNpcFlockDelete = new()
         {
             Text = "zoneNPCFlockDelete",
             AccessLevel = AccessLevel.admin,
@@ -1453,13 +1450,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneMissionNew = new Command
+        public static readonly Command ZoneMissionNew = new()
         {
             Text = "zoneMissionNew",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneDebugLOS = new Command
+        public static readonly Command ZoneDebugLOS = new()
         {
             Text = "zoneDebugLOS",
             AccessLevel = AccessLevel.admin,
@@ -1469,13 +1466,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneGetMyArtifacts = new Command
+        public static readonly Command ZoneGetMyArtifacts = new()
         {
             Text = "zoneGetMyArtifacts",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneGetZoneObjectDebugInfo = new Command
+        public static readonly Command ZoneGetZoneObjectDebugInfo = new()
         {
             Text = "zoneGetZoneObjectDebugInfo",
             AccessLevel = AccessLevel.admin,
@@ -1485,13 +1482,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneUploadScanResult = new Command
+        public static readonly Command ZoneUploadScanResult = new()
         {
             Text = "zoneUploadScanResult",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ZoneRemoveObject = new Command
+        public static readonly Command ZoneRemoveObject = new()
         {
             Text = "zoneRemoveObject",
             AccessLevel = AccessLevel.admin,
@@ -1501,55 +1498,55 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketItemSold = new Command
+        public static readonly Command MarketItemSold = new()
         {
             Text = "marketItemSold",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketItemBought = new Command
+        public static readonly Command MarketItemBought = new()
         {
             Text = "marketItemBought",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketItemExpired = new Command
+        public static readonly Command MarketItemExpired = new()
         {
             Text = "marketItemExpired",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketSellOrderCreated = new Command
+        public static readonly Command MarketSellOrderCreated = new()
         {
             Text = "marketSellOrderCreated",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketBuyOrderUpdate = new Command
+        public static readonly Command MarketBuyOrderUpdate = new()
         {
             Text = "marketBuyOrderUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketSetState = new Command
+        public static readonly Command MarketSetState = new()
         {
             Text = "marketSetState",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketBuyOrderCreated = new Command
+        public static readonly Command MarketBuyOrderCreated = new()
         {
             Text = "marketBuyOrderCreated",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketSellOrderUpdate = new Command
+        public static readonly Command MarketSellOrderUpdate = new()
         {
             Text = "marketSellOrderUpdate",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MarketFlush = new Command
+        public static readonly Command MarketFlush = new()
         {
             Text = "marketFlush",
             AccessLevel = AccessLevel.admin,
@@ -1559,7 +1556,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketAddCategory = new Command
+        public static readonly Command MarketAddCategory = new()
         {
             Text = "marketAddCategory",
             AccessLevel = AccessLevel.admin,
@@ -1572,19 +1569,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketGetState = new Command
+        public static readonly Command MarketGetState = new()
         {
             Text = "marketGetState",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command RobotActivated = new Command
+        public static readonly Command RobotActivated = new()
         {
             Text = "robotActivated",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionRemoveFacility = new Command
+        public static readonly Command ProductionRemoveFacility = new()
         {
             Text = "productionRemoveFacility",
             AccessLevel = AccessLevel.admin,
@@ -1594,7 +1591,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionSpawnComponents = new Command
+        public static readonly Command ProductionSpawnComponents = new()
         {
             Text = "productionSpawnComponents",
             AccessLevel = AccessLevel.admin,
@@ -1604,7 +1601,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionScaleComponentsAmount = new Command
+        public static readonly Command ProductionScaleComponentsAmount = new()
         {
             Text = "productionScaleComponentsAmount",
             AccessLevel = AccessLevel.admin,
@@ -1616,7 +1613,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionUnrepairItem = new Command
+        public static readonly Command ProductionUnrepairItem = new()
         {
             Text = "productionUnrepairItem",
             AccessLevel = AccessLevel.admin,
@@ -1626,13 +1623,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionFinished = new Command
+        public static readonly Command ProductionFinished = new()
         {
             Text = "productionFinished",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionFacilityOnOff = new Command
+        public static readonly Command ProductionFacilityOnOff = new()
         {
             Text = "productionFacilityOnOff",
             AccessLevel = AccessLevel.admin,
@@ -1643,13 +1640,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionForceEnd = new Command
+        public static readonly Command ProductionForceEnd = new()
         {
             Text = "productionForceEnd",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ProductionSpawnCPRG = new Command
+        public static readonly Command ProductionSpawnCPRG = new()
         {
             Text = "productionSpawnCPRG",
             AccessLevel = AccessLevel.admin,
@@ -1660,19 +1657,19 @@ namespace Perpetuum
         };
 
 
-        public static readonly Command MissionListAgents = new Command
+        public static readonly Command MissionListAgents = new()
         {
             Text = "missionListAgents",
             AccessLevel = AccessLevel.normal
         };
-        
-        public static readonly Command EpForActivityDailyLog = new Command
+
+        public static readonly Command EpForActivityDailyLog = new()
         {
             Text = "epForActivityDailyLog",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MissionPlayerAddsParticipant = new Command
+        public static readonly Command MissionPlayerAddsParticipant = new()
         {
             Text = "missionPlayerAddsParticipant",
             AccessLevel = AccessLevel.normal,
@@ -1683,13 +1680,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ItemCountOnZone = new Command
+        public static readonly Command ItemCountOnZone = new()
         {
             Text = "itemCountOnZone",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MissionStartFromZone = new Command
+        public static readonly Command MissionStartFromZone = new()
         {
             Text = "missionStartFromZone",
             AccessLevel = AccessLevel.normal,
@@ -1700,7 +1697,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command FieldTerminalInfo = new Command
+        public static readonly Command FieldTerminalInfo = new()
         {
             Text = "fieldTerminalInfo",
             AccessLevel = AccessLevel.normal,
@@ -1710,25 +1707,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SteamGetProducts = new Command
+        public static readonly Command SteamGetProducts = new()
         {
             Text = "steamGetProducts",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SteamStartTransaction = new Command
+        public static readonly Command SteamStartTransaction = new()
         {
             Text = "steamStartTransaction",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SteamFinishTransaction = new Command
+        public static readonly Command SteamFinishTransaction = new()
         {
             Text = "steamFinishTransaction",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command UseItem = new Command
+        public static readonly Command UseItem = new()
         {
             Text = "useItem",
             AccessLevel = AccessLevel.normal,
@@ -1738,7 +1735,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GateSetName = new Command
+        public static readonly Command GateSetName = new()
         {
             Text = "gateSetName",
             AccessLevel = AccessLevel.normal,
@@ -1749,19 +1746,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ExtensionBuyEpBoost = new Command
+        public static readonly Command ExtensionBuyEpBoost = new()
         {
             Text = "extensionBuyEpBoost",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MtProductPriceList = new Command
+        public static readonly Command MtProductPriceList = new()
         {
             Text = "mtProductPriceList",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command RedeemableItemActivate = new Command
+        public static readonly Command RedeemableItemActivate = new()
         {
             Text = "redeemableItemActivate",
             AccessLevel = AccessLevel.normal,
@@ -1771,13 +1768,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command RedeemableItemList = new Command
+        public static readonly Command RedeemableItemList = new()
         {
             Text = "redeemableItemList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command RedeemableItemRedeem = new Command
+        public static readonly Command RedeemableItemRedeem = new()
         {
             Text = "redeemableItemRedeem",
             AccessLevel = AccessLevel.normal,
@@ -1787,7 +1784,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentGiveUp = new Command
+        public static readonly Command TransportAssignmentGiveUp = new()
         {
             Text = "transportAssignmentGiveUp",
             AccessLevel = AccessLevel.normal,
@@ -1797,7 +1794,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentListContent = new Command
+        public static readonly Command TransportAssignmentListContent = new()
         {
             Text = "transportAssignmentListContent",
             AccessLevel = AccessLevel.normal,
@@ -1807,7 +1804,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentRetrieve = new Command
+        public static readonly Command TransportAssignmentRetrieve = new()
         {
             Text = "transportAssignmentRetrieve",
             AccessLevel = AccessLevel.normal,
@@ -1817,13 +1814,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentRunning = new Command
+        public static readonly Command TransportAssignmentRunning = new()
         {
             Text = "transportAssignmentRunning",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command TransportAssignmentContainerInfo = new Command
+        public static readonly Command TransportAssignmentContainerInfo = new()
         {
             Text = "transportAssignmentContainerInfo",
             AccessLevel = AccessLevel.normal,
@@ -1833,7 +1830,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentLog = new Command
+        public static readonly Command TransportAssignmentLog = new()
         {
             Text = "transportAssignmentLog",
             AccessLevel = AccessLevel.normal,
@@ -1843,7 +1840,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentTake = new Command
+        public static readonly Command TransportAssignmentTake = new()
         {
             Text = "transportAssignmentTake",
             AccessLevel = AccessLevel.normal,
@@ -1853,7 +1850,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentCancel = new Command
+        public static readonly Command TransportAssignmentCancel = new()
         {
             Text = "transportAssignmentCancel",
             AccessLevel = AccessLevel.normal,
@@ -1863,7 +1860,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentSubmit = new Command
+        public static readonly Command TransportAssignmentSubmit = new()
         {
             Text = "transportAssignmentSubmit",
             AccessLevel = AccessLevel.normal,
@@ -1878,13 +1875,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransportAssignmentList = new Command
+        public static readonly Command TransportAssignmentList = new()
         {
             Text = "transportAssignmentList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command TransportAssignmentDeliver = new Command
+        public static readonly Command TransportAssignmentDeliver = new()
         {
             Text = "transportAssignmentDeliver",
             AccessLevel = AccessLevel.normal,
@@ -1894,13 +1891,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SparkTeleportList = new Command
+        public static readonly Command SparkTeleportList = new()
         {
             Text = "sparkTeleportList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SparkTeleportDelete = new Command
+        public static readonly Command SparkTeleportDelete = new()
         {
             Text = "sparkTeleportDelete",
             AccessLevel = AccessLevel.normal,
@@ -1910,13 +1907,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SparkTeleportSet = new Command
+        public static readonly Command SparkTeleportSet = new()
         {
             Text = "sparkTeleportSet",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SparkTeleportUse = new Command
+        public static readonly Command SparkTeleportUse = new()
         {
             Text = "sparkTeleportUse",
             AccessLevel = AccessLevel.normal,
@@ -1926,19 +1923,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GoodiePackList = new Command
+        public static readonly Command GoodiePackList = new()
         {
             Text = "goodiePackList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GoodiePackRedeem = new Command
+        public static readonly Command GoodiePackRedeem = new()
         {
             Text = "goodiePackRedeem",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProductionQueryLineNextRound = new Command
+        public static readonly Command ProductionQueryLineNextRound = new()
         {
             Text = "productionQueryLineNextRound",
             AccessLevel = AccessLevel.normal,
@@ -1949,7 +1946,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionMergeResearchKitsMulti = new Command
+        public static readonly Command ProductionMergeResearchKitsMulti = new()
         {
             Text = "productionMergeResearchKitsMulti",
             AccessLevel = AccessLevel.normal,
@@ -1961,7 +1958,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionMergeResearchKitsMultiQuery = new Command
+        public static readonly Command ProductionMergeResearchKitsMultiQuery = new()
         {
             Text = "productionMergeResearchKitsMultiQuery",
             AccessLevel = AccessLevel.normal,
@@ -1973,7 +1970,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationSetColor = new Command
+        public static readonly Command CorporationSetColor = new()
         {
             Text = "corporationSetColor",
             AccessLevel = AccessLevel.normal,
@@ -1983,7 +1980,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionCPRGForgeQuery = new Command
+        public static readonly Command ProductionCPRGForgeQuery = new()
         {
             Text = "productionCPRGForgeQuery",
             AccessLevel = AccessLevel.normal,
@@ -1995,7 +1992,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionCPRGForge = new Command
+        public static readonly Command ProductionCPRGForge = new()
         {
             Text = "productionCPRGForge",
             AccessLevel = AccessLevel.normal,
@@ -2007,7 +2004,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentRent = new Command
+        public static readonly Command CorporationDocumentRent = new()
         {
             Text = "corporationDocumentRent",
             AccessLevel = AccessLevel.normal,
@@ -2017,7 +2014,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentTransfer = new Command
+        public static readonly Command CorporationDocumentTransfer = new()
         {
             Text = "corporationDocumentTransfer",
             AccessLevel = AccessLevel.normal,
@@ -2028,19 +2025,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentConfig = new Command
+        public static readonly Command CorporationDocumentConfig = new()
         {
             Text = "corporationDocumentConfig",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationDocumentList = new Command
+        public static readonly Command CorporationDocumentList = new()
         {
             Text = "corporationDocumentList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationDocumentUpdateBody = new Command
+        public static readonly Command CorporationDocumentUpdateBody = new()
         {
             Text = "corporationDocumentUpdateBody",
             AccessLevel = AccessLevel.normal,
@@ -2052,7 +2049,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentCreate = new Command
+        public static readonly Command CorporationDocumentCreate = new()
         {
             Text = "corporationDocumentCreate",
             AccessLevel = AccessLevel.normal,
@@ -2062,7 +2059,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentOpen = new Command
+        public static readonly Command CorporationDocumentOpen = new()
         {
             Text = "corporationDocumentOpen",
             AccessLevel = AccessLevel.normal,
@@ -2072,7 +2069,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentDelete = new Command
+        public static readonly Command CorporationDocumentDelete = new()
         {
             Text = "corporationDocumentDelete",
             AccessLevel = AccessLevel.normal,
@@ -2082,7 +2079,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentUnmonitor = new Command
+        public static readonly Command CorporationDocumentUnmonitor = new()
         {
             Text = "corporationDocumentUnmonitor",
             AccessLevel = AccessLevel.normal,
@@ -2092,7 +2089,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentMonitor = new Command
+        public static readonly Command CorporationDocumentMonitor = new()
         {
             Text = "corporationDocumentMonitor",
             AccessLevel = AccessLevel.normal,
@@ -2102,7 +2099,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentRegisterList = new Command
+        public static readonly Command CorporationDocumentRegisterList = new()
         {
             Text = "corporationDocumentRegisterList",
             AccessLevel = AccessLevel.normal,
@@ -2112,7 +2109,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDocumentRegisterSet = new Command
+        public static readonly Command CorporationDocumentRegisterSet = new()
         {
             Text = "corporationDocumentRegisterSet",
             AccessLevel = AccessLevel.normal,
@@ -2124,7 +2121,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSSetBaseDeconstruct = new Command
+        public static readonly Command PBSSetBaseDeconstruct = new()
         {
             Text = "PBSSetBaseDeconstruct",
             AccessLevel = AccessLevel.normal,
@@ -2135,13 +2132,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSGetTerritories = new Command
+        public static readonly Command PBSGetTerritories = new()
         {
             Text = "PBSGetTerritories",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command PBSSetTerritoryVisibility = new Command
+        public static readonly Command PBSSetTerritoryVisibility = new()
         {
             Text = "PBSSetTerritoryVisibility",
             AccessLevel = AccessLevel.normal,
@@ -2151,7 +2148,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSNodeInfo = new Command
+        public static readonly Command PBSNodeInfo = new()
         {
             Text = "PBSNodeInfo",
             AccessLevel = AccessLevel.normal,
@@ -2161,7 +2158,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSSetStandingLimit = new Command
+        public static readonly Command PBSSetStandingLimit = new()
         {
             Text = "PBSSetStandingLimit",
             AccessLevel = AccessLevel.normal,
@@ -2171,7 +2168,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSCheckDeployment = new Command
+        public static readonly Command PBSCheckDeployment = new()
         {
             Text = "PBSCheckDeployment",
             AccessLevel = AccessLevel.normal,
@@ -2183,13 +2180,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSGetNetwork = new Command
+        public static readonly Command PBSGetNetwork = new()
         {
             Text = "PBSGetNetwork",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command PBSSetOnline = new Command
+        public static readonly Command PBSSetOnline = new()
         {
             Text = "PBSSetOnline",
             AccessLevel = AccessLevel.normal,
@@ -2200,7 +2197,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSRenameNode = new Command
+        public static readonly Command PBSRenameNode = new()
         {
             Text = "PBSRenameNode",
             AccessLevel = AccessLevel.normal,
@@ -2211,7 +2208,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSSetConnectionWeight = new Command
+        public static readonly Command PBSSetConnectionWeight = new()
         {
             Text = "PBSSetConnectionWeight",
             AccessLevel = AccessLevel.normal,
@@ -2223,7 +2220,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSBreakConnection = new Command
+        public static readonly Command PBSBreakConnection = new()
         {
             Text = "PBSBreakConnection",
             AccessLevel = AccessLevel.normal,
@@ -2234,7 +2231,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSMakeConnection = new Command
+        public static readonly Command PBSMakeConnection = new()
         {
             Text = "PBSMakeConnection",
             AccessLevel = AccessLevel.normal,
@@ -2245,7 +2242,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSFeedableInfo = new Command
+        public static readonly Command PBSFeedableInfo = new()
         {
             Text = "PBSFeedableInfo",
             AccessLevel = AccessLevel.normal,
@@ -2255,7 +2252,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSFeedItems = new Command
+        public static readonly Command PBSFeedItems = new()
         {
             Text = "PBSFeedItems",
             AccessLevel = AccessLevel.normal,
@@ -2266,7 +2263,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSGetLog = new Command
+        public static readonly Command PBSGetLog = new()
         {
             Text = "PBSGetLog",
             AccessLevel = AccessLevel.normal,
@@ -2276,7 +2273,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSSetReinforceOffset = new Command
+        public static readonly Command PBSSetReinforceOffset = new()
         {
             Text = "PBSSetReinforceOffset",
             AccessLevel = AccessLevel.normal,
@@ -2287,7 +2284,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSSetEffect = new Command
+        public static readonly Command PBSSetEffect = new()
         {
             Text = "PBSSetEffect",
             AccessLevel = AccessLevel.normal,
@@ -2298,31 +2295,31 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PBSGetReimburseInfo = new Command
+        public static readonly Command PBSGetReimburseInfo = new()
         {
             Text = "PBSGetReimburseInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command PBSSetReimburseInfo = new Command
+        public static readonly Command PBSSetReimburseInfo = new()
         {
             Text = "PBSSetReimburseInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationCeoTakeOverStatus = new Command
+        public static readonly Command CorporationCeoTakeOverStatus = new()
         {
             Text = "corporationCEOTakeOverStatus",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationVolunteerForCeo = new Command
+        public static readonly Command CorporationVolunteerForCeo = new()
         {
             Text = "corporationVolunteerForCEO",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command TeleportQueryWorldChannels = new Command
+        public static readonly Command TeleportQueryWorldChannels = new()
         {
             Text = "teleportQueryWorldChannels",
             AccessLevel = AccessLevel.normal,
@@ -2332,7 +2329,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command IntrusionSetDefenseThreshold = new Command
+        public static readonly Command IntrusionSetDefenseThreshold = new()
         {
             Text = "intrusionSetDefenseThreshold",
             AccessLevel = AccessLevel.normal,
@@ -2342,7 +2339,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GiftOpen = new Command
+        public static readonly Command GiftOpen = new()
         {
             Text = "giftOpen",
             AccessLevel = AccessLevel.normal,
@@ -2352,7 +2349,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command IntrusionSAPSubmitItem = new Command
+        public static readonly Command IntrusionSAPSubmitItem = new()
         {
             Text = "intrusionSAPSubmitItem",
             AccessLevel = AccessLevel.normal,
@@ -2363,7 +2360,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command IntrusionSAPGetItemInfo = new Command
+        public static readonly Command IntrusionSAPGetItemInfo = new()
         {
             Text = "intrusionSAPGetItemInfo",
             AccessLevel = AccessLevel.normal,
@@ -2373,13 +2370,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetIntrusionMySitesLog = new Command
+        public static readonly Command GetIntrusionMySitesLog = new()
         {
             Text = "getIntrusionMySitesLog",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetIntrusionPublicLog = new Command
+        public static readonly Command GetIntrusionPublicLog = new()
         {
             Text = "getIntrusionPublicLog",
             AccessLevel = AccessLevel.normal,
@@ -2389,7 +2386,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command IntrusionUpgradeFacility = new Command
+        public static readonly Command IntrusionUpgradeFacility = new()
         {
             Text = "intrusionUpgradeFacility",
             AccessLevel = AccessLevel.normal,
@@ -2399,7 +2396,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SetIntrusionSiteMessage = new Command
+        public static readonly Command SetIntrusionSiteMessage = new()
         {
             Text = "setIntrusionSiteMessage",
             AccessLevel = AccessLevel.normal,
@@ -2410,7 +2407,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetIntrusionStabilityLog = new Command
+        public static readonly Command GetIntrusionStabilityLog = new()
         {
             Text = "getIntrusionStabilityLog",
             AccessLevel = AccessLevel.normal,
@@ -2421,7 +2418,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetIntrusionLog = new Command
+        public static readonly Command GetIntrusionLog = new()
         {
             Text = "getIntrusionLog",
             AccessLevel = AccessLevel.normal,
@@ -2432,7 +2429,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command BaseSetDockingRights = new Command
+        public static readonly Command BaseSetDockingRights = new()
         {
             Text = "baseSetDockingRights",
             AccessLevel = AccessLevel.normal,
@@ -2442,25 +2439,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command BaseGetOwnershipInfo = new Command
+        public static readonly Command BaseGetOwnershipInfo = new()
         {
             Text = "baseGetOwnershipInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SparkRemove = new Command
+        public static readonly Command SparkRemove = new()
         {
             Text = "sparkRemove",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SparkList = new Command
+        public static readonly Command SparkList = new()
         {
             Text = "sparkList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SparkChange = new Command
+        public static readonly Command SparkChange = new()
         {
             Text = "sparkChange",
             AccessLevel = AccessLevel.normal,
@@ -2470,7 +2467,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SparkUnlock = new Command
+        public static readonly Command SparkUnlock = new()
         {
             Text = "sparkUnlock",
             AccessLevel = AccessLevel.normal,
@@ -2480,7 +2477,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProximityProbeRemove = new Command
+        public static readonly Command ProximityProbeRemove = new()
         {
             Text = "proximityProbeRemove",
             AccessLevel = AccessLevel.normal,
@@ -2490,7 +2487,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProximityProbeRegisterSet = new Command
+        public static readonly Command ProximityProbeRegisterSet = new()
         {
             Text = "proximityProbeRegisterSet",
             AccessLevel = AccessLevel.normal,
@@ -2501,13 +2498,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProximityProbeList = new Command
+        public static readonly Command ProximityProbeList = new()
         {
             Text = "proximityProbeList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProximityProbeSetName = new Command
+        public static readonly Command ProximityProbeSetName = new()
         {
             Text = "proximityProbeSetName",
             AccessLevel = AccessLevel.normal,
@@ -2518,7 +2515,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProximityProbeGetRegistrationInfo = new Command
+        public static readonly Command ProximityProbeGetRegistrationInfo = new()
         {
             Text = "proximityProbeGetRegistrationInfo",
             AccessLevel = AccessLevel.normal,
@@ -2528,7 +2525,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ExtensionRemoveLevel = new Command
+        public static readonly Command ExtensionRemoveLevel = new()
         {
             Text = "extensionRemoveLevel",
             AccessLevel = AccessLevel.normal,
@@ -2538,13 +2535,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetDefinitionConfigUnits = new Command
+        public static readonly Command GetDefinitionConfigUnits = new()
         {
             Text = "getDefinitionConfigUnits",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ItemShopList = new Command
+        public static readonly Command ItemShopList = new()
         {
             Text = "itemShopList",
             AccessLevel = AccessLevel.normal,
@@ -2554,7 +2551,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ItemShopBuy = new Command
+        public static readonly Command ItemShopBuy = new()
         {
             Text = "itemShopBuy",
             AccessLevel = AccessLevel.normal,
@@ -2565,13 +2562,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionInProgressCorporation = new Command
+        public static readonly Command ProductionInProgressCorporation = new()
         {
             Text = "productionInProgressCorporation",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MissionGetSupply = new Command
+        public static readonly Command MissionGetSupply = new()
         {
             Text = "missionGetSupply",
             AccessLevel = AccessLevel.normal,
@@ -2581,37 +2578,37 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetDistances = new Command
+        public static readonly Command GetDistances = new()
         {
             Text = "getDistances",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command YellowPagesSearch = new Command
+        public static readonly Command YellowPagesSearch = new()
         {
             Text = "yellowPagesSearch",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command YellowPagesSubmit = new Command
+        public static readonly Command YellowPagesSubmit = new()
         {
             Text = "yellowPagesSubmit",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command YellowPagesGet = new Command
+        public static readonly Command YellowPagesGet = new()
         {
             Text = "yellowPagesGet",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command YellowPagesDelete = new Command
+        public static readonly Command YellowPagesDelete = new()
         {
             Text = "yellowPagesDelete",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command AlarmStart = new Command
+        public static readonly Command AlarmStart = new()
         {
             Text = "alarmStart",
             AccessLevel = AccessLevel.normal,
@@ -2621,7 +2618,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command KioskInfo = new Command
+        public static readonly Command KioskInfo = new()
         {
             Text = "kioskInfo",
             AccessLevel = AccessLevel.normal,
@@ -2631,7 +2628,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command KioskSubmitItem = new Command
+        public static readonly Command KioskSubmitItem = new()
         {
             Text = "kioskSubmitItem",
             AccessLevel = AccessLevel.normal,
@@ -2642,19 +2639,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ItemCount = new Command
+        public static readonly Command ItemCount = new()
         {
             Text = "itemCount",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SystemInfo = new Command
+        public static readonly Command SystemInfo = new()
         {
             Text = "systemInfo",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command GetItemSummary = new Command
+        public static readonly Command GetItemSummary = new()
         {
             Text = "getItemSummary",
             AccessLevel = AccessLevel.normal,
@@ -2664,19 +2661,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionFacilityDescription = new Command
+        public static readonly Command ProductionFacilityDescription = new()
         {
             Text = "productionFacilityDescription",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProductionInsuranceList = new Command
+        public static readonly Command ProductionInsuranceList = new()
         {
             Text = "productionInsuranceList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProductionInsuranceQuery = new Command
+        public static readonly Command ProductionInsuranceQuery = new()
         {
             Text = "productionInsuranceQuery",
             AccessLevel = AccessLevel.normal,
@@ -2688,7 +2685,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionInsuranceDelete = new Command
+        public static readonly Command ProductionInsuranceDelete = new()
         {
             Text = "productionInsuranceDelete",
             AccessLevel = AccessLevel.normal,
@@ -2698,7 +2695,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionInsuranceBuy = new Command
+        public static readonly Command ProductionInsuranceBuy = new()
         {
             Text = "productionInsuranceBuy",
             AccessLevel = AccessLevel.normal,
@@ -2709,7 +2706,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command StackTo = new Command
+        public static readonly Command StackTo = new()
         {
             Text = "stackTo",
             AccessLevel = AccessLevel.normal,
@@ -2720,13 +2717,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ForceDock = new Command
+        public static readonly Command ForceDock = new()
         {
             Text = "forceDock",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ForceDockAdmin = new Command
+        public static readonly Command ForceDockAdmin = new()
         {
             Text = "forceDockAdmin",
             AccessLevel = AccessLevel.admin,
@@ -2736,19 +2733,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSaveLayer = new Command
+        public static readonly Command ZoneSaveLayer = new()
         {
             Text = "zoneSaveLayer",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TeleportList = new Command
+        public static readonly Command TeleportList = new()
         {
             Text = "teleportList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command TeleportUse = new Command
+        public static readonly Command TeleportUse = new()
         {
             Text = "teleportUse",
             AccessLevel = AccessLevel.normal,
@@ -2759,7 +2756,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TeleportToZoneObject = new Command
+        public static readonly Command TeleportToZoneObject = new()
         {
             Text = "teleportToZoneObject",
             AccessLevel = AccessLevel.normal,
@@ -2769,7 +2766,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TeleportGetChannelList = new Command
+        public static readonly Command TeleportGetChannelList = new()
         {
             Text = "teleportGetChannelList",
             AccessLevel = AccessLevel.normal,
@@ -2779,7 +2776,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SignIn = new Command
+        public static readonly Command SignIn = new()
         {
             Text = "signIn",
             AccessLevel = AccessLevel.notDefined,
@@ -2791,7 +2788,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SignInSteam = new Command
+        public static readonly Command SignInSteam = new()
         {
             Text = "signInSteam",
             AccessLevel = AccessLevel.notDefined,
@@ -2802,13 +2799,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SignOut = new Command
+        public static readonly Command SignOut = new()
         {
             Text = "signOut",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SteamListAccounts = new Command
+        public static readonly Command SteamListAccounts = new()
         {
             Text = "steamListAccounts",
             AccessLevel = AccessLevel.notDefined,
@@ -2818,13 +2815,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterSettingsGet = new Command
+        public static readonly Command CharacterSettingsGet = new()
         {
             Text = "characterSettingsGet",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterSettingsSet = new Command
+        public static readonly Command CharacterSettingsSet = new()
         {
             Text = "characterSettingsSet",
             AccessLevel = AccessLevel.normal,
@@ -2834,7 +2831,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterSearch = new Command
+        public static readonly Command CharacterSearch = new()
         {
             Text = "characterSearch",
             AccessLevel = AccessLevel.normal,
@@ -2844,13 +2841,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PollGet = new Command
+        public static readonly Command PollGet = new()
         {
             Text = "pollGet",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command PollAnswer = new Command
+        public static readonly Command PollAnswer = new()
         {
             Text = "pollAnswer",
             AccessLevel = AccessLevel.normal,
@@ -2861,7 +2858,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command Ping = new Command
+        public static readonly Command Ping = new()
         {
             Text = "ping",
             AccessLevel = AccessLevel.notDefined,
@@ -2871,43 +2868,43 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command Quit = new Command
+        public static readonly Command Quit = new()
         {
             Text = "quit",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command GetEnums = new Command
+        public static readonly Command GetEnums = new()
         {
             Text = "getEnums",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command GetCommands = new Command
+        public static readonly Command GetCommands = new()
         {
             Text = "getCommands",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command GetZoneInfo = new Command
+        public static readonly Command GetZoneInfo = new()
         {
             Text = "getZoneInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetEntityDefaults = new Command
+        public static readonly Command GetEntityDefaults = new()
         {
             Text = "getEntityDefaults",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command ExtensionHistory = new Command
+        public static readonly Command ExtensionHistory = new()
         {
             Text = "extensionHistory",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationTransactionHistory = new Command
+        public static readonly Command CorporationTransactionHistory = new()
         {
             Text = "corporationTransactionHistory",
             AccessLevel = AccessLevel.normal,
@@ -2917,7 +2914,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterTransactionHistory = new Command
+        public static readonly Command CharacterTransactionHistory = new()
         {
             Text = "characterTransactionHistory",
             AccessLevel = AccessLevel.normal,
@@ -2927,7 +2924,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionHistory = new Command
+        public static readonly Command ProductionHistory = new()
         {
             Text = "productionHistory",
             AccessLevel = AccessLevel.normal,
@@ -2937,7 +2934,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command StandingHistory = new Command
+        public static readonly Command StandingHistory = new()
         {
             Text = "standingHistory",
             AccessLevel = AccessLevel.normal,
@@ -2947,19 +2944,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterListNpcDeath = new Command
+        public static readonly Command CharacterListNpcDeath = new()
         {
             Text = "characterListNpcDeath",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetEffects = new Command
+        public static readonly Command GetEffects = new()
         {
             Text = "getEffects",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command RobotEmpty = new Command
+        public static readonly Command RobotEmpty = new()
         {
             Text = "robotEmpty",
             AccessLevel = AccessLevel.normal,
@@ -2970,25 +2967,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSectorList = new Command
+        public static readonly Command ZoneSectorList = new()
         {
             Text = "zoneSectorList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetHighScores = new Command
+        public static readonly Command GetHighScores = new()
         {
             Text = "getHighScores",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetMyHighScores = new Command
+        public static readonly Command GetMyHighScores = new()
         {
             Text = "getMyHighScores",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command IsOnline = new Command
+        public static readonly Command IsOnline = new()
         {
             Text = "isOnline",
             AccessLevel = AccessLevel.normal,
@@ -2998,7 +2995,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command Chat = new Command
+        public static readonly Command Chat = new()
         {
             Text = "chat",
             AccessLevel = AccessLevel.normal,
@@ -3009,19 +3006,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterGetProfiles = new Command
+        public static readonly Command CharacterGetProfiles = new()
         {
             Text = "characterGetProfiles",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterCreate = new Command
+        public static readonly Command CharacterCreate = new()
         {
             Text = "characterCreate",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterSelect = new Command
+        public static readonly Command CharacterSelect = new()
         {
             Text = "characterSelect",
             AccessLevel = AccessLevel.normal,
@@ -3031,13 +3028,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterWizardData = new Command
+        public static readonly Command CharacterWizardData = new()
         {
             Text = "characterWizardData",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterCheckNick = new Command
+        public static readonly Command CharacterCheckNick = new()
         {
             Text = "characterCheckNick",
             AccessLevel = AccessLevel.normal,
@@ -3047,13 +3044,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterUpdateBalance = new Command
+        public static readonly Command CharacterUpdateBalance = new()
         {
             Text = "characterUpdateBalance",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterCorporationHistory = new Command
+        public static readonly Command CharacterCorporationHistory = new()
         {
             Text = "characterCorporationHistory",
             AccessLevel = AccessLevel.normal,
@@ -3063,7 +3060,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterSetMoodMessage = new Command
+        public static readonly Command CharacterSetMoodMessage = new()
         {
             Text = "characterSetMoodmessage",
             AccessLevel = AccessLevel.normal,
@@ -3073,7 +3070,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterRemoveFromCache = new Command
+        public static readonly Command CharacterRemoveFromCache = new()
         {
             Text = "characterRemoveFromCache",
             AccessLevel = AccessLevel.admin,
@@ -3083,7 +3080,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterSetBlockTrades = new Command
+        public static readonly Command CharacterSetBlockTrades = new()
         {
             Text = "characterSetBlockTrades",
             AccessLevel = AccessLevel.normal,
@@ -3093,7 +3090,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterForceDeselect = new Command
+        public static readonly Command CharacterForceDeselect = new()
         {
             Text = "characterForceDeselect",
             AccessLevel = AccessLevel.admin,
@@ -3103,7 +3100,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterForceDisconnect = new Command
+        public static readonly Command CharacterForceDisconnect = new()
         {
             Text = "characterForceDisconnect",
             AccessLevel = AccessLevel.admin,
@@ -3113,7 +3110,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterNickHistory = new Command
+        public static readonly Command CharacterNickHistory = new()
         {
             Text = "characterNickHistory",
             AccessLevel = AccessLevel.normal,
@@ -3123,7 +3120,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterRename = new Command
+        public static readonly Command CharacterRename = new()
         {
             Text = "characterRename",
             AccessLevel = AccessLevel.normal,
@@ -3134,13 +3131,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SocialGetMyList = new Command
+        public static readonly Command SocialGetMyList = new()
         {
             Text = "socialGetMyList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SocialFriendRequest = new Command
+        public static readonly Command SocialFriendRequest = new()
         {
             Text = "socialFriendRequest",
             AccessLevel = AccessLevel.normal,
@@ -3150,7 +3147,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SocialConfirmPendingFriendRequest = new Command
+        public static readonly Command SocialConfirmPendingFriendRequest = new()
         {
             Text = "socialConfirmPendingFriendRequest",
             AccessLevel = AccessLevel.normal,
@@ -3161,13 +3158,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SocialFriendRequestReply = new Command
+        public static readonly Command SocialFriendRequestReply = new()
         {
             Text = "socialFriendRequestReply",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command SocialDeleteFriend = new Command
+        public static readonly Command SocialDeleteFriend = new()
         {
             Text = "socialDeleteFriend",
             AccessLevel = AccessLevel.normal,
@@ -3177,7 +3174,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SocialBlockFriend = new Command
+        public static readonly Command SocialBlockFriend = new()
         {
             Text = "socialBlockFriend",
             AccessLevel = AccessLevel.normal,
@@ -3187,7 +3184,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MailOpen = new Command
+        public static readonly Command MailOpen = new()
         {
             Text = "mailOpen",
             AccessLevel = AccessLevel.normal,
@@ -3197,7 +3194,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MailDelete = new Command
+        public static readonly Command MailDelete = new()
         {
             Text = "mailDelete",
             AccessLevel = AccessLevel.normal,
@@ -3207,7 +3204,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MailList = new Command
+        public static readonly Command MailList = new()
         {
             Text = "mailList",
             AccessLevel = AccessLevel.normal,
@@ -3217,7 +3214,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MailDeleteFolder = new Command
+        public static readonly Command MailDeleteFolder = new()
         {
             Text = "mailDeleteFolder",
             AccessLevel = AccessLevel.normal,
@@ -3227,7 +3224,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MailMoveToFolder = new Command
+        public static readonly Command MailMoveToFolder = new()
         {
             Text = "mailMoveToFolder",
             AccessLevel = AccessLevel.normal,
@@ -3238,25 +3235,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MailNewCount = new Command
+        public static readonly Command MailNewCount = new()
         {
             Text = "mailNewCount",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MailUsedFolders = new Command
+        public static readonly Command MailUsedFolders = new()
         {
             Text = "mailUsedFolders",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MailSend = new Command
+        public static readonly Command MailSend = new()
         {
             Text = "mailSend",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MassMailOpen = new Command
+        public static readonly Command MassMailOpen = new()
         {
             Text = "massMailOpen",
             AccessLevel = AccessLevel.normal,
@@ -3266,7 +3263,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MassMailDelete = new Command
+        public static readonly Command MassMailDelete = new()
         {
             Text = "massMailDelete",
             AccessLevel = AccessLevel.normal,
@@ -3276,7 +3273,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MassMailSend = new Command
+        public static readonly Command MassMailSend = new()
         {
             Text = "massMailSend",
             AccessLevel = AccessLevel.normal,
@@ -3288,7 +3285,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MassMailList = new Command
+        public static readonly Command MassMailList = new()
         {
             Text = "massMailList",
             AccessLevel = AccessLevel.normal,
@@ -3298,13 +3295,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MassMailNewCount = new Command
+        public static readonly Command MassMailNewCount = new()
         {
             Text = "massMailNewCount",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ChannelTalk = new Command
+        public static readonly Command ChannelTalk = new()
         {
             Text = "channelTalk",
             AccessLevel = AccessLevel.normal,
@@ -3315,31 +3312,31 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelList = new Command
+        public static readonly Command ChannelList = new()
         {
             Text = "channelList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ChannelListAll = new Command
+        public static readonly Command ChannelListAll = new()
         {
             Text = "channelListAll",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ChannelMyList = new Command
+        public static readonly Command ChannelMyList = new()
         {
             Text = "channelMyList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ChannelNotification = new Command
+        public static readonly Command ChannelNotification = new()
         {
             Text = "channelNotification",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ChannelCreate = new Command
+        public static readonly Command ChannelCreate = new()
         {
             Text = "channelCreate",
             AccessLevel = AccessLevel.normal,
@@ -3349,7 +3346,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelJoin = new Command
+        public static readonly Command ChannelJoin = new()
         {
             Text = "channelJoin",
             AccessLevel = AccessLevel.normal,
@@ -3359,7 +3356,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelLeave = new Command
+        public static readonly Command ChannelLeave = new()
         {
             Text = "channelLeave",
             AccessLevel = AccessLevel.normal,
@@ -3369,7 +3366,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelKick = new Command
+        public static readonly Command ChannelKick = new()
         {
             Text = "channelKick",
             AccessLevel = AccessLevel.normal,
@@ -3380,7 +3377,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelSetTopic = new Command
+        public static readonly Command ChannelSetTopic = new()
         {
             Text = "channelSetTopic",
             AccessLevel = AccessLevel.normal,
@@ -3391,7 +3388,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelSetMemberRole = new Command
+        public static readonly Command ChannelSetMemberRole = new()
         {
             Text = "channelModifyMemberRole",
             AccessLevel = AccessLevel.normal,
@@ -3403,7 +3400,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelSetPassword = new Command
+        public static readonly Command ChannelSetPassword = new()
         {
             Text = "channelSetPassword",
             AccessLevel = AccessLevel.normal,
@@ -3413,7 +3410,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelBan = new Command
+        public static readonly Command ChannelBan = new()
         {
             Text = "channelBan",
             AccessLevel = AccessLevel.normal,
@@ -3424,7 +3421,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelRemoveBan = new Command
+        public static readonly Command ChannelRemoveBan = new()
         {
             Text = "channelRemoveBan",
             AccessLevel = AccessLevel.normal,
@@ -3435,7 +3432,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelGetBannedMembers = new Command
+        public static readonly Command ChannelGetBannedMembers = new()
         {
             Text = "channelGetBannedMembers",
             AccessLevel = AccessLevel.normal,
@@ -3445,7 +3442,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelGlobalMute = new Command
+        public static readonly Command ChannelGlobalMute = new()
         {
             Text = "channelGlobalMute",
             AccessLevel = AccessLevel.admin,
@@ -3456,43 +3453,43 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChannelGetMutedCharacters = new Command
+        public static readonly Command ChannelGetMutedCharacters = new()
         {
             Text = "channelGetMutedCharacters",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ExtensionGetAll = new Command
+        public static readonly Command ExtensionGetAll = new()
         {
             Text = "extensionGetAll",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ExtensionLearntList = new Command
+        public static readonly Command ExtensionLearntList = new()
         {
             Text = "extensionLearntList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ExtensionPrerequireList = new Command
+        public static readonly Command ExtensionPrerequireList = new()
         {
             Text = "extensionPrerequireList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ExtensionCategoryList = new Command
+        public static readonly Command ExtensionCategoryList = new()
         {
             Text = "extensionCategoryList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ExtensionGetAvailablePoints = new Command
+        public static readonly Command ExtensionGetAvailablePoints = new()
         {
             Text = "extensionGetAvailablePoints",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ExtensionBuyForPoints = new Command
+        public static readonly Command ExtensionBuyForPoints = new()
         {
             Text = "extensionBuyForPoints",
             AccessLevel = AccessLevel.normal,
@@ -3502,13 +3499,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ExtensionGetPointParameters = new Command
+        public static readonly Command ExtensionGetPointParameters = new()
         {
             Text = "extensionGetPointParameters",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ExtensionResetCharacter = new Command
+        public static readonly Command ExtensionResetCharacter = new()
         {
             Text = "extensionResetCharacter",
             AccessLevel = AccessLevel.normal,
@@ -3518,7 +3515,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ExtensionFreeLockedEp = new Command
+        public static readonly Command ExtensionFreeLockedEp = new()
         {
             Text = "extensionFreeLockedEp",
             AccessLevel = AccessLevel.normal,
@@ -3529,7 +3526,7 @@ namespace Perpetuum
         }; //
 
         //GameAdmin Command
-        public static readonly Command ExtensionFreeAllLockedEpCommand = new Command
+        public static readonly Command ExtensionFreeAllLockedEpCommand = new()
         {
             Text = "extensionFreeAllLockedEpByCommand",
             AccessLevel = AccessLevel.admin,
@@ -3540,7 +3537,7 @@ namespace Perpetuum
         };
 
         //GameAdmin Command
-        public static readonly Command EPBonusSet = new Command
+        public static readonly Command EPBonusSet = new()
         {
             Text = "EPBonusSet",
             AccessLevel = AccessLevel.admin,
@@ -3551,7 +3548,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command FreshNewsCount = new Command
+        public static readonly Command FreshNewsCount = new()
         {
             Text = "freshNewsCount",
             AccessLevel = AccessLevel.normal,
@@ -3561,7 +3558,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetNews = new Command
+        public static readonly Command GetNews = new()
         {
             Text = "getNews",
             AccessLevel = AccessLevel.normal,
@@ -3572,19 +3569,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command NewsCategory = new Command
+        public static readonly Command NewsCategory = new()
         {
             Text = "newsCategory",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command RequestInfiniteBox = new Command
+        public static readonly Command RequestInfiniteBox = new()
         {
             Text = "requestInfiniteBox",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationCreate = new Command
+        public static readonly Command CorporationCreate = new()
         {
             Text = "corporationCreate",
             AccessLevel = AccessLevel.normal,
@@ -3597,13 +3594,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationGetMyInfo = new Command
+        public static readonly Command CorporationGetMyInfo = new()
         {
             Text = "corporationGetMyInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationRemoveMember = new Command
+        public static readonly Command CorporationRemoveMember = new()
         {
             Text = "corporationRemoveMember",
             AccessLevel = AccessLevel.normal,
@@ -3613,7 +3610,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationSetMemberRole = new Command
+        public static readonly Command CorporationSetMemberRole = new()
         {
             Text = "corporationSetMemberRole",
             AccessLevel = AccessLevel.normal,
@@ -3624,7 +3621,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationCharacterInvite = new Command
+        public static readonly Command CorporationCharacterInvite = new()
         {
             Text = "corporationCharacterInvite",
             AccessLevel = AccessLevel.normal,
@@ -3635,7 +3632,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationInviteReply = new Command
+        public static readonly Command CorporationInviteReply = new()
         {
             Text = "corporationInviteReply",
             AccessLevel = AccessLevel.normal,
@@ -3645,13 +3642,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationMemberTransferred = new Command
+        public static readonly Command CorporationMemberTransferred = new()
         {
             Text = "corporationMemberTransferred",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command CorporationInfo = new Command
+        public static readonly Command CorporationInfo = new()
         {
             Text = "corporationInfo",
             AccessLevel = AccessLevel.normal,
@@ -3661,13 +3658,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationLeave = new Command
+        public static readonly Command CorporationLeave = new()
         {
             Text = "corporationLeave",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationSearch = new Command
+        public static readonly Command CorporationSearch = new()
         {
             Text = "corporationSearch",
             AccessLevel = AccessLevel.normal,
@@ -3677,13 +3674,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationSetInfo = new Command
+        public static readonly Command CorporationSetInfo = new()
         {
             Text = "corporationSetInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationDonate = new Command
+        public static readonly Command CorporationDonate = new()
         {
             Text = "corporationDonate",
             AccessLevel = AccessLevel.normal,
@@ -3693,19 +3690,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDropRoles = new Command
+        public static readonly Command CorporationDropRoles = new()
         {
             Text = "corporationDropRoles",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationCancelLeave = new Command
+        public static readonly Command CorporationCancelLeave = new()
         {
             Text = "corporationCancelLeave",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationHangarListOnBase = new Command
+        public static readonly Command CorporationHangarListOnBase = new()
         {
             Text = "corporationHangarListOnBase",
             AccessLevel = AccessLevel.normal,
@@ -3715,13 +3712,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarListAll = new Command
+        public static readonly Command CorporationHangarListAll = new()
         {
             Text = "corporationHangarListAll",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationRentHangar = new Command
+        public static readonly Command CorporationRentHangar = new()
         {
             Text = "corporationRentHangar",
             AccessLevel = AccessLevel.normal,
@@ -3731,7 +3728,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarLogSet = new Command
+        public static readonly Command CorporationHangarLogSet = new()
         {
             Text = "corporationHangarLogSet",
             AccessLevel = AccessLevel.normal,
@@ -3742,7 +3739,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarLogClear = new Command
+        public static readonly Command CorporationHangarLogClear = new()
         {
             Text = "corporationHangarLogClear",
             AccessLevel = AccessLevel.normal,
@@ -3752,7 +3749,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarSetAccess = new Command
+        public static readonly Command CorporationHangarSetAccess = new()
         {
             Text = "corporationHangarSetAccess",
             AccessLevel = AccessLevel.normal,
@@ -3763,7 +3760,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarClose = new Command
+        public static readonly Command CorporationHangarClose = new()
         {
             Text = "corporationHangarClose",
             AccessLevel = AccessLevel.normal,
@@ -3773,7 +3770,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarLogList = new Command
+        public static readonly Command CorporationHangarLogList = new()
         {
             Text = "corporationHangarLogList",
             AccessLevel = AccessLevel.normal,
@@ -3784,7 +3781,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationPayOut = new Command
+        public static readonly Command CorporationPayOut = new()
         {
             Text = "corporationPayOut",
             AccessLevel = AccessLevel.normal,
@@ -3795,7 +3792,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarPayRent = new Command
+        public static readonly Command CorporationHangarPayRent = new()
         {
             Text = "corporationHangarPayRent",
             AccessLevel = AccessLevel.normal,
@@ -3805,7 +3802,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationVoteStart = new Command
+        public static readonly Command CorporationVoteStart = new()
         {
             Text = "corporationVoteStart",
             AccessLevel = AccessLevel.normal,
@@ -3818,13 +3815,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationVoteList = new Command
+        public static readonly Command CorporationVoteList = new()
         {
             Text = "corporationVoteList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationVoteDelete = new Command
+        public static readonly Command CorporationVoteDelete = new()
         {
             Text = "corporationVoteDelete",
             AccessLevel = AccessLevel.normal,
@@ -3834,7 +3831,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationVoteCast = new Command
+        public static readonly Command CorporationVoteCast = new()
         {
             Text = "corporationVoteCast",
             AccessLevel = AccessLevel.normal,
@@ -3845,7 +3842,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationVoteSetTopic = new Command
+        public static readonly Command CorporationVoteSetTopic = new()
         {
             Text = "corporationVoteSetTopic",
             AccessLevel = AccessLevel.normal,
@@ -3856,7 +3853,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationBulletinStart = new Command
+        public static readonly Command CorporationBulletinStart = new()
         {
             Text = "corporationBulletinStart",
             AccessLevel = AccessLevel.normal,
@@ -3867,7 +3864,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationBulletinEntry = new Command
+        public static readonly Command CorporationBulletinEntry = new()
         {
             Text = "corporationBulletinEntry",
             AccessLevel = AccessLevel.normal,
@@ -3878,7 +3875,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationBulletinDelete = new Command
+        public static readonly Command CorporationBulletinDelete = new()
         {
             Text = "corporationBulletinDelete",
             AccessLevel = AccessLevel.normal,
@@ -3888,13 +3885,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationBulletinList = new Command
+        public static readonly Command CorporationBulletinList = new()
         {
             Text = "corporationBulletinList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationBulletinDetails = new Command
+        public static readonly Command CorporationBulletinDetails = new()
         {
             Text = "corporationBulletinDetails",
             AccessLevel = AccessLevel.normal,
@@ -3904,7 +3901,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarSetName = new Command
+        public static readonly Command CorporationHangarSetName = new()
         {
             Text = "corporationHangarSetName",
             AccessLevel = AccessLevel.normal,
@@ -3915,7 +3912,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarRentPrice = new Command
+        public static readonly Command CorporationHangarRentPrice = new()
         {
             Text = "corporationHangarRentPrice",
             AccessLevel = AccessLevel.normal,
@@ -3925,7 +3922,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationApply = new Command
+        public static readonly Command CorporationApply = new()
         {
             Text = "corporationApply",
             AccessLevel = AccessLevel.normal,
@@ -3936,19 +3933,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationListMyApplications = new Command
+        public static readonly Command CorporationListMyApplications = new()
         {
             Text = "corporationListMyApplications",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationListApplications = new Command
+        public static readonly Command CorporationListApplications = new()
         {
             Text = "corporationListApplications",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationDeleteMyApplication = new Command
+        public static readonly Command CorporationDeleteMyApplication = new()
         {
             Text = "corporationDeleteMyApplication",
             AccessLevel = AccessLevel.normal,
@@ -3959,7 +3956,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationDeleteApplication = new Command
+        public static readonly Command CorporationDeleteApplication = new()
         {
             Text = "corporationDeleteApplication",
             AccessLevel = AccessLevel.normal,
@@ -3970,7 +3967,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationAcceptApplication = new Command
+        public static readonly Command CorporationAcceptApplication = new()
         {
             Text = "corporationAcceptApplication",
             AccessLevel = AccessLevel.normal,
@@ -3981,7 +3978,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarFolderSectionCreate = new Command
+        public static readonly Command CorporationHangarFolderSectionCreate = new()
         {
             Text = "corporationHangarFolderCreate",
             AccessLevel = AccessLevel.normal,
@@ -3991,7 +3988,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationHangarFolderSectionDelete = new Command
+        public static readonly Command CorporationHangarFolderSectionDelete = new()
         {
             Text = "corporationHangarFolderDelete",
             AccessLevel = AccessLevel.normal,
@@ -4002,7 +3999,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationGetDelegates = new Command
+        public static readonly Command CorporationGetDelegates = new()
         {
             Text = "corporationGetDelegates",
             AccessLevel = AccessLevel.normal,
@@ -4012,7 +4009,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationBulletinEntryDelete = new Command
+        public static readonly Command CorporationBulletinEntryDelete = new()
         {
             Text = "corporationBulletinEntryDelete",
             AccessLevel = AccessLevel.normal,
@@ -4023,7 +4020,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationTransfer = new Command
+        public static readonly Command CorporationTransfer = new()
         {
             Text = "corporationTransfer",
             AccessLevel = AccessLevel.normal,
@@ -4034,7 +4031,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationBulletinNewEntries = new Command
+        public static readonly Command CorporationBulletinNewEntries = new()
         {
             Text = "corporationBulletinNewEntries",
             AccessLevel = AccessLevel.normal,
@@ -4044,7 +4041,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationBulletinModerate = new Command
+        public static readonly Command CorporationBulletinModerate = new()
         {
             Text = "corporationBulletinModerate",
             AccessLevel = AccessLevel.normal,
@@ -4056,31 +4053,31 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationGetReputation = new Command
+        public static readonly Command CorporationGetReputation = new()
         {
             Text = "corporationGetReputation",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationMyStandings = new Command
+        public static readonly Command CorporationMyStandings = new()
         {
             Text = "corporationGetMyStandings",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationSetMembersNeutral = new Command
+        public static readonly Command CorporationSetMembersNeutral = new()
         {
             Text = "corporationSetMembersNeutral",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationLogHistory = new Command
+        public static readonly Command CorporationLogHistory = new()
         {
             Text = "corporationLogHistory",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CorporationRename = new Command
+        public static readonly Command CorporationRename = new()
         {
             Text = "corporationRename",
             AccessLevel = AccessLevel.normal,
@@ -4091,7 +4088,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationNameHistory = new Command
+        public static readonly Command CorporationNameHistory = new()
         {
             Text = "corporationNameHistory",
             AccessLevel = AccessLevel.normal,
@@ -4101,13 +4098,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command AllianceGetMyInfo = new Command
+        public static readonly Command AllianceGetMyInfo = new()
         {
             Text = "allianceGetMyInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterGetNote = new Command
+        public static readonly Command CharacterGetNote = new()
         {
             Text = "characterGetNote",
             AccessLevel = AccessLevel.normal,
@@ -4117,7 +4114,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterSetNote = new Command
+        public static readonly Command CharacterSetNote = new()
         {
             Text = "characterSetNote",
             AccessLevel = AccessLevel.normal,
@@ -4127,7 +4124,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SetStanding = new Command
+        public static readonly Command SetStanding = new()
         {
             Text = "setStanding",
             AccessLevel = AccessLevel.normal,
@@ -4139,7 +4136,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command StandingList = new Command
+        public static readonly Command StandingList = new()
         {
             Text = "standingList",
             AccessLevel = AccessLevel.normal,
@@ -4149,7 +4146,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GangInviteReply = new Command
+        public static readonly Command GangInviteReply = new()
         {
             Text = "gangInviteReply",
             AccessLevel = AccessLevel.normal,
@@ -4159,7 +4156,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GangInvite = new Command
+        public static readonly Command GangInvite = new()
         {
             Text = "gangInvite",
             AccessLevel = AccessLevel.normal,
@@ -4169,7 +4166,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GangCreate = new Command
+        public static readonly Command GangCreate = new()
         {
             Text = "gangCreate",
             AccessLevel = AccessLevel.normal,
@@ -4179,25 +4176,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GangInfo = new Command
+        public static readonly Command GangInfo = new()
         {
             Text = "gangInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GangDelete = new Command
+        public static readonly Command GangDelete = new()
         {
             Text = "gangDelete",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GangLeave = new Command
+        public static readonly Command GangLeave = new()
         {
             Text = "gangLeave",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GangKick = new Command
+        public static readonly Command GangKick = new()
         {
             Text = "gangKick",
             AccessLevel = AccessLevel.normal,
@@ -4207,7 +4204,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GangSetLeader = new Command
+        public static readonly Command GangSetLeader = new()
         {
             Text = "gangSetLeader",
             AccessLevel = AccessLevel.normal,
@@ -4217,7 +4214,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GangSetRole = new Command
+        public static readonly Command GangSetRole = new()
         {
             Text = "gangSetRole",
             AccessLevel = AccessLevel.normal,
@@ -4228,7 +4225,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MissionStart = new Command
+        public static readonly Command MissionStart = new()
         {
             Text = "missionStart",
             AccessLevel = AccessLevel.normal,
@@ -4239,7 +4236,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MissionLogList = new Command
+        public static readonly Command MissionLogList = new()
         {
             Text = "missionLogList",
             AccessLevel = AccessLevel.normal,
@@ -4249,13 +4246,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MissionData = new Command
+        public static readonly Command MissionData = new()
         {
             Text = "missionData",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MissionGetOptions = new Command
+        public static readonly Command MissionGetOptions = new()
         {
             Text = "missionGetOptions",
             AccessLevel = AccessLevel.normal,
@@ -4265,55 +4262,55 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MissionListRunning = new Command
+        public static readonly Command MissionListRunning = new()
         {
             Text = "missionListRunning",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MissionDeliver = new Command
+        public static readonly Command MissionDeliver = new()
         {
             Text = "missionDeliver",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MissionAbort = new Command
+        public static readonly Command MissionAbort = new()
         {
             Text = "missionAbort",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command AccountUpdateBalance = new Command
+        public static readonly Command AccountUpdateBalance = new()
         {
             Text = "accountUpdateBalance",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command AccountList = new Command
+        public static readonly Command AccountList = new()
         {
             Text = "accountList",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command AccountGetTransactionHistory = new Command
+        public static readonly Command AccountGetTransactionHistory = new()
         {
             Text = "accountGetTransactionHistory",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command AccountEpForActivityHistory = new Command
+        public static readonly Command AccountEpForActivityHistory = new()
         {
             Text = "accountEpForActivityHistory",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterDeselect = new Command
+        public static readonly Command CharacterDeselect = new()
         {
             Text = "characterDeselect",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterDelete = new Command
+        public static readonly Command CharacterDelete = new()
         {
             Text = "characterDelete",
             AccessLevel = AccessLevel.normal,
@@ -4323,31 +4320,31 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterList = new Command
+        public static readonly Command CharacterList = new()
         {
             Text = "characterList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterGetMyProfile = new Command
+        public static readonly Command CharacterGetMyProfile = new()
         {
             Text = "characterGetMyProfile",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command BaseGetMyItems = new Command
+        public static readonly Command BaseGetMyItems = new()
         {
             Text = "baseGetMyItems",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command BaseListFacilities = new Command
+        public static readonly Command BaseListFacilities = new()
         {
             Text = "baseListFacilities",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command BaseGetInfo = new Command
+        public static readonly Command BaseGetInfo = new()
         {
             Text = "baseGetInfo",
             AccessLevel = AccessLevel.normal,
@@ -4357,7 +4354,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TransferData = new Command
+        public static readonly Command TransferData = new()
         {
             Text = "transferData",
             AccessLevel = AccessLevel.normal,
@@ -4368,37 +4365,37 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ConnectionStart = new Command
+        public static readonly Command ConnectionStart = new()
         {
             Text = "connectionStart",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ConnectionEnd = new Command
+        public static readonly Command ConnectionEnd = new()
         {
             Text = "connectionEnd",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MailReceived = new Command
+        public static readonly Command MailReceived = new()
         {
             Text = "mailReceived",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MailGotRead = new Command
+        public static readonly Command MailGotRead = new()
         {
             Text = "mailGotRead",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MailGotDeleted = new Command
+        public static readonly Command MailGotDeleted = new()
         {
             Text = "mailGotDeleted",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command StackItems = new Command
+        public static readonly Command StackItems = new()
         {
             Text = "stackItems",
             AccessLevel = AccessLevel.normal,
@@ -4410,7 +4407,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command PackItems = new Command
+        public static readonly Command PackItems = new()
         {
             Text = "packItems",
             AccessLevel = AccessLevel.normal,
@@ -4421,7 +4418,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command UnpackItems = new Command
+        public static readonly Command UnpackItems = new()
         {
             Text = "unpackItems",
             AccessLevel = AccessLevel.normal,
@@ -4432,7 +4429,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command RelocateItems = new Command
+        public static readonly Command RelocateItems = new()
         {
             Text = "relocateItems",
             AccessLevel = AccessLevel.normal,
@@ -4444,7 +4441,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TrashItems = new Command
+        public static readonly Command TrashItems = new()
         {
             Text = "trashItems",
             AccessLevel = AccessLevel.normal,
@@ -4455,7 +4452,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SetItemName = new Command
+        public static readonly Command SetItemName = new()
         {
             Text = "setItemName",
             AccessLevel = AccessLevel.normal,
@@ -4467,7 +4464,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command StackSelection = new Command
+        public static readonly Command StackSelection = new()
         {
             Text = "stackSelection",
             AccessLevel = AccessLevel.normal,
@@ -4478,7 +4475,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command UnstackAmount = new Command
+        public static readonly Command UnstackAmount = new()
         {
             Text = "unStackAmount",
             AccessLevel = AccessLevel.normal,
@@ -4491,7 +4488,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CharacterTransferCredit = new Command
+        public static readonly Command CharacterTransferCredit = new()
         {
             Text = "characterTransferCredit",
             AccessLevel = AccessLevel.normal,
@@ -4502,19 +4499,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command RequestStarterRobot = new Command
+        public static readonly Command RequestStarterRobot = new()
         {
             Text = "requestStarterRobot",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command StarterRobotCreated = new Command
+        public static readonly Command StarterRobotCreated = new()
         {
             Text = "starterRobotCreated",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command CorporationRoleHistory = new Command
+        public static readonly Command CorporationRoleHistory = new()
         {
             Text = "corporationRoleHistory",
             AccessLevel = AccessLevel.normal,
@@ -4524,7 +4521,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command CorporationMemberRoleHistory = new Command
+        public static readonly Command CorporationMemberRoleHistory = new()
         {
             Text = "corporationMemberRoleHistory",
             AccessLevel = AccessLevel.normal,
@@ -4535,67 +4532,67 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command AllianceRoleHistory = new Command
+        public static readonly Command AllianceRoleHistory = new()
         {
             Text = "allianceRoleHistory",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command Undock = new Command
+        public static readonly Command Undock = new()
         {
             Text = "undock",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command Dock = new Command
+        public static readonly Command Dock = new()
         {
             Text = "dock",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetAggregateFields = new Command
+        public static readonly Command GetAggregateFields = new()
         {
             Text = "getAggregateFields",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetStandingForDefaultCorporations = new Command
+        public static readonly Command GetStandingForDefaultCorporations = new()
         {
             Text = "getStandingForDefaultCorporations",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetStandingForDefaultAlliances = new Command
+        public static readonly Command GetStandingForDefaultAlliances = new()
         {
             Text = "getStandingForDefaultAlliances",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterSetHomeBase = new Command
+        public static readonly Command CharacterSetHomeBase = new()
         {
             Text = "characterSetHomeBase",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterClearHomeBase = new Command
+        public static readonly Command CharacterClearHomeBase = new()
         {
             Text = "characterClearHomeBase",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command AllianceGetDefaults = new Command
+        public static readonly Command AllianceGetDefaults = new()
         {
             Text = "allianceGetDefaults",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetMyKillReports = new Command
+        public static readonly Command GetMyKillReports = new()
         {
             Text = "getMyKillReports",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command CharacterCorrectNick = new Command
+        public static readonly Command CharacterCorrectNick = new()
         {
             Text = "characterCorrectNick",
             AccessLevel = AccessLevel.normal,
@@ -4606,7 +4603,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ListContainer = new Command
+        public static readonly Command ListContainer = new()
         {
             Text = "listContainer",
             AccessLevel = AccessLevel.normal,
@@ -4616,31 +4613,31 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ZoneSOS = new Command
+        public static readonly Command ZoneSOS = new()
         {
             Text = "zoneSOS",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ZoneSelfDestruct = new Command
+        public static readonly Command ZoneSelfDestruct = new()
         {
             Text = "zoneSelfDestruct",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command ZoneGetBuildings = new Command
+        public static readonly Command ZoneGetBuildings = new()
         {
             Text = "zoneGetBuildings",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MarketModifyOrder = new Command
+        public static readonly Command MarketModifyOrder = new()
         {
             Text = "marketModifyOrder",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MarketItemList = new Command
+        public static readonly Command MarketItemList = new()
         {
             Text = "marketItemList",
             AccessLevel = AccessLevel.normal,
@@ -4650,13 +4647,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketGetMyItems = new Command
+        public static readonly Command MarketGetMyItems = new()
         {
             Text = "marketGetMyItems",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MarketCancelItem = new Command
+        public static readonly Command MarketCancelItem = new()
         {
             Text = "marketCancelItem",
             AccessLevel = AccessLevel.normal,
@@ -4666,7 +4663,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketCreateSellOrder = new Command
+        public static readonly Command MarketCreateSellOrder = new()
         {
             Text = "marketCreateSellOrder",
             AccessLevel = AccessLevel.normal,
@@ -4680,7 +4677,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketBuyItem = new Command
+        public static readonly Command MarketBuyItem = new()
         {
             Text = "marketBuyItem",
             AccessLevel = AccessLevel.normal,
@@ -4692,7 +4689,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketCreateBuyOrder = new Command
+        public static readonly Command MarketCreateBuyOrder = new()
         {
             Text = "marketCreateBuyOrder",
             AccessLevel = AccessLevel.normal,
@@ -4705,7 +4702,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketGetAveragePrices = new Command
+        public static readonly Command MarketGetAveragePrices = new()
         {
             Text = "marketGetAveragePrices",
             AccessLevel = AccessLevel.normal,
@@ -4717,7 +4714,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketGlobalAveragePrices = new Command
+        public static readonly Command MarketGlobalAveragePrices = new()
         {
             Text = "marketGlobalAveragePrices",
             AccessLevel = AccessLevel.normal,
@@ -4728,7 +4725,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketGetDefinitionAveragePrice = new Command
+        public static readonly Command MarketGetDefinitionAveragePrice = new()
         {
             Text = "marketGetDefinitionAveragePrice",
             AccessLevel = AccessLevel.normal,
@@ -4738,7 +4735,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketAvailableItems = new Command
+        public static readonly Command MarketAvailableItems = new()
         {
             Text = "marketAvailableItems",
             AccessLevel = AccessLevel.normal,
@@ -4748,7 +4745,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketItemsInRange = new Command
+        public static readonly Command MarketItemsInRange = new()
         {
             Text = "marketItemsInRange",
             AccessLevel = AccessLevel.normal,
@@ -4758,7 +4755,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketTaxLogList = new Command
+        public static readonly Command MarketTaxLogList = new()
         {
             Text = "marketTaxLogList",
             AccessLevel = AccessLevel.normal,
@@ -4769,7 +4766,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketTaxChange = new Command
+        public static readonly Command MarketTaxChange = new()
         {
             Text = "marketTaxChange",
             AccessLevel = AccessLevel.normal,
@@ -4780,7 +4777,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MarketGetInfo = new Command
+        public static readonly Command MarketGetInfo = new()
         {
             Text = "marketGetInfo",
             AccessLevel = AccessLevel.normal,
@@ -4790,7 +4787,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SelectActiveRobot = new Command
+        public static readonly Command SelectActiveRobot = new()
         {
             Text = "selectActiveRobot",
             AccessLevel = AccessLevel.normal,
@@ -4801,7 +4798,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetRobotInfo = new Command
+        public static readonly Command GetRobotInfo = new()
         {
             Text = "getRobotInfo",
             AccessLevel = AccessLevel.normal,
@@ -4811,7 +4808,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetRobotFittingInfo = new Command
+        public static readonly Command GetRobotFittingInfo = new()
         {
             Text = "getRobotFittingInfo",
             AccessLevel = AccessLevel.normal,
@@ -4821,7 +4818,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command SetRobotTint = new Command
+        public static readonly Command SetRobotTint = new()
         {
             Text = "setRobotTint",
             AccessLevel = AccessLevel.admin,
@@ -4832,7 +4829,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command EquipModule = new Command
+        public static readonly Command EquipModule = new()
         {
             Text = "equipModule",
             AccessLevel = AccessLevel.normal,
@@ -4844,7 +4841,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command RemoveModule = new Command
+        public static readonly Command RemoveModule = new()
         {
             Text = "removeModule",
             AccessLevel = AccessLevel.normal,
@@ -4855,7 +4852,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChangeModule = new Command
+        public static readonly Command ChangeModule = new()
         {
             Text = "changeModule",
             AccessLevel = AccessLevel.normal,
@@ -4867,7 +4864,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command EquipAmmo = new Command
+        public static readonly Command EquipAmmo = new()
         {
             Text = "equipAmmo",
             AccessLevel = AccessLevel.normal,
@@ -4879,7 +4876,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command UnequipAmmo = new Command
+        public static readonly Command UnequipAmmo = new()
         {
             Text = "unEquipAmmo",
             AccessLevel = AccessLevel.normal,
@@ -4890,7 +4887,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ChangeAmmo = new Command
+        public static readonly Command ChangeAmmo = new()
         {
             Text = "changeAmmo",
             AccessLevel = AccessLevel.normal,
@@ -4902,13 +4899,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetResearchLevels = new Command
+        public static readonly Command GetResearchLevels = new()
         {
             Text = "getResearchLevels",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProductionRefine = new Command
+        public static readonly Command ProductionRefine = new()
         {
             Text = "productionRefine",
             AccessLevel = AccessLevel.normal,
@@ -4920,7 +4917,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionRefineQuery = new Command
+        public static readonly Command ProductionRefineQuery = new()
         {
             Text = "productionRefineQuery",
             AccessLevel = AccessLevel.normal,
@@ -4932,7 +4929,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionReprocess = new Command
+        public static readonly Command ProductionReprocess = new()
         {
             Text = "productionReprocess",
             AccessLevel = AccessLevel.normal,
@@ -4943,7 +4940,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionReprocessQuery = new Command
+        public static readonly Command ProductionReprocessQuery = new()
         {
             Text = "productionReprocessQuery",
             AccessLevel = AccessLevel.normal,
@@ -4954,19 +4951,19 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionComponentsList = new Command
+        public static readonly Command ProductionComponentsList = new()
         {
             Text = "productionComponentsList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProductionFacilityInfo = new Command
+        public static readonly Command ProductionFacilityInfo = new()
         {
             Text = "productionFacilityInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProductionRepair = new Command
+        public static readonly Command ProductionRepair = new()
         {
             Text = "productionRepair",
             AccessLevel = AccessLevel.normal,
@@ -4977,13 +4974,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionInProgress = new Command
+        public static readonly Command ProductionInProgress = new()
         {
             Text = "productionInProgress",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProductionCancel = new Command
+        public static readonly Command ProductionCancel = new()
         {
             Text = "productionCancel",
             AccessLevel = AccessLevel.normal,
@@ -4993,7 +4990,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionRepairQuery = new Command
+        public static readonly Command ProductionRepairQuery = new()
         {
             Text = "productionRepairQuery",
             AccessLevel = AccessLevel.normal,
@@ -5004,13 +5001,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionServerInfo = new Command
+        public static readonly Command ProductionServerInfo = new()
         {
             Text = "productionServerInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command ProductionResearch = new Command
+        public static readonly Command ProductionResearch = new()
         {
             Text = "productionResearch",
             AccessLevel = AccessLevel.normal,
@@ -5023,7 +5020,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionResearchQuery = new Command
+        public static readonly Command ProductionResearchQuery = new()
         {
             Text = "productionResearchQuery",
             AccessLevel = AccessLevel.normal,
@@ -5035,7 +5032,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionLineList = new Command
+        public static readonly Command ProductionLineList = new()
         {
             Text = "productionLineList",
             AccessLevel = AccessLevel.normal,
@@ -5045,7 +5042,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionLineCalibrate = new Command
+        public static readonly Command ProductionLineCalibrate = new()
         {
             Text = "productionLineCalibrate",
             AccessLevel = AccessLevel.normal,
@@ -5056,7 +5053,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionLineDelete = new Command
+        public static readonly Command ProductionLineDelete = new()
         {
             Text = "productionLineDelete",
             AccessLevel = AccessLevel.normal,
@@ -5067,7 +5064,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionLineStart = new Command
+        public static readonly Command ProductionLineStart = new()
         {
             Text = "productionLineStart",
             AccessLevel = AccessLevel.normal,
@@ -5078,7 +5075,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionCPRGInfo = new Command
+        public static readonly Command ProductionCPRGInfo = new()
         {
             Text = "productionCPRGInfo",
             AccessLevel = AccessLevel.normal,
@@ -5089,7 +5086,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionPrototypeStart = new Command
+        public static readonly Command ProductionPrototypeStart = new()
         {
             Text = "productionPrototypeStart",
             AccessLevel = AccessLevel.normal,
@@ -5101,7 +5098,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionPrototypeQuery = new Command
+        public static readonly Command ProductionPrototypeQuery = new()
         {
             Text = "productionPrototypeQuery",
             AccessLevel = AccessLevel.normal,
@@ -5112,7 +5109,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionGetCprgFromLine = new Command
+        public static readonly Command ProductionGetCprgFromLine = new()
         {
             Text = "productionGetCPRGFromLine",
             AccessLevel = AccessLevel.normal,
@@ -5123,7 +5120,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionGetCprgFromLineQuery = new Command
+        public static readonly Command ProductionGetCprgFromLineQuery = new()
         {
             Text = "productionGetCPRGFromLineQuery",
             AccessLevel = AccessLevel.normal,
@@ -5134,7 +5131,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ProductionLineSetRounds = new Command
+        public static readonly Command ProductionLineSetRounds = new()
         {
             Text = "productionLineSetRounds",
             AccessLevel = AccessLevel.normal,
@@ -5146,7 +5143,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command IntrusionSiteSetEffectBonus = new Command
+        public static readonly Command IntrusionSiteSetEffectBonus = new()
         {
             Text = "intrusionSiteSetEffectBonus",
             AccessLevel = AccessLevel.normal,
@@ -5157,25 +5154,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command IntrusionSapItemInfo = new Command
+        public static readonly Command IntrusionSapItemInfo = new()
         {
             Text = "intrusionSAPItemInfo",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command GetStabilityBonusThresholds = new Command
+        public static readonly Command GetStabilityBonusThresholds = new()
         {
             Text = "getStabilityBonusThresholds",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command GetIntrusionSiteInfo = new Command
+        public static readonly Command GetIntrusionSiteInfo = new()
         {
             Text = "getIntrusionSiteInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command IntrusionEnabler = new Command
+        public static readonly Command IntrusionEnabler = new()
         {
             Text = "intrusionEnabler",
             AccessLevel = AccessLevel.admin,
@@ -5185,25 +5182,25 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command IntrusionState = new Command
+        public static readonly Command IntrusionState = new()
         {
             Text = "intrusionState",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command IntrusionGetPauseTime = new Command
+        public static readonly Command IntrusionGetPauseTime = new()
         {
             Text = "intrusionGetPauseTime",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command IntrusionSetPauseTime = new Command
+        public static readonly Command IntrusionSetPauseTime = new()
         {
             Text = "intrusionSetPauseTime",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TradeBegin = new Command
+        public static readonly Command TradeBegin = new()
         {
             Text = "tradeBegin",
             AccessLevel = AccessLevel.normal,
@@ -5213,13 +5210,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TradeCancel = new Command
+        public static readonly Command TradeCancel = new()
         {
             Text = "tradeCancel",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command TradeSetOffer = new Command
+        public static readonly Command TradeSetOffer = new()
         {
             Text = "tradeSetOffer",
             AccessLevel = AccessLevel.normal,
@@ -5229,43 +5226,43 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TradeAccept = new Command
+        public static readonly Command TradeAccept = new()
         {
             Text = "tradeAccept",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command TradeRetractOffer = new Command
+        public static readonly Command TradeRetractOffer = new()
         {
             Text = "tradeRetractOffer",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command TradeState = new Command
+        public static readonly Command TradeState = new()
         {
             Text = "tradeState",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TradeOffer = new Command
+        public static readonly Command TradeOffer = new()
         {
             Text = "tradeOffer",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TradeFinished = new Command
+        public static readonly Command TradeFinished = new()
         {
             Text = "tradeFinished",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command MineralScanResultList = new Command
+        public static readonly Command MineralScanResultList = new()
         {
             Text = "mineralScanResultList",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command MineralScanResultDelete = new Command
+        public static readonly Command MineralScanResultDelete = new()
         {
             Text = "mineralScanResultDelete",
             AccessLevel = AccessLevel.normal,
@@ -5275,7 +5272,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MineralScanResultMove = new Command
+        public static readonly Command MineralScanResultMove = new()
         {
             Text = "mineralScanResultMove",
             AccessLevel = AccessLevel.normal,
@@ -5286,7 +5283,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MineralScanResultCreateItem = new Command
+        public static readonly Command MineralScanResultCreateItem = new()
         {
             Text = "mineralScanResultCreateItem",
             AccessLevel = AccessLevel.normal,
@@ -5296,7 +5293,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command MineralScanResultUploadFromItem = new Command
+        public static readonly Command MineralScanResultUploadFromItem = new()
         {
             Text = "mineralScanResultUploadFromItem",
             AccessLevel = AccessLevel.normal,
@@ -5307,13 +5304,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TechTreeInfo = new Command
+        public static readonly Command TechTreeInfo = new()
         {
             Text = "techTreeInfo",
             AccessLevel = AccessLevel.normal
         };
 
-        public static readonly Command TechTreeUnlock = new Command
+        public static readonly Command TechTreeUnlock = new()
         {
             Text = "techTreeUnlock",
             AccessLevel = AccessLevel.normal,
@@ -5323,7 +5320,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TechTreeResearch = new Command
+        public static readonly Command TechTreeResearch = new()
         {
             Text = "techTreeResearch",
             AccessLevel = AccessLevel.normal,
@@ -5334,7 +5331,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TechTreeDonate = new Command
+        public static readonly Command TechTreeDonate = new()
         {
             Text = "techTreeDonate",
             AccessLevel = AccessLevel.normal,
@@ -5344,13 +5341,13 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command TechTreeCorporationInfo = new Command
+        public static readonly Command TechTreeCorporationInfo = new()
         {
             Text = "techTreeCorporationInfo",
             AccessLevel = AccessLevel.admin
         };
 
-        public static readonly Command TechTreeGetLogs = new Command
+        public static readonly Command TechTreeGetLogs = new()
         {
             Text = "techTreeGetLogs",
             AccessLevel = AccessLevel.normal,
@@ -5361,7 +5358,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command EnableSelfTeleport = new Command
+        public static readonly Command EnableSelfTeleport = new()
         {
             Text = "enableSelfTeleport",
             AccessLevel = AccessLevel.admin,
@@ -5372,7 +5369,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command UseLotteryItem = new Command
+        public static readonly Command UseLotteryItem = new()
         {
             Text = "useLotteryItem",
             AccessLevel = AccessLevel.normal,
@@ -5383,7 +5380,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command GetRifts = new Command
+        public static readonly Command GetRifts = new()
         {
             Text = "getRifts",
             AccessLevel = AccessLevel.normal
@@ -5393,19 +5390,19 @@ namespace Perpetuum
         //--------- admin tool commands -------- 
 
         // account list with extra character info for the admintool 
-        public static readonly Command GetAccountsWithCharacters = new Command
+        public static readonly Command GetAccountsWithCharacters = new()
         {
             Text = "getAccountsWithCharacters",
             AccessLevel = AccessLevel.admin,
         };
 
-        public static readonly Command GetCharactersOnline = new Command
+        public static readonly Command GetCharactersOnline = new()
         {
             Text = "getCharactersOnline",
             AccessLevel = AccessLevel.admin,
         };
 
-        public static readonly Command AccountGet = new Command
+        public static readonly Command AccountGet = new()
         {
             Text = "accountGet",
             AccessLevel = AccessLevel.admin,
@@ -5419,7 +5416,7 @@ namespace Perpetuum
         // updates email,pass,acclevel
         //
         // open version: use the ChangeSessionEmail or ChangeSessionPassword commands
-        public static readonly Command AccountUpdate = new Command
+        public static readonly Command AccountUpdate = new()
         {
             Text = "accountUpdate",
             AccessLevel = AccessLevel.toolAdmin,
@@ -5429,7 +5426,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ReimburseItem = new Command
+        public static readonly Command ReimburseItem = new()
         {
             Text = "ReimburseItem",
             AccessLevel = AccessLevel.admin
@@ -5438,7 +5435,7 @@ namespace Perpetuum
         // creates an account from the tool. 
         // 
         // open version: use AccountOpenCreate
-        public static readonly Command AccountCreate = new Command
+        public static readonly Command AccountCreate = new()
         {
             Text = "accountCreate",
             AccessLevel = AccessLevel.toolAdmin,
@@ -5451,7 +5448,7 @@ namespace Perpetuum
         };
 
         // create an account for yourself if the server is open
-        public static readonly Command AccountOpenCreate = new Command
+        public static readonly Command AccountOpenCreate = new()
         {
             Text = "accountOpenCreate",
             AccessLevel = AccessLevel.notDefined,
@@ -5466,7 +5463,7 @@ namespace Perpetuum
         // changes the password of the sender's account - safe to be available always
         //
         // requires login -> no old pass or other validation is needed
-        public static readonly Command ChangeSessionPassword = new Command
+        public static readonly Command ChangeSessionPassword = new()
         {
             Text = "changeSessionPassword",
             AccessLevel = AccessLevel.normal,
@@ -5478,7 +5475,7 @@ namespace Perpetuum
 
         // changes the email of the sender's account - safe, like the pass change
         // not yet implemented
-        public static readonly Command ChangeSessionEmail = new Command
+        public static readonly Command ChangeSessionEmail = new()
         {
             Text = "changeSessionEmail",
             AccessLevel = AccessLevel.normal,
@@ -5489,7 +5486,7 @@ namespace Perpetuum
         };
 
         // confirm email for account. From GM interface.
-        public static readonly Command AccountConfirmEmail = new Command
+        public static readonly Command AccountConfirmEmail = new()
         {
             Text = "accountConfirmEmail",
             AccessLevel = AccessLevel.admin,
@@ -5501,7 +5498,7 @@ namespace Perpetuum
 
         // ban account and disconnect if online
         //
-        public static readonly Command AccountBan = new Command
+        public static readonly Command AccountBan = new()
         {
             Text = "accountBan",
             AccessLevel = AccessLevel.admin,
@@ -5512,7 +5509,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command AccountUnban = new Command
+        public static readonly Command AccountUnban = new()
         {
             Text = "accountUnban",
             AccessLevel = AccessLevel.admin,
@@ -5522,7 +5519,7 @@ namespace Perpetuum
             }
         };
 
-        public static readonly Command ServerInfoSet = new Command
+        public static readonly Command ServerInfoSet = new()
         {
             Text = "serverInfoSet",
             AccessLevel = AccessLevel.toolAdmin,
@@ -5537,13 +5534,13 @@ namespace Perpetuum
         };
 
         // safe for open
-        public static readonly Command ServerInfoGet = new Command
+        public static readonly Command ServerInfoGet = new()
         {
             Text = "serverInfoGet",
             AccessLevel = AccessLevel.notDefined
         };
 
-        public static readonly Command AccountDelete = new Command
+        public static readonly Command AccountDelete = new()
         {
             Text = "accountDelete",
             AccessLevel = AccessLevel.toolAdmin,

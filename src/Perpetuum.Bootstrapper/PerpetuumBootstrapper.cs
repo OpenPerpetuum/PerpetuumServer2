@@ -16,7 +16,6 @@ using Perpetuum.Groups.Corporations;
 using Perpetuum.Groups.Corporations.Loggers;
 using Perpetuum.Groups.Gangs;
 using Perpetuum.Host;
-using Perpetuum.Host.Requests;
 using Perpetuum.IO;
 using Perpetuum.Items;
 using Perpetuum.Items.Templates;
@@ -112,7 +111,7 @@ namespace Perpetuum.Bootstrapper
             _ = are.WaitOne();
         }
 
-        public void WriteCommandsToFile(string path)
+        public static void WriteCommandsToFile(string path)
         {
             StringBuilder sb = new();
 
@@ -588,6 +587,7 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<EpForActivityLogger>();
         }
 
+        /*
         private IRegistrationBuilder<TRequestHandler, ConcreteReflectionActivatorData, SingleRegistrationStyle>
             RegisterRequestHandler<TRequestHandler, TRequest>(Command command) where TRequestHandler : IRequestHandler<TRequest> where TRequest : IRequest
         {
@@ -600,17 +600,22 @@ namespace Perpetuum.Bootstrapper
 
             return res;
         }
+        */
 
+        /*
         private IRegistrationBuilder<T, ConcreteReflectionActivatorData, SingleRegistrationStyle> RegisterRequestHandler<T>(Command command) where T : IRequestHandler<IRequest>
         {
             return RegisterRequestHandler<T, IRequest>(command);
         }
+        */
 
+        /*
         private IRegistrationBuilder<T, ConcreteReflectionActivatorData, SingleRegistrationStyle>
             RegisterZoneRequestHandler<T>(Command command) where T : IRequestHandler<IZoneRequest>
         {
             return RegisterRequestHandler<T, IZoneRequest>(command);
         }
+        */
 
         private IRegistrationBuilder<T, ConcreteReflectionActivatorData, SingleRegistrationStyle> RegisterAutoActivate<T>(
             TimeSpan interval)

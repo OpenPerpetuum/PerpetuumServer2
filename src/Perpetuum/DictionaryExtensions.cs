@@ -1,12 +1,8 @@
-using System;
 using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading;
 
 namespace Perpetuum
 {
@@ -25,30 +21,33 @@ namespace Perpetuum
         {
             if (d == null)
             {
-                value = default(TV);
+                value = default;
                 return false;
             }
 
             if (d.TryRemove(key, out value))
+            {
                 return true;
+            }
 
-            var sw = new SpinWait();
+            SpinWait sw = new();
             while (d.ContainsKey(key))
             {
                 if (d.TryRemove(key, out value))
+                {
                     return true;
+                }
 
                 sw.SpinOnce();
             }
 
-            value = default(TV);
+            value = default;
             return false;
         }
 
         public static bool Remove<TK, TV>(this ConcurrentDictionary<TK, TV> d, TK key)
         {
-            TV value;
-            return Remove(d, key, out value);
+            return Remove(d, key, out _);
         }
 
         public static IEnumerable<TV> GetNonBlockingValues<TK, TV>(this IEnumerable<KeyValuePair<TK, TV>> enumerable)
@@ -59,9 +58,11 @@ namespace Perpetuum
         public static void AddRange<TK, TV>(this IDictionary<TK, TV> source, IEnumerable<KeyValuePair<TK, TV>> collection)
         {
             if (collection == null)
+            {
                 return;
+            }
 
-            foreach (var kvp in collection)
+            foreach (KeyValuePair<TK, TV> kvp in collection)
             {
                 source[kvp.Key] = kvp.Value;
             }
@@ -70,14 +71,14 @@ namespace Perpetuum
         public static void RemoveRange<TK, TV>(this IDictionary<TK, TV> source, IEnumerable<TK> collection)
         {
             if (collection == null)
-                return;
-
-            using (var e = collection.GetEnumerator())
             {
-                while (e.MoveNext())
-                {
-                    source.Remove(e.Current);
-                }
+                return;
+            }
+
+            using IEnumerator<TK> e = collection.GetEnumerator();
+            while (e.MoveNext())
+            {
+                source.Remove(e.Current);
             }
         }
 
@@ -86,10 +87,12 @@ namespace Perpetuum
             return (T)dictionary[key];
         }
 
-        public static TV GetOrDefault<TK, TV>(this IDictionary<TK, TV> dictionary, TK key, TV defaultValue = default(TV))
+        public static TV GetOrDefault<TK, TV>(this IDictionary<TK, TV> dictionary, TK key, TV defaultValue = default)
         {
             if (dictionary == null)
+            {
                 return defaultValue;
+            }
 
             if (!dictionary.TryGetValue(key, out TV result))
             {
@@ -98,49 +101,29 @@ namespace Perpetuum
             return result;
         }
 
-        public static T GetOrDefault<T>(this IDictionary<string, object> dictionary, string key, T defaultValue = default(T))
+        public static T? GetOrDefault<T>(this IDictionary<string, object> dictionary, string key, T defaultValue = default)
         {
-            if (dictionary == null)
-                return default(T);
-
-            object value;
-            if (!dictionary.TryGetValue(key, out value))
-            {
-                return defaultValue;
-            }
-
-            return (T)value;
+            return dictionary == null ? default : !dictionary.TryGetValue(key, out object value) ? defaultValue : (T)value;
         }
 
 
-        public static T GetOrDefault<T>(this IDictionary<string, object> dictionary, string key, Func<T> valueFactory)
+        public static T? GetOrDefault<T>(this IDictionary<string, object> dictionary, string key, Func<T> valueFactory)
         {
-            if (dictionary == null)
-                return default(T);
-
-            object value;
-            if (!dictionary.TryGetValue(key, out value))
-            {
-                if (valueFactory == null)
-                    return default(T);
-
-                return valueFactory();
-            }
-
-            return (T)value;
+            return dictionary == null
+                ? default
+                : !dictionary.TryGetValue(key, out object value) ? valueFactory == null ? default : valueFactory() : (T)value;
         }
 
         public static bool TryGetValue<TK, TV, T>(this IDictionary<TK, TV> dictionary, TK key, out T value) where T : TV
         {
             if (dictionary == null)
             {
-                value = default(T);
+                value = default;
                 return false;
             }
-            TV currValue;
-            if (!dictionary.TryGetValue(key, out currValue))
+            if (!dictionary.TryGetValue(key, out TV currValue))
             {
-                value = default(T);
+                value = default;
                 return false;
             }
             value = (T)currValue;
@@ -150,10 +133,14 @@ namespace Perpetuum
         public static bool TryAdd<TK, TV>(this IDictionary<TK, TV> dictionary, TK key, TV value)
         {
             if (dictionary == null)
+            {
                 return false;
+            }
 
             if (dictionary.ContainsKey(key))
+            {
                 return false;
+            }
 
             dictionary.Add(key, value);
             return true;
@@ -161,19 +148,12 @@ namespace Perpetuum
 
         public static TV GetOrAdd<TK, TV>(this IDictionary<TK, TV> dictionary, TK key) where TV : new()
         {
-            var concurrentDictionary = dictionary as ConcurrentDictionary<TK, TV>;
-            if (concurrentDictionary != null)
-            {
-                return concurrentDictionary.GetOrAdd(key, () => new TV());
-            }
-
-            return dictionary.GetOrAdd(key, () => new TV());
+            return dictionary is ConcurrentDictionary<TK, TV> concurrentDictionary ? concurrentDictionary.GetOrAdd(key, () => new TV()) : dictionary.GetOrAdd(key, () => new TV());
         }
 
         public static TV GetOrAdd<TK, TV>(this IDictionary<TK, TV> dictionary, TK key, Func<TV> creator)
         {
-            TV value;
-            if (!dictionary.TryGetValue(key, out value))
+            if (!dictionary.TryGetValue(key, out TV value))
             {
                 value = creator();
                 dictionary.Add(key, value);
@@ -184,22 +164,31 @@ namespace Perpetuum
         public static bool Compare<TK, TV>(this IDictionary<TK, TV> left, Dictionary<TK, TV> right)
         {
             if (left == null && right == null)
+            {
                 return true;
+            }
 
             if (left == null || right == null)
+            {
                 return false;
+            }
 
             if (left.Count != right.Count)
-                return false;
-
-            foreach (var leftKvP in left)
             {
-                TV rightValue;
-                if (!right.TryGetValue(leftKvP.Key, out rightValue))
+                return false;
+            }
+
+            foreach (KeyValuePair<TK, TV> leftKvP in left)
+            {
+                if (!right.TryGetValue(leftKvP.Key, out TV rightValue))
+                {
                     return false;
+                }
 
                 if (!Equals(leftKvP.Value, rightValue))
+                {
                     return false;
+                }
             }
             return true;
         }
@@ -207,10 +196,11 @@ namespace Perpetuum
         public static void AddOrUpdate<TK, TV>(this IDictionary<TK, TV> dictionary, TK key, TV newValue, Func<TV, TV> updateFunc)
         {
             if (dictionary == null)
+            {
                 return;
+            }
 
-            TV currentValue;
-            if (!dictionary.TryGetValue(key, out currentValue))
+            if (!dictionary.TryGetValue(key, out TV currentValue))
             {
                 dictionary.Add(key, newValue);
                 return;
@@ -221,10 +211,9 @@ namespace Perpetuum
 
         public static void AddOrUpdate<TK, TV>(this Dictionary<TK, TV> dictionary, TK key, Func<TV> newValueFunc, Func<TV, TV> updateFunc)
         {
-            TV currentValue;
-            if (!dictionary.TryGetValue(key, out currentValue))
+            if (!dictionary.TryGetValue(key, out TV currentValue))
             {
-                var newValue = newValueFunc();
+                TV? newValue = newValueFunc();
                 dictionary.Add(key, newValue);
                 return;
             }
@@ -232,14 +221,17 @@ namespace Perpetuum
             dictionary[key] = updateFunc(currentValue);
         }
 
-        public static string ToInsertString(this IEnumerable<KeyValuePair<string, object>> dictionary, string tableName, string exceptKey = null)
+        public static string ToInsertString(this IEnumerable<KeyValuePair<string, object>> dictionary, string tableName, string? exceptKey = null)
         {
-            var listKeys = new List<string>();
-            var listValues = new List<object>();
+            List<string> listKeys = [];
+            List<object> listValues = [];
 
-            foreach (var pair in dictionary)
+            foreach (KeyValuePair<string, object> pair in dictionary)
             {
-                if (exceptKey != null && pair.Key == exceptKey) continue;
+                if (exceptKey != null && pair.Key == exceptKey)
+                {
+                    continue;
+                }
 
                 listKeys.Add(pair.Key);
                 listValues.Add(pair.Value);
@@ -251,10 +243,9 @@ namespace Perpetuum
 
         public static IEnumerable<TValue> GetValues<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, IEnumerable<TKey> keys)
         {
-            foreach (var index in keys)
+            foreach (TKey? index in keys)
             {
-                TValue item;
-                if (dictionary.TryGetValue(index, out item))
+                if (dictionary.TryGetValue(index, out TValue item))
                 {
                     yield return item;
                 }
@@ -264,17 +255,22 @@ namespace Perpetuum
         public static string ToDebugString<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> dictionary)
         {
             if (dictionary == null)
+            {
                 return string.Empty;
+            }
 
-            var builder = new StringBuilder();
+            StringBuilder builder = new();
 
             builder.Append('{');
 
-            var first = true;
+            bool first = true;
 
-            foreach (var kvp in dictionary)
+            foreach (KeyValuePair<TKey, TValue> kvp in dictionary)
             {
-                if (first) first = false;
+                if (first)
+                {
+                    first = false;
+                }
                 else
                 {
                     builder.Append(',');
@@ -293,12 +289,14 @@ namespace Perpetuum
             return new ReadOnlyDictionary<TK, TV>(dictionary);
         }
 
-        public static IDictionary<string, object> ToDictionary(this IDictionary dictionary)
+        public static IDictionary<string, object>? ToDictionary(this IDictionary dictionary)
         {
             if (dictionary == null)
+            {
                 return null;
+            }
 
-            var result = new Dictionary<string, object>();
+            Dictionary<string, object> result = [];
 
             foreach (DictionaryEntry entry in dictionary)
             {

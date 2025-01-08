@@ -1,5 +1,5 @@
 ﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="Perpetuum.ServerService2Installer" Manufacturer="Open Perpetuum" Version="1.0.0.0" UpgradeCode="{0D6CA7B4-789B-4894-9DFA-7882AC8D21A0}">
+  <Package Name="Perpetuum Dedicated Server v2" Manufacturer="Open Perpetuum" Version="1.0.0.0" UpgradeCode="{0D6CA7B4-789B-4894-9DFA-7882AC8D21A0}">
     <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
 
     <Feature Id="Main">

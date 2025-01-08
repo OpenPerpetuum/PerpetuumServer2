@@ -1,11 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Perpetuum.Data;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Host.Requests;
@@ -21,6 +13,9 @@ using Perpetuum.Zones.Teleporting;
 using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
 using Perpetuum.Zones.Terrains.Materials.Plants;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Globalization;
 
 namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 {
@@ -31,11 +26,11 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         private IRequest _request;
         private readonly SaveBitmapHelper _saveBitmapHelper;
         private readonly MissionDataCache _missionDataCache;
-        private readonly Dictionary<string, Action<IRequest>> _actions = new Dictionary<string, Action<IRequest>>();
+        private readonly Dictionary<string, Action<IRequest>> _actions = [];
         private string _typeString;
         private bool _sendtoclient;
 
-        public ZoneDrawStatMap(IFileSystem fileSystem,SaveBitmapHelper saveBitmapHelper,MissionDataCache missionDataCache)
+        public ZoneDrawStatMap(IFileSystem fileSystem, SaveBitmapHelper saveBitmapHelper, MissionDataCache missionDataCache)
         {
             _fileSystem = fileSystem;
             _saveBitmapHelper = saveBitmapHelper;
@@ -68,44 +63,44 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             RegisterCreator("SyndicateArea", CreateControlFlagMap(TerrainControlFlags.SyndicateArea));
             RegisterCreator("HighWayCombo", CreateControlFlagMap(TerrainControlFlags.HighWayCombo));
             RegisterCreator("TerraformProtectedCombo", CreateControlFlagMap(TerrainControlFlags.TerraformProtectedCombo));
-            RegisterCreator("block",CreateBlockingMap);
-            RegisterCreator("plants",CreatePlantsMap);
-            RegisterCreator("placemo",GenerateMissionSpots );
-            RegisterCreator("validatemobjects",ValidateMissionObjectLocations);
+            RegisterCreator("block", CreateBlockingMap);
+            RegisterCreator("plants", CreatePlantsMap);
+            RegisterCreator("placemo", GenerateMissionSpots);
+            RegisterCreator("validatemobjects", ValidateMissionObjectLocations);
             RegisterCreator("rndpointsonly", GenerateRandomPointsOnly);
             RegisterCreator("displayspots", DisplaySpots);
-            RegisterCreator("worstspots",DrawWorstSpotsMap);
+            RegisterCreator("worstspots", DrawWorstSpotsMap);
             RegisterCreator("alltargets", DrawAllTargetsOnZone);
             RegisterCreator(k.groundType, CreateGroundTypeMap);
         }
 
-        private void RegisterCreator(string type,Func<IRequest,Bitmap> bitmapFactory)
+        private void RegisterCreator(string type, Func<IRequest, Bitmap> bitmapFactory)
         {
-            _actions[type] = (r) => CreateAndSave(type,() =>  bitmapFactory(r));
+            _actions[type] = (r) => CreateAndSave(type, () => bitmapFactory(r));
         }
 
-        private void RegisterCreator(string type,Func<Bitmap> bitmapFactory)
+        private void RegisterCreator(string type, Func<Bitmap> bitmapFactory)
         {
             _actions[type] = (r) => CreateAndSave(type, bitmapFactory);
         }
 
         private void CreateAndSave(string postfix, Func<Bitmap> bitmapFactory)
         {
-            var bmp = bitmapFactory();
+            Bitmap bmp = bitmapFactory();
             if (bmp == null)
+            {
                 return;
+            }
 
             bmp.WithGraphics(g => g.DrawString(_zone.Configuration.Name, new Font("Tahoma", 20), Brushes.Red, new PointF(10, 10)));
-            var fileName = "stat_" + postfix;
+            string fileName = "stat_" + postfix;
 
             if (_sendtoclient) // send to client.
             {
-                using (var ms = new MemoryStream())
-                {
-                    bmp.Save(ms, ImageFormat.Png);
-                    var Base64 = Convert.ToBase64String(ms.GetBuffer());
-                    Message.Builder.FromRequest(_request).SetData("name", fileName).SetData("img", Base64).Send();
-                }
+                using MemoryStream ms = new();
+                bmp.Save(ms, ImageFormat.Png);
+                string Base64 = Convert.ToBase64String(ms.GetBuffer());
+                Message.Builder.FromRequest(_request).SetData("name", fileName).SetData("img", Base64).Send();
             }
             else // save locally.
             {
@@ -117,23 +112,23 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             _zone = request.Zone;
             _request = request;
-            var type = request.Data.GetOrDefault<string>(k.type);
+            string? type = request.Data.GetOrDefault<string>(k.type);
             bool sendtoclient = request.Data.GetOrDefault<int>("sendtoclient").ToBool();
             _typeString = type; //save for later use
             _sendtoclient = sendtoclient;
 
-            var action = _actions.GetOrDefault(type);
+            Action<IRequest>? action = _actions.GetOrDefault(type);
             if (action != null)
             {
                 Task.Run(() =>
                 {
                     //bitmappel ternek vissza, a regisztraltak
 
-                    var now = GlobalTimer.Elapsed.TotalMilliseconds;
+                    double now = GlobalTimer.Elapsed.TotalMilliseconds;
                     action(request);
-                    var end = GlobalTimer.Elapsed.TotalMilliseconds;
+                    double end = GlobalTimer.Elapsed.TotalMilliseconds;
 
-                    Logger.Info( "draw stats map type:[" + type + "] execution seconds:" + Math.Round((end-now)/1000,4));
+                    Logger.Info("draw stats map type:[" + type + "] execution seconds:" + Math.Round((end - now) / 1000, 4));
                 });
             }
             else
@@ -142,117 +137,117 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 switch (type)
                 {
                     case "teleportdecor":
-                    {
-                        CreateTeleportDecorMaps();
-                        break;
-                    }
+                        {
+                            CreateTeleportDecorMaps();
+                            break;
+                        }
                     case "barrier":
-                    {
-                        break;
-                    }
+                        {
+                            break;
+                        }
                     case "mbl":
-                    {
-                        CreateMissionMapByLevels();
-                        break;
-                    }
+                        {
+                            CreateMissionMapByLevels();
+                            break;
+                        }
                     case "pbshighway":
-                    {
-                        GenerateNewFlagsMap();
-                        break;
-                    }
+                        {
+                            GenerateNewFlagsMap();
+                            break;
+                        }
                     case "targetlog":
-                    {
-                        DrawMissionTargetLog(request);
-                        break;
-                    }
+                        {
+                            DrawMissionTargetLog(request);
+                            break;
+                        }
                     case "PlantBonsai":
-                    {
-                        CreatePlantMap(PlantType.Bonsai);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.Bonsai);
+                            break;
+                        }
                     case "PlantBushA":
-                    {
-                        CreatePlantMap(PlantType.BushA);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.BushA);
+                            break;
+                        }
                     case "PlantBushB":
-                    {
-                        CreatePlantMap(PlantType.BushB);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.BushB);
+                            break;
+                        }
                     case "PlantDevrinol":
-                    {
-                        CreatePlantMap(PlantType.Devrinol);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.Devrinol);
+                            break;
+                        }
                     case "PlantGrassA":
-                    {
-                        CreatePlantMap(PlantType.GrassA);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.GrassA);
+                            break;
+                        }
                     case "PlantGrassB":
-                    {
-                        CreatePlantMap(PlantType.GrassB);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.GrassB);
+                            break;
+                        }
                     case "PlantNanoWheat":
-                    {
-                        CreatePlantMap(PlantType.NanoWheat);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.NanoWheat);
+                            break;
+                        }
                     case "PlantPineTree":
-                    {
-                        CreatePlantMap(PlantType.PineTree);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.PineTree);
+                            break;
+                        }
                     case "PlantPoffeteg":
-                    {
-                        CreatePlantMap(PlantType.Poffeteg);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.Poffeteg);
+                            break;
+                        }
                     case "PlantQuag":
-                    {
-                        CreatePlantMap(PlantType.Quag);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.Quag);
+                            break;
+                        }
                     case "PlantRango":
-                    {
-                        CreatePlantMap(PlantType.Rango);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.Rango);
+                            break;
+                        }
                     case "PlantReed":
-                    {
-                        CreatePlantMap(PlantType.Reed);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.Reed);
+                            break;
+                        }
                     case "PlantRustBush":
-                    {
-                        CreatePlantMap(PlantType.RustBush);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.RustBush);
+                            break;
+                        }
                     case "PlantSlimeRoot":
-                    {
-                        CreatePlantMap(PlantType.SlimeRoot);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.SlimeRoot);
+                            break;
+                        }
                     case "PlantTitanPlant":
-                    {
-                        CreatePlantMap(PlantType.TitanPlant);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.TitanPlant);
+                            break;
+                        }
                     case "PlantTreeIron":
-                    {
-                        CreatePlantMap(PlantType.TreeIron);
-                        break;
-                    }
+                        {
+                            CreatePlantMap(PlantType.TreeIron);
+                            break;
+                        }
                 }
             }
 
-            var data = new Dictionary<string, object>
+            Dictionary<string, object> data = new()
             {
                 {"note", type + " async started. "}
             };
-            
+
             Message.Builder.FromRequest(request).WithData(data).Send();
         }
 
@@ -260,8 +255,8 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var altitudeValue = (byte)(_zone.Terrain.Altitude.GetAltitudeAsDouble(x, y) / 2048 * 612).Clamp(0, 255);
-                var color = Color.FromArgb(altitudeValue, altitudeValue, altitudeValue);
+                byte altitudeValue = (byte)(_zone.Terrain.Altitude.GetAltitudeAsDouble(x, y) / 2048 * 612).Clamp(0, 255);
+                Color color = Color.FromArgb(altitudeValue, altitudeValue, altitudeValue);
                 bmp.SetPixel(x, y, color);
             });
         }
@@ -272,14 +267,16 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var slope = _zone.Terrain.Slope.GetValue(x, y);
-                var block = _zone.Terrain.Blocks.GetValue(x, y);
+                byte slope = _zone.Terrain.Slope.GetValue(x, y);
+                BlockingInfo block = _zone.Terrain.Blocks.GetValue(x, y);
 
-                if (block.Flags > 0 || slope >= threshold) 
+                if (block.Flags > 0 || slope >= threshold)
+                {
                     return;
+                }
 
-                var c = 255 - (int)(((double)slope / threshold) * 255);
-                bmp.SetPixel(x, y,Color.FromArgb(c,c,c));
+                int c = 255 - (int)((double)slope / threshold * 255);
+                bmp.SetPixel(x, y, Color.FromArgb(c, c, c));
             });
         }
 
@@ -287,11 +284,13 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var b = _zone.Terrain.IsBlocked(x, y);
-                if ( !b )
+                bool b = _zone.Terrain.IsBlocked(x, y);
+                if (!b)
+                {
                     return;
+                }
 
-                bmp.SetPixel(x,y,Color.White);
+                bmp.SetPixel(x, y, Color.White);
             });
         }
 
@@ -305,12 +304,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var ci = _zone.Terrain.Controls.GetValue(x, y);
-                
-                var r = 0;
-                var g = 0;
-                var b = 0;
-                
+                TerrainControlInfo ci = _zone.Terrain.Controls.GetValue(x, y);
+
+                int r = 0;
+                int g = 0;
+                int b = 0;
+
                 if (ci.PBSHighway)
                 {
                     r = 255;
@@ -326,7 +325,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     b = 255;
                 }
 
-                var color = Color.FromArgb(255, r, g, b);
+                Color color = Color.FromArgb(255, r, g, b);
 
                 bmp.SetPixel(x, y, color);
             });
@@ -336,13 +335,13 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return CreateAltitudeBitmap().WithGraphics(g =>
             {
-                foreach (var unit in _zone.GetCharacters())
+                foreach (Accounting.Characters.Character unit in _zone.GetCharacters())
                 {
-                    var size = 12;
-                    var pen = Pens.Red;
+                    int size = 12;
+                    Pen pen = Pens.Red;
 
-                    var x = unit.GetPlayerRobotFromZone().CurrentPosition.intX - (size / 2);
-                    var y = unit.GetPlayerRobotFromZone().CurrentPosition.intY - (size / 2);
+                    int x = unit.GetPlayerRobotFromZone().CurrentPosition.intX - (size / 2);
+                    int y = unit.GetPlayerRobotFromZone().CurrentPosition.intY - (size / 2);
 
                     g.DrawEllipse(pen, x, y, size, size);
                     const int width = 4;
@@ -363,7 +362,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         private void DrawNpcPresencesOnGraphic(Graphics graphics)
         {
-            foreach (var presence in _zone.PresenceManager.GetPresences().OfType<RoamingPresence>())
+            foreach (RoamingPresence presence in _zone.PresenceManager.GetPresences().OfType<RoamingPresence>())
             {
                 graphics.DrawRectangle(Pens.Blue, presence.Area.X1, presence.Area.Y1, presence.Area.Width, presence.Area.Height);
                 graphics.DrawString(presence.Configuration.Name, new Font("Tahoma", 8), Brushes.Red, presence.Area.X1, presence.Area.Y1);
@@ -372,15 +371,15 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         private void DrawNpcFlocksOnGraphic(Graphics graphics)
         {
-            foreach (var flock in _zone.PresenceManager.GetPresences().OfType<RoamingPresence>().SelectMany(p => p.Flocks))
+            foreach (Zones.NpcSystem.Flocks.Flock? flock in _zone.PresenceManager.GetPresences().OfType<RoamingPresence>().SelectMany(p => p.Flocks))
             {
-                var txSpawnMax = flock.Configuration.SpawnOrigin.intX - flock.Configuration.SpawnRange.Max;
-                var tySpawnMax = flock.Configuration.SpawnOrigin.intY - flock.Configuration.SpawnRange.Max;
-                var widthSpawnMax = flock.Configuration.SpawnRange.Max * 2;
+                int txSpawnMax = flock.Configuration.SpawnOrigin.intX - flock.Configuration.SpawnRange.Max;
+                int tySpawnMax = flock.Configuration.SpawnOrigin.intY - flock.Configuration.SpawnRange.Max;
+                int widthSpawnMax = flock.Configuration.SpawnRange.Max * 2;
 
-                var txHomeRange = flock.Configuration.SpawnOrigin.intX - flock.HomeRange;
-                var tyHomeRange = flock.Configuration.SpawnOrigin.intY - flock.HomeRange;
-                var widthHome = flock.HomeRange * 2;
+                int txHomeRange = flock.Configuration.SpawnOrigin.intX - flock.HomeRange;
+                int tyHomeRange = flock.Configuration.SpawnOrigin.intY - flock.HomeRange;
+                int widthHome = flock.HomeRange * 2;
 
                 graphics.DrawEllipse(Pens.BlueViolet, txSpawnMax, tySpawnMax, widthSpawnMax, widthSpawnMax);
                 graphics.DrawEllipse(Pens.Red, txHomeRange, tyHomeRange, widthHome, widthHome);
@@ -395,13 +394,13 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         private void DrawMissionTargetsOnGraphics(Graphics graphics)
         {
-            var targets = _missionDataCache.GetAllMissionTargets.Where(t => t.ValidZoneSet && t.ZoneId == _zone.Id).ToList();
+            List<Services.MissionEngine.MissionTargets.MissionTarget> targets = _missionDataCache.GetAllMissionTargets.Where(t => t.ValidZoneSet && t.ZoneId == _zone.Id).ToList();
 
-            var targetsStr = targets.Select(m => m.id).ArrayToString();
-            var targetRecords = Db.Query().CommandText("select id,name from missiontargets where id in (" + targetsStr + ")").Execute();
-            var targetNames = targetRecords.ToDictionary(targetRecord => targetRecord.GetValue<int>(0), targetRecord => targetRecord.GetValue<string>(1));
+            string targetsStr = targets.Select(m => m.id).ArrayToString();
+            List<System.Data.IDataRecord> targetRecords = Db.Query().CommandText("select id,name from missiontargets where id in (" + targetsStr + ")").Execute();
+            Dictionary<int, string> targetNames = targetRecords.ToDictionary(targetRecord => targetRecord.GetValue<int>(0), targetRecord => targetRecord.GetValue<string>(1));
 
-            foreach (var missionTarget in targets)
+            foreach (Services.MissionEngine.MissionTargets.MissionTarget? missionTarget in targets)
             {
                 if (!missionTarget.ValidRangeSet)
                 {
@@ -409,8 +408,8 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     continue;
                 }
 
-                var tx = missionTarget.targetPosition.intX - 2;
-                var ty = missionTarget.targetPosition.intY - 2;
+                int tx = missionTarget.targetPosition.intX - 2;
+                int ty = missionTarget.targetPosition.intY - 2;
                 const int width = 4;
                 graphics.DrawEllipse(Pens.BlueViolet, tx, ty, width, width);
                 graphics.DrawString(targetNames[missionTarget.id], new Font("Tahoma", 8), Brushes.White, tx, ty);
@@ -423,12 +422,14 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
-                var blockingInfo = _zone.Terrain.Blocks.GetValue(x, y);
-                if (!blockingInfo.Decor) 
+                BlockingInfo blockingInfo = _zone.Terrain.Blocks.GetValue(x, y);
+                if (!blockingInfo.Decor)
+                {
                     return;
+                }
 
-                var color = blockingInfo.Height > 0 ? Color.Green : Color.Orange;
-                bmp.SetPixel(x, y,color);
+                Color color = blockingInfo.Height > 0 ? Color.Green : Color.Orange;
+                bmp.SetPixel(x, y, color);
             });
         }
 
@@ -436,13 +437,15 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
-                var plantInfo = _zone.Terrain.Plants.GetValue(x, y);
+                PlantInfo plantInfo = _zone.Terrain.Plants.GetValue(x, y);
 
                 if (plantInfo.type != PlantType.ElectroPlant)
+                {
                     return;
+                }
 
-                var r = ((255 / 5) * (plantInfo.state)).Clamp(0, 255);
-                var color = Color.FromArgb(255, r, 128, 0);
+                int r = (255 / 5 * plantInfo.state).Clamp(0, 255);
+                Color color = Color.FromArgb(255, r, 128, 0);
 
                 if (plantInfo.state == 0)
                 {
@@ -458,13 +461,15 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
-                var plantInfo = _zone.Terrain.Plants.GetValue(x, y);
+                PlantInfo plantInfo = _zone.Terrain.Plants.GetValue(x, y);
 
                 if (plantInfo.type != plantType)
+                {
                     return;
+                }
 
-                var r = ((255 / 5) * (plantInfo.state)).Clamp(0, 255);
-                var color = Color.FromArgb(255, r, 128, 0);
+                int r = (255 / 5 * plantInfo.state).Clamp(0, 255);
+                Color color = Color.FromArgb(255, r, 128, 0);
 
                 if (plantInfo.state == 0)
                 {
@@ -480,13 +485,17 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var plantInfo = _zone.Terrain.Plants.GetValue(x, y);
+                PlantInfo plantInfo = _zone.Terrain.Plants.GetValue(x, y);
 
                 if (plantInfo.type == PlantType.NotDefined)
+                {
                     return;
+                }
 
                 if (plantInfo.state == 0)
+                {
                     return;
+                }
 
                 bmp.SetPixel(x, y, Color.White);
             });
@@ -496,10 +505,10 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return _zone.CreateBitmap().WithGraphics(g =>
             {
-                foreach (var unit in _zone.GetStaticUnits())
+                foreach (Unit unit in _zone.GetStaticUnits())
                 {
-                    var size = 3;
-                    var pen = Pens.White;
+                    int size = 3;
+                    Pen pen = Pens.White;
 
                     if (unit.IsCategory(CategoryFlags.cf_outpost))
                     {
@@ -517,8 +526,8 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                         size = 100;
                     }
 
-                    var x = unit.CurrentPosition.intX - (size / 2);
-                    var y = unit.CurrentPosition.intY - (size / 2);
+                    int x = unit.CurrentPosition.intX - (size / 2);
+                    int y = unit.CurrentPosition.intY - (size / 2);
 
                     g.DrawEllipse(pen, x, y, size, size);
                 }
@@ -529,33 +538,35 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
-                var pInfo = _zone.Terrain.Plants.GetValue(x, y);
+                PlantInfo pInfo = _zone.Terrain.Plants.GetValue(x, y);
                 if (pInfo.type != PlantType.Wall)
+                {
                     return;
+                }
 
-                var r = ((255 / 11) * (pInfo.state)).Clamp(0, 255);
-                var g = pInfo.health;
-                var pColor = Color.FromArgb(255, r, g, 0);
+                int r = (255 / 11 * pInfo.state).Clamp(0, 255);
+                byte g = pInfo.health;
+                Color pColor = Color.FromArgb(255, r, g, 0);
                 bmp.SetPixel(x, y, pColor);
             });
         }
 
         private Bitmap CreateWallPossibleMap()
         {
-            var outposts = _zone.Units.OfType<Outpost>().ToArray();
-            var teleports = _zone.Units.OfType<Teleport>().ToArray();
+            Outpost[] outposts = _zone.Units.OfType<Outpost>().ToArray();
+            Teleport[] teleports = _zone.Units.OfType<Teleport>().ToArray();
 
-            var sapinfos = outposts.SelectMany(o => o.SAPInfos).ToArray();
+            SAPInfo[] sapinfos = outposts.SelectMany(o => o.SAPInfos).ToArray();
 
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
-                var plantInfo = _zone.Terrain.Plants.GetValue(x, y);
+                PlantInfo plantInfo = _zone.Terrain.Plants.GetValue(x, y);
 
-                var allowed = true;
+                bool allowed = true;
 
-                var outpostNear = outposts.Any(o => o.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_BASE));
-                var teleportNear = teleports.Any(t => t.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_BASE));
-                var sapNear = sapinfos.Any(s => s.Position.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_SAP));
+                bool outpostNear = outposts.Any(o => o.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_BASE));
+                bool teleportNear = teleports.Any(t => t.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_BASE));
+                bool sapNear = sapinfos.Any(s => s.Position.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_SAP));
 
                 if (outpostNear || teleportNear || sapNear)
                 {
@@ -563,7 +574,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 }
                 else
                 {
-                    var outpostInWallRange = outposts.Any(o => o.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MAX_DISTANCE_FROM_OUTPOST));
+                    bool outpostInWallRange = outposts.Any(o => o.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MAX_DISTANCE_FROM_OUTPOST));
 
                     if (!outpostInWallRange)
                     {
@@ -572,13 +583,15 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 }
 
                 if (!allowed && plantInfo.type != PlantType.Wall)
+                {
                     return;
+                }
 
-                var pixel = bmp.GetPixel(x, y);
+                Color pixel = bmp.GetPixel(x, y);
 
-                var r = pixel.R;
-                var g = pixel.G;
-                var b = pixel.B;
+                byte r = pixel.R;
+                byte g = pixel.G;
+                byte b = pixel.B;
 
                 if (allowed)
                 {
@@ -599,18 +612,18 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         private Bitmap CreateWallPlaces()
         {
-            var outposts = _zone.Units.OfType<Outpost>().ToArray();
-            var teleports = _zone.Units.OfType<Teleport>().ToArray();
+            Outpost[] outposts = _zone.Units.OfType<Outpost>().ToArray();
+            Teleport[] teleports = _zone.Units.OfType<Teleport>().ToArray();
 
-            var sapinfos = outposts.SelectMany(o => o.SAPInfos).ToArray();
+            SAPInfo[] sapinfos = outposts.SelectMany(o => o.SAPInfos).ToArray();
 
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var allowed = true;
+                bool allowed = true;
 
-                var outpostNear = outposts.Any(o => o.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_BASE));
-                var teleportNear = teleports.Any(t => t.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_BASE));
-                var sapNear = sapinfos.Any(s => s.Position.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_SAP));
+                bool outpostNear = outposts.Any(o => o.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_BASE));
+                bool teleportNear = teleports.Any(t => t.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_BASE));
+                bool sapNear = sapinfos.Any(s => s.Position.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MIN_DISTANCE_FROM_SAP));
 
                 if (outpostNear || teleportNear || sapNear)
                 {
@@ -618,7 +631,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 }
                 else
                 {
-                    var outpostInWallRange = outposts.Any(o => o.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MAX_DISTANCE_FROM_OUTPOST));
+                    bool outpostInWallRange = outposts.Any(o => o.CurrentPosition.IsInRangeOf2D(x, y, DistanceConstants.PLANT_MAX_DISTANCE_FROM_OUTPOST));
                     if (!outpostInWallRange)
                     {
                         allowed = false;
@@ -636,9 +649,11 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var blockingInfo = _zone.Terrain.Blocks.GetValue(x, y);
+                BlockingInfo blockingInfo = _zone.Terrain.Blocks.GetValue(x, y);
                 if (!blockingInfo.Island)
+                {
                     return;
+                }
 
                 bmp.SetPixel(x, y, Color.White);
             });
@@ -650,9 +665,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             {
                 return _zone.CreateBitmap().ForEach((bmp, x, y) =>
                 {
-                    var control = _zone.Terrain.Controls.GetValue(x, y);
+                    TerrainControlInfo control = _zone.Terrain.Controls.GetValue(x, y);
                     if (!control.Flags.HasFlag(flag))
+                    {
                         return;
+                    }
+
                     bmp.SetPixel(x, y, Color.White);
                 });
             };
@@ -663,74 +681,72 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var control = _zone.Terrain.Controls.GetValue(x, y);
-                var c = (int)control.Flags;
-                bmp.SetPixel(x, y, Color.FromArgb(c,c,c));
+                TerrainControlInfo control = _zone.Terrain.Controls.GetValue(x, y);
+                int c = (int)control.Flags;
+                bmp.SetPixel(x, y, Color.FromArgb(c, c, c));
             });
         }
 
         private Bitmap CreateGroundTypeMap()
         {
-            var numGroundTypes = Enum.GetNames(typeof(GroundType)).Length;
-            var colors = new Color[numGroundTypes];
-            var random = new Random(numGroundTypes);
-            for (var i = 0; i < colors.Length; i++)
+            int numGroundTypes = Enum.GetNames(typeof(GroundType)).Length;
+            Color[] colors = new Color[numGroundTypes];
+            Random random = new(numGroundTypes);
+            for (int i = 0; i < colors.Length; i++)
             {
                 colors[i] = Color.FromArgb(random.Next(255), random.Next(255), random.Next(255));
             }
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
-                var groundType = _zone.Terrain.Plants.GetValue(x, y).groundType;
-                var c = colors[((int)groundType).Clamp(0, numGroundTypes - 1)];
+                GroundType groundType = _zone.Terrain.Plants.GetValue(x, y).groundType;
+                Color c = colors[((int)groundType).Clamp(0, numGroundTypes - 1)];
                 bmp.SetPixel(x, y, c);
             });
         }
 
         private void CreateMineralBitmaps()
         {
-            foreach (var mineralLayer in _zone.Terrain.Materials.OfType<MineralLayer>())
+            foreach (MineralLayer mineralLayer in _zone.Terrain.Materials.OfType<MineralLayer>())
             {
-                var postfix = mineralLayer.Type.ToString();
-                CreateAndSave("mineral_" + postfix,() =>  CreateMineralsToNormalizedBitmap(mineralLayer));
+                string postfix = mineralLayer.Type.ToString();
+                CreateAndSave("mineral_" + postfix, () => CreateMineralsToNormalizedBitmap(mineralLayer));
             }
         }
 
         [CanBeNull]
         private Bitmap CreateMineralsToNormalizedBitmap(MineralLayer layer)
         {
-            var bitmap = _zone.CreatePassableBitmap(_passableColor);
+            Bitmap bitmap = _zone.CreatePassableBitmap(_passableColor);
 
-            foreach (var node in layer.Nodes)
+            foreach (MineralNode node in layer.Nodes)
             {
-                var maxAmount = node.GetMaxAmount();
+                uint maxAmount = node.GetMaxAmount();
 
-                for (int y = node.Area.Y1; y <= node.Area.Y2 ; y++)
+                for (int y = node.Area.Y1; y <= node.Area.Y2; y++)
                 {
                     for (int x = node.Area.X1; x <= node.Area.X2; x++)
                     {
-                        var n = (double)node.GetValue(x, y) / maxAmount;
+                        double n = (double)node.GetValue(x, y) / maxAmount;
                         if (n > 0.0)
                         {
-                            var c = (int)(n * 255);
-                            bitmap.SetPixel(x, y, Color.FromArgb(c,0,0));
+                            int c = (int)(n * 255);
+                            bitmap.SetPixel(x, y, Color.FromArgb(c, 0, 0));
                         }
                     }
-                  
+
                 }
             }
 
             return bitmap.WithGraphics(g =>
             {
-                var infoString = $"{layer.Type}";
+                string infoString = $"{layer.Type}";
                 g.DrawString(infoString, new Font("Tahoma", 10), Brushes.White, 10, 10);
             });
         }
 
         private void CreateTeleportDecorMaps()
         {
-            Bitmap bitmap;
-            Bitmap circlesBitmap;
-            CreateTeleportDecorMaps(out bitmap,out circlesBitmap);
+            CreateTeleportDecorMaps(out Bitmap bitmap, out Bitmap circlesBitmap);
 
             CreateAndSave("teleportdecor", () => bitmap);
             CreateAndSave("teleportdecor_circles", () => circlesBitmap);
@@ -740,41 +756,48 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         /// This function creates the blend map on gamma islands around the teleports
         /// Finds the farthest decor tile and draws a smooth circle gradient around the teleport
         /// </summary>
-        private void CreateTeleportDecorMaps(out Bitmap bitmap,out Bitmap circlesBitmap)
+        private void CreateTeleportDecorMaps(out Bitmap? bitmap, out Bitmap? circlesBitmap)
         {
             bitmap = null;
             circlesBitmap = null;
             if (!_zone.Configuration.Terraformable)
+            {
                 return;
+            }
 
-            var terrain = _zone.Terrain;
+            ITerrain terrain = _zone.Terrain;
 
             bitmap = _zone.CreateBitmap();
-            var color = Color.MediumVioletRed;
-            var font = new Font("Tahoma", 8);
-            var graphics = Graphics.FromImage(bitmap);
+            Color color = Color.MediumVioletRed;
+            Font font = new("Tahoma", 8);
+            Graphics graphics = Graphics.FromImage(bitmap);
 
             circlesBitmap = _zone.CreateBitmap();
-            var circlesGraphics = Graphics.FromImage(circlesBitmap);
+            Graphics circlesGraphics = Graphics.FromImage(circlesBitmap);
 
-            var blendData = _zone.Size.CreateArray<ushort>();
+            ushort[] blendData = _zone.Size.CreateArray<ushort>();
 
-            foreach (var td in _zone.Units.GetAllByCategoryFlags(CategoryFlags.cf_teleport_column))
+            foreach (Unit td in _zone.Units.GetAllByCategoryFlags(CategoryFlags.cf_teleport_column))
             {
-                var area = Area.FromRadius(td.CurrentPosition, 200);
+                Area area = Area.FromRadius(td.CurrentPosition, 200);
 
-                var maximumDistance = 0.0;
+                double maximumDistance = 0.0;
 
-                var tmpBmp = bitmap;
+                Bitmap tmpBmp = bitmap;
                 area.ForEachXY((x, y) =>
                 {
-                    if (x < 0 || x >= _zone.Size.Width || y < 0 || y >= _zone.Size.Height) return;
-
-                    var blockInfo = terrain.Blocks.GetValue(x, y);
-                    if (!blockInfo.Decor)
+                    if (x < 0 || x >= _zone.Size.Width || y < 0 || y >= _zone.Size.Height)
+                    {
                         return;
+                    }
 
-                    var currentDistance = td.CurrentPosition.TotalDistance2D(new Position(x, y));
+                    BlockingInfo blockInfo = terrain.Blocks.GetValue(x, y);
+                    if (!blockInfo.Decor)
+                    {
+                        return;
+                    }
+
+                    double currentDistance = td.CurrentPosition.TotalDistance2D(new Position(x, y));
                     if (currentDistance > maximumDistance)
                     {
                         maximumDistance = currentDistance;
@@ -786,30 +809,36 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 graphics.DrawString(maximumDistance.ToString(CultureInfo.InvariantCulture), font, Brushes.White, (float)td.CurrentPosition.X, (float)td.CurrentPosition.Y);
 
                 if (maximumDistance <= 0)
+                {
                     continue;
+                }
 
                 circlesGraphics.FillEllipse(Brushes.White, (float)(td.CurrentPosition.intX - maximumDistance), (float)(td.CurrentPosition.intY - maximumDistance), (float)(maximumDistance * 2), (float)(maximumDistance * 2));
 
-                var tpArea = Area.FromRadius(td.CurrentPosition, (int)maximumDistance + 200);
+                Area tpArea = Area.FromRadius(td.CurrentPosition, (int)maximumDistance + 200);
                 tpArea.ForEachXY((x, y) =>
                 {
                     if (x < 0 || x >= _zone.Size.Width || y < 0 || y >= _zone.Size.Height)
+                    {
                         return;
+                    }
 
-                    var nearRadius = (int)maximumDistance + 4;
-                    var farRadius = (int)maximumDistance + 296;
+                    int nearRadius = (int)maximumDistance + 4;
+                    int farRadius = (int)maximumDistance + 296;
                     double originX = td.CurrentPosition.intX;
                     double originY = td.CurrentPosition.intY;
 
-                    var ratio = MathHelper.DistanceFalloff(nearRadius, farRadius, originX, originY, x, y);
+                    double ratio = MathHelper.DistanceFalloff(nearRadius, farRadius, originX, originY, x, y);
                     if (ratio <= 0)
+                    {
                         return;
+                    }
 
-                    var blendValue = (ushort)(ushort.MaxValue * ratio);
-                    blendData[x + y * _zone.Size.Width] = blendValue;
+                    ushort blendValue = (ushort)(ushort.MaxValue * ratio);
+                    blendData[x + (y * _zone.Size.Width)] = blendValue;
                 });
 
-                var filename = $"altitude_blend.{_zone.Id:0000}.bin";
+                string filename = $"altitude_blend.{_zone.Id:0000}.bin";
                 File.WriteAllBytes(@"c:\" + filename, blendData.ToByteArray());
             }
         }
@@ -823,20 +852,20 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         private Bitmap DrawMissionByLevels()
         {
-            var b = CreateAltitudeBitmap();
+            Bitmap b = CreateAltitudeBitmap();
 
             DrawPixels(b);
 
             b.WithGraphics(DrawLayers);
-            
+
             return b;
 
-           
+
         }
 
         private void DrawLayers(Graphics g)
         {
-            DrawStringTopLeft(g,"valami cucc rajta");
+            DrawStringTopLeft(g, "valami cucc rajta");
             //... tobbi graphics piszkalo
         }
 
@@ -852,16 +881,16 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             bmp.ForEach((b, x, y) =>
             {
 
-                var blockedColor = Color.FromArgb(255, 0, 0, 0);
-                var passableColor = Color.FromArgb(255, 60, 60, 60);
+                Color blockedColor = Color.FromArgb(255, 0, 0, 0);
+                Color passableColor = Color.FromArgb(255, 60, 60, 60);
 
                 if (_zone.Terrain.IsPassable(new Position(x, y)))
                 {
-                    b.SetPixel(x,y,passableColor);
+                    b.SetPixel(x, y, passableColor);
                 }
                 else
                 {
-                    b.SetPixel(x,y,blockedColor);
+                    b.SetPixel(x, y, blockedColor);
                 }
             });
 
@@ -871,17 +900,19 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             graphics.DrawString(text, new Font("Tahoma", 20), Brushes.Chocolate, new PointF(50, 100));
         }
-        
+
         private void SendDrawFunctionFinished(IRequest request)
         {
-            var info = new Dictionary<string, object> {{k.done, _typeString}};
+            Dictionary<string, object> info = new()
+            { {k.done, _typeString}};
 
             Message.Builder.FromRequest(request).WithData(info).Send();
         }
 
-        private void SendBitmapFinished(IRequest request,string name)
+        private void SendBitmapFinished(IRequest request, string name)
         {
-            var info = new Dictionary<string, object> { { k.done, _typeString + " " + name } };
+            Dictionary<string, object> info = new()
+            { { k.done, _typeString + " " + name } };
 
             Message.Builder.FromRequest(request).WithData(info).Send();
         }

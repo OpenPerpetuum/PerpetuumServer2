@@ -1,31 +1,22 @@
 using Perpetuum.Data;
 using Perpetuum.EntityFramework;
 using Perpetuum.Zones.NpcSystem.AI.Behaviors;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Perpetuum.Zones.NpcSystem.Flocks
 {
-    public class FlockConfigurationRepository : IFlockConfigurationRepository
+    public class FlockConfigurationRepository(FlockConfigurationBuilder.Factory flockConfigurationBuilderFactory, NpcBossInfoBuilder bossBuilder) : IFlockConfigurationRepository
     {
-        private readonly NpcBossInfoBuilder _bossBuilder;
-        private readonly FlockConfigurationBuilder.Factory _flockConfigurationBuilderFactory;
-        private readonly Dictionary<int, IFlockConfiguration> _flockConfigurations = new Dictionary<int, IFlockConfiguration>();
-
-        public FlockConfigurationRepository(FlockConfigurationBuilder.Factory flockConfigurationBuilderFactory, NpcBossInfoBuilder bossBuilder)
-        {
-            _flockConfigurationBuilderFactory = flockConfigurationBuilderFactory;
-            _bossBuilder = bossBuilder;
-        }
+        private readonly NpcBossInfoBuilder _bossBuilder = bossBuilder;
+        private readonly FlockConfigurationBuilder.Factory _flockConfigurationBuilderFactory = flockConfigurationBuilderFactory;
+        private readonly Dictionary<int, IFlockConfiguration> _flockConfigurations = [];
 
         public void LoadAllConfig()
         {
-            var records = Db.Query().CommandText("select * from npcflock").Execute();
+            List<System.Data.IDataRecord> records = Db.Query().CommandText("select * from npcflock").Execute();
 
-            foreach (var r in records)
+            foreach (System.Data.IDataRecord r in records)
             {
-                var builder = _flockConfigurationBuilderFactory();
+                FlockConfigurationBuilder builder = _flockConfigurationBuilderFactory();
 
                 builder.With(c =>
                 {
@@ -48,7 +39,7 @@ namespace Perpetuum.Zones.NpcSystem.Flocks
                     c.BossInfo = _bossBuilder.GetBossInfoByFlockID(c.ID, c);
                 });
 
-                var config = builder.Build();
+                IFlockConfiguration config = builder.Build();
 
                 _flockConfigurations[config.ID] = config;
             }
@@ -76,7 +67,7 @@ namespace Perpetuum.Zones.NpcSystem.Flocks
                                    (@name,@presenceID,@flockMemberCount,@definition,@spawnOriginX,@spawnOriginY,@spawnRangeMin,@spawnRangeMax,@respawnSeconds,@totalSpawnCount,@homeRange,@note,@respawnMultiplierLow);
                                    select cast(scope_identity() as int)";
 
-            var id = Db.Query().CommandText(query)
+            int id = Db.Query().CommandText(query)
                 .SetParameter("@name", item.Name)
                 .SetParameter("@presenceID", item.PresenceID)
                 .SetParameter("@flockMemberCount", item.FlockMemberCount)
@@ -115,7 +106,7 @@ namespace Perpetuum.Zones.NpcSystem.Flocks
                                           respawnmultiplierlow=@respawnMultiplierLow
                                       where id=@ID";
 
-            var res = Db.Query().CommandText(query)
+            int res = Db.Query().CommandText(query)
                     .SetParameter("@ID", item.ID)
                     .SetParameter("@name", item.Name)
                     .SetParameter("@presenceID", item.PresenceID)

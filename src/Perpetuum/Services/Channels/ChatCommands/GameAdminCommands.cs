@@ -1,37 +1,27 @@
 ﻿using Perpetuum.Accounting.Characters;
+using Perpetuum.Data;
 using Perpetuum.Host.Requests;
 using Perpetuum.Services.Sessions;
-using Perpetuum.Data;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 
 namespace Perpetuum.Services.Channels.ChatCommands
 {
-    public class AdminCommandRouter
+    public class AdminCommandRouter(GlobalConfiguration configuration, ISessionManager sessionManager)
     {
         private delegate void CommandDelegate(AdminCommandData data);
 
-        private readonly GlobalConfiguration _config;
-        private readonly ISessionManager _sessionManager;
-        private readonly IDictionary<string, CommandDelegate> _commands;
-        public AdminCommandRouter(GlobalConfiguration configuration, ISessionManager sessionManager)
-        {
-            _config = configuration;
-            _sessionManager = sessionManager;
-
-            _commands = typeof(AdminCommandHandlers).GetMethods()
+        private readonly GlobalConfiguration _config = configuration;
+        private readonly ISessionManager _sessionManager = sessionManager;
+        private readonly Dictionary<string, CommandDelegate> _commands = typeof(AdminCommandHandlers).GetMethods()
                 .Where(m => m.GetCustomAttributes(typeof(ChatCommand), false).Length > 0)
                 .Select(m => new KeyValuePair<string, CommandDelegate>(
                     ((ChatCommand)m.GetCustomAttribute(typeof(ChatCommand))).Command,
                     (CommandDelegate)Delegate.CreateDelegate(typeof(CommandDelegate), m)))
                 .ToDictionary();
-        }
 
         public void TryParseAdminCommand(Character sender, string text, IRequest request, Channel channel, IChannelManager channelManager)
         {
-            var isAdmin = IsAdmin(sender);
+            bool isAdmin = IsAdmin(sender);
             if (isAdmin)
             {
                 channel.SendMessageToAll(_sessionManager, sender, text); //in the future, it will be displayed only in the secure channel
@@ -44,18 +34,18 @@ namespace Perpetuum.Services.Channels.ChatCommands
             }
         }
 
-        public bool IsAdminCommand(string text)
+        public static bool IsAdminCommand(string text)
         {
-            return text.StartsWith("#");
+            return text.StartsWith('#');
         }
-        private bool IsAdmin(Character sender)
+        private static bool IsAdmin(Character sender)
         {
             return sender.AccessLevel == AccessLevel.admin;
         }
 
-        private void WriteLogToDb(Character sender, string text)
+        private static void WriteLogToDb(Character sender, string text)
         {
-            var str_trunc = text;
+            string str_trunc = text;
 
             if (text.Length > 255)
             {
@@ -64,7 +54,7 @@ namespace Perpetuum.Services.Channels.ChatCommands
 
             Db.Query().CommandText("insert into adminCommandLog (characterid, acclevel, message) values (@characterid, @acclevel, @text)")
                 .SetParameter("@characterid", sender.Id)
-                .SetParameter("@acclevel", (int) sender.AccessLevel)
+                .SetParameter("@acclevel", (int)sender.AccessLevel)
                 .SetParameter("@text", str_trunc)
                 .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLInsertError);
 
@@ -73,9 +63,9 @@ namespace Perpetuum.Services.Channels.ChatCommands
         private void ParseAdminCommand(Character sender, string text, IRequest request, Channel channel, IChannelManager channelManager)
         {
 
-            string[] command = text.Split(new char[] { ',' });
+            string[] command = text.Split([',']);
 
-            var data = AdminCommandData.Create(sender, command, request, channel, channelManager, _sessionManager, _config.EnableDev);
+            AdminCommandData data = AdminCommandData.Create(sender, command, request, channel, channelManager, _sessionManager, _config.EnableDev);
 
             // Commands can only be issued in secure channel
             if (channel.Type == ChannelType.Admin)

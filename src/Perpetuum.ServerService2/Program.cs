@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging.Configuration;
+using Microsoft.Extensions.Logging.EventLog;
 using MSHost = Microsoft.Extensions.Hosting.Host;
 
 namespace Perpetuum.ServerService2
@@ -12,6 +14,7 @@ namespace Perpetuum.ServerService2
                 options.ServiceName = "Perpetuum.ServerService2";
             });
 
+            LoggerProviderOptions.RegisterProviderOptions<EventLogSettings, EventLogLoggerProvider>(builder.Services);
             builder.Services.AddHostedService<PerpetuumServerService2>();
 
             IHost host = builder.Build();

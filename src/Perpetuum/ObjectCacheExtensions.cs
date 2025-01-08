@@ -1,27 +1,27 @@
-﻿using System;
+﻿using Perpetuum.Log;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Runtime.Caching;
-using Perpetuum.Log;
 
 namespace Perpetuum
 {
     public static class ObjectCacheExtensions
     {
         [CanBeNull]
-        public static T Get<T>(this ObjectCache cache, string key, Func<T> valueFactory, TimeSpan? expiration = null)
+        public static T? Get<T>(this ObjectCache cache, string key, Func<T> valueFactory, TimeSpan? expiration = null)
         {
-            var result = cache.Get(key);
+            object? result = cache.Get(key);
 
             if (result == null)
             {
                 result = valueFactory();
 
                 if (result == null)
-                    return default(T);
+                {
+                    return default;
+                }
 
-                Set(cache,key,result,expiration);
+                Set(cache, key, result, expiration);
             }
 
             return (T)result;
@@ -29,10 +29,10 @@ namespace Perpetuum
 
         public static void Set(this ObjectCache objectCache, string key, object value, TimeSpan? expiration = null)
         {
-            var policy = new CacheItemPolicy
-                {
-                    RemovedCallback = HandleRemovedCacheItem
-                };
+            CacheItemPolicy policy = new()
+            {
+                RemovedCallback = HandleRemovedCacheItem
+            };
 
             if (expiration == null)
             {
@@ -40,25 +40,27 @@ namespace Perpetuum
             }
             else
             {
-                policy.SlidingExpiration = (TimeSpan) expiration;
+                policy.SlidingExpiration = (TimeSpan)expiration;
             }
 
-            objectCache.Set(key,value,policy);
+            objectCache.Set(key, value, policy);
 
             Logger.Info($"Cache set. Name = {objectCache.Name} ({key} = {value}) expiration = {(expiration == null ? "never" : DateTime.Now.Add(policy.SlidingExpiration).ToString(CultureInfo.InvariantCulture))}");
         }
 
         [CanBeNull]
-        public static T GetWithAbsoluteExpiration<T>(this ObjectCache cache, string key, Func<T> valueFactory, TimeSpan expiration)
+        public static T? GetWithAbsoluteExpiration<T>(this ObjectCache cache, string key, Func<T> valueFactory, TimeSpan expiration)
         {
-            var result = cache.Get(key);
+            object? result = cache.Get(key);
 
             if (result == null)
             {
                 result = valueFactory();
 
                 if (result == null)
-                    return default(T);
+                {
+                    return default;
+                }
 
                 SetWithAbsoluteExpiration(cache, key, result, expiration);
             }
@@ -69,7 +71,7 @@ namespace Perpetuum
 
         private static void SetWithAbsoluteExpiration(this ObjectCache objectCache, string key, object value, TimeSpan expiration)
         {
-            var policy = new CacheItemPolicy
+            CacheItemPolicy policy = new()
             {
                 RemovedCallback = HandleRemovedCacheItem,
                 AbsoluteExpiration = new DateTimeOffset(DateTime.Now.Add(expiration))
@@ -82,7 +84,7 @@ namespace Perpetuum
 
         private static void HandleRemovedCacheItem(CacheEntryRemovedArguments removedArguments)
         {
-            var disposable = removedArguments.CacheItem.Value as IDisposable;
+            IDisposable? disposable = removedArguments.CacheItem.Value as IDisposable;
             disposable?.Dispose();
 
             Logger.Info($"Cache remove. Name = {removedArguments.Source.Name} ({removedArguments.CacheItem.Key} = {removedArguments.CacheItem.Value}) reason = {removedArguments.RemovedReason}");
@@ -92,9 +94,9 @@ namespace Perpetuum
         {
             Debug.Assert(cache != null);
 
-            var list = cache.Select(kvp => kvp.Key).ToList();
+            List<string> list = cache.Select(kvp => kvp.Key).ToList();
 
-            foreach (var key in list)
+            foreach (string? key in list)
             {
                 cache.Remove(key);
             }

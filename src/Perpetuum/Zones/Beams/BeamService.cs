@@ -1,15 +1,12 @@
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Reactive;
+using System.Collections.Concurrent;
 
 namespace Perpetuum.Zones.Beams
 {
     public class BeamService : IBeamService
     {
-        private readonly ConcurrentDictionary<long,Beam> _beams = new ConcurrentDictionary<long, Beam>();
+        private readonly ConcurrentDictionary<long, Beam> _beams = [];
         private readonly Observable<Beam> _observable;
 
         public BeamService()
@@ -19,7 +16,7 @@ namespace Perpetuum.Zones.Beams
 
         private void OnSubscribe(IObserver<Beam> observer)
         {
-            foreach (var kvp in _beams)
+            foreach (KeyValuePair<long, Beam> kvp in _beams)
             {
                 observer.OnNext(kvp.Value);
             }
@@ -27,8 +24,10 @@ namespace Perpetuum.Zones.Beams
 
         public void Add(Beam beam)
         {
-            if ( beam.Type == BeamType.undefined )
+            if (beam.Type == BeamType.undefined)
+            {
                 return;
+            }
 
             _beams[beam.Id] = beam;
 
@@ -40,13 +39,13 @@ namespace Perpetuum.Zones.Beams
 
         public void Clear()
         {
-            foreach (var beam in _beams.Values)
+            foreach (Beam beam in _beams.Values)
             {
                 Remove(beam);
             }
         }
 
-        public IEnumerable<Beam> All { get { return _beams.Select(kvp => kvp.Value); } }
+        public IEnumerable<Beam> All => _beams.Select(kvp => kvp.Value);
 
         private bool Remove(Beam beam)
         {

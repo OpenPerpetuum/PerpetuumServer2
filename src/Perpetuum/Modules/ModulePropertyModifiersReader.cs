@@ -1,20 +1,13 @@
 using Perpetuum.Data;
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Perpetuum.Modules
 {
-    public class ModulePropertyModifiersReader
+    public class ModulePropertyModifiersReader(IEntityDefaultReader entityDefaultReader)
     {
-        private readonly IEntityDefaultReader _entityDefaultReader;
+        private readonly IEntityDefaultReader _entityDefaultReader = entityDefaultReader;
         private Dictionary<int, ILookup<AggregateField, AggregateField>> _modifiers;
-
-        public ModulePropertyModifiersReader(IEntityDefaultReader entityDefaultReader)
-        {
-            _entityDefaultReader = entityDefaultReader;
-        }
 
         public void Init()
         {
@@ -31,11 +24,11 @@ namespace Perpetuum.Modules
 
 
             IEnumerable<EntityDefault> modules = _entityDefaultReader.GetAll().GetByCategoryFlags(CategoryFlags.cf_robot_equipment);
-            _modifiers = new Dictionary<int, ILookup<AggregateField, AggregateField>>();
+            _modifiers = [];
 
             foreach (EntityDefault ed in modules)
             {
-                List<KeyValuePair<AggregateField, AggregateField>> p = new List<KeyValuePair<AggregateField, AggregateField>>();
+                List<KeyValuePair<AggregateField, AggregateField>> p = [];
 
                 foreach (CategoryFlags cf in ed.CategoryFlags.GetCategoryFlagsTree())
                 {

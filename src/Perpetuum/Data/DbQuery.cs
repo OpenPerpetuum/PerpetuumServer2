@@ -1,25 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
+﻿using System.Data;
 using System.Data.Common;
-using System.Linq;
 using System.Transactions;
 
 namespace Perpetuum.Data
 {
     public delegate IDbConnection DbConnectionFactory();
 
-    public class DbQuery
+    public class DbQuery(DbConnectionFactory connectionFactory)
     {
-        private readonly DbConnectionFactory _connectionFactory;
+        private readonly DbConnectionFactory _connectionFactory = connectionFactory;
 
         private string _commandText = string.Empty;
         private Dictionary<string, object> _parameters;
-
-        public DbQuery(DbConnectionFactory connectionFactory)
-        {
-            _connectionFactory = connectionFactory;
-        }
 
         public DbQuery CommandText(string cmdText)
         {
@@ -27,56 +19,57 @@ namespace Perpetuum.Data
             return this;
         }
 
-        public DbQuery SetParameters(IEnumerable<KeyValuePair<string,object>> parameters)
+        public DbQuery SetParameters(IEnumerable<KeyValuePair<string, object>> parameters)
         {
             if (parameters == null)
-                return this;
-
-            foreach (var kvp in parameters)
             {
-                SetParameter(kvp.Key,kvp.Value);
+                return this;
+            }
+
+            foreach (KeyValuePair<string, object> kvp in parameters)
+            {
+                SetParameter(kvp.Key, kvp.Value);
             }
 
             return this;
         }
 
-        public DbQuery SetParameter(string name,object value)
+        public DbQuery SetParameter(string name, object value)
         {
-            if (_parameters == null)
-                _parameters = new Dictionary<string, object>();
+            _parameters ??= [];
 
             _parameters[name] = value;
             return this;
         }
 
-        private T ExecuteHelper<T>(Func<IDbCommand,T> execute)
+        private T ExecuteHelper<T>(Func<IDbCommand, T> execute)
         {
-            using (var connection = _connectionFactory())
+            using IDbConnection connection = _connectionFactory();
+            connection.Open();
+
+            if (Transaction.Current != null && connection is DbConnection dbConnection)
             {
-                connection.Open();
+                dbConnection.EnlistTransaction(Transaction.Current);
+            }
 
-                if (Transaction.Current != null && connection is DbConnection dbConnection)
-                    dbConnection.EnlistTransaction(Transaction.Current);
+            IDbCommand command = connection.CreateCommand();
+            command.CommandText = _commandText;
+            command.CommandType = _commandText.Contains(' ') ? CommandType.Text : CommandType.StoredProcedure;
 
-                var command = connection.CreateCommand();
-                command.CommandText = _commandText;
-                command.CommandType = _commandText.Contains(" ") ? CommandType.Text : CommandType.StoredProcedure;
-
-                if (_parameters != null)
+            if (_parameters != null)
+            {
+                foreach (KeyValuePair<string, object> kvp in _parameters)
                 {
-                    foreach (var kvp in _parameters)
-                    {
-                        var parameter = command.CreateParameter();
-                        parameter.ParameterName = kvp.Key;
-                        parameter.Value = kvp.Value ?? DBNull.Value;
-                        command.Parameters.Add(parameter);
-                    }
+                    IDbDataParameter parameter = command.CreateParameter();
+                    parameter.ParameterName = kvp.Key;
+                    parameter.Value = kvp.Value ?? DBNull.Value;
+                    command.Parameters.Add(parameter);
                 }
+            }
 
-                using (command)
-                {
-                    return execute(command);
-                }
+            using (command)
+            {
+                return execute(command);
             }
         }
 
@@ -84,10 +77,8 @@ namespace Perpetuum.Data
         {
             return ExecuteHelper((cmd) =>
             {
-                using (var reader = cmd.ExecuteReader())
-                {
-                    return reader.ToEnumerable().ToList();
-                }
+                using IDataReader reader = cmd.ExecuteReader();
+                return reader.ToEnumerable().ToList();
             });
         }
 
@@ -95,10 +86,8 @@ namespace Perpetuum.Data
         {
             return ExecuteHelper((cmd) =>
             {
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleRow))
-                {
-                    return reader.ToEnumerable().FirstOrDefault();
-                }
+                using IDataReader reader = cmd.ExecuteReader(CommandBehavior.SingleRow);
+                return reader.ToEnumerable().FirstOrDefault();
             });
         }
 
@@ -109,13 +98,10 @@ namespace Perpetuum.Data
 
         public T ExecuteScalar<T>()
         {
-            return (T) ExecuteHelper((cmd) =>
+            return (T)ExecuteHelper((cmd) =>
             {
-                var value = cmd.ExecuteScalar();
-                if (value == DBNull.Value)
-                    return default(T);
-
-                return value ?? default(T);
+                object? value = cmd.ExecuteScalar();
+                return value == DBNull.Value ? default(T) : value ?? default(T);
             });
         }
     }

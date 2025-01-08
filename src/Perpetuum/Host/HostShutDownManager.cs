@@ -1,27 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Perpetuum.Log;
 
 namespace Perpetuum.Host
 {
-    public class HostShutDownManager 
+    public class HostShutDownManager(IHostStateService stateService)
     {
-        private readonly IHostStateService _stateService;
-        private Task _shutdownTask;
-        private CancellationTokenSource _cancellation;
+        private readonly IHostStateService _stateService = stateService;
+        private Task? _shutdownTask;
+        private CancellationTokenSource? _cancellation;
 
         private DateTime _shutDownTime;
         private bool _isInShutDown;
         private string _message;
 
-        public HostShutDownManager(IHostStateService stateService)
-        {
-            _stateService = stateService;
-        }
-
-        public void StartShutDown(Command command,string message,DateTime time)
+        public void StartShutDown(Command command, string message, DateTime time)
         {
             _isInShutDown = true;
             _message = message;
@@ -33,7 +24,7 @@ namespace Perpetuum.Host
         public void StopShutDown(Command command)
         {
             _isInShutDown = false;
-            _shutDownTime = default(DateTime);
+            _shutDownTime = default;
 
             // create the cancellation token, logs, etc.
             CancelShutdown();
@@ -49,8 +40,8 @@ namespace Perpetuum.Host
 
         public Dictionary<string, object> StateToDictionary()
         {
-            var result = new Dictionary<string, object>
-                {
+            Dictionary<string, object> result = new()
+            {
                     {k.date, _shutDownTime},
                     {k.active, _isInShutDown},
                     {k.message, _message}
@@ -119,8 +110,8 @@ namespace Perpetuum.Host
 
         private void SendStateToAll(Command command)
         {
-            var result = new Dictionary<string, object>
-                {
+            Dictionary<string, object> result = new()
+            {
                     {k.date, _shutDownTime},
                     {k.active, ShutdownTaskRunning},
                 };

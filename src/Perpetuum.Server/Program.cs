@@ -22,7 +22,7 @@ namespace Perpetuum.Server
                 if (dumpCommands.HasValue())
                 {
                     Console.WriteLine("dumping commands to commands.txt");
-                    bootstrapper.WriteCommandsToFile("commands.txt");
+                    PerpetuumBootstrapper.WriteCommandsToFile("commands.txt");
                     return 0;
                 }
 
