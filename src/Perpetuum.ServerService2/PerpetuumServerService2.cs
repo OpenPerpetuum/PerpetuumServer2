@@ -17,19 +17,9 @@ namespace Perpetuum.ServerService2
         private Autofac.IContainer Container { get; set; }
         private IHostStateService HostStateService { get; set; }
 
-        public override Task StartAsync(CancellationToken cancellationToken)
-        {
-            return ServerStart();
-        }
-
-        public override Task StopAsync(CancellationToken cancellationToken)
-        {
-            return StopServer();
-        }
-
         //-----------
 
-        public Task ServerStart()
+        public void ServerStart()
         {
             // assumes the server is in the default installation directory.
             string gameroot = _configuration.GetValue<string>("GameRoot") ?? "C:\\PerpetuumServer\\data";
@@ -43,14 +33,12 @@ namespace Perpetuum.ServerService2
             {
                 Logger.Exception(ex);
                 _logger.LogError(ex.Message);
-
-                return Task.CompletedTask;
             }
 
             Container = Bootstrapper.GetContainer();
             HostStateService = Container.Resolve<IHostStateService>();
 
-            return Task.Run(StartServer);
+            Task task = Task.Run(StartServer);
 
         }
 
@@ -58,11 +46,9 @@ namespace Perpetuum.ServerService2
         {
             Bootstrapper.Start();
             _logger.LogInformation("Perpetuum Dedicated Server v2 started");
-            //Bootstrapper.WaitForStop(); // this blocks !            
-            //base.Stop(); // must call or the service will hang.
         }
 
-        private Task StopServer()
+        private void StopServer()
         {
             _logger.LogInformation("Stopping Perpetuum Dedicated Server v2");
 
@@ -84,18 +70,18 @@ namespace Perpetuum.ServerService2
             }
 
             _logger.LogInformation("Perpetuum Dedicated Server v2 stopped");
-
-            return Task.CompletedTask;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            ServerStart();
+
             while (!stoppingToken.IsCancellationRequested && HostStateService.State != HostState.Off)
             {
                 await Task.Delay(1000, stoppingToken);
             }
 
-            await StopServer();
+            StopServer();
             _logger.LogInformation("Stopping Perpetuum Dedicated Server v2 Service");
             _hostApplicationLifetime.StopApplication();
             _logger.LogInformation("Perpetuum Dedicated Server v2 Service stopped");
