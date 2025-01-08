@@ -1,0 +1,3 @@
+source=$rango.txt
+allowedAltitudeLow=n15
+

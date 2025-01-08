@@ -3,7 +3,9 @@
   <Fragment>
 	  <ComponentGroup Id="PerpetuumServer2Components" Directory="INSTALLFOLDER">
 		  <Component Id="PerpetuumServer2" Guid="0D6CA7B4-789B-4894-9DFA-7882AC8D21A0">
+			  <File Source="publish/win-x64/admincreds.json" />
 			  <File Source="publish/win-x64/appsettings.json" />
+			  <File Source="publish/win-x64/localserverinfo.json" />
 			  <File Source="publish/win-x64/Microsoft.Data.SqlClient.SNI.dll" />
 			  <File Source="publish/win-x64/Perpetuum.ServerService2.exe" KeyPath="yes" />
 

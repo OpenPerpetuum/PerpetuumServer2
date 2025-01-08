@@ -79,7 +79,7 @@ namespace Perpetuum.ServerService2
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            while (!stoppingToken.IsCancellationRequested)
+            while (!stoppingToken.IsCancellationRequested || hostStateService.State != HostState.Off)
             {
                 await Task.Delay(1000, stoppingToken);
             }

@@ -11,3 +11,8 @@ src/Perpetuum.ServerService2/Properties/PublishProfiles/
 *.user
 packages/
 src/Perpetuum.ServerService2Installer/bin/
+src/Perpetuum.ServerService2/data/bitmaps/
+src/Perpetuum.ServerService2/data/chatlogs/
+src/Perpetuum.ServerService2/data/database/
+src/Perpetuum.ServerService2/data/layers/
+src/Perpetuum.ServerService2/data/logs/
