@@ -16,3 +16,4 @@ src/Perpetuum.ServerService2/data/chatlogs/
 src/Perpetuum.ServerService2/data/database/
 src/Perpetuum.ServerService2/data/layers/
 src/Perpetuum.ServerService2/data/logs/
+bin/
