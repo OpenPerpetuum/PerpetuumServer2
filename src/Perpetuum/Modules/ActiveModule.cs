@@ -12,8 +12,6 @@ using Perpetuum.Zones.Locking;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.RemoteControl;
 using Perpetuum.Zones.Terrains;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Perpetuum.Modules
@@ -44,7 +42,7 @@ namespace Perpetuum.Modules
         }
 
         private const double heatCoefficient = 0.242;
-        private Lock _lock;
+        private Lock? _lock;
         protected readonly ModuleProperty coreUsage;
         protected readonly CycleTimeProperty cycleTime;
         protected readonly ItemProperty falloff = ItemProperty.None;
@@ -184,13 +182,8 @@ namespace Perpetuum.Modules
 
         protected virtual void HandleOffensivePVPCheck(Player parentPlayer, UnitLock unitLockTarget)
         {
-            Player targetPlayer = unitLockTarget.Target as Player;
-            if (targetPlayer is null &&
-                ParentRobot is RemoteControlledCreature remoteControlledCreature &&
-                remoteControlledCreature.CommandRobot is Player player)
-            {
-                parentPlayer = player;
-            }
+            Player targetPlayer = unitLockTarget.Target as Player ??
+                (unitLockTarget.Target as RemoteControlledCreature)?.CommandRobot as Player;
 
             if (parentPlayer != null && targetPlayer != null)
             {
@@ -375,7 +368,7 @@ namespace Perpetuum.Modules
 
         private void LockChangedHandler(Lock @lock)
         {
-            if (State.Type == ModuleStateType.Idle || State.Type == ModuleStateType.AmmoLoad)
+            if (State.Type is ModuleStateType.Idle or ModuleStateType.AmmoLoad)
             {
                 return;
             }
@@ -404,19 +397,19 @@ namespace Perpetuum.Modules
         {
             IModuleState state = State;
 
-            if (!(ParentRobot is Player player))
+            if (ParentRobot is not Player player)
             {
                 return;
             }
 
-            Packet packet = new Packet(ZoneCommand.ModuleChangeState);
+            Packet packet = new(ZoneCommand.ModuleChangeState);
 
             Debug.Assert(ParentComponent != null, "ParentComponent != null");
             packet.AppendByte((byte)ParentComponent.Type);
             packet.AppendByte((byte)Slot);
             packet.AppendByte((byte)state.Type);
 
-            if (!(state is ITimedModuleState timed))
+            if (state is not ITimedModuleState timed)
             {
                 packet.AppendInt(0);
                 packet.AppendInt(0);
@@ -500,12 +493,12 @@ namespace Perpetuum.Modules
 
         private void SendModuleErrorToPlayer(ErrorCodes error)
         {
-            if (!(ParentRobot is Player player))
+            if (ParentRobot is not Player player)
             {
                 return;
             }
 
-            CombatLogPacket packet = new CombatLogPacket(error, this, _lock);
+            CombatLogPacket packet = new(error, this, _lock);
 
             player.Session.SendPacket(packet);
         }

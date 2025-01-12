@@ -8,7 +8,6 @@ using Perpetuum.Zones.Gates;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.NpcSystem;
 using Perpetuum.Zones.Teleporting;
-using System;
 
 namespace Perpetuum.Zones.RemoteControl
 {
@@ -43,6 +42,11 @@ namespace Perpetuum.Zones.RemoteControl
             CommandRobot.OnAggression(victim);
         }
 
+        public bool HasCommandBotPrimaryLock()
+        {
+            return CommandRobot.GetPrimaryLock() != null;
+        }
+
         protected override bool IsHostileFor(Unit unit)
         {
             return unit.IsHostile(this);
@@ -66,22 +70,22 @@ namespace Perpetuum.Zones.RemoteControl
 
         internal override bool IsHostile(CombatDrone drone)
         {
-            return !(drone.CommandRobot is Player player) || IsHostilePlayer(player);
+            return drone.CommandRobot is not Player player || IsHostilePlayer(player);
         }
 
         internal override bool IsHostile(IndustrialDrone drone)
         {
-            return !(drone.CommandRobot is Player player) || IsHostilePlayer(player);
+            return drone.CommandRobot is not Player player || IsHostilePlayer(player);
         }
 
         internal override bool IsHostile(SupportDrone drone)
         {
-            return !(drone.CommandRobot is Player player) || IsHostilePlayer(player);
+            return drone.CommandRobot is not Player player || IsHostilePlayer(player);
         }
 
         internal override bool IsHostile(SentryTurret turret)
         {
-            return !(turret.CommandRobot is Player player) || IsHostilePlayer(player);
+            return turret.CommandRobot is not Player player || IsHostilePlayer(player);
         }
 
         internal override bool IsHostile(Rift rift)
@@ -101,7 +105,7 @@ namespace Perpetuum.Zones.RemoteControl
 
         internal override bool IsHostile(IndustrialTurret turret)
         {
-            return !(turret.CommandRobot is Player player) || IsHostilePlayer(player);
+            return turret.CommandRobot is not Player player || IsHostilePlayer(player);
         }
 
         internal override bool IsHostile(Portal portal)
@@ -121,10 +125,10 @@ namespace Perpetuum.Zones.RemoteControl
 
         protected override void UpdateUnitVisibility(Unit target)
         {
-            if (target is Npc ||
-                target is RemoteControlledCreature ||
-                target is Portal ||
-                target is AreaBomb)
+            if (target is Npc or
+                RemoteControlledCreature or
+                Portal or
+                AreaBomb)
             {
                 UpdateVisibility(target);
             }

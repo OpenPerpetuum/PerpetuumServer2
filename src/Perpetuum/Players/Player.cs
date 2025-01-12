@@ -40,12 +40,7 @@ using Perpetuum.Zones.RemoteControl;
 using Perpetuum.Zones.Teleporting;
 using Perpetuum.Zones.Teleporting.Strategies;
 using Perpetuum.Zones.Terrains;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Transactions;
 
 namespace Perpetuum.Players
@@ -61,18 +56,18 @@ namespace Perpetuum.Players
         private readonly IBlobEmitter blobEmitter;
         private readonly BlobHandler<Player> blobHandler;
         private readonly PlayerMovement movement;
-        private readonly IntervalTimer combatTimer = new IntervalTimer(TimeSpan.FromSeconds(10));
+        private readonly IntervalTimer combatTimer = new(TimeSpan.FromSeconds(10));
         private readonly GlobalConfiguration globalConfiguration;
-        private CombatLogger combatLogger;
+        private CombatLogger? combatLogger;
         private PlayerMoveCheckQueue check;
-        private CancellableDespawnHelper despawnHelper;
+        private CancellableDespawnHelper? despawnHelper;
 
         public static readonly TimeSpan NormalUndockDelay = TimeSpan.FromSeconds(7);
         public static readonly TimeSpan BlessedUndockDelay = TimeSpan.FromMinutes(3); // Supposed to be 15
         public const int ARKHE_REQUEST_TIMER_MINUTES_PVP = 3;
         public const int ARKHE_REQUEST_TIMER_MINUTES_NPC = 1;
 
-        private readonly Dictionary<CategoryFlags, int> baseTokenPrices = new Dictionary<CategoryFlags, int>
+        private readonly Dictionary<CategoryFlags, int> baseTokenPrices = new()
         {
             { CategoryFlags.cf_runners, 50 },
             { CategoryFlags.cf_nuimqol_runners, 50 },
@@ -263,7 +258,7 @@ namespace Perpetuum.Players
 
         public void SendModuleProcessError(Module module, ErrorCodes error)
         {
-            Packet packet = new Packet(ZoneCommand.ModuleEvaluateError);
+            Packet packet = new(ZoneCommand.ModuleEvaluateError);
 
             packet.AppendByte((byte)module.ParentComponent.Type);
             packet.AppendByte((byte)module.Slot);
@@ -288,7 +283,7 @@ namespace Perpetuum.Players
         {
             IZone zone = Zone;
 
-            if (zone == null || zone is TrainingZone)
+            if (zone is null or TrainingZone)
             {
                 return;
             }
@@ -450,7 +445,7 @@ namespace Perpetuum.Players
                 return;
             }
 
-            if (!(victim is Player victimPlayer))
+            if (victim is not Player victimPlayer)
             {
                 return;
             }
@@ -496,7 +491,7 @@ namespace Perpetuum.Players
             {
                 Session.SendPacket(visibility.Target.EnterPacketBuilder);
 
-                if (!(visibility.Target is Robot robot))
+                if (visibility.Target is not Robot robot)
                 {
                     continue;
                 }
@@ -522,7 +517,7 @@ namespace Perpetuum.Players
 
         public void WriteFQLog(string message)
         {
-            LogEvent e = new LogEvent
+            LogEvent e = new()
             {
                 LogType = LogType.Info,
                 Tag = "FQ",
@@ -555,61 +550,59 @@ namespace Perpetuum.Players
 
         public static Player LoadPlayerAndAddToZone(IZone zone, Character character)
         {
-            using (TransactionScope scope = Db.CreateTransaction())
+            using TransactionScope scope = Db.CreateTransaction();
+            Player player = (Player)character.GetActiveRobot().ThrowIfNull(ErrorCodes.ARobotMustBeSelected);
+
+            DockingBase dockingBase = null;
+            ZoneEnterType zoneEnterType;
+            Position spawnPosition;
+
+            if (character.IsDocked)
             {
-                Player player = (Player)character.GetActiveRobot().ThrowIfNull(ErrorCodes.ARobotMustBeSelected);
-
-                DockingBase dockingBase = null;
-                ZoneEnterType zoneEnterType;
-                Position spawnPosition;
-
-                if (character.IsDocked)
-                {
-                    zoneEnterType = ZoneEnterType.Undock;
-                    dockingBase = character.GetCurrentDockingBase();
-                    spawnPosition = UndockSpawnPositionSelector.SelectSpawnPosition(dockingBase);
-                    character.ZoneId = zone.Id;
-                    character.ZonePosition = spawnPosition;
-                    character.IsDocked = false;
-                }
-                else
-                {
-                    zoneEnterType = ZoneEnterType.Teleport;
-                    _ = zone.Id.ThrowIfNotEqual(character.ZoneId ?? -1, ErrorCodes.InvalidZoneId);
-
-                    Position? zonePosition = character.ZonePosition.ThrowIfNull(ErrorCodes.InvalidPosition);
-
-                    spawnPosition = (Position)zonePosition;
-                }
-
-                spawnPosition = zone.FixZ(spawnPosition);
-
-                ClosestWalkablePositionFinder finder = new ClosestWalkablePositionFinder(zone, spawnPosition, player);
-                Position validPosition = finder.FindOrThrow();
-
-                ZoneStorage zoneStorage = zone.Configuration.GetStorage();
-
-                player.Parent = zoneStorage.Eid;
-                player.FullCoreRecharge();
-                player.Save();
-
-                Transaction.Current.OnCommited(() =>
-                {
-                    dockingBase?.LeaveChannel(character);
-                    player.CorporationEid = character.CorporationEid;
-                    zone.SetGang(player);
-                    player.AddToZone(zone, validPosition, zoneEnterType);
-                    player.ApplyInvulnerableEffect();
-                });
-
-                scope.Complete();
-
-                return player;
+                zoneEnterType = ZoneEnterType.Undock;
+                dockingBase = character.GetCurrentDockingBase();
+                spawnPosition = UndockSpawnPositionSelector.SelectSpawnPosition(dockingBase);
+                character.ZoneId = zone.Id;
+                character.ZonePosition = spawnPosition;
+                character.IsDocked = false;
             }
+            else
+            {
+                zoneEnterType = ZoneEnterType.Teleport;
+                _ = zone.Id.ThrowIfNotEqual(character.ZoneId ?? -1, ErrorCodes.InvalidZoneId);
+
+                Position? zonePosition = character.ZonePosition.ThrowIfNull(ErrorCodes.InvalidPosition);
+
+                spawnPosition = (Position)zonePosition;
+            }
+
+            spawnPosition = zone.FixZ(spawnPosition);
+
+            ClosestWalkablePositionFinder finder = new(zone, spawnPosition, player);
+            Position validPosition = finder.FindOrThrow();
+
+            ZoneStorage zoneStorage = zone.Configuration.GetStorage();
+
+            player.Parent = zoneStorage.Eid;
+            player.FullCoreRecharge();
+            player.Save();
+
+            Transaction.Current.OnCommited(() =>
+            {
+                dockingBase?.LeaveChannel(character);
+                player.CorporationEid = character.CorporationEid;
+                zone.SetGang(player);
+                player.AddToZone(zone, validPosition, zoneEnterType);
+                player.ApplyInvulnerableEffect();
+            });
+
+            scope.Complete();
+
+            return player;
         }
 
         [CanBeNull]
-        public Task TeleportToPositionAsync(Position target, bool applyTeleportSickness, bool applyInvulnerable)
+        public Task? TeleportToPositionAsync(Position target, bool applyTeleportSickness, bool applyInvulnerable)
         {
             IZone zone = Zone;
 
@@ -681,11 +674,9 @@ namespace Perpetuum.Players
             }
             else
             {
-                using (TransactionScope scope = Db.CreateTransaction())
-                {
-                    Reload();
-                    scope.Complete();
-                }
+                using TransactionScope scope = Db.CreateTransaction();
+                Reload();
+                scope.Complete();
             }
         }
 
@@ -700,7 +691,7 @@ namespace Perpetuum.Players
                 return;
             }
 
-            Dictionary<string, object> result = new Dictionary<string, object>
+            Dictionary<string, object> result = new()
             {
                 {k.corporationEID, newCorporationEid},
                 {k.characterID, Character.Id},
@@ -1075,42 +1066,40 @@ namespace Perpetuum.Players
 
         private void HandlePlayerDead(IZone zone, Unit killer)
         {
-            using (TransactionScope scope = Db.CreateTransaction())
+            using TransactionScope scope = Db.CreateTransaction();
+            EnlistTransaction();
+
+            try
             {
-                EnlistTransaction();
+                killer = zone.ToPlayerOrGetOwnerPlayer(killer) ?? killer;
 
-                try
+                SaveCombatLog(zone, killer);
+
+                Character character = Character;
+                DockingBase dockingBase = character.GetHomeBaseOrCurrentBase();
+
+                dockingBase.DockIn(character, IsBlessed ? BlessedUndockDelay : NormalUndockDelay, ZoneExitType.Died);
+
+                PlayerDeathLogger.Log.Write(zone, this, killer);
+
+                bool wasInsured = InsuranceHelper.CheckInsuranceOnDeath(Eid, Definition);
+
+                if (!Session.AccessLevel.IsAdminOrGm() && !IsBlessed)
                 {
-                    killer = zone.ToPlayerOrGetOwnerPlayer(killer) ?? killer;
-
-                    SaveCombatLog(zone, killer);
-
-                    Character character = Character;
-                    DockingBase dockingBase = character.GetHomeBaseOrCurrentBase();
-
-                    dockingBase.DockIn(character, IsBlessed ? BlessedUndockDelay : NormalUndockDelay, ZoneExitType.Died);
-
-                    PlayerDeathLogger.Log.Write(zone, this, killer);
-
-                    bool wasInsured = InsuranceHelper.CheckInsuranceOnDeath(Eid, Definition);
-
-                    if (!Session.AccessLevel.IsAdminOrGm() && !IsBlessed)
-                    {
-                        DieAndDropLoot(zone, killer, character, dockingBase, wasInsured);
-                    }
-                    else
-                    {
-                        ResurrectAndLoseCargo(zone, character, dockingBase);
-                    }
-
-                    Save();
-
-                    scope.Complete();
+                    DieAndDropLoot(zone, killer, character, dockingBase, wasInsured);
                 }
-                catch (Exception ex)
+                else
                 {
-                    Logger.Exception(ex);
+                    ResurrectAndLoseCargo(zone, character, dockingBase);
                 }
+
+                Save();
+
+                scope.Complete();
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex);
             }
         }
 
@@ -1128,11 +1117,11 @@ namespace Perpetuum.Players
 
                 Debug.Assert(robotInventory != null);
 
-                List<LootItem> lootItems = new List<LootItem>();
+                List<LootItem> lootItems = [];
 
                 foreach (Item item in robotInventory.GetItems(true).Where(i => i is VolumeWrapperContainer))
                 {
-                    if (!(item is VolumeWrapperContainer wrapper))
+                    if (item is not VolumeWrapperContainer wrapper)
                     {
                         continue;
                     }
@@ -1145,6 +1134,12 @@ namespace Perpetuum.Players
                 {
                     robotInventory.RemoveItemOrThrow(item);
                     Repository.Delete(item);
+                }
+
+                foreach (Module module in Modules.Where(m => LootHelper.Roll(0.1)))
+                {
+                    module.Parent = robotInventory.Eid;
+                    Repository.Delete(module);
                 }
 
                 // Calculate and add tokens here
@@ -1180,7 +1175,7 @@ namespace Perpetuum.Players
 
             Debug.Assert(robotInventory != null);
 
-            List<LootItem> lootItems = new List<LootItem>();
+            List<LootItem> lootItems = [];
 
             foreach (Module module in Modules.Where(m => LootHelper.Roll()))
             {
@@ -1201,7 +1196,7 @@ namespace Perpetuum.Players
 
             foreach (Item item in robotInventory.GetItems(true).Where(i => i is VolumeWrapperContainer))
             {
-                if (!(item is VolumeWrapperContainer wrapper))
+                if (item is not VolumeWrapperContainer wrapper)
                 {
                     continue;
                 }
@@ -1286,8 +1281,8 @@ namespace Perpetuum.Players
                 {
                     Transaction.Current.OnCommited(() =>
                     {
-                        Dictionary<string, object> starterRobotInfo = new Dictionary<string, object>
-                                    {
+                        Dictionary<string, object> starterRobotInfo = new()
+                        {
                                         {k.baseEID, Eid},
                                         {k.robotEID, activeRobot.Eid}
                                     };

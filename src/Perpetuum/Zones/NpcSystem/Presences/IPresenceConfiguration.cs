@@ -1,5 +1,4 @@
-﻿
-namespace Perpetuum.Zones.NpcSystem.Presences
+﻿namespace Perpetuum.Zones.NpcSystem.Presences
 {
     public interface IPresenceConfiguration
     {

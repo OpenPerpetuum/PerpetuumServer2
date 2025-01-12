@@ -1,6 +1,5 @@
 ﻿using Perpetuum.Zones.Movements;
 using Perpetuum.Zones.RemoteControl;
-using System;
 
 namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 {
@@ -24,7 +23,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 
         public override void Update(TimeSpan time)
         {
-            CombatDrone drone = smartCreature as CombatDrone;
+            CombatDrone? drone = smartCreature as CombatDrone;
 
             if (drone.IsReceivedRetreatCommand)
             {
@@ -40,7 +39,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
                 return;
             }
 
-            if (drone.GetPrimaryLock() != null)
+            if (drone.HasCommandBotPrimaryLock() != null)
             {
                 ToAttackCombatDroneAI();
 

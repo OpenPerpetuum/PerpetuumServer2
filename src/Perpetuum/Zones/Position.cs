@@ -50,16 +50,16 @@ namespace Perpetuum.Zones
             _z /= m;
         }
 
-        public double Length => Math.Sqrt((_x * _x) + (_y * _y) + (_z * _z));
+        public double Length => Math.Sqrt(_x * _x + _y * _y + _z * _z);
 
-        public double lengthDouble2D => Math.Sqrt((_x * _x) + (_y * _y));
+        public double lengthDouble2D => Math.Sqrt(_x * _x + _y * _y);
 
         public bool IsNeighbouring2DInt(Position p)
         {
             int dx = Math.Abs(p.intX - intX);
             int dy = Math.Abs(p.intY - intY);
 
-            return (dx == 1 && dy == 1) || (dx + dy) <= 1;
+            return dx == 1 && dy == 1 || dx + dy <= 1;
         }
 
         public bool IsTileChange(Position p)
@@ -77,7 +77,7 @@ namespace Perpetuum.Zones
             double ax = p._x - _x;
             double ay = p._y - _y;
             double az = (p._z - _z) / 4.0;
-            return (ax * ax) + (ay * ay) + (az * az);
+            return ax * ax + ay * ay + az * az;
         }
 
         [System.Diagnostics.Contracts.Pure]
@@ -97,7 +97,7 @@ namespace Perpetuum.Zones
         {
             double ax = x - _x;
             double ay = y - _y;
-            return Math.Sqrt((ax * ax) + (ay * ay));
+            return Math.Sqrt(ax * ax + ay * ay);
         }
 
         public bool IsEqual2D(Position tPos)
@@ -142,7 +142,7 @@ namespace Perpetuum.Zones
             double angle = Math.Atan(dy / dx);
 
             //0 ... PI
-            double radians = angle + (Math.PI / 2);
+            double radians = angle + Math.PI / 2;
 
             //0 ... PI      =>     0 ... 128
             direction = radians / Math.PI * 0.5;
@@ -171,7 +171,7 @@ namespace Perpetuum.Zones
                 return x > 0 ? 0.25 : 0.75;
             }
 
-            double direction = (Math.Atan(y / x) + (Math.PI / 2)) / Math.PI * 0.5;
+            double direction = (Math.Atan(y / x) + Math.PI / 2) / Math.PI * 0.5;
 
             if (x < 0)
             {
@@ -207,7 +207,7 @@ namespace Perpetuum.Zones
             double offSetX = Math.Sin(randomAngleRadians);
             double offSetY = Math.Cos(randomAngleRadians);
             double distance = FastRandom.NextDouble(minRange, maxRange);
-            return new Position(_x + (offSetX * distance), _y + (offSetY * distance), _z);
+            return new Position(_x + offSetX * distance, _y + offSetY * distance, _z);
         }
 
         public Position GetPositionTowards2D(Position position, double distance)
@@ -223,7 +223,7 @@ namespace Perpetuum.Zones
 
             double xNorm = xDiff / totalDistance;
             double yNorm = yDiff / totalDistance;
-            return new Position(_x + (xNorm * distance), _y + (yNorm * distance), _z);
+            return new Position(_x + xNorm * distance, _y + yNorm * distance, _z);
         }
 
         public bool IsWithinRangeOf2D(Position sourcePosition, double range)
@@ -235,7 +235,7 @@ namespace Perpetuum.Zones
         {
             double ax = cX - _x;
             double ay = cY - _y;
-            double dist = (ax * ax) + (ay * ay);
+            double dist = ax * ax + ay * ay;
             return range * range > dist;
         }
 
@@ -243,7 +243,7 @@ namespace Perpetuum.Zones
         {
             double ax = cX - _x;
             double ay = cY - _y;
-            double dist = (ax * ax) + (ay * ay);
+            double dist = ax * ax + ay * ay;
             return range * range >= dist;
         }
 
@@ -257,7 +257,7 @@ namespace Perpetuum.Zones
         {
             double ax = cX - _x;
             double ay = cY - _y;
-            double dist = (ax * ax) + (ay * ay);
+            double dist = ax * ax + ay * ay;
             return range * range >= dist;
         }
 
@@ -266,14 +266,14 @@ namespace Perpetuum.Zones
             double dx = sourcePosition._x - _x;
             double dy = sourcePosition._y - _y;
             double dz = (sourcePosition._z - _z) / 4.0;
-            double dist = (dx * dx) + (dy * dy) + (dz * dz);
+            double dist = dx * dx + dy * dy + dz * dz;
             return range * range >= dist;
         }
 
         public Position RotateAroundOrigo(double radians)
         {
-            double xRotated = (Math.Cos(radians) * _x) - (Math.Sin(radians) * _y);
-            double yRotated = (Math.Sin(radians) * _x) + (Math.Cos(radians) * _y);
+            double xRotated = Math.Cos(radians) * _x - Math.Sin(radians) * _y;
+            double yRotated = Math.Sin(radians) * _x + Math.Cos(radians) * _y;
 
             return new Position(xRotated, yRotated, _z);
         }
@@ -441,7 +441,7 @@ namespace Perpetuum.Zones
                 ulong hx = (ulong)intX & 0x7fff;
                 ulong hy = (ulong)intY & 0x7fff;
                 ulong hz = (ulong)intZ & 0x7fff;
-                return (hx << 40) | (hy << 16) | hz;
+                return hx << 40 | hy << 16 | hz;
             }
         }
 
@@ -462,6 +462,15 @@ namespace Perpetuum.Zones
         }
         private static readonly int[,] _neighbours = { { -1, -1 }, { 0, -1 }, { 1, -1 }, { -1, 0 }, { 1, 0 }, { -1, 1 }, { 0, 1 }, { 1, 1 } };
 
+        private static readonly int[,] _bigNeighbours =
+        {
+            { -2, -2}, { -1, -2}, { 0, -2 }, { 1, -2 }, { 2, -2 },
+            { -2, -1}, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1},
+            { -2, 0 }, { -1, 0 }, { 1, 0 }, { 2, 0},
+            { -2, 1}, { -1, 1 }, { 0, 1 }, { 1, 1 }, { 2, 1},
+            { -2, 2}, { -1, 2}, { 0, 2 }, { 1, 2 }, { 2, 2 },
+        };
+
         public IEnumerable<Position> GetEightNeighbours(Size size)
         {
             return EightNeighbours.Where(np => np.IsValid(size));
@@ -475,6 +484,25 @@ namespace Perpetuum.Zones
                 {
                     double nx = _x + _neighbours[i, 0];
                     double ny = _y + _neighbours[i, 1];
+
+                    yield return new Position(nx, ny);
+                }
+            }
+        }
+
+        public IEnumerable<Position> GetTwentyFourNeighbours(Size size)
+        {
+            return TwentyFourNeighbours.Where(np => np.IsValid(size));
+        }
+
+        public IEnumerable<Position> TwentyFourNeighbours
+        {
+            get
+            {
+                for (int i = 0; i < 24; i++)
+                {
+                    double nx = _x + _bigNeighbours[i, 0];
+                    double ny = _y + _bigNeighbours[i, 1];
 
                     yield return new Position(nx, ny);
                 }
@@ -521,3 +549,5 @@ namespace Perpetuum.Zones
 
     }
 }
+
+

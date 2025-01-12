@@ -1,7 +1,6 @@
 ﻿using Perpetuum.PathFinders;
 using Perpetuum.Zones.Movements;
 using Perpetuum.Zones.RemoteControl;
-using System;
 
 namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 {
@@ -36,7 +35,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
                     {
                         WriteLog("Path not found! (" + smartCreature.CurrentPosition + " => " + smartCreature.HomePosition + ")");
 
-                        AStarFinder f = new AStarFinder(Heuristic.Manhattan, (x, y) => true);
+                        AStarFinder f = new(Heuristic.Manhattan, (x, y) => true);
 
                         path = f.FindPath(smartCreature.CurrentPosition, smartCreature.HomePosition);
 
@@ -55,7 +54,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 
         public override void Update(TimeSpan time)
         {
-            CombatDrone drone = smartCreature as CombatDrone;
+            CombatDrone? drone = smartCreature as CombatDrone;
             if (drone.IsReceivedRetreatCommand)
             {
                 ToRetreatCombatDroneAI();
@@ -63,7 +62,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
                 return;
             }
 
-            if (drone.GetPrimaryLock() != null)
+            if (drone.HasCommandBotPrimaryLock())
             {
                 ToAttackCombatDroneAI();
 

@@ -2,7 +2,7 @@
 
 namespace Perpetuum.Zones.Terrains.Terraforming.Operations
 {
-   
+
     public class BlurTerraformingOperation : TerraformingOperation
     {
         public BlurTerraformingOperation(Position centerPosition, int radius, int plantDamage) : base(centerPosition, plantDamage)

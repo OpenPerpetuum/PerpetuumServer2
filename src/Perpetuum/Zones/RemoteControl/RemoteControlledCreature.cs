@@ -7,8 +7,6 @@ using Perpetuum.Services.Standing;
 using Perpetuum.Units;
 using Perpetuum.Zones.NpcSystem;
 using Perpetuum.Zones.NpcSystem.ThreatManaging;
-using System;
-using System.Linq;
 
 namespace Perpetuum.Zones.RemoteControl
 {
@@ -66,14 +64,6 @@ namespace Perpetuum.Zones.RemoteControl
 
         public override void AddThreat(Unit hostile, Threat threat, bool spreadToGroup)
         {
-            /*
-            if (hostile.IsPlayer() && CommandRobot == (hostile as Player))
-            {
-                return;
-            }
-
-            base.AddThreat(hostile, threat, spreadToGroup);
-            */
         }
 
         public void Scoop()
@@ -111,7 +101,7 @@ namespace Perpetuum.Zones.RemoteControl
 
         protected bool IsHostilePlayer(Player targetPlayer)
         {
-            if (!(CommandRobot is Player player))
+            if (CommandRobot is not Player player)
             {
                 return true;
             }

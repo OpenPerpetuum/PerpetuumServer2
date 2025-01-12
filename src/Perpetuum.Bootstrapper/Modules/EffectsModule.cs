@@ -3,7 +3,6 @@ using Perpetuum.ExportedTypes;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Effects;
 using Perpetuum.Zones.Effects.ZoneEffects;
-using System;
 
 namespace Perpetuum.Bootstrapper.Modules
 {
@@ -103,6 +102,8 @@ namespace Perpetuum.Bootstrapper.Modules
             _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_beta2_bonus);
             _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_alpha_bonus);
             _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_alpha2_bonus);
+
+            _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_field_stealth);
 
             _ = builder.Register<EffectFactory>(x =>
             {

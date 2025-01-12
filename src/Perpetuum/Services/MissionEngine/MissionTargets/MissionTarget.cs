@@ -17,7 +17,7 @@ using Perpetuum.Zones.Scanning;
 
 namespace Perpetuum.Services.MissionEngine.MissionTargets
 {
-   
+
 
     [Serializable]
     public abstract class MissionTarget 

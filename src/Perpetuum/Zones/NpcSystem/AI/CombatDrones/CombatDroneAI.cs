@@ -5,16 +5,9 @@ using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.Movements;
-using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.NpcSystem.TargettingStrategies;
-using Perpetuum.Zones.NpcSystem.ThreatManaging;
 using Perpetuum.Zones.RemoteControl;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 {
@@ -24,14 +17,13 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
         private const int Sqrt2 = 141;
         private const int Weight = 1000;
         // Timer for periodically checking the main hostile target.
-        private readonly IntervalTimer updateHostileTimer = new IntervalTimer(UpdateFrequency, true);
-        private readonly IntervalTimer processHostilesTimer = new IntervalTimer(UpdateFrequency);
-        private readonly IntervalTimer primarySelectTimer = new IntervalTimer(UpdateFrequency);
+        private readonly IntervalTimer updateHostileTimer = new(UpdateFrequency, true);
+        private readonly IntervalTimer primarySelectTimer = new(UpdateFrequency);
         private List<ModuleActivator> moduleActivators;
-        private TimeSpan hostilesUpdateFrequency = TimeSpan.FromMilliseconds(UpdateFrequency);
+        private readonly TimeSpan hostilesUpdateFrequency = TimeSpan.FromMilliseconds(UpdateFrequency);
         private readonly CombatPrimaryLockSelectionStrategySelector stratSelector;
         private Position lastTargetPosition;
-        private PathMovement movement;
+        private PathMovement? movement;
         private PathMovement nextMovement;
 
         public CancellationTokenSource source;
@@ -48,7 +40,6 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             IsNpcHasMissiles = smartCreature.ActiveModules
                 .OfType<MissileWeaponModule>()
                 .Any();
-            _ = processHostilesTimer.Update(hostilesUpdateFrequency);
             _ = primarySelectTimer.Update(hostilesUpdateFrequency);
 
             base.Enter();
@@ -63,20 +54,8 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 
         public override void Update(TimeSpan time)
         {
-            //UpdateHostiles(time);
             UpdatePrimaryTarget(time);
             base.Update(time);
-        }
-
-        protected void UpdateHostiles(TimeSpan time)
-        {
-            _ = processHostilesTimer.Update(time);
-
-            if (processHostilesTimer.Passed)
-            {
-                processHostilesTimer.Reset();
-                ProcessHostiles();
-            }
         }
 
         protected void UpdatePrimaryTarget(TimeSpan time)
@@ -95,60 +74,36 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             primarySelectTimer.Interval = TimeSpan.FromSeconds(1.5);
         }
 
-        protected bool IsAttackable(Hostile hostile)
+        protected bool IsAttackable(Unit hostile)
         {
-            if (!hostile.Unit.InZone)
+            if (!hostile.InZone)
             {
                 return false;
             }
 
-            if (hostile.Unit.States.Dead)
+            if (hostile.States.Dead)
             {
                 return false;
             }
 
-            if (!hostile.Unit.IsLockable)
+            if (!hostile.IsLockable)
             {
                 return false;
             }
 
-            if (hostile.Unit.IsAttackable != ErrorCodes.NoError)
+            if (hostile.IsAttackable != ErrorCodes.NoError)
             {
                 return false;
             }
 
-            if (hostile.Unit.IsInvulnerable)
+            if (hostile.IsInvulnerable)
             {
                 return false;
             }
 
-            if (smartCreature.Behavior.Type == BehaviorType.Neutral && hostile.IsExpired)
-            {
-                return false;
-            }
-
-            bool isVisible = smartCreature.IsVisible(hostile.Unit);
+            bool isVisible = smartCreature.IsVisible(hostile);
 
             return isVisible;
-        }
-
-        protected void ProcessHostiles()
-        {
-            System.Collections.Immutable.ImmutableSortedSet<Hostile>.Enumerator hostileEnumerator = smartCreature.ThreatManager.Hostiles.GetEnumerator();
-
-            while (hostileEnumerator.MoveNext())
-            {
-                Hostile hostile = hostileEnumerator.Current;
-
-                if (!IsAttackable(hostile) || !smartCreature.IsInLockingRange(hostile.Unit))
-                {
-                    smartCreature.ThreatManager.Remove(hostile);
-                }
-                else
-                {
-                    smartCreature.AddDirectThreat(hostile.Unit, 100);
-                }
-            }
         }
 
         protected virtual void ToAttackCombatDroneAI()
@@ -170,13 +125,6 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
         {
             smartCreature.AI.Push(new RetreatCombatDroneAI(smartCreature));
         }
-
-        //protected Hostile GetPrimaryHostile()
-        //{
-        //    return smartCreature.ThreatManager.Hostiles
-        //        .Where(h => h.Unit == (smartCreature.GetPrimaryLock() as UnitLock)?.Target)
-        //        .FirstOrDefault();
-        //}
 
         protected virtual void ReturnToHomePosition()
         {
@@ -266,7 +214,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             movement?.Update(smartCreature, time);
         }
 
-        protected UnitLock GetPrimaryUnitLock()
+        protected UnitLock? GetPrimaryUnitLock()
         {
             return (smartCreature as RemoteControlledCreature).CommandRobot
                 .GetLocks()
@@ -282,7 +230,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
         private bool SetLock(UnitLock unitLock)
         {
             bool isNewLock = false;
-            if (unitLock == null)
+            if (unitLock == null || !IsAttackable(unitLock.Target))
             {
                 smartCreature.ResetLocks();
 
@@ -307,7 +255,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             return isNewLock;
         }
 
-        private List<Point> FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)
+        private List<Point>? FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)
         {
             Point end = hostile.CurrentPosition.GetRandomPositionInRange2D(0, smartCreature.BestActionRange - 1).ToPoint();
 
@@ -316,15 +264,15 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             movement = null;
 
             double maxNode = Math.Pow(smartCreature.HomeRange, 2) * Math.PI;
-            PriorityQueue<Node> priorityQueue = new PriorityQueue<Node>((int)maxNode);
-            Node startNode = new Node(smartCreature.CurrentPosition);
+            PriorityQueue<Node> priorityQueue = new((int)maxNode);
+            Node startNode = new(smartCreature.CurrentPosition);
 
             priorityQueue.Enqueue(startNode);
 
-            HashSet<Point> closed = new HashSet<Point>
-            {
+            HashSet<Point> closed =
+            [
                 startNode.position
-            };
+            ];
 
 
             while (priorityQueue.TryDequeue(out Node current))
@@ -360,7 +308,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 
                     int newG = current.g + (n.X - current.position.X == 0 || n.Y - current.position.Y == 0 ? 100 : Sqrt2);
                     int newH = Heuristic.Manhattan.Calculate(n.X, n.Y, end.X, end.Y) * Weight;
-                    Node newNode = new Node(n)
+                    Node newNode = new(n)
                     {
                         g = newG,
                         f = newG + newH,
@@ -390,7 +338,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 
         private static List<Point> BuildPath(Node current)
         {
-            Stack<Point> stack = new Stack<Point>();
+            Stack<Point> stack = new();
             Node node = current;
 
             while (node != null)

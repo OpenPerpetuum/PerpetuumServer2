@@ -1,6 +1,6 @@
 ﻿namespace Perpetuum.Zones.Terrains.Terraforming.Operations
 {
-   
+
 
     public class SimpleTileTerraformingOperation : TerraformingOperation
     {

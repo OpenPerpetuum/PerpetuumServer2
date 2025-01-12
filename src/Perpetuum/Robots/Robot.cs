@@ -17,9 +17,6 @@ using Perpetuum.Zones.DamageProcessors;
 using Perpetuum.Zones.Effects;
 using Perpetuum.Zones.Locking;
 using Perpetuum.Zones.Locking.Locks;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Perpetuum.Robots
 {
@@ -31,7 +28,7 @@ namespace Perpetuum.Robots
         private Lazy<IEnumerable<RobotComponent>> robotComponents;
         private readonly TimeSpan overheatCooldownPeriod = TimeSpan.FromMilliseconds(1650);
         private readonly IntervalTimer overheatCooldownTimer;
-        private const double HeatDissipation = 2;
+        private const double HeatDissipation = 1.75;
 
         protected Robot()
         {
@@ -337,7 +334,7 @@ namespace Perpetuum.Robots
                 UpdateVisibilityOf(unitLock.Target);
             }
 
-            AnonymousBuilder<Packet> builder = new AnonymousBuilder<Packet>(() => LockPacketBuilder.BuildPacket(@lock));
+            AnonymousBuilder<Packet> builder = new(() => LockPacketBuilder.BuildPacket(@lock));
 
             OnBroadcastPacket(builder.ToProxy());
         }
@@ -393,7 +390,7 @@ namespace Perpetuum.Robots
 
         protected override void OnBeforeRemovedFromZone(IZone zone)
         {
-            Module remoteController = Modules?.FirstOrDefault(x => x is RemoteControllerModule);
+            Module? remoteController = Modules?.FirstOrDefault(x => x is RemoteControllerModule);
 
             if (remoteController != null)
             {
