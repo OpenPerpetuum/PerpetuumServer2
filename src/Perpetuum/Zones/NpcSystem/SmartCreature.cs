@@ -22,9 +22,6 @@ using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
 using Perpetuum.Zones.Terrains.Materials.Plants;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Perpetuum.Zones.NpcSystem
 {
@@ -33,15 +30,12 @@ namespace Perpetuum.Zones.NpcSystem
         private const double AggroRange = 30;
         private const double BestComnatRangeModifier = 0.9;
         private const double BaseCallForHelpArmorThreshold = 0.2;
-        private readonly TimeKeeper debounceBodyPull = new TimeKeeper(TimeSpan.FromSeconds(2.5));
-        private readonly TimeKeeper debounceLockChange = new TimeKeeper(TimeSpan.FromSeconds(2.5));
-        private readonly IntervalTimer pseudoUpdateFreq = new IntervalTimer(TimeSpan.FromMilliseconds(650));
+        private readonly TimeKeeper debounceBodyPull = new(TimeSpan.FromSeconds(2.5));
+        private readonly TimeKeeper debounceLockChange = new(TimeSpan.FromSeconds(2.5));
+        private readonly IntervalTimer pseudoUpdateFreq = new(TimeSpan.FromMilliseconds(650));
         private Lazy<int> maxActionRange;
         private Lazy<int> optimalActionRange;
         private TimeSpan lastHelpCalled;
-
-        [CanBeNull]
-        private ISmartCreatureGroup group;
 
         public StackFSM AI { get; private set; }
 
@@ -63,7 +57,8 @@ namespace Perpetuum.Zones.NpcSystem
 
         public bool IsInHomeRange => CurrentPosition.IsInRangeOf2D(HomePosition, HomeRange);
 
-        public ISmartCreatureGroup Group => group;
+        [field: CanBeNull]
+        public ISmartCreatureGroup Group { get; private set; }
 
         public virtual bool IsStationary => MaxSpeed.IsZero();
 
@@ -113,7 +108,7 @@ namespace Perpetuum.Zones.NpcSystem
                         IEnumerable<Position> valuablePositions = result.Area
                             .GetPositions()
                             .Where(x => mineralLayer.HasMineral(x))
-                            .Select(x => Zone.FixZ(x))
+                            .Select(Zone.FixZ)
                             .Where(x => x.IsInRangeOf3D(PositionWithHeight, BestActionRange * 0.9));
                         foreach (Position valuablePosition in valuablePositions)
                         {
@@ -152,7 +147,7 @@ namespace Perpetuum.Zones.NpcSystem
                 if (plants.Any())
                 {
                     IEnumerable<Position> valuablePositions = plants
-                        .Select(x => Zone.FixZ(x))
+                        .Select(Zone.FixZ)
                         .Where(x => x.IsInRangeOf2D(CurrentPosition, BestActionRange * 0.9));
                     foreach (Position valuablePosition in valuablePositions)
                     {
@@ -176,7 +171,7 @@ namespace Perpetuum.Zones.NpcSystem
 
         public void SetGroup(ISmartCreatureGroup group)
         {
-            this.group = group;
+            Group = group;
         }
 
         public void RecalculateOptimalCombatRange()
@@ -222,7 +217,7 @@ namespace Perpetuum.Zones.NpcSystem
                 return;
             }
 
-            if (!(@lock is UnitLock unitLock))
+            if (@lock is not UnitLock unitLock)
             {
                 return;
             }
@@ -262,7 +257,7 @@ namespace Perpetuum.Zones.NpcSystem
                 return;
             }
 
-            BodyPullThreatHelper helper = new BodyPullThreatHelper(this);
+            BodyPullThreatHelper helper = new(this);
 
             enemy.AcceptVisitor(helper);
         }
@@ -303,10 +298,12 @@ namespace Perpetuum.Zones.NpcSystem
 
         public virtual void AddThreat(Unit hostile, Threat threat, bool spreadToGroup)
         {
+            /*
             if (hostile is RemoteControlledCreature)
             {
                 threat = Threat.Multiply(threat, 100);
             }
+            */
 
             if (hostile.IsPlayer())
             {
@@ -404,7 +401,7 @@ namespace Perpetuum.Zones.NpcSystem
                     AI.Push(new HarvestingIndustrialTurretAI(this));
                 }
             }
-            else if (this is CombatDrone || this is SupportDrone)
+            else if (this is CombatDrone or SupportDrone)
             {
                 AI.Push(new GuardCombatDroneAI(this));
             }

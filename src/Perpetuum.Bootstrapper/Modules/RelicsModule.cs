@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using Perpetuum.Data;
 using Perpetuum.Services.Relics;
+using Perpetuum.Services.Relics.RelicManagers;
 using Perpetuum.Zones;
 using System;
 using System.Collections.Generic;

@@ -1,8 +1,5 @@
 ﻿using Perpetuum.Threading;
 using Perpetuum.Threading.Process;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Perpetuum.Services.EventServices
 {
@@ -16,7 +13,7 @@ namespace Perpetuum.Services.EventServices
         private bool _eventStarted;
         private bool _endingEvent;
         private int _bonus;
-        private ReaderWriterLockSlim _lock;
+        private ReaderWriterLockSlim? _lock;
 
         public EPBonusEventService()
         {
@@ -48,7 +45,7 @@ namespace Perpetuum.Services.EventServices
         {
             using (_lock.Read(THREAD_TIMEOUT))
             {
-                return _duration - _elapsed;
+                return !_eventStarted ? TimeSpan.Zero : _duration - _elapsed;
             }
         }
 
@@ -103,7 +100,7 @@ namespace Perpetuum.Services.EventServices
                 _endingEvent = true;
             }
 
-            Task.Run(() => EndEvent());
+            Task.Run(EndEvent);
         }
 
         public override void Stop()

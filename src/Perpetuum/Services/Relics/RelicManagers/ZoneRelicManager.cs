@@ -1,15 +1,11 @@
-﻿using Perpetuum.Zones;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Perpetuum.ExportedTypes;
 using Perpetuum.Services.RiftSystem;
-using System.Drawing;
-using Perpetuum.ExportedTypes;
+using Perpetuum.Zones;
 using Perpetuum.Zones.Beams;
-using System.Threading;
 using Perpetuum.Zones.Intrusion;
+using System.Drawing;
 
-namespace Perpetuum.Services.Relics
+namespace Perpetuum.Services.Relics.RelicManagers
 {
     public class ZoneRelicManager : AbstractRelicManager
     {
@@ -17,9 +13,9 @@ namespace Perpetuum.Services.Relics
         private readonly TimeSpan RESPAWN_RANDOM_WINDOW = TimeSpan.FromHours(1);
         private readonly TimeSpan _respawnRate = TimeSpan.FromHours(1.5);
 
-        private Random _random;
+        private readonly Random _random;
 
-        private IEnumerable<RelicSpawnInfo> _spawnInfos;
+        private readonly IEnumerable<RelicSpawnInfo> _spawnInfos;
 
         //Beam Draw refresh
         private readonly TimeSpan _relicRefreshRate = TimeSpan.FromSeconds(19.95);
@@ -29,32 +25,20 @@ namespace Perpetuum.Services.Relics
         private readonly RelicSpawnInfoRepository relicSpawnInfoRepository;
 
         //Child RelicManagers
-        private IList<OutpostRelicManager> outpostRelicManagers = new List<OutpostRelicManager>();
+        private readonly IList<OutpostRelicManager> outpostRelicManagers = [];
 
-        private RiftSpawnPositionFinder _spawnPosFinder;
+        private readonly RiftSpawnPositionFinder _spawnPosFinder;
 
-        private IZone _zone;
-        protected override IZone Zone
-        {
-            get
-            {
-                return _zone;
-            }
-        }
-        private ReaderWriterLockSlim _lock;
-        protected override ReaderWriterLockSlim Lock
-        {
-            get
-            {
-                return _lock;
-            }
-        }
+        private readonly IZone _zone;
+        protected override IZone Zone => _zone;
+        private readonly ReaderWriterLockSlim _lock;
+        protected override ReaderWriterLockSlim Lock => _lock;
 
         public ZoneRelicManager(IZone zone)
         {
             _lock = new ReaderWriterLockSlim();
             _random = new Random();
-            _relics = new List<IRelic>();
+            _relics = [];
             _zone = zone;
             _spawnPosFinder = new PveRiftSpawnPositionFinder(zone);
             if (zone.Configuration.Terraformable)
@@ -67,7 +51,7 @@ namespace Perpetuum.Services.Relics
             relicLootGenerator = new RelicLootGenerator();
 
             //Get Zone Relic-Configuration data
-            var config = relicZoneConfigRepository.GetZoneConfig();
+            RelicZoneConfig config = relicZoneConfigRepository.GetZoneConfig();
             _max_relics = config.GetMax();
             _respawnRate = config.GetTimeSpan();
             _respawnRandomized = RollNextSpawnTime();
@@ -78,12 +62,12 @@ namespace Perpetuum.Services.Relics
         public override void Start()
         {
             base.Start();
-            var outposts = _zone.Units.OfType<Outpost>().ToList();
-            foreach (var outpost in outposts)
+            List<Outpost> outposts = _zone.Units.OfType<Outpost>().ToList();
+            foreach (Outpost outpost in outposts)
             {
                 outpostRelicManagers.Add(new OutpostRelicManager(outpost));
             }
-            foreach (var childManagers in outpostRelicManagers)
+            foreach (OutpostRelicManager childManagers in outpostRelicManagers)
             {
                 childManagers.Start();
             }
@@ -91,7 +75,7 @@ namespace Perpetuum.Services.Relics
 
         public override void Stop()
         {
-            foreach (var childManagers in outpostRelicManagers)
+            foreach (OutpostRelicManager childManagers in outpostRelicManagers)
             {
                 childManagers.Stop();
             }
@@ -101,7 +85,7 @@ namespace Perpetuum.Services.Relics
         public override void Update(TimeSpan time)
         {
             base.Update(time);
-            foreach (var childManagers in outpostRelicManagers)
+            foreach (OutpostRelicManager childManagers in outpostRelicManagers)
             {
                 childManagers.Update(time);
             }
@@ -109,13 +93,13 @@ namespace Perpetuum.Services.Relics
 
         protected override IRelic MakeRelic(RelicInfo info, Position position)
         {
-            return Relic.BuildAndAddToZone(info, _zone, position, relicLootGenerator.GenerateLoot(info));
+            return AbstractRelic.BuildAndAddToZone(info, _zone, position, relicLootGenerator.GenerateLoot(info));
         }
 
         protected override TimeSpan RollNextSpawnTime()
         {
-            var randomFactor = _random.NextDouble() - 0.5;
-            var minutesToAdd = RESPAWN_RANDOM_WINDOW.TotalMinutes * randomFactor;
+            double randomFactor = _random.NextDouble() - 0.5;
+            double minutesToAdd = RESPAWN_RANDOM_WINDOW.TotalMinutes * randomFactor;
 
             return _respawnRate.Add(TimeSpan.FromMinutes(minutesToAdd));
         }
@@ -123,14 +107,14 @@ namespace Perpetuum.Services.Relics
 
         protected override RelicInfo GetNextRelicType()
         {
-            var spawnRates = _spawnInfos;
+            IEnumerable<RelicSpawnInfo> spawnRates = _spawnInfos;
             double sumRate = spawnRates.Sum(r => r.GetRate());
             double minRate = 0.0;
             double chance = _random.NextDouble();
-            RelicInfo info = null;
-            foreach (var spawnRate in spawnRates)
+            RelicInfo? info = null;
+            foreach (RelicSpawnInfo spawnRate in spawnRates)
             {
-                double rate = (double)spawnRate.GetRate() / sumRate;
+                double rate = spawnRate.GetRate() / sumRate;
                 double maxRate = rate + minRate;
 
                 if (minRate < chance && chance <= maxRate)
@@ -154,8 +138,8 @@ namespace Perpetuum.Services.Relics
 
         protected override List<Dictionary<string, object>> DoGetRelicListDictionary()
         {
-            var list = new List<Dictionary<string, object>>();
-            foreach (var childManagers in outpostRelicManagers)
+            List<Dictionary<string, object>> list = [];
+            foreach (OutpostRelicManager childManagers in outpostRelicManagers)
             {
                 list.AddMany(childManagers.GetRelicListDictionary());
             }
@@ -165,32 +149,21 @@ namespace Perpetuum.Services.Relics
 
         protected override void RefreshBeam(IRelic relic)
         {
-            var info = relic.GetRelicInfo();
-            var level = info.GetLevel();
-            var faction = info.GetFaction();
-            var position = relic.GetPosition();
-            var factionalBeamType = BeamType.orange_20sec;
-            switch (faction)
+            RelicInfo info = relic.GetRelicInfo();
+            int level = info.GetLevel();
+            int faction = info.GetFaction();
+            Position position = relic.GetPosition();
+            BeamType factionalBeamType = BeamType.orange_20sec;
+            factionalBeamType = faction switch
             {
-                case 0:
-                    factionalBeamType = BeamType.orange_20sec;
-                    break;
-                case 1:
-                    factionalBeamType = BeamType.green_20sec;
-                    break;
-                case 2:
-                    factionalBeamType = BeamType.blue_20sec;
-                    break;
-                case 3:
-                    factionalBeamType = BeamType.red_20sec;
-                    break;
-                default:
-                    factionalBeamType = BeamType.orange_20sec;
-                    break;
-            }
-
-            var p = _zone.FixZ(position);
-            var beamBuilder = Beam.NewBuilder().WithType(BeamType.artifact_radar).WithTargetPosition(position)
+                0 => BeamType.orange_20sec,
+                1 => BeamType.green_20sec,
+                2 => BeamType.blue_20sec,
+                3 => BeamType.red_20sec,
+                _ => BeamType.orange_20sec,
+            };
+            Position p = _zone.FixZ(position);
+            BeamBuilder beamBuilder = Beam.NewBuilder().WithType(BeamType.artifact_radar).WithTargetPosition(position)
                 .WithState(BeamState.AlignToTerrain)
                 .WithDuration(_relicRefreshRate);
             _zone.CreateBeam(beamBuilder);
@@ -198,7 +171,7 @@ namespace Perpetuum.Services.Relics
                 .WithState(BeamState.AlignToTerrain)
                 .WithDuration(_relicRefreshRate);
             _zone.CreateBeam(beamBuilder);
-            for (var i = 0; i < level; i++)
+            for (int i = 0; i < level; i++)
             {
                 beamBuilder = Beam.NewBuilder().WithType(factionalBeamType).WithTargetPosition(p.AddToZ(3.5 * i + 1.0))
                     .WithState(BeamState.Hit)
