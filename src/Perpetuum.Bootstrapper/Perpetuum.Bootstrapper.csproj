@@ -8,10 +8,10 @@
 
   <ItemGroup>
     <PackageReference Include="Autofac" Version="8.2.0" />
-    <PackageReference Include="Open.Nat" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Open.Nat\Open.Nat.csproj" />
     <ProjectReference Include="..\Perpetuum.ExportedTypes\Perpetuum.ExportedTypes.csproj" />
     <ProjectReference Include="..\Perpetuum.RequestHandlers\Perpetuum.RequestHandlers.csproj" />
     <ProjectReference Include="..\Perpetuum\Perpetuum.csproj" />

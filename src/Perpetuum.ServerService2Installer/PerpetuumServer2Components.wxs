@@ -3,11 +3,76 @@
   <Fragment>
 	  <ComponentGroup Id="PerpetuumServer2Components" Directory="INSTALLFOLDER">
 		  <Component Id="PerpetuumServer2" Guid="0D6CA7B4-789B-4894-9DFA-7882AC8D21A0">
-			  <File Source="publish/win-x64/admincreds.json" />
-			  <File Source="publish/win-x64/appsettings.json" />
-			  <File Source="publish/win-x64/localserverinfo.json" />
-			  <File Source="publish/win-x64/Microsoft.Data.SqlClient.SNI.dll" />
-			  <File Source="publish/win-x64/Perpetuum.ServerService2.exe" KeyPath="yes" />
+			  <File Source="admincreds.json" />
+			  <File Source="appsettings.json" />
+			  <File Source="Autofac.dll" />
+			  <File Source="Azure.Core.dll" />
+			  <File Source="Azure.Identity.dll" />
+			  <File Source="localserverinfo.json" />
+			  <File Source="Microsoft.Bcl.AsyncInterfaces.dll" />
+			  <File Source="Microsoft.Data.SqlClient.dll" />
+			  <File Source="Microsoft.Extensions.Configuration.Abstractions.dll" />
+			  <File Source="Microsoft.Extensions.Configuration.Binder.dll" />
+			  <File Source="Microsoft.Extensions.Configuration.CommandLine.dll" />
+			  <File Source="Microsoft.Extensions.Configuration.dll" />
+			  <File Source="Microsoft.Extensions.Configuration.EnvironmentVariables.dll" />
+			  <File Source="Microsoft.Extensions.Configuration.FileExtensions.dll" />
+			  <File Source="Microsoft.Extensions.Configuration.Json.dll" />
+			  <File Source="Microsoft.Extensions.Configuration.UserSecrets.dll" />
+			  <File Source="Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+			  <File Source="Microsoft.Extensions.DependencyInjection.dll" />
+			  <File Source="Microsoft.Extensions.Diagnostics.Abstractions.dll" />
+			  <File Source="Microsoft.Extensions.Diagnostics.dll" />
+			  <File Source="Microsoft.Extensions.FileProviders.Abstractions.dll" />
+			  <File Source="Microsoft.Extensions.FileProviders.Physical.dll" />
+			  <File Source="Microsoft.Extensions.FileSystemGlobbing.dll" />
+			  <File Source="Microsoft.Extensions.Hosting.Abstractions.dll" />
+			  <File Source="Microsoft.Extensions.Hosting.dll" />
+			  <File Source="Microsoft.Extensions.Hosting.WindowsServices.dll" />
+			  <File Source="Microsoft.Extensions.Logging.Abstractions.dll" />
+			  <File Source="Microsoft.Extensions.Logging.Configuration.dll" />
+			  <File Source="Microsoft.Extensions.Logging.Console.dll" />
+			  <File Source="Microsoft.Extensions.Logging.Debug.dll" />
+			  <File Source="Microsoft.Extensions.Logging.dll" />
+			  <File Source="Microsoft.Extensions.Logging.EventLog.dll" />
+			  <File Source="Microsoft.Extensions.Logging.EventSource.dll" />
+			  <File Source="Microsoft.Extensions.Options.ConfigurationExtensions.dll" />
+			  <File Source="Microsoft.Extensions.Options.dll" />
+			  <File Source="Microsoft.Extensions.Primitives.dll" />
+			  <File Source="Microsoft.Identity.Client.dll" />
+			  <File Source="Microsoft.Identity.Client.Extensions.Msal.dll" />
+			  <File Source="Microsoft.IdentityModel.Abstractions.dll" />
+			  <File Source="Microsoft.IdentityModel.JsonWebTokens.dll" />
+			  <File Source="Microsoft.IdentityModel.Logging.dll" />
+			  <File Source="Microsoft.IdentityModel.Protocols.dll" />
+			  <File Source="Microsoft.IdentityModel.Protocols.OpenIdConnect.dll" />
+			  <File Source="Microsoft.IdentityModel.Tokens.dll" />
+			  <File Source="Microsoft.SqlServer.Server.dll" />
+			  <File Source="Microsoft.Win32.SystemEvents.dll" />
+			  <File Source="Newtonsoft.Json.dll" />
+			  <File Source="Open.Nat.dll" />
+			  <File Source="Perpetuum.Bootstrapper.dll" />
+			  <File Source="Perpetuum.dll" />
+			  <File Source="Perpetuum.ExportedTypes.dll" />
+			  <File Source="Perpetuum.RequestHandlers.dll" />
+			  <File Source="Perpetuum.ServerService2.deps.json" />
+			  <File Source="Perpetuum.ServerService2.dll" />
+			  <File Source="Perpetuum.ServerService2.exe" KeyPath="yes" />
+			  <File Source="Perpetuum.ServerService2.runtimeconfig.json" />
+			  <File Source="System.ClientModel.dll" />
+			  <File Source="System.Configuration.ConfigurationManager.dll" />
+			  <File Source="System.Diagnostics.DiagnosticSource.dll" />
+			  <File Source="System.Diagnostics.EventLog.dll" />
+			  <File Source="System.Drawing.Common.dll" />
+			  <File Source="System.IdentityModel.Tokens.Jwt.dll" />
+			  <File Source="System.IO.Pipelines.dll" />
+			  <File Source="System.Memory.Data.dll" />
+			  <File Source="System.Private.Windows.Core.dll" />
+			  <File Source="System.Runtime.Caching.dll" />
+			  <File Source="System.Security.Cryptography.ProtectedData.dll" />
+			  <File Source="System.ServiceProcess.ServiceController.dll" />
+			  <File Source="System.Text.Encodings.Web.dll" />
+			  <File Source="System.Text.Json.dll" />
 
 			  <!-- Remove all files from the INSTALLFOLDER on uninstall -->
 			  <RemoveFile Id="ALLFILES" Name="*.*" On="both" />

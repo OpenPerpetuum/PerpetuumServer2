@@ -7,9 +7,6 @@ using Perpetuum.Zones.Beams;
 using Perpetuum.Zones.Locking;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.Terrains;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Perpetuum.Modules.Weapons
 {
@@ -54,6 +51,7 @@ namespace Perpetuum.Modules.Weapons
             {
                 case AggregateField.drone_amplification_damage_modifier:
                 case AggregateField.drone_remote_command_translation_damage_modifier:
+                case AggregateField.effect_dreadnought_weapon_damage_modifier:
                     {
                         DamageModifier.Update();
 

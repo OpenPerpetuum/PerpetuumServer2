@@ -3,6 +3,7 @@ using Autofac.Builder;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Open.Nat;
+using Open.Nat.Enums;
 using Perpetuum.Accounting;
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Bootstrapper.Modules;
