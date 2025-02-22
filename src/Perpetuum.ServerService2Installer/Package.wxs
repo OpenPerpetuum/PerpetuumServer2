@@ -1,7 +1,12 @@
-﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="Perpetuum Dedicated Server v2" Manufacturer="Open Perpetuum" Version="1.0.0.0" UpgradeCode="{0D6CA7B4-789B-4894-9DFA-7882AC8D21A0}">
     <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
 
+	<ui:WixUI
+      Id="WixUI_InstallDir"
+      InstallDirectory="INSTALLFOLDER"
+      />
+	  
     <Feature Id="Main">
       <ComponentGroupRef Id="PerpetuumServer2Components" />
     </Feature>
