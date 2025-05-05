@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace Perpetuum.Zones
+﻿namespace Perpetuum.Zones
 {
     public class DistanceConstants
     {
@@ -29,8 +27,8 @@ namespace Perpetuum.Zones
         public const double PLANT_MIN_DISTANCE_FROM_BASE = 100.0;
         public const double PLANT_MAX_DISTANCE_FROM_OUTPOST = 300.0;
 
-        public const double LANDMINE_DEPLOY_RANGE_FROM_BASE = 100.0;
-        public const double LANDMINE_DEPLOY_RANGE_FROM_TELEPORT = 100.0;
+        public const double LANDMINE_DEPLOY_RANGE_FROM_BASE = 50.0;
+        public const double LANDMINE_DEPLOY_RANGE_FROM_TELEPORT = 50.0;
         public const double LANDMINE_DEPLOY_RANGE_FROM_LANDMINE = 5.0;
 
         public const double PLANT_MIN_DISTANCE_FROM_PBS = 5.0;
@@ -63,7 +61,7 @@ namespace Perpetuum.Zones
 
         public static Dictionary<string, object> GetEnumDictionary()
         {
-            Dictionary<string, object> result = new Dictionary<string, object>();
+            Dictionary<string, object> result = [];
 
             System.Type type = typeof(DistanceConstants); // Get type pointer
             System.Reflection.FieldInfo[] fields = type.GetFields(); // Obtain all fields

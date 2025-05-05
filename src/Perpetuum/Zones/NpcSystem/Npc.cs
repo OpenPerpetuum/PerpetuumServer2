@@ -7,6 +7,7 @@ using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionTargets;
 using Perpetuum.Units;
 using Perpetuum.Zones.Eggs;
+using Perpetuum.Zones.LandMines;
 using Perpetuum.Zones.RemoteControl;
 using System.Diagnostics;
 using System.Numerics;
@@ -192,6 +193,7 @@ namespace Perpetuum.Zones.NpcSystem
         protected override void UpdateUnitVisibility(Unit target)
         {
             if (target is RemoteControlledCreature ||
+                target is LandMine ||
                 (target is Npc npc && npc.ED.Options.Faction != ED.Options.Faction))
             {
                 UpdateVisibility(target);

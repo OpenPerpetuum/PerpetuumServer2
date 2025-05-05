@@ -4,14 +4,12 @@ using Perpetuum.ExportedTypes;
 using Perpetuum.Groups.Corporations;
 using Perpetuum.Log;
 using Perpetuum.Players;
+using Perpetuum.Robots;
 using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Units.DockingBases;
 using Perpetuum.Zones.PBS;
 using Perpetuum.Zones.Teleporting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Perpetuum.Zones.ProximityProbes
 {
@@ -26,7 +24,7 @@ namespace Perpetuum.Zones.ProximityProbes
     public abstract class ProximityDeviceBase : Unit, ICharactersRegistered
     {
         private readonly CharactersRegisterHelper<ProximityDeviceBase> _charactersRegisterHelper;
-        private IntervalTimer _probingInterval = new IntervalTimer(TimeSpan.FromSeconds(10));
+        private IntervalTimer _probingInterval = new(TimeSpan.FromSeconds(10));
         private UnitDespawnHelper _despawnHelper;
 
         protected ProximityDeviceBase()
@@ -84,7 +82,7 @@ namespace Perpetuum.Zones.ProximityProbes
             if (IsActive)
             {
                 //detect
-                List<Player> robotsNearMe = GetNoticedUnits();
+                List<Robot> robotsNearMe = GetNoticedUnits();
 
                 //do something
                 OnUnitsFound(robotsNearMe);
@@ -126,7 +124,7 @@ namespace Perpetuum.Zones.ProximityProbes
 
         // egy adott pillanatban kiket lat
         [CanBeNull]
-        public abstract List<Player> GetNoticedUnits();
+        public abstract List<Robot> GetNoticedUnits();
 
         protected override void OnEnterZone(IZone zone, ZoneEnterType enterType)
         {
@@ -154,27 +152,9 @@ namespace Perpetuum.Zones.ProximityProbes
         }
 
 
-        public virtual void OnUnitsFound(List<Player> unitsFound)
-        {
-            //itt lehet mindenfele, pl most kuldunk egy kommandot amire a kliens terkepet frissit
+        public abstract void OnUnitsFound(List<Robot> unitsFound);
 
-            if (unitsFound.Count <= 0)
-            {
-                return;
-            }
-
-            Character[] registerdCharacters = GetRegisteredCharacters();
-
-            if (registerdCharacters.Length <= 0)
-            {
-                return;
-            }
-
-            Dictionary<string, object> infoDict = CreateInfoDictionaryForProximityProbe(unitsFound);
-
-            Message.Builder.SetCommand(Commands.ProximityProbeInfo).WithData(infoDict).ToCharacters(registerdCharacters).Send();
-        }
-
+        public abstract void OnUnitsFound(List<Player> unitsFound);
         #endregion
 
         protected override void OnDead(Unit killer)
@@ -187,7 +167,7 @@ namespace Perpetuum.Zones.ProximityProbes
         {
             Dictionary<string, object> info = BaseInfoToDictionary();
 
-            Dictionary<string, object> probeDict = new Dictionary<string, object>();
+            Dictionary<string, object> probeDict = [];
 
             if (includeRegistered)
             {
@@ -241,25 +221,6 @@ namespace Perpetuum.Zones.ProximityProbes
             return CorporationManager.LoadCorporationMembersWithAnyRole(corporationEid, roleMask);
         }
 
-        public Dictionary<string, object> CreateInfoDictionaryForProximityProbe(List<Player> unitsFound)
-        {
-            Dictionary<string, object> infoDict = GetProbeInfo(false);
-
-            Dictionary<string, object> unitsInfo = unitsFound.ToDictionary("c", p =>
-            {
-                return new Dictionary<string, object>
-                {
-                    {k.characterID, p.Character.Id},
-                    {k.x, p.CurrentPosition.X},
-                    {k.y, p.CurrentPosition.Y}
-                };
-            });
-
-            infoDict.Add(k.units, unitsInfo);
-
-            return infoDict;
-        }
-
         public void Init(IEnumerable<Character> summonerCharacters)
         {
             PBSRegisterHelper.WriteRegistersToDb(Eid, summonerCharacters);
@@ -310,7 +271,7 @@ namespace Perpetuum.Zones.ProximityProbes
             int currentRegistered = GetRegisteredCharacters().Length;
             int boardMembers = ownerCorporation.GetBoardMembersCount();
 
-            Dictionary<string, object> result = new Dictionary<string, object>
+            Dictionary<string, object> result = new()
             {
                 {k.eid, Eid },
                 {"maxRegistered", maxRegistered},

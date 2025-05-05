@@ -3,16 +3,12 @@ using Perpetuum.Groups.Corporations;
 using Perpetuum.IO;
 using Perpetuum.Log;
 using Perpetuum.Modules.Weapons;
+using Perpetuum.Players;
 using Perpetuum.Units;
 using Perpetuum.Zones.RemoteControl;
 using Perpetuum.Zones.Terrains;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Perpetuum.Zones
 {
@@ -51,20 +47,18 @@ namespace Perpetuum.Zones
         {
             string baseFilename = zone.CreateTerrainDataFilename(layer.LayerType.ToString().ToLower(), "");
 
-            using (MD5 md5 = MD5.Create())
+            using MD5 md5 = MD5.Create();
+            string tmpFn = baseFilename + "tmp" + DateTime.Now.Ticks + ".bin";
+            byte[] layerData = layer.RawData.ToByteArray();
+            _fileSystem.WriteLayer(tmpFn, layerData);
+
+            if (!md5.ComputeHash(layerData).SequenceEqual(md5.ComputeHash(_fileSystem.ReadLayerAsByteArray(tmpFn))))
             {
-                string tmpFn = baseFilename + "tmp" + DateTime.Now.Ticks + ".bin";
-                byte[] layerData = layer.RawData.ToByteArray();
-                _fileSystem.WriteLayer(tmpFn, layerData);
-
-                if (!md5.ComputeHash(layerData).SequenceEqual(md5.ComputeHash(_fileSystem.ReadLayerAsByteArray(tmpFn))))
-                {
-                    return;
-                }
-
-                _fileSystem.MoveLayerFile(tmpFn, baseFilename + "bin");
-                Logger.Info("Layer saved. (" + baseFilename + ")");
+                return;
             }
+
+            _fileSystem.MoveLayerFile(tmpFn, baseFilename + "bin");
+            Logger.Info("Layer saved. (" + baseFilename + ")");
         }
     }
 
@@ -97,13 +91,13 @@ namespace Perpetuum.Zones
         }
 
         [CanBeNull]
-        public static List<Point> FindWalkableArea(this IZone zone, Point startPosition, Area area, int size, double slope = 4.0)
+        public static List<Point>? FindWalkableArea(this IZone zone, Point startPosition, Area area, int size, double slope = 4.0)
         {
-            Queue<Point> q = new Queue<Point>();
+            Queue<Point> q = new();
             q.Enqueue(startPosition);
-            HashSet<Point> closed = new HashSet<Point> { startPosition };
+            HashSet<Point> closed = [startPosition];
 
-            List<Point> result = new List<Point>();
+            List<Point> result = [];
             while (q.TryDequeue(out Point position))
             {
                 result.Add(position);
@@ -188,7 +182,7 @@ namespace Perpetuum.Zones
             {
                 for (int i = centerPosition.intX - range; i < centerPosition.intX + range; i++)
                 {
-                    Position cPos = new Position(i, j);
+                    Position cPos = new(i, j);
 
                     if (centerPosition.IsInRangeOf2D(cPos, range))
                     {
@@ -230,6 +224,11 @@ namespace Perpetuum.Zones
             foreach (Unit unit in units)
             {
                 if (unit is RemoteControlledCreature)
+                {
+                    continue;
+                }
+
+                if (unit is Player player && zone.Configuration.IsAlpha && !player.HasPvpEffect)
                 {
                     continue;
                 }

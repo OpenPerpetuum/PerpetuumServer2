@@ -6,15 +6,15 @@ using Perpetuum.Units;
 
 namespace Perpetuum.Zones.FieldEffectGenerators
 {
-    public class FieldEffectGeneratorDeployer : ItemDeployer
+    public class FieldReactorStabilizerEffectGeneratorDeployer : ItemDeployer
     {
-        public FieldEffectGeneratorDeployer(IEntityServices entityServices) : base(entityServices)
+        public FieldReactorStabilizerEffectGeneratorDeployer(IEntityServices entityServices) : base(entityServices)
         {
         }
 
         protected override Unit CreateDeployableItem(IZone zone, Position spawnPosition, Player player)
         {
-            FieldEffectGenerator fieldEffectGenerator = (FieldEffectGenerator)base.CreateDeployableItem(zone, spawnPosition, player);
+            FieldReactorStabilizerEffectGenerator fieldEffectGenerator = (FieldReactorStabilizerEffectGenerator)base.CreateDeployableItem(zone, spawnPosition, player);
             fieldEffectGenerator.CheckDeploymentAndThrow(zone, spawnPosition);
             fieldEffectGenerator.SetDespawnTime(FieldEffectGeneratorDespawnTime);
 

@@ -10,12 +10,7 @@ using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.NpcSystem.TargettingStrategies;
 using Perpetuum.Zones.NpcSystem.ThreatManaging;
 using Perpetuum.Zones.Terrains;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {
@@ -25,14 +20,14 @@ namespace Perpetuum.Zones.NpcSystem.AI
         private const int Sqrt2 = 141;
         private const int Weight = 1000;
         // Timer for periodically checking the main hostile target.
-        private readonly IntervalTimer updateHostileTimer = new IntervalTimer(UpdateFrequency, true);
-        private readonly IntervalTimer processHostilesTimer = new IntervalTimer(UpdateFrequency);
-        private readonly IntervalTimer primarySelectTimer = new IntervalTimer(UpdateFrequency);
+        private readonly IntervalTimer updateHostileTimer = new(UpdateFrequency, true);
+        private readonly IntervalTimer processHostilesTimer = new(UpdateFrequency);
+        private readonly IntervalTimer primarySelectTimer = new(UpdateFrequency);
         private List<ModuleActivator> moduleActivators;
-        private TimeSpan hostilesUpdateFrequency = TimeSpan.FromMilliseconds(UpdateFrequency);
+        private readonly TimeSpan hostilesUpdateFrequency = TimeSpan.FromMilliseconds(UpdateFrequency);
         private CombatPrimaryLockSelectionStrategySelector stratSelector;
         private Position lastTargetPosition;
-        private PathMovement movement;
+        private PathMovement? movement;
         private PathMovement nextMovement;
 
         public CancellationTokenSource source;
@@ -137,6 +132,12 @@ namespace Perpetuum.Zones.NpcSystem.AI
             }
 
             if (hostile.Unit.IsInvulnerable)
+            {
+                return false;
+            }
+
+            // Fix NPC aggro while having teleport sickness
+            if (hostile.Unit.HasTeleportSicknessEffect)
             {
                 return false;
             }
@@ -358,7 +359,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return smartCreature
                 .GetLocks()
                 .Select(l => (UnitLock)l)
-                .Where(u => IsLockValidTarget(u))
+                .Where(IsLockValidTarget)
                 .ToArray();
         }
 
@@ -378,15 +379,15 @@ namespace Perpetuum.Zones.NpcSystem.AI
             movement = null;
 
             double maxNode = Math.Pow(smartCreature.HomeRange, 2) * Math.PI;
-            PriorityQueue<Node> priorityQueue = new PriorityQueue<Node>((int)maxNode);
-            Node startNode = new Node(smartCreature.CurrentPosition);
+            PriorityQueue<Node> priorityQueue = new((int)maxNode);
+            Node startNode = new(smartCreature.CurrentPosition);
 
             priorityQueue.Enqueue(startNode);
 
-            HashSet<Point> closed = new HashSet<Point>
-            {
+            HashSet<Point> closed =
+            [
                 startNode.position
-            };
+            ];
 
 
             while (priorityQueue.TryDequeue(out Node current))
@@ -422,7 +423,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
                     int newG = current.g + (n.X - current.position.X == 0 || n.Y - current.position.Y == 0 ? 100 : Sqrt2);
                     int newH = Heuristic.Manhattan.Calculate(n.X, n.Y, end.X, end.Y) * Weight;
-                    Node newNode = new Node(n)
+                    Node newNode = new(n)
                     {
                         g = newG,
                         f = newG + newH,
@@ -452,7 +453,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
         private static List<Point> BuildPath(Node current)
         {
-            Stack<Point> stack = new Stack<Point>();
+            Stack<Point> stack = new();
             Node node = current;
 
             while (node != null)

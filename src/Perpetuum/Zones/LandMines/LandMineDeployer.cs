@@ -1,4 +1,5 @@
-﻿using Perpetuum.Deployers;
+﻿using Perpetuum.Accounting.Characters;
+using Perpetuum.Deployers;
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Groups.Corporations;
@@ -20,7 +21,7 @@ namespace Perpetuum.Zones.LandMines
 
         protected override Unit CreateDeployableItem(IZone zone, Position spawnPosition, Player player)
         {
-            zone.Configuration.Protected.ThrowIfTrue(ErrorCodes.OnlyUnProtectedZonesAllowed);
+            //zone.Configuration.Protected.ThrowIfTrue(ErrorCodes.OnlyUnProtectedZonesAllowed);
 
             PrivateCorporation corporation = player.Character.GetPrivateCorporationOrThrow();
 
@@ -36,7 +37,7 @@ namespace Perpetuum.Zones.LandMines
 
             zone.UnitService.AddUserUnit(landMine, spawnPosition);
 
-            List<Accounting.Characters.Character> initialMembers = corporation.GetMembersWithAnyRoles(CorporationRole.CEO, CorporationRole.DeputyCEO).Select(cm => cm.character).ToList();
+            List<Character> initialMembers = corporation.GetMembersWithAnyRoles(CorporationRole.CEO, CorporationRole.DeputyCEO).Select(cm => cm.character).ToList();
             initialMembers.Add(player.Character);
 
             landMine.Init(initialMembers.Distinct());
@@ -47,10 +48,12 @@ namespace Perpetuum.Zones.LandMines
 
         protected override ErrorCodes CanDeploy(IZone zone, Unit unit, Position spawnPosition, Player player)
         {
+            /*
             if (zone.Configuration.Protected)
             {
                 return ErrorCodes.OnlyUnProtectedZonesAllowed;
             }
+            */
 
             if (!zone.Configuration.Terraformable)
             {
@@ -80,6 +83,7 @@ namespace Perpetuum.Zones.LandMines
             get
             {
                 Items.ItemPropertyModifier m = GetPropertyModifier(AggregateField.despawn_time);
+
                 return TimeSpan.FromMilliseconds((int)m.Value);
             }
         }
