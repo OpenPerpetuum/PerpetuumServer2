@@ -96,6 +96,39 @@ namespace Perpetuum.Services.Channels.ChatCommands
             zone.IsLayerEditLocked = toLock;
             SendMessageToAll(data, $"All layers on zone {zoneId} {(toLock ? "LOCKED" : "UNLOCKED")}!");
         }
+
+        private static void SwitchZoneDegrade(AdminCommandData data, bool state)
+        {
+            if (!IsDevModeEnabled(data))
+            {
+                return;
+            }
+
+            bool err = false;
+            int zoneId = -1;
+            if (data.Command.Args.IsNullOrEmpty())
+            {
+                Character character = data.Request.Session.Character;
+                zoneId = character.ZoneId ?? -1;
+            }
+            else if (data.Command.Args.Length >= 1)
+            {
+                err = !int.TryParse(data.Command.Args[0], out int id);
+                zoneId = id;
+            }
+
+            if (err)
+            {
+                SendMessageToAll(data, "Error parsing args");
+                throw PerpetuumException.Create(ErrorCodes.RequiredArgumentIsNotSpecified);
+            }
+
+            CheckZoneId(data, zoneId);
+            IZone zone = data.Request.Session.ZoneMgr.GetZone(zoneId);
+            zone.TerraformHandler.Degrade = state;
+            SendMessageToAll(data, $"Zone {zoneId} degrade {(state ? "ENABLED" : "DISABLED")}!");
+        }
+
         public static void CheckZoneId(AdminCommandData data, int zoneId)
         {
             if (!data.Request.Session.ZoneMgr.ContainsZone(zoneId))

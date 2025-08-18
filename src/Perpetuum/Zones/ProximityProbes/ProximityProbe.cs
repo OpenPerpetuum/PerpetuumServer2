@@ -102,5 +102,10 @@ namespace Perpetuum.Zones.ProximityProbes
         {
             throw new System.NotImplementedException();
         }
+
+        protected override ProximityDeviceBase GetThis()
+        {
+            return this;
+        }
     }
 }

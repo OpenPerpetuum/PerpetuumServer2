@@ -114,6 +114,11 @@ namespace Perpetuum.Zones.LandMines
         {
             throw new NotImplementedException();
         }
+
+        protected override ProximityDeviceBase GetThis()
+        {
+            return this;
+        }
         #endregion
     }
 }
