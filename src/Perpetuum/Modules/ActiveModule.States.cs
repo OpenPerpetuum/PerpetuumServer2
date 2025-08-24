@@ -1,13 +1,11 @@
-﻿using System;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Transactions;
-using Perpetuum.Data;
+﻿using Perpetuum.Data;
 using Perpetuum.Items.Ammos;
 using Perpetuum.Log;
 using Perpetuum.Robots;
 using Perpetuum.StateMachines;
 using Perpetuum.Timers;
+using System.Diagnostics;
+using System.Transactions;
 
 namespace Perpetuum.Modules
 {
@@ -28,7 +26,7 @@ namespace Perpetuum.Modules
         void LoadAmmo(int ammoDefinition);
         void UnloadAmmo();
     }
-    
+
     public interface ITimedModuleState : IModuleState
     {
         IntervalTimer Timer { get; }
@@ -45,7 +43,7 @@ namespace Perpetuum.Modules
             {
                 var currentState = _states.Current;
                 Debug.Assert(currentState != null, "_states != null");
-                return (IModuleState) currentState;
+                return (IModuleState)currentState;
             }
         }
 
@@ -75,7 +73,7 @@ namespace Perpetuum.Modules
             }
 
             protected ActiveModule Module { get; private set; }
-            public    ModuleStateType Type { get; private set; }
+            public ModuleStateType Type { get; private set; }
 
             public abstract void SwitchTo(ModuleStateType type);
             public abstract void LoadAmmo(int ammoDefinition);
@@ -121,13 +119,13 @@ namespace Perpetuum.Modules
                 {
                     case ModuleStateType.Oneshot:
                     case ModuleStateType.AutoRepeat:
-                    {
-                        if (Module.ED.AttributeFlags.ForceOneCycle)
-                            type = ModuleStateType.Oneshot;
+                        {
+                            if (Module.ED.AttributeFlags.ForceOneCycle)
+                                type = ModuleStateType.Oneshot;
 
-                        Module._states.Push(new ActiveState(Module, type));
-                        break;
-                    }
+                            Module._states.Push(new ActiveState(Module, type));
+                            break;
+                        }
                 }
             }
 
@@ -160,15 +158,15 @@ namespace Perpetuum.Modules
                 switch (type)
                 {
                     case ModuleStateType.Idle:
-                    {
-                        Module._states.Pop();
-                        break;
-                    }
+                        {
+                            Module._states.Pop();
+                            break;
+                        }
                     case ModuleStateType.Shutdown:
-                    {
-                        Module._states.Push(new ShutdownState(Module, _timer));
-                        break;
-                    }
+                        {
+                            Module._states.Push(new ShutdownState(Module, _timer));
+                            break;
+                        }
                 }
             }
 
@@ -330,7 +328,7 @@ namespace Perpetuum.Modules
                     Finish();
                     return;
                 }
-                
+
                 _timer.Update(time);
 
                 if (!_timer.Passed)
@@ -373,7 +371,13 @@ namespace Perpetuum.Modules
                 {
                     Debug.Assert(Module.ParentRobot != null, "Module.ParentRobot != null");
                     var container = Module.ParentRobot.GetContainer();
+
+                    if (container is null)
+                    {
+                        return; // Additional check for Debug
+                    }
                     Debug.Assert(container != null, "container != null");
+
                     container.EnlistTransaction();
                     OnAction(container);
 
@@ -422,7 +426,7 @@ namespace Perpetuum.Modules
                 if (ammo == null || ammo.Definition == 0)
                     return null;
 
-                return new AmmoLoadState(module,ammo.Definition);
+                return new AmmoLoadState(module, ammo.Definition);
             }
 
             protected override void OnAction(RobotInventory container)
@@ -440,7 +444,7 @@ namespace Perpetuum.Modules
                 currentAmmo = Module.GetAmmo();
                 if (currentAmmo != null)
                 {
-                    var n = (Module.AmmoCapacity - currentAmmo.Quantity).Clamp(0,Module.AmmoCapacity);
+                    var n = (Module.AmmoCapacity - currentAmmo.Quantity).Clamp(0, Module.AmmoCapacity);
                     if (n == 0)
                         return;
 
@@ -449,7 +453,7 @@ namespace Perpetuum.Modules
                     {
                         Module.OnError(ErrorCodes.AmmoNotFound);
                     }
-                    
+
                     currentAmmo.Quantity += q;
 
                     if (currentAmmo.Quantity <= 0)
@@ -463,7 +467,7 @@ namespace Perpetuum.Modules
                 }
                 else
                 {
-                    var newAmmo = (Ammo) container.GetAndRemoveItemByDefinition(_ammoDefinition, Module.AmmoCapacity);
+                    var newAmmo = (Ammo)container.GetAndRemoveItemByDefinition(_ammoDefinition, Module.AmmoCapacity);
                     if (newAmmo == null)
                     {
                         OnError(ErrorCodes.AmmoNotFound);

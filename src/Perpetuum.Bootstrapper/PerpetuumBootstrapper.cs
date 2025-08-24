@@ -63,6 +63,7 @@ using System.Numerics;
 using System.Runtime;
 using System.Runtime.Caching;
 using System.Text;
+using System.Transactions;
 using IContainer = Autofac.IContainer;
 using LogEvent = Perpetuum.Log.LogEvent;
 
@@ -141,6 +142,8 @@ namespace Perpetuum.Bootstrapper
             Logger.Info($"GC isServerGC: {GCSettings.IsServerGC}");
             Logger.Info($"GC Latency mode: {GCSettings.LatencyMode}");
             Logger.Info($"Vector is hardware accelerated: {Vector.IsHardwareAccelerated}");
+
+            TransactionManager.ImplicitDistributedTransactions = true;
 
             Db.DbQueryFactory = _container.Resolve<Func<DbQuery>>();
 

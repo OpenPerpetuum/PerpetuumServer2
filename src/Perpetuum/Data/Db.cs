@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using System.Transactions;
+﻿using System.Transactions;
 
 namespace Perpetuum.Data
 {
@@ -34,7 +32,7 @@ namespace Perpetuum.Data
         {
             return new TransactionScope(TransactionScopeOption.Required, new TransactionOptions
             {
-                IsolationLevel = IsolationLevel.ReadCommitted
+                IsolationLevel = IsolationLevel.ReadCommitted,
             });
         }
     }

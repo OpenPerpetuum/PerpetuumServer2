@@ -1,6 +1,4 @@
-using System;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 
 namespace Perpetuum.Zones.Terrains
@@ -31,13 +29,13 @@ namespace Perpetuum.Zones.Terrains
 
     }
 
-    public class Layer<T> : Layer,ILayer<T> where T : struct
+    public class Layer<T> : Layer, ILayer<T> where T : struct
     {
-        public Layer(LayerType layerType,int width,int height) : this(layerType,new T[width * height],width,height)
+        public Layer(LayerType layerType, int width, int height) : this(layerType, new T[width * height], width, height)
         {
         }
 
-        public Layer(LayerType layerType,T[] rawData, int width, int height) : base(layerType, width, height)
+        public Layer(LayerType layerType, T[] rawData, int width, int height) : base(layerType, width, height)
         {
             RawData = rawData;
             SizeInBytes = Marshal.SizeOf<T>();
@@ -98,7 +96,7 @@ namespace Perpetuum.Zones.Terrains
                     var areaStride = area.Width * SizeInBytes;
                     for (var i = 0; i < area.Height; i++)
                     {
-                        Buffer.MemoryCopy(pSrc,pDest,areaStride,areaStride);
+                        Buffer.MemoryCopy(pSrc, pDest, areaStride, areaStride);
                         pSrc += stride;
                         pDest += areaStride;
                     }
@@ -135,7 +133,7 @@ namespace Perpetuum.Zones.Terrains
 
             for (var i = 0; i < area.Height; i++)
             {
-                Array.Copy(data, sOffset,RawData, dOffset, area.Width);
+                Array.Copy(data, sOffset, RawData, dOffset, area.Width);
                 sOffset += area.Width;
                 dOffset += Width;
             }
@@ -145,16 +143,16 @@ namespace Perpetuum.Zones.Terrains
 
         public T GetValue(int x, int y)
         {
-            Debug.Assert(x >= 0 && x < Width && y >= 0 && y < Height,"invalid position!");
-            return RawData[y*Width + x];
+            Debug.Assert(x >= 0 && x < Width && y >= 0 && y < Height, "invalid position!");
+            return RawData[y * Width + x];
         }
 
-        public void SetValue(int x, int y,T value)
+        public void SetValue(int x, int y, T value)
         {
             Debug.Assert(x >= 0 && x < Width && y >= 0 && y < Height, "invalid position!");
-            OnUpdating(x, y,ref value);
-            RawData[y*Width + x] = value;
-            OnUpdated(x,y);
+            OnUpdating(x, y, ref value);
+            RawData[y * Width + x] = value;
+            OnUpdated(x, y);
         }
 
         public event LayerUpdated Updated;
@@ -172,7 +170,7 @@ namespace Perpetuum.Zones.Terrains
             AreaUpdated?.Invoke(this, area);
         }
 
-        protected virtual void OnUpdating(int x, int y,ref T value)
+        protected virtual void OnUpdating(int x, int y, ref T value)
         {
         }
     }

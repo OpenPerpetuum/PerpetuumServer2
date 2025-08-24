@@ -6,13 +6,14 @@ using Perpetuum.Services.ProductionEngine;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Scanning;
 using System.Data;
+using System.Runtime.Serialization;
 
 namespace Perpetuum.Services.MissionEngine.MissionTargets
 {
     /// <summary>
     ///     dummy target type to mark a dynamic location
     /// </summary>
-    [Serializable]
+    [DataContract]
     public class RandomPointMissionTarget : MissionTarget
     {
         public RandomPointMissionTarget(IDataRecord record) : base(record) { }
@@ -24,7 +25,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     }
 
 
-    [Serializable]
+    [DataContract]
+    [KnownType(typeof(UseSwitchRandomTarget))]
+    [KnownType(typeof(SubmitItemRandomTarget))]
+    [KnownType(typeof(ItemSupplyRandomTarget))]
     public abstract class MissionStructureTarget : RandomMissionTarget
     {
         protected MissionStructureTarget(IDataRecord record) : base(record) { }
@@ -74,7 +78,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     }
 
 
-    [Serializable]
+    [DataContract]
     public class PopNpcRandomTarget : RandomMissionTarget
     {
         public PopNpcRandomTarget(IDataRecord record) : base(record)
@@ -134,7 +138,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class KillRandomTarget : RandomMissionTarget
     {
         public KillRandomTarget(IDataRecord record) : base(record)
@@ -188,17 +192,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class LootRandomTarget : RandomMissionTarget
     {
-
-
-
-        public LootRandomTarget(IDataRecord record) : base(record) { }
-
-
+        [DataMember]
         public override MissionTargetType Type => MissionTargetType.loot_item;
 
+        public LootRandomTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -237,10 +237,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
     }
 
-    [Serializable]
+    [DataContract]
     public class UseSwitchRandomTarget : MissionStructureTarget
     {
-
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.use_switch;
+        [DataMember]
+        private readonly double[] _levelMultipliers = new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
         public UseSwitchRandomTarget(IDataRecord record) : base(record) { }
 
@@ -248,9 +251,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         {
             visitor.Visit_MissionTarget_RND_use_switch(this);
         }
-
-        public override MissionTargetType Type => MissionTargetType.use_switch;
-
 
         /// <summary>
         ///     No definition is needed for the switch to operate, skip base class's resolve
@@ -272,7 +272,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             base.PostLoadedAsConfigTarget();
         }
 
-        private readonly double[] _levelMultipliers = new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         public override double GetLevelMultiplier(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.MissionLevel;
@@ -281,10 +280,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class SubmitItemRandomTarget : MissionStructureTarget
     {
-
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.submit_item;
+        [DataMember]
+        private readonly double[] _levelMultipliers = new double[] { 5, 10, 50, 500, 2000, 5000, 10000, 20000, 50000, 100000 };
 
         public SubmitItemRandomTarget(IDataRecord record) : base(record) { }
 
@@ -292,9 +294,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         {
             visitor.Visit_MissionTarget_RND_submit_item(this);
         }
-
-        public override MissionTargetType Type => MissionTargetType.submit_item;
-
 
         protected override void ProcessMyQuantity(MissionInProgress missionInProgress)
         {
@@ -316,7 +315,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             }
         }
 
-        private readonly double[] _levelMultipliers = new double[] { 5, 10, 50, 500, 2000, 5000, 10000, 20000, 50000, 100000 };
         public override double GetLevelMultiplier(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.MissionLevel;
@@ -325,10 +323,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class ItemSupplyRandomTarget : MissionStructureTarget
     {
-
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.use_itemsupply;
+        [DataMember]
+        private readonly double[] _levelMultipliers = new double[] { 5, 10, 50, 500, 2000, 5000, 10000, 20000, 50000, 100000 };
 
         public ItemSupplyRandomTarget(IDataRecord record) : base(record) { }
 
@@ -336,8 +337,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         {
             visitor.Visit_MissionTarget_RND_use_itemsupply(this);
         }
-
-        public override MissionTargetType Type => MissionTargetType.use_itemsupply;
 
         public override void ResolveLinks(MissionInProgress missionInProgress)
         {
@@ -374,9 +373,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             base.Scale(missionInProgress);
         }
 
-
-
-        private readonly double[] _levelMultipliers = new double[] { 5, 10, 50, 500, 2000, 5000, 10000, 20000, 50000, 100000 };
         public override double GetLevelMultiplier(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.MissionLevel;
@@ -386,9 +382,15 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     }
 
 
-    [Serializable]
+    [DataContract]
     public class FindArtifactRandomTarget : RandomMissionTarget
     {
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.find_artifact;
+        // TODO: to DB?
+        [DataMember]
+        private readonly int[] _artifactRanges = new[] { 25, 50, 75, 100, 150, 225, 350, 525, 750, 1000 };
+
         public FindArtifactRandomTarget(IDataRecord record) : base(record)
         {
             useQuantityOnly = true; //new tech
@@ -398,9 +400,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         {
             visitor.Visit_MissionTarget_RND_find_artifact(this);
         }
-
-
-        public override MissionTargetType Type => MissionTargetType.find_artifact;
 
         public override bool ResolveLocation(MissionInProgress missionInProgress)
         {
@@ -439,9 +438,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             base.ProcessMyQuantity(missionInProgress);
         }
 
-        // TODO: to DB?
-        private readonly int[] _artifactRanges = new[] { 25, 50, 75, 100, 150, 225, 350, 525, 750, 1000 };
-
         private void ScaleArtifactRange(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.ScaleMissionLevel;
@@ -479,10 +475,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class ScanMineralRandomTarget : RandomMissionTarget
     {
-
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.scan_mineral;
+        [DataMember]
+        private readonly double[] _levelMultipliers = new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
         public ScanMineralRandomTarget(IDataRecord record) : base(record) { }
 
@@ -514,8 +513,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             base.ResolveLinks(missionInProgress);
         }
 
-        public override MissionTargetType Type => MissionTargetType.scan_mineral;
-
         public override void PostLoadedAsConfigTarget()
         {
             if (_levelMultipliers.Length != 10)
@@ -526,7 +523,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             base.PostLoadedAsConfigTarget();
         }
 
-        private readonly double[] _levelMultipliers = new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         public override double GetLevelMultiplier(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.MissionLevel;
@@ -535,17 +531,20 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class LockUnitRandomTarget : RandomMissionTarget
     {
+        [DataMember]
         private long[] _lockedNpcEids;
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.lock_unit;
 
         public LockUnitRandomTarget(IDataRecord record) : base(record)
         {
             useQuantityOnly = true; //force new tech
         }
 
-        public override MissionTargetType Type => MissionTargetType.lock_unit;
+
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -615,10 +614,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     }
 
 
-    [Serializable]
+    [DataContract]
     public class DrillMineralRandomTarget : RandomMissionTarget
     {
-
+        [DataMember]
+        private readonly double[] _levelMultipliers = new double[] { 5, 10, 25, 50, 80, 125, 200, 300, 450, 650 };
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.drill_mineral;
 
         public DrillMineralRandomTarget(IDataRecord record) : base(record) { }
 
@@ -642,8 +644,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
             base.ResolveLinks(missionInProgress);
         }
-
-        public override MissionTargetType Type => MissionTargetType.drill_mineral;
 
         protected override void ProcessMyQuantity(MissionInProgress missionInProgress)
         {
@@ -673,7 +673,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             }
         }
 
-        private readonly double[] _levelMultipliers = new double[] { 5, 10, 25, 50, 80, 125, 200, 300, 450, 650 };
         public override double GetLevelMultiplier(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.MissionLevel;
@@ -684,10 +683,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
     }
 
-    [Serializable]
+    [DataContract]
     public class HarvestPlantRandomTarget : RandomMissionTarget
     {
-
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.harvest_plant;
+        [DataMember]
+        private readonly double[] _levelMultipliers = new double[] { 5, 10, 25, 50, 75, 115, 175, 250, 425, 600 };
 
         public HarvestPlantRandomTarget(IDataRecord record) : base(record) { }
 
@@ -713,8 +715,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             base.ResolveLinks(missionInProgress);
         }
 
-        public override MissionTargetType Type => MissionTargetType.harvest_plant;
-
         protected override void ProcessMyQuantity(MissionInProgress missionInProgress)
         {
             TryScaleByTypeOrCopyPrimaryQuantity(missionInProgress);
@@ -739,7 +739,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             base.PostLoadedAsConfigTarget();
         }
 
-        private readonly double[] _levelMultipliers = new double[] { 5, 10, 25, 50, 75, 115, 175, 250, 425, 600 };
         public override double GetLevelMultiplier(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.MissionLevel;
@@ -750,9 +749,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
     }
 
-    [Serializable]
+    [DataContract]
     public class FetchItemRandomTarget : RandomMissionTarget
     {
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.fetch_item;
+        [DataMember]
+        private readonly double[] _levelMultipliers = new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
         public FetchItemRandomTarget(IDataRecord record) : base(record) { }
 
@@ -774,8 +777,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
             base.ResolveLinks(missionInProgress);
         }
-
-        public override MissionTargetType Type => MissionTargetType.fetch_item;
 
         public override bool ResolveLocation(MissionInProgress missionInProgress)
         {
@@ -875,7 +876,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             }
         }
 
-        private readonly double[] _levelMultipliers = new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         public override double GetLevelMultiplier(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.MissionLevel;
@@ -884,18 +884,20 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class MassproduceRandomTarget : RandomMissionTarget
     {
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.massproduce;
+        [DataMember]
+        private readonly double[] _levelMultipliers = new double[] { 5, 10, 50, 500, 2000, 5000, 10000, 20000, 50000, 100000 };
+
         public MassproduceRandomTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
             visitor.Visit_MissionTarget_RND_massproduce(this);
         }
-
-
-        public override MissionTargetType Type => MissionTargetType.massproduce;
 
         public override void ResolveLinks(MissionInProgress missionInProgress)
         {
@@ -970,7 +972,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             }
         }
 
-        private readonly double[] _levelMultipliers = new double[] { 5, 10, 50, 500, 2000, 5000, 10000, 20000, 50000, 100000 };
         public override double GetLevelMultiplier(MissionInProgress missionInProgress)
         {
             int level = missionInProgress.MissionLevel;
@@ -979,18 +980,18 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class ResearchRandomTarget : RandomMissionTarget
     {
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.research;
+
         public ResearchRandomTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
             visitor.Visit_MissionTarget_RND_research(this);
         }
-
-
-        public override MissionTargetType Type => MissionTargetType.research;
 
         public override void ResolveLinks(MissionInProgress missionInProgress)
         {
@@ -1031,18 +1032,18 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class SpawnItemRandomTarget : RandomMissionTarget
     {
+        [DataMember]
+        public override MissionTargetType Type => MissionTargetType.spawn_item;
+
         public SpawnItemRandomTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
             visitor.Visit_MissionTarget_RND_spawn_item(this);
         }
-
-
-        public override MissionTargetType Type => MissionTargetType.spawn_item;
 
         public override void ResolveLinks(MissionInProgress missionInProgress)
         {

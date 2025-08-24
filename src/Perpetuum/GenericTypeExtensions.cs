@@ -61,7 +61,7 @@ namespace Perpetuum
             dcs.WriteObject(ms, source);
             ms.Seek(0, SeekOrigin.Begin);
 
-            return (T)dcs.ReadObject(ms);
+            return (T?)dcs.ReadObject(ms);
         }
     }
 }

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using Perpetuum.EntityFramework;
+﻿using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items.Templates;
 using Perpetuum.Log;
@@ -10,17 +6,45 @@ using Perpetuum.Services.MissionEngine.Missions;
 using Perpetuum.Services.ProductionEngine;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Artifacts;
+using System.Data;
+using System.Runtime.Serialization;
 
 namespace Perpetuum.Services.MissionEngine.MissionTargets
 {
-    [Serializable]
+    [DataContract]
+    [KnownType(typeof(MissionStructureTarget))]
+    [KnownType(typeof(PopNpcRandomTarget))]
+    [KnownType(typeof(KillRandomTarget))]
+    [KnownType(typeof(LootRandomTarget))]
+    [KnownType(typeof(FindArtifactRandomTarget))]
+    [KnownType(typeof(ScanMineralRandomTarget))]
+    [KnownType(typeof(LockUnitRandomTarget))]
+    [KnownType(typeof(DrillMineralRandomTarget))]
+    [KnownType(typeof(HarvestPlantRandomTarget))]
+    [KnownType(typeof(FetchItemRandomTarget))]
+    [KnownType(typeof(MassproduceRandomTarget))]
+    [KnownType(typeof(ResearchRandomTarget))]
+    [KnownType(typeof(SpawnItemRandomTarget))]
     public abstract class RandomMissionTarget : MissionTarget
     {
-        //use these lookups to add random amount of npcs to the final quantity
-        private static readonly List<int> _minRandomNpcPerLevel = new List<int>() {0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 5};
-        private static readonly List<int> _maxRandomNpcPerLevel = new List<int>() {1, 1, 1, 2, 2, 3, 3, 4, 5, 5, 5};
 
-        protected RandomMissionTarget(IDataRecord record) : base(record) {}
+        //use these lookups to add random amount of npcs to the final quantity
+        [DataMember]
+        private static readonly List<int> _minRandomNpcPerLevel = new List<int>() { 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 5 };
+        [DataMember]
+        private static readonly List<int> _maxRandomNpcPerLevel = new List<int>() { 1, 1, 1, 2, 2, 3, 3, 4, 5, 5, 5 };
+        [DataMember]
+        private const int MaxRangeExtend = 600;
+        [DataMember]
+        private const int SpotRangeExtend = 100;
+        [DataMember]
+        private const int MinimumAmountOfSpots = 5;
+        [DataMember]
+        private const int StructureRangeExtend = 150;
+        [DataMember]
+        private const int MinimumAmountOfStructures = 2;
+
+        protected RandomMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -33,7 +57,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         {
             return 1.0;
         }
-        
+
         /// <summary>
         /// Advanced operation: build the running target object
         /// </summary>
@@ -44,21 +68,21 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             var missionTarget = GetClone();
             return MissionTargetInProgressFactory(missionInProgress, missionTarget);
         }
-        
+
         public override bool ResolveLocation(MissionInProgress missionInProgress)
         {
             Log("Location found: " + this);
 
             return base.ResolveLocation(missionInProgress);
         }
-        
+
         public override void PostLoadedAsConfigTarget()
         {
             // most toltottuk be az sqlbol a cachebe itt lehet initelni ha kell
 
             //NO BASE CALL
         }
-        
+
         /// <summary>
         /// Set - technically cache - the target position from the x,y
         /// </summary>
@@ -82,7 +106,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                 categorFlags = PrimaryCategoryFlags;
             }
 
-            definition = GetCombinedDefinitionFromPools(missionInProgress,categorFlags);
+            definition = GetCombinedDefinitionFromPools(missionInProgress, categorFlags);
         }
 
         protected void SetSecondaryDefinitionFromMissionItemsPool(MissionInProgress missionInProgress)
@@ -96,7 +120,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
             secondaryDefinition = GetCombinedDefinitionFromPools(missionInProgress, categoryFlags);
 
-            
+
         }
 
         private int GetCombinedDefinitionFromPools(MissionInProgress missionInProgress, CategoryFlags categoryFlags)
@@ -151,12 +175,12 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                 Log("no possible CPRG definitions to select from. " + this + " " + missionInProgress);
                 throw new PerpetuumException(ErrorCodes.ConsistencyError);
             }
-            
+
             //now we load the active cprg definitions from the character/gang
             var activeCPRGDefinitions = missionInProgress.CollectActiveCPRGDefinitions();
 
             Log("active CPRG definitions:" + activeCPRGDefinitions.Count);
-            
+
             possibleRandomCPRGList = possibleRandomCPRGList.Except(activeCPRGDefinitions).ToList();
 
             Log("except active: " + possibleRandomCPRGList.Count);
@@ -184,7 +208,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
         private int GetDefinitionFromMissionItemsPool(MissionInProgress missionInProgress, CategoryFlags categoryFlags)
         {
-            
+
             var possibleDefinitions = EntityDefault.All.GetByCategoryFlags(categoryFlags).Select(d => d.Definition).ToList();
 
             Log("possible mission item definitions:" + categoryFlags + " " + possibleDefinitions.Count);
@@ -379,7 +403,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             targetPositionZone = selectedTarget.ZoneId;
         }
 
-        
+
 
         private MissionTarget SearchForPossibleSpots(MissionInProgress missionInProgress)
         {
@@ -396,7 +420,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             return selectedTarget;
         }
 
-       
+
 
         protected MissionTarget SelectRandomMissionStructure(MissionInProgress missionInProgress, MissionTargetType targetType)
         {
@@ -413,9 +437,6 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             return selectedTarget;
         }
 
-        private const int MaxRangeExtend = 600;
-        private const int SpotRangeExtend = 100;
-        private const int MinimumAmountOfSpots = 5;
         private List<MissionTarget> SearchForMinimalAmountOfSpots(MissionInProgress missionInProgress, List<MissionTarget> alreadySelected)
         {
             var attempt = 1;
@@ -428,7 +449,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                 attempt++;
                 rangeExtend += SpotRangeExtend;
                 spots = GetPossibleMissionSpots(missionInProgress, rangeExtend).Except(alreadySelected).ToList();
-                
+
                 Log(" " + spots.Count + " " + " rnd points found. range extend:" + rangeExtend + " attempt:" + attempt);
 
             }
@@ -437,16 +458,14 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
         }
 
-        private const int StructureRangeExtend = 150;
-        private const int MinimumAmountOfStructures = 2;
         private List<MissionTarget> SearchForMinimalAmountOfStructures(MissionInProgress missionInProgress, MissionTargetType targetType, List<MissionTarget> alreadySelected)
         {
             var attempt = 1;
             var rangeExtend = 0;
             var structures = GetPossibleStructureTargets(missionInProgress, targetType, rangeExtend).Except(alreadySelected).ToList();
 
-            Log( " " + structures.Count +" " +  targetType +" structures found. attempt:" + attempt);
-            
+            Log(" " + structures.Count + " " + targetType + " structures found. attempt:" + attempt);
+
 
             while (structures.Count < MinimumAmountOfStructures && rangeExtend < MaxRangeExtend)
             {
@@ -469,12 +488,12 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                    t.ValidZoneSet &&
                    missionInProgress.myLocation.ZoneConfig.Id == t.ZoneId &&
                    missionInProgress.SearchOrigin.IsInRangeOf2D(t.targetPosition, t.FindRadius + rangeExtension) &&
-                   missionDataCache.IsTargetSelectionValid(missionInProgress.myLocation.Zone,missionInProgress.SearchOrigin,t.targetPosition)
+                   missionDataCache.IsTargetSelectionValid(missionInProgress.myLocation.Zone, missionInProgress.SearchOrigin, t.targetPosition)
                    ).ToList();
-            
+
         }
-        
-       
+
+
         private List<MissionTarget> GetPossibleStructureTargets(MissionInProgress missionInProgress, MissionTargetType targetType, double rangeExtension)
         {
             return missionDataCache.GetAllMissionTargets
@@ -485,7 +504,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                               t.ValidZoneSet &&
                               t.ZoneId == missionInProgress.myLocation.ZoneConfig.Id &&
                               missionInProgress.SearchOrigin.IsInRangeOf2D(t.targetPosition, t.FindRadius + rangeExtension) &&
-                              missionDataCache.IsTargetSelectionValid(missionInProgress.myLocation.Zone,missionInProgress.SearchOrigin,t.targetPosition)
+                              missionDataCache.IsTargetSelectionValid(missionInProgress.myLocation.Zone, missionInProgress.SearchOrigin, t.targetPosition)
                   ).ToList();
         }
 
@@ -548,7 +567,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
                     definition = rl.calibrationProgramDefinition;
 
-                    Log("CPRG resolved from link: " + PrimaryEntityDefault.Definition + " " + PrimaryEntityDefault.Name );
+                    Log("CPRG resolved from link: " + PrimaryEntityDefault.Definition + " " + PrimaryEntityDefault.Name);
                     return;
                 }
             }
@@ -559,7 +578,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                 SetDefinitionAsCPRGFromPool(missionInProgress);
             }
 
-           
+
 
         }
 
@@ -611,12 +630,12 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             var smallRandom = FastRandom.NextDouble(0.9, 1.1);
 
             var scalesCycles = (rawCycles + (gangMemberCount * rawCycles * missionDataCache.ScaleMineralLevelFractionForGangMember)) * PrimaryScaleMultiplier * smallRandom;
-            
-            var scaledQuantity = scalesCycles * perCycle;
-            
-            quantity = (int) (Math.Floor(scaledQuantity.Clamp(0, double.MaxValue)));
 
-            Log("scaled as mineral "  + quantity + " G:" + gangMemberCount + " lvl:" + level + " cycles: " + (int)scalesCycles);
+            var scaledQuantity = scalesCycles * perCycle;
+
+            quantity = (int)(Math.Floor(scaledQuantity.Clamp(0, double.MaxValue)));
+
+            Log("scaled as mineral " + quantity + " G:" + gangMemberCount + " lvl:" + level + " cycles: " + (int)scalesCycles);
         }
 
         protected void TryCopyQuantityFromPrimaryLink(MissionInProgress missionInProgress)
@@ -742,9 +761,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                     }
                     else
                     {
-                        Log("secondaty quantity left manual: " + SecondaryQuantity);    
+                        Log("secondaty quantity left manual: " + SecondaryQuantity);
                     }
-                    
+
                 }
                 else
                 {
@@ -759,10 +778,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                 }
             }
 
-            
+
         }
 
-        protected void ProcessPrimaryQuantityAsNpc(MissionInProgress missionInProgress )
+        protected void ProcessPrimaryQuantityAsNpc(MissionInProgress missionInProgress)
         {
             if (ValidQuantitySet)
             {
@@ -877,7 +896,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
             if (scalePrimaryQuantityWithLevel)
             {
                 ScaleQuantityWithMissionLevel(missionInProgress);
-                
+
             }
 
             //... etc
@@ -886,7 +905,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         protected void ScaleQuantityWithMissionLevel(MissionInProgress missionInProgress, bool processPrimary = true)
         {
             var level = missionInProgress.MissionLevel;
-            var gm = missionInProgress.ScaleGangMemberCount +1;
+            var gm = missionInProgress.ScaleGangMemberCount + 1;
 
             int whichQuantity;
             if (processPrimary)
@@ -927,7 +946,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         {
             if (ProcessQuantityOrSkip(missionInProgress))
             {
-                base.Scale(missionInProgress);    
+                base.Scale(missionInProgress);
             }
         }
 
@@ -971,7 +990,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                 missionInProgress.AddToSelectedItems(itemDefinition);
 
                 //as a side effect it may happen that previous targets choose this definition. dont be surprised!
-                
+
                 //possible workaround
                 // position the spawn targets as the last/first items, so they will find the item amongst the choosen ones
                 // according to research targets in mission
@@ -979,7 +998,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                 definition = itemDefinition;
                 quantity = 1;
 
-                Log("researchable item resolved:" + PrimaryEntityDefault.Name + " from " + linkedTarget.myTarget );
+                Log("researchable item resolved:" + PrimaryEntityDefault.Name + " from " + linkedTarget.myTarget);
 
                 return true;
             }
@@ -994,7 +1013,7 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
                 ScaleNpcAmount(missionInProgress);
                 return;
             }
-            
+
             TryCopyQuantityFromPrimaryLink(missionInProgress);
 
 

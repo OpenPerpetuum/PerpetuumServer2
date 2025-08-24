@@ -1,12 +1,26 @@
-﻿using System;
-using System.Data;
+﻿using System.Data;
+using System.Runtime.Serialization;
 
 namespace Perpetuum.Services.MissionEngine.MissionTargets
 {
-    [Serializable]
+    [DataContract]
+    [KnownType(typeof(LootItemMissionTarget))]
+    [KnownType(typeof(ReachPositionMissionTarget))]
+    [KnownType(typeof(KillDefinitionMissionTarget))]
+    [KnownType(typeof(ScanMineralMissionTarget))]
+    [KnownType(typeof(ScanUnitMissionTarget))]
+    [KnownType(typeof(ScanContainerMissionTarget))]
+    [KnownType(typeof(DrillMineralMissionTarget))]
+    [KnownType(typeof(SubmitItemMissionTarget))]
+    [KnownType(typeof(UseSwitchMissionTarget))]
+    [KnownType(typeof(FindArtifactMissionTarget))]
+    [KnownType(typeof(UseItemsupplyMissionTarget))]
+    [KnownType(typeof(HarvestPlantMissionTarget))]
+    [KnownType(typeof(SummonNpcEggMissionTarget))]
+    [KnownType(typeof(PopNpcMissionTarget))]
     public abstract class MissionTargetRunsOnZone : MissionTarget
     {
-        protected MissionTargetRunsOnZone(IDataRecord record) : base(record) {}
+        protected MissionTargetRunsOnZone(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -14,10 +28,13 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
+    [KnownType(typeof(PrototypeMissionTarget))]
+    [KnownType(typeof(MassproduceMissionTarget))]
+    [KnownType(typeof(ResearchMissionTarget))]
     public abstract class MissionTargetProduction : MissionTarget
     {
-        protected MissionTargetProduction(IDataRecord record) : base(record) {}
+        protected MissionTargetProduction(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -25,10 +42,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class FetchItemMissionTarget : MissionTarget
     {
-        public FetchItemMissionTarget(IDataRecord record) : base(record) {}
+        public FetchItemMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -36,10 +53,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class LootItemMissionTarget : MissionTargetRunsOnZone
     {
-        public LootItemMissionTarget(IDataRecord record) : base(record) {}
+        public LootItemMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -47,10 +64,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class ReachPositionMissionTarget : MissionTargetRunsOnZone
     {
-        public ReachPositionMissionTarget(IDataRecord record) : base(record) {}
+        public ReachPositionMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -58,10 +75,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class KillDefinitionMissionTarget : MissionTargetRunsOnZone
     {
-        public KillDefinitionMissionTarget(IDataRecord record) : base(record) {}
+        public KillDefinitionMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -69,10 +86,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class ScanMineralMissionTarget : MissionTargetRunsOnZone
     {
-        public ScanMineralMissionTarget(IDataRecord record) : base(record) {}
+        public ScanMineralMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -80,10 +97,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class ScanUnitMissionTarget : MissionTargetRunsOnZone
     {
-        public ScanUnitMissionTarget(IDataRecord record) : base(record) {}
+        public ScanUnitMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -91,10 +108,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class ScanContainerMissionTarget : MissionTargetRunsOnZone
     {
-        public ScanContainerMissionTarget(IDataRecord record) : base(record) {}
+        public ScanContainerMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -102,10 +119,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class DrillMineralMissionTarget : MissionTargetRunsOnZone
     {
-        public DrillMineralMissionTarget(IDataRecord record) : base(record) {}
+        public DrillMineralMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -113,10 +130,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class SubmitItemMissionTarget : MissionTargetRunsOnZone
     {
-        public SubmitItemMissionTarget(IDataRecord record) : base(record) {}
+        public SubmitItemMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -124,10 +141,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class UseSwitchMissionTarget : MissionTargetRunsOnZone
     {
-        public UseSwitchMissionTarget(IDataRecord record) : base(record) {}
+        public UseSwitchMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -135,10 +152,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class FindArtifactMissionTarget : MissionTargetRunsOnZone
     {
-        public FindArtifactMissionTarget(IDataRecord record) : base(record) {}
+        public FindArtifactMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -146,10 +163,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class DockInMissionTarget : MissionTarget
     {
-        public DockInMissionTarget(IDataRecord record) : base(record) {}
+        public DockInMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -157,10 +174,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class UseItemsupplyMissionTarget : MissionTargetRunsOnZone
     {
-        public UseItemsupplyMissionTarget(IDataRecord record) : base(record) {}
+        public UseItemsupplyMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -168,10 +185,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class PrototypeMissionTarget : MissionTargetProduction
     {
-        public PrototypeMissionTarget(IDataRecord record) : base(record) {}
+        public PrototypeMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -179,10 +196,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class MassproduceMissionTarget : MissionTargetProduction
     {
-        public MassproduceMissionTarget(IDataRecord record) : base(record) {}
+        public MassproduceMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -190,10 +207,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class ResearchMissionTarget : MissionTargetProduction
     {
-        public ResearchMissionTarget(IDataRecord record) : base(record) {}
+        public ResearchMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -201,10 +218,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class TeleportMissionTarget : MissionTarget
     {
-        public TeleportMissionTarget(IDataRecord record) : base(record) {}
+        public TeleportMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -212,10 +229,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class HarvestPlantMissionTarget : MissionTargetRunsOnZone
     {
-        public HarvestPlantMissionTarget(IDataRecord record) : base(record) {}
+        public HarvestPlantMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -223,10 +240,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class SummonNpcEggMissionTarget : MissionTargetRunsOnZone
     {
-        public SummonNpcEggMissionTarget(IDataRecord record) : base(record) {}
+        public SummonNpcEggMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -234,10 +251,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class PopNpcMissionTarget : MissionTargetRunsOnZone
     {
-        public PopNpcMissionTarget(IDataRecord record) : base(record) {}
+        public PopNpcMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -245,10 +262,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class SpawnItemMissionTarget : MissionTarget
     {
-        public SpawnItemMissionTarget(IDataRecord record) : base(record) {}
+        public SpawnItemMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
@@ -256,18 +273,18 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
         }
     }
 
-    [Serializable]
+    [DataContract]
     public class LockUnitMissionTarget : MissionTarget
     {
-        
-        public LockUnitMissionTarget(IDataRecord record) : base(record) {}
+
+        public LockUnitMissionTarget(IDataRecord record) : base(record) { }
 
         public override void AcceptVisitor(MissionTargetVisitor visitor)
         {
             visitor.Visit_MissionTarget_lock_unit(this);
         }
 
-        
+
     }
 
 }

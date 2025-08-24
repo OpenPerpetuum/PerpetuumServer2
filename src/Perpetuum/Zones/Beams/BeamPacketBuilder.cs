@@ -1,4 +1,3 @@
-using System;
 using Perpetuum.Builders;
 
 namespace Perpetuum.Zones.Beams
@@ -23,7 +22,7 @@ namespace Perpetuum.Zones.Beams
             packet.AppendPosition(_beam.SourcePosition);
             packet.AppendLong(_beam.TargetEid);
             packet.AppendPosition(_beam.TargetPosition);
-            packet.AppendInt((int) _beam.Duration.TotalMilliseconds);
+            packet.AppendInt((int)_beam.Duration.TotalMilliseconds);
 
             var elapsed = DateTime.Now.Subtract(_beam.Created);
             packet.AppendInt((int)elapsed.TotalMilliseconds);

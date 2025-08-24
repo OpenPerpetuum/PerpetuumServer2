@@ -1,12 +1,10 @@
-using System;
-
 namespace Perpetuum.Log.Loggers
 {
     public class ColoredConsoleLogger : ConsoleLogger<LogEvent>
     {
         private readonly ConsoleColor _defaultColor = Console.ForegroundColor;
 
-        public ColoredConsoleLogger(ILogEventFormatter<LogEvent,string> formatter) : base(formatter)
+        public ColoredConsoleLogger(ILogEventFormatter<LogEvent, string> formatter) : base(formatter)
         {
         }
 
@@ -17,18 +15,18 @@ namespace Perpetuum.Log.Loggers
                 switch (logEvent.LogType)
                 {
                     case LogType.Warning:
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        break;
-                    }
-                    case LogType.Error:
-                    {
                         {
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.Beep(4000, 30);
+                            Console.ForegroundColor = ConsoleColor.Yellow;
                             break;
                         }
-                    }
+                    case LogType.Error:
+                        {
+                            {
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                //Console.Beep(4000, 30); I HAET U GOU OWEI
+                                break;
+                            }
+                        }
                 }
 
                 base.Log(logEvent);
