@@ -2,6 +2,8 @@
 using Perpetuum.Common.Loggers;
 using Perpetuum.Host.Requests;
 using Perpetuum.Services.Channels.ChatCommands;
+using Perpetuum.Services.EventServices;
+using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Services.Sessions;
 using System.Collections.Concurrent;
 
@@ -9,15 +11,27 @@ namespace Perpetuum.Services.Channels
 {
     public class ChannelManager : IChannelManager
     {
+        private const string HelpChat = "regchannel_help";
+
         private readonly ISessionManager _sessionManager;
         private readonly IChannelRepository _channelRepository;
         private readonly IChannelMemberRepository _memberRepository;
         private readonly IChannelBanRepository _banRepository;
         private readonly ChannelLoggerFactory _channelLoggerFactory;
-        private readonly ConcurrentDictionary<string, Channel> _channels = [];
+        private readonly ConcurrentDictionary<string, Channel> _channels = new ConcurrentDictionary<string, Channel>();
         private readonly AdminCommandRouter _adminCommand;
+        private readonly GlobalConfiguration _globalConfiguration;
+        private readonly EventListenerService _eventChannel;
 
-        public ChannelManager(ISessionManager sessionManager, IChannelRepository channelRepository, IChannelMemberRepository memberRepository, IChannelBanRepository banRepository, ChannelLoggerFactory channelLoggerFactory, AdminCommandRouter adminCommand)
+        public ChannelManager(
+            ISessionManager sessionManager,
+            IChannelRepository channelRepository,
+            IChannelMemberRepository memberRepository,
+            IChannelBanRepository banRepository,
+            ChannelLoggerFactory channelLoggerFactory,
+            AdminCommandRouter adminCommand,
+            EventListenerService eventListener,
+            GlobalConfiguration globalConfiguration)
         {
             _sessionManager = sessionManager;
             _sessionManager.SessionAdded += OnSessionAdded;
@@ -32,6 +46,9 @@ namespace Perpetuum.Services.Channels
             {
                 _channels[channel.Name] = channel;
             }
+
+            _eventChannel = eventListener;
+            _globalConfiguration = globalConfiguration;
         }
 
         private void OnSessionAdded(ISession session)
@@ -61,7 +78,7 @@ namespace Perpetuum.Services.Channels
         {
             foreach (string name in _channels.Keys)
             {
-                ChannelMember? m = null;
+                ChannelMember m = null;
                 Channel channel = UpdateChannel(name, c =>
                 {
                     m = c.GetMember(character);
@@ -82,7 +99,7 @@ namespace Perpetuum.Services.Channels
         public void CreateChannel(ChannelType type, string name)
         {
             IChannelLogger logger = _channelLoggerFactory(name);
-            Channel channel = new(type, name, logger);
+            Channel channel = new Channel(type, name, logger);
             channel = _channelRepository.Insert(channel);
             _channels[name] = channel;
         }
@@ -99,7 +116,7 @@ namespace Perpetuum.Services.Channels
 
             foreach (ChannelMember member in channel.Members)
             {
-                Dictionary<string, object> data = new() { { k.member, member.ToDictionary() } };
+                Dictionary<string, object> data = new Dictionary<string, object> { { k.member, member.ToDictionary() } };
                 MessageBuilder n = channel.CreateNotificationMessage(ChannelNotify.RemoveMember, data);
                 channel.SendToOne(_sessionManager, member.character, n);
             }
@@ -107,7 +124,7 @@ namespace Perpetuum.Services.Channels
 
         public void JoinChannel(string channelName, Character member, ChannelMemberRole role, string password)
         {
-            ChannelMember? newMember = null;
+            ChannelMember newMember = null;
             Channel channel = UpdateChannel(channelName, c =>
             {
                 if (c.IsOnline(member))
@@ -181,7 +198,7 @@ namespace Perpetuum.Services.Channels
 
             if (!isKicked)
             {
-                Dictionary<string, object> data = new() { { k.member, m.ToDictionary() } };
+                Dictionary<string, object> data = new Dictionary<string, object> { { k.member, m.ToDictionary() } };
                 MessageBuilder n = channel.CreateNotificationMessage(ChannelNotify.RemoveMember, data);
 
                 channel.SendToAll(_sessionManager, n);
@@ -207,7 +224,7 @@ namespace Perpetuum.Services.Channels
                 return;
             }
 
-            Dictionary<string, object> data = new() { { k.issuerID, issuer.Id }, { k.password, password } };
+            Dictionary<string, object> data = new Dictionary<string, object> { { k.issuerID, issuer.Id }, { k.password, password } };
             MessageBuilder n = channel.CreateNotificationMessage(ChannelNotify.ChangePassword, data);
             channel.SendToAll(_sessionManager, n);
         }
@@ -227,7 +244,7 @@ namespace Perpetuum.Services.Channels
                 return;
             }
 
-            Dictionary<string, object> data = new() { { k.issuerID, issuer.Id }, { k.topic, topic } };
+            Dictionary<string, object> data = new Dictionary<string, object> { { k.issuerID, issuer.Id }, { k.topic, topic } };
             MessageBuilder n = channel.CreateNotificationMessage(ChannelNotify.ChangeTopic, data);
             channel.SendToAll(_sessionManager, n);
             channel.Logger.TopicChanged(issuer, topic);
@@ -241,7 +258,7 @@ namespace Perpetuum.Services.Channels
                 return;
             }
 
-            ChannelMember? m = null;
+            ChannelMember m = null;
             Channel channel = UpdateChannel(channelName, c =>
             {
                 c.CheckRoleAndThrowIfFailed(issuer, PresetChannelRoles.ROLE_CAN_MODIFY_MEMBER_ROLE);
@@ -262,7 +279,7 @@ namespace Perpetuum.Services.Channels
                 return;
             }
 
-            Dictionary<string, object> data = new() { { k.issuerID, issuer.Id }, { k.member, m.ToDictionary() } };
+            Dictionary<string, object> data = new Dictionary<string, object> { { k.issuerID, issuer.Id }, { k.member, m.ToDictionary() } };
             MessageBuilder n = channel.CreateNotificationMessage(ChannelNotify.ChangeMemberRole, data);
             channel.SendToAll(_sessionManager, n);
         }
@@ -292,8 +309,17 @@ namespace Perpetuum.Services.Channels
             else
             {
                 channel.SendMessageToAll(_sessionManager, sender, message);
-            }
 
+                if (channel.DiscordId != null)
+                {
+                    _eventChannel.PublishMessage(
+                        new DiscordIntegrationMessage(
+                            EventType.PerpetuumToDiscord,
+                            channel.DiscordId.Value,
+                            sender.Nick,
+                            message));
+                }
+            }
         }
 
         public void Announcement(string channelName, Character sender, string message)
@@ -318,7 +344,7 @@ namespace Perpetuum.Services.Channels
             // adminokat / gm-eket nem lehet kickelni
             character.AccessLevel.IsAdminOrGm().ThrowIfTrue(ErrorCodes.AccessDenied);
 
-            ChannelMember? m = null;
+            ChannelMember m = null;
 
             Channel channel = UpdateChannel(channelName, c =>
             {
@@ -339,7 +365,7 @@ namespace Perpetuum.Services.Channels
                 return;
             }
 
-            Dictionary<string, object> data = new()
+            Dictionary<string, object> data = new Dictionary<string, object>
             {
                 {k.issuerID, issuer.Id},
                 {k.member, m.ToDictionary()},
@@ -366,7 +392,7 @@ namespace Perpetuum.Services.Channels
         [CanBeNull]
         private Channel UpdateChannel(string name, Func<Channel, Channel> channelUpdater)
         {
-            SpinWait spinWait = new();
+            SpinWait spinWait = new SpinWait();
             while (true)
             {
                 if (!_channels.TryGetValue(name, out Channel snapshot))
@@ -393,7 +419,7 @@ namespace Perpetuum.Services.Channels
         {
             if (!_channels.TryGetValue(channelName, out Channel channel))
             {
-                return [];
+                return Enumerable.Empty<Character>();
             }
 
             channel.CheckRoleAndThrowIfFailed(issuer, PresetChannelRoles.ROLE_CAN_LIST_BANNED_MEMBERS);
@@ -407,12 +433,24 @@ namespace Perpetuum.Services.Channels
 
         public IEnumerable<Channel> GetPublicChannels()
         {
-            return _channels.Values.Where(c => c.Type is ChannelType.Public or ChannelType.Highlighted);
+            return _channels.Values.Where(c => c.Type == ChannelType.Public || c.Type == ChannelType.Highlighted);
         }
 
         public IEnumerable<Channel> GetAllChannels()
         {
             return _channels.Values;
         }
+
+        public string GetChannelNameByDiscordId(ulong discordId)
+        {
+            return _channels.FirstOrDefault(x => x.Value.DiscordId.GetValueOrDefault() == discordId).Key;
+        }
+    }
+
+    internal class DiscordPayload
+    {
+        public string content { get; set; }
+
+        public object allowed_mentions { get; } = new { parse = new[] { "users" } };
     }
 }

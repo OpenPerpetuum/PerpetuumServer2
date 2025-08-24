@@ -17,7 +17,7 @@ namespace Perpetuum.Zones.LandMines
     public class LandMine : ProximityDeviceBase
     {
         private const int BeamDistance = 600;
-        private readonly IntervalTimer gracePeriodInterval = new(TimeSpan.FromSeconds(15));
+        private readonly IntervalTimer gracePeriodInterval = new IntervalTimer(TimeSpan.FromSeconds(15));
 
         public int TriggerMass => ED.Options.GetOption<int>("triggerMass");
 
@@ -71,7 +71,7 @@ namespace Perpetuum.Zones.LandMines
         [CanBeNull]
         public override List<Robot> GetNoticedUnits()
         {
-            List<Robot> noticedRobots = [];
+            List<Robot> noticedRobots = new List<Robot>();
 
             List<Npc> noticedNpcs = GetVisibleUnits().Select(v => v.Target).OfType<Npc>().ToList();
             noticedRobots.AddRange(noticedNpcs);
@@ -108,11 +108,6 @@ namespace Perpetuum.Zones.LandMines
             {
                 base.AcceptVisitor(visitor);
             }
-        }
-
-        public override void OnUnitsFound(List<Player> unitsFound)
-        {
-            throw new NotImplementedException();
         }
 
         protected override ProximityDeviceBase GetThis()

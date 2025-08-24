@@ -2,6 +2,7 @@ using Perpetuum.Data;
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
+using Perpetuum.Log;
 using Perpetuum.Modules.ModuleProperties;
 using Perpetuum.Players;
 using Perpetuum.Services.MissionEngine.MissionTargets;
@@ -71,10 +72,10 @@ namespace Perpetuum.Modules
         {
             if (!layer.HasMineral(location))
             {
-                return [];
+                return new List<ItemInfo>();
             }
 
-            MineralExtractor extractor = new(location, amount, MaterialHelper);
+            MineralExtractor extractor = new MineralExtractor(location, amount, MaterialHelper);
             layer.AcceptVisitor(extractor);
 
             return new List<ItemInfo>(extractor.Items);
@@ -127,7 +128,7 @@ namespace Perpetuum.Modules
             }
             else
             {
-                if (GetAmmo() is not MiningAmmo ammo)
+                if (!(GetAmmo() is MiningAmmo ammo))
                 {
                     return;
                 }
@@ -151,19 +152,22 @@ namespace Perpetuum.Modules
                     ErrorCodes.NoMineralOnTile,
                     (PerpetuumException ex) =>
                     {
-                        RemoteControlledCreature? creature = ParentRobot as RemoteControlledCreature;
+                        RemoteControlledCreature creature = ParentRobot as RemoteControlledCreature;
                         creature?.ProcessIndustrialTarget(terrainLock.Location.Center, 0);
                     });
             extractedMaterials
                 .AddRange(RareMaterialHandler.GenerateRareMaterials(materialInfo.EntityDefault.Definition));
             CreateBeam(terrainLock.Location, BeamState.AlignToTerrain);
+
+            List<(string resourceName, int quantity)> resourceStats = new List<(string resourceName, int quantity)>();
+
             using (TransactionScope scope = Db.CreateTransaction())
             {
                 Debug.Assert(ParentRobot != null, "ParentRobot != null");
                 Robots.RobotInventory container = ParentRobot.GetContainer();
                 Debug.Assert(container != null, "container != null");
                 container.EnlistTransaction();
-                Player? player = ParentRobot is RemoteControlledCreature remoteControlledCreature &&
+                Player player = ParentRobot is RemoteControlledCreature remoteControlledCreature &&
                     remoteControlledCreature.CommandRobot is Player ownerPlayer
                     ? ownerPlayer
                     : ParentRobot as Player;
@@ -185,6 +189,8 @@ namespace Perpetuum.Modules
                                 drilledQuantity,
                                 terrainLock.Location));
                     player.Zone?.MiningLogHandler.EnqueueMiningLog(drilledMineralDefinition, drilledQuantity);
+
+                    resourceStats.Add((material.EntityDefault.Name, material.Quantity));
                 }
 
                 //save container
@@ -192,6 +198,23 @@ namespace Perpetuum.Modules
                 OnGathererMaterial(zone, player, (int)materialInfo.Type);
                 Transaction.Current.OnCommited(() => container.SendUpdateToOwnerAsync());
                 scope.Complete();
+            }
+
+            foreach (var (resourceName, quantity) in resourceStats)
+            {
+                try
+                {
+                    Db.Query()
+                        .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity")
+                        .SetParameter("@gathered_on", DateTime.UtcNow)
+                        .SetParameter("@resource_name", resourceName)
+                        .SetParameter("@quantity", quantity)
+                        .ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex.Message);
+                }
             }
 
             GenerateHeat(EffectType.effect_excavator);

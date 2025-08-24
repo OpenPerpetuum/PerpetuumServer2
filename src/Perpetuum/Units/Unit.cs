@@ -19,6 +19,7 @@ using Perpetuum.Zones.DamageProcessors;
 using Perpetuum.Zones.Effects;
 using Perpetuum.Zones.Eggs;
 using Perpetuum.Zones.Gates;
+using Perpetuum.Zones.Intrusion;
 using Perpetuum.Zones.Locking;
 using Perpetuum.Zones.NpcSystem;
 using Perpetuum.Zones.PBS;
@@ -41,7 +42,7 @@ namespace Perpetuum.Units
         private ICoreRecharger _coreRecharger = CoreRecharger.None;
 
         private readonly DamageProcessor _damageProcessor;
-        private readonly object _killSync = new();
+        private readonly object _killSync = new object();
 
         private Position _currentPosition;
         private double _currentSpeed;
@@ -78,7 +79,7 @@ namespace Perpetuum.Units
         {
             _damageProcessor = new DamageProcessor(this) { DamageTaken = OnDamageTaken };
 
-            EffectHandler effectHandler = new(this);
+            EffectHandler effectHandler = new EffectHandler(this);
             effectHandler.EffectChanged += OnEffectChanged;
             EffectHandler = effectHandler;
 
@@ -127,7 +128,7 @@ namespace Perpetuum.Units
 
         public bool InZone => Zone != null;
 
-        public OptionalPropertyCollection OptionalProperties { get; } = [];
+        public OptionalPropertyCollection OptionalProperties { get; } = new OptionalPropertyCollection();
 
         public EffectHandler EffectHandler { get; private set; }
 
@@ -253,7 +254,7 @@ namespace Perpetuum.Units
             OnUpdate(time);
         }
 
-        private readonly IntervalTimer _broadcastTimer = new(200);
+        private readonly IntervalTimer _broadcastTimer = new IntervalTimer(200);
 
         protected virtual void OnUpdate(TimeSpan time)
         {
@@ -261,7 +262,7 @@ namespace Perpetuum.Units
 
             EffectHandler.Update(time);
 
-            UnitUpdatedEventArgs? e = null;
+            UnitUpdatedEventArgs e = null;
 
             _ = _broadcastTimer.Update(time);
 
@@ -275,7 +276,7 @@ namespace Perpetuum.Units
 
                     if ((UpdateTypes & UnitUpdateTypes.Unit) > 0)
                     {
-                        UnitUpdatePacketBuilder packetBuilder = new(this);
+                        UnitUpdatePacketBuilder packetBuilder = new UnitUpdatePacketBuilder(this);
                         OnBroadcastPacket(packetBuilder.ToProxy());
                     }
 
@@ -285,11 +286,14 @@ namespace Perpetuum.Units
                 ImmutableHashSet<ItemProperty> changedProperties = GetChangedProperties();
                 if (changedProperties != ImmutableHashSet<ItemProperty>.Empty)
                 {
-                    e ??= new UnitUpdatedEventArgs();
+                    if (e == null)
+                    {
+                        e = new UnitUpdatedEventArgs();
+                    }
 
                     e.UpdatedProperties = changedProperties;
 
-                    UnitPropertiesUpdatePacketBuilder builder = new(this, changedProperties);
+                    UnitPropertiesUpdatePacketBuilder builder = new UnitPropertiesUpdatePacketBuilder(this, changedProperties);
                     OnBroadcastPacket(builder.ToProxy());
                 }
             }
@@ -317,7 +321,7 @@ namespace Perpetuum.Units
             bool canBroadcast = effect.Display;
             if (canBroadcast)
             {
-                EffectPacketBuilder packetBuilder = new(effect, apply);
+                EffectPacketBuilder packetBuilder = new EffectPacketBuilder(effect, apply);
                 OnBroadcastPacket(packetBuilder.ToProxy());
             }
         }
@@ -327,7 +331,7 @@ namespace Perpetuum.Units
             OnBroadcastPacket(UnitEnterPacketBuilder.Create(this, ZoneEnterType.Update).ToProxy());
         }
 
-        public void AddToZone(IZone zone, Position position, ZoneEnterType enterType = ZoneEnterType.Default, IBeamBuilder? enterBeamBuilder = null)
+        public void AddToZone(IZone zone, Position position, ZoneEnterType enterType = ZoneEnterType.Default, IBeamBuilder enterBeamBuilder = null)
         {
             _zone = zone;
             CurrentPosition = zone.FixZ(position);
@@ -350,7 +354,7 @@ namespace Perpetuum.Units
 
         public event UnitEventHandler RemovedFromZone;
 
-        public void RemoveFromZone(IBeamBuilder? exitBeamBuilder = null)
+        public void RemoveFromZone(IBeamBuilder exitBeamBuilder = null)
         {
             IZone zone;
 
@@ -388,7 +392,7 @@ namespace Perpetuum.Units
         {
             DamageTaken?.Invoke(this, source, e);
 
-            CombatLogPacket packet = new(CombatLogType.Damage, this, source);
+            CombatLogPacket packet = new CombatLogPacket(CombatLogType.Damage, this, source);
             packet.AppendByte((byte)(e.IsCritical ? 1 : 0));
             packet.AppendDouble(e.TotalDamage);
             packet.AppendDouble(e.TotalKers);
@@ -519,7 +523,7 @@ namespace Perpetuum.Units
         }
 
 
-        public void Kill(Unit? killer = null)
+        public void Kill(Unit killer = null)
         {
             if (!Monitor.TryEnter(_killSync))
             {
@@ -528,7 +532,7 @@ namespace Perpetuum.Units
 
             try
             {
-                KillDetectorHelper detector = new();
+                KillDetectorHelper detector = new KillDetectorHelper();
 
                 AcceptVisitor(detector);
 
@@ -544,7 +548,7 @@ namespace Perpetuum.Units
 
                 if (killer != null)
                 {
-                    CombatLogPacket killingBlowPacket = new(CombatLogType.KillingBlow, this, killer);
+                    CombatLogPacket killingBlowPacket = new CombatLogPacket(CombatLogType.KillingBlow, this, killer);
                     killingBlowPacket.Send(this, killer);
 
                     OnCombatEvent(killer, new KillingBlowEventArgs());
@@ -609,7 +613,7 @@ namespace Perpetuum.Units
             result.Add(k.pz, CurrentPosition.Z);
             result.Add(k.orientation, (byte)(_orientation * 255));
 
-            IStandingController? standingControlled = this as IStandingController;
+            IStandingController standingControlled = this as IStandingController;
             standingControlled?.AddStandingInfoToDictonary(result);
 
             return result;
@@ -701,7 +705,7 @@ namespace Perpetuum.Units
 
         public virtual IDictionary<string, object> GetDebugInfo()
         {
-            Dictionary<string, object> info = new()
+            Dictionary<string, object> info = new Dictionary<string, object>
             {
                 {k.eid, Eid},
                 {k.definitionName, ED.Name},
@@ -717,7 +721,7 @@ namespace Perpetuum.Units
                 info.Add("e" + counter++, effect.Type.ToString());
             }
 
-            IStandingController? standingControlled = this as IStandingController;
+            IStandingController standingControlled = this as IStandingController;
             standingControlled?.AddStandingInfoToDictonary(info);
 
             return info;
@@ -744,7 +748,7 @@ namespace Perpetuum.Units
 
             public Packet Build()
             {
-                Packet packet = new(ZoneCommand.EnterUnit);
+                Packet packet = new Packet(ZoneCommand.EnterUnit);
 
                 packet.AppendLong(_unit.Eid);
                 Accounting.Characters.Character character = _unit.GetCharacter();
@@ -764,7 +768,7 @@ namespace Perpetuum.Units
                 packet.AppendDouble(_unit.speedMax.Value);
                 packet.AppendLong(_unit.Owner);
 
-                if (_unit is not Robot robot)
+                if (!(_unit is Robot robot))
                 {
                     packet.AppendByte(0);
                 }
@@ -797,22 +801,26 @@ namespace Perpetuum.Units
 
             private static byte[] GetDescription(Unit unit)
             {
-                using MemoryStream stream = new();
-                using BinaryWriter bw = new(stream);
-                bw.Write(unit.Definition);
-
-                if (unit is Robot robot)
+                using (MemoryStream stream = new MemoryStream())
                 {
-                    WriteRobotComponent(bw, robot.GetRobotComponent<RobotHead>());
-                    WriteRobotComponent(bw, robot.GetRobotComponent<RobotChassis>());
-                    WriteRobotComponent(bw, robot.GetRobotComponent<RobotLeg>());
-                }
-                else
-                {
-                    bw.Write(new byte[15]);
-                }
+                    using (BinaryWriter bw = new BinaryWriter(stream))
+                    {
+                        bw.Write(unit.Definition);
 
-                return stream.ToArray();
+                        if (unit is Robot robot)
+                        {
+                            WriteRobotComponent(bw, robot.GetRobotComponent<RobotHead>());
+                            WriteRobotComponent(bw, robot.GetRobotComponent<RobotChassis>());
+                            WriteRobotComponent(bw, robot.GetRobotComponent<RobotLeg>());
+                        }
+                        else
+                        {
+                            bw.Write(new byte[15]);
+                        }
+
+                        return stream.ToArray();
+                    }
+                }
             }
 
             private static void WriteRobotComponent(BinaryWriter bw, RobotComponent component)
@@ -865,7 +873,7 @@ namespace Perpetuum.Units
 
             public Packet Build()
             {
-                Packet packet = new(ZoneCommand.ExitUnit);
+                Packet packet = new Packet(ZoneCommand.ExitUnit);
                 packet.AppendLong(_unit.Eid);
                 packet.AppendByte((byte)ExitType);
                 return packet;
@@ -908,6 +916,11 @@ namespace Perpetuum.Units
         }
 
         internal virtual bool IsHostile(MobileTeleport teleport)
+        {
+            return false;
+        }
+
+        internal virtual bool IsHostile(SAP sap)
         {
             return false;
         }
@@ -1172,7 +1185,7 @@ namespace Perpetuum.Units
             {
                 double v = base.CalculateValue();
 
-                IBlobableUnit? blobableUnit = owner as IBlobableUnit;
+                IBlobableUnit blobableUnit = owner as IBlobableUnit;
                 blobableUnit?.BlobHandler.ApplyBlobPenalty(ref v, 0.5);
 
                 return v;

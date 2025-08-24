@@ -2,6 +2,7 @@
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
+using Perpetuum.Log;
 using Perpetuum.Players;
 using Perpetuum.Services.MissionEngine.MissionTargets;
 using Perpetuum.Zones;
@@ -9,9 +10,7 @@ using Perpetuum.Zones.Beams;
 using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Transactions;
 
 namespace Perpetuum.Modules
@@ -44,6 +43,8 @@ namespace Perpetuum.Modules
 
             int emptyTilesCounter = 0;
 
+            List<(string resourceName, int quantity)> resourceStats = new List<(string resourceName, int quantity)>();
+
             // make it parallel 
             foreach (Position position in mineralPositions)
             {
@@ -59,6 +60,7 @@ namespace Perpetuum.Modules
 
                 extractedMaterials
                     .AddRange(RareMaterialHandler.GenerateRareMaterials(materialInfo.EntityDefault.Definition));
+
                 CreateBeam(position.Center, BeamState.AlignToTerrain);
                 using (TransactionScope scope = Db.CreateTransaction())
                 {
@@ -84,6 +86,8 @@ namespace Perpetuum.Modules
                         drilledQuantity,
                                     position));
                         player.Zone?.MiningLogHandler.EnqueueMiningLog(drilledMineralDefinition, drilledQuantity);
+
+                        resourceStats.Add((material.EntityDefault.Name, material.Quantity));
                     }
 
                     //save container
@@ -93,7 +97,22 @@ namespace Perpetuum.Modules
                     scope.Complete();
                 }
 
-
+                foreach (var (resourceName, quantity) in resourceStats)
+                {
+                    try
+                    {
+                        Db.Query()
+                            .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity")
+                            .SetParameter("@gathered_on", DateTime.UtcNow)
+                            .SetParameter("@resource_name", resourceName)
+                            .SetParameter("@quantity", quantity)
+                            .ExecuteNonQuery();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex.Message);
+                    }
+                }
             }
 
             GenerateHeat(EffectType.effect_excavator, 6);

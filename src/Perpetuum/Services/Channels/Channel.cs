@@ -1,6 +1,5 @@
 ﻿using Perpetuum.Accounting.Characters;
 using Perpetuum.Services.Sessions;
-using System.Collections.Generic;
 
 namespace Perpetuum.Services.Channels
 {
@@ -14,6 +13,8 @@ namespace Perpetuum.Services.Channels
         public string Password { get; private set; }
 
         public bool IsForcedJoin { get; private set; }
+
+        public ulong? DiscordId { get; private set; }
 
         public IChannelLogger Logger { get; private set; }
         private ChannelType _type;
@@ -33,12 +34,13 @@ namespace Perpetuum.Services.Channels
 
         }
 
-        public Channel(int id, ChannelType type, string name, string topic, string password, bool isForcedJoin, IChannelLogger logger) : this(type, name, logger)
+        public Channel(int id, ChannelType type, string name, string topic, string password, bool isForcedJoin, ulong? discordId, IChannelLogger logger) : this(type, name, logger)
         {
             Id = id;
             Topic = topic;
             Password = password;
             IsForcedJoin = isForcedJoin;
+            DiscordId = discordId;
         }
 
         public Channel(ChannelType type, string name, IChannelLogger logger)
@@ -63,6 +65,7 @@ namespace Perpetuum.Services.Channels
                     Topic = Topic,
                     Password = Password,
                     IsForcedJoin = IsForcedJoin,
+                    DiscordId = DiscordId,
                     Logger = Logger,
                     _members = new Dictionary<Character, ChannelMember>(_members)
                 };
@@ -85,6 +88,7 @@ namespace Perpetuum.Services.Channels
                     Topic = topic,
                     Password = Password,
                     IsForcedJoin = IsForcedJoin,
+                    DiscordId = DiscordId,
                     Logger = Logger,
                     _members = new Dictionary<Character, ChannelMember>(_members)
                 };
@@ -102,7 +106,9 @@ namespace Perpetuum.Services.Channels
                     Topic = Topic,
                     Password = password,
                     IsForcedJoin = IsForcedJoin,
+                    DiscordId = DiscordId,
                     Logger = Logger,
+
                     _members = new Dictionary<Character, ChannelMember>(_members)
                 };
         }
@@ -124,6 +130,7 @@ namespace Perpetuum.Services.Channels
                 Topic = Topic,
                 Password = Password,
                 IsForcedJoin = IsForcedJoin,
+                DiscordId = DiscordId,
                 Logger = Logger,
                 _members = members
             };
@@ -148,6 +155,7 @@ namespace Perpetuum.Services.Channels
                     Topic = Topic,
                     Password = Password,
                     IsForcedJoin = IsForcedJoin,
+                    DiscordId = DiscordId,
                     Logger = Logger,
                     _members = members
                 };

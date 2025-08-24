@@ -7,6 +7,7 @@ using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionTargets;
 using Perpetuum.Units;
 using Perpetuum.Zones.Eggs;
+using Perpetuum.Zones.Intrusion;
 using Perpetuum.Zones.LandMines;
 using Perpetuum.Zones.RemoteControl;
 using System.Diagnostics;
@@ -187,13 +188,20 @@ namespace Perpetuum.Zones.NpcSystem
 
         internal override bool IsHostile(Npc npc)
         {
-            return npc.ED.Options.Faction != ED.Options.Faction;
+            return (ED.Options.Faction == Faction.Syndicate && npc.ED.Options.Faction != Faction.Syndicate) ||
+                (ED.Options.Faction != Faction.Syndicate && npc.ED.Options.Faction == Faction.Syndicate);
+        }
+
+        internal override bool IsHostile(SAP sap)
+        {
+            return ED.Options.Faction == Faction.Cultist;
         }
 
         protected override void UpdateUnitVisibility(Unit target)
         {
             if (target is RemoteControlledCreature ||
                 target is LandMine ||
+                target is SAP ||
                 (target is Npc npc && npc.ED.Options.Faction != ED.Options.Faction))
             {
                 UpdateVisibility(target);
@@ -209,66 +217,68 @@ namespace Perpetuum.Zones.NpcSystem
         {
             Logger.DebugInfo($"   >>>> NPC died.  Killer unitName:{killer.Name} o:{killer.Owner}   Tagger botname:{tagger?.Name} o:{killer.Owner} characterId:{tagger?.Character.Id}");
 
-            using System.Transactions.TransactionScope scope = Db.CreateTransaction();
-            if (BossInfo?.IsLootSplit ?? false)
+            using (System.Transactions.TransactionScope scope = Db.CreateTransaction())
             {
-                List<Player> participants = [];
-                participants = ThreatManager.Hostiles.Select(x => zone.ToPlayerOrGetOwnerPlayer(x.Unit)).ToList();
-
-                if (participants.Count > 0)
+                if (BossInfo?.IsLootSplit ?? false)
                 {
-                    ISplittableLootGenerator splitLooter = new SplittableLootGenerator(LootGenerator);
-                    List<ILootGenerator> lootGenerators = splitLooter.GetGenerators(participants.Count);
+                    List<Player> participants = new List<Player>();
+                    participants = ThreatManager.Hostiles.Select(x => zone.ToPlayerOrGetOwnerPlayer(x.Unit)).ToList();
 
-                    for (int i = 0; i < participants.Count; i++)
+                    if (participants.Count > 0)
                     {
-                        _ = LootContainer.Create()
-                            .SetOwner(participants[i])
-                            .AddLoot(lootGenerators[i])
-                            .BuildAndAddToZone(zone, participants[i].CurrentPosition);
+                        ISplittableLootGenerator splitLooter = new SplittableLootGenerator(LootGenerator);
+                        List<ILootGenerator> lootGenerators = splitLooter.GetGenerators(participants.Count);
+
+                        for (int i = 0; i < participants.Count; i++)
+                        {
+                            _ = LootContainer.Create()
+                                .SetOwner(participants[i])
+                                .AddLoot(lootGenerators[i])
+                                .BuildAndAddToZone(zone, participants[i].CurrentPosition);
+                        }
                     }
                 }
-            }
-            else
-            {
-                _ = LootContainer.Create().SetOwner(tagger).AddLoot(LootGenerator).BuildAndAddToZone(zone, CurrentPosition);
-            }
-
-            Player killerPlayer = zone.ToPlayerOrGetOwnerPlayer(killer);
-
-            if (GetMissionGuid() != Guid.Empty)
-            {
-                Logger.DebugInfo("   >>>> NPC is mission related.");
-
-                SearchForMissionOwnerAndSubmitKill(zone, killer);
-            }
-            else
-            {
-                Logger.DebugInfo("   >>>> independent NPC.");
-
-                if (killerPlayer != null)
+                else
                 {
-                    EnqueueKill(killerPlayer, killer);
-                }
-            }
-
-            if (EP > 0)
-            {
-                List<Unit> awardedPlayers = [];
-
-                foreach (ThreatManaging.Hostile hostile in ThreatManager.Hostiles.Where(x => x.Unit is Player))
-                {
-                    Unit playerUnit = hostile.Unit;
-                    Player hostilePlayer = zone.ToPlayerOrGetOwnerPlayer(playerUnit);
-
-                    _ = (hostilePlayer?.Character.AddExtensionPointsBoostAndLog(EpForActivityType.Npc, EP));
-                    awardedPlayers.Add(playerUnit);
+                    _ = LootContainer.Create().SetOwner(tagger).AddLoot(LootGenerator).BuildAndAddToZone(zone, CurrentPosition);
                 }
 
-                PseudoThreatManager.AwardPseudoThreats(awardedPlayers, zone, EP);
-            }
+                Player killerPlayer = zone.ToPlayerOrGetOwnerPlayer(killer);
 
-            scope.Complete();
+                if (GetMissionGuid() != Guid.Empty)
+                {
+                    Logger.DebugInfo("   >>>> NPC is mission related.");
+
+                    SearchForMissionOwnerAndSubmitKill(zone, killer);
+                }
+                else
+                {
+                    Logger.DebugInfo("   >>>> independent NPC.");
+
+                    if (killerPlayer != null)
+                    {
+                        EnqueueKill(killerPlayer, killer);
+                    }
+                }
+
+                if (EP > 0)
+                {
+                    List<Unit> awardedPlayers = new List<Unit>();
+
+                    foreach (ThreatManaging.Hostile hostile in ThreatManager.Hostiles.Where(x => x.Unit is Player))
+                    {
+                        Unit playerUnit = hostile.Unit;
+                        Player hostilePlayer = zone.ToPlayerOrGetOwnerPlayer(playerUnit);
+
+                        _ = (hostilePlayer?.Character.AddExtensionPointsBoostAndLog(EpForActivityType.Npc, EP));
+                        awardedPlayers.Add(playerUnit);
+                    }
+
+                    PseudoThreatManager.AwardPseudoThreats(awardedPlayers, zone, EP);
+                }
+
+                scope.Complete();
+            }
         }
 
         /// <summary>
@@ -283,7 +293,7 @@ namespace Perpetuum.Zones.NpcSystem
 
             if (missionOwnerPlayer == null)
             {
-                Dictionary<string, object> info = new()
+                Dictionary<string, object> info = new Dictionary<string, object>
                 {
                     {k.characterID, missionOwner.Id},
                     {k.guid, missionGuid.ToString()},

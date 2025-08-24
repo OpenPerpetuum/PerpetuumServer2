@@ -12,10 +12,10 @@ namespace Perpetuum.Zones.Intrusion
     public class PassiveHackingSAP : SAP
     {
         private static readonly TimeSpan _updateScoreInterval = TimeSpan.FromSeconds(2);
-        private static readonly TimeSpan _takeoverTime = TimeSpan.FromMinutes(8);
+        private static TimeSpan _takeoverTime = TimeSpan.FromMinutes(8);
         private static readonly int _maxScore = (int)_takeoverTime.DivideTicks(_updateScoreInterval).Ticks;
         private const int RANGE = 5;
-        private readonly IntervalTimer _updateScoreTimer = new(_updateScoreInterval);
+        private readonly IntervalTimer _updateScoreTimer = new IntervalTimer(_updateScoreInterval);
 
         public PassiveHackingSAP() : base(BeamType.attackpoint_presence_enter, BeamType.attackpoint_presence_out)
         {
@@ -54,11 +54,12 @@ namespace Perpetuum.Zones.Intrusion
 
         private void CheckPlayersInRange(IEnumerable<Player> playersInRange)
         {
-            BeamBuilder builder = Beam.NewBuilder()
-                              .WithType(BeamType.loot_bolt)
-                              .WithSource(this)
-                              .WithState(BeamState.Hit)
-                              .WithDuration(3000);
+            BeamBuilder builder = Beam
+                .NewBuilder()
+                .WithType(BeamType.loot_bolt)
+                .WithSource(this)
+                .WithState(BeamState.Hit)
+                .WithDuration(3000);
 
             foreach (Player player in playersInRange)
             {

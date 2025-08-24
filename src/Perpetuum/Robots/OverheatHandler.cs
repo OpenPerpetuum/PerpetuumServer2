@@ -4,8 +4,6 @@ using Perpetuum.Items;
 using Perpetuum.Players;
 using Perpetuum.Units;
 using Perpetuum.Zones.Effects;
-using System;
-using System.Collections.Generic;
 
 namespace Perpetuum.Robots
 {
@@ -29,7 +27,7 @@ namespace Perpetuum.Robots
         private double oldOverheatValue;
         private readonly object @lock = new object();
 
-        public event EffectEventHandler<bool> EffectChanged;
+        //public event EffectEventHandler<bool> EffectChanged;
 
         public void Increase(double value = 1)
         {

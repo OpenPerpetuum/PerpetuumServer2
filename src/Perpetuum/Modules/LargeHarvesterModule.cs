@@ -2,6 +2,7 @@
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
+using Perpetuum.Log;
 using Perpetuum.Players;
 using Perpetuum.Services.MissionEngine.MissionTargets;
 using Perpetuum.Zones;
@@ -30,57 +31,81 @@ namespace Perpetuum.Modules
 
             int emptyTilesCounter = 0;
 
+            List<(string resourceName, int quantity)> resourceStats = new List<(string resourceName, int quantity)>();
+
             // make it parallel 
             foreach (Position position in mineralPositions)
             {
-                using TransactionScope scope = Db.CreateTransaction();
-                using (new TerrainUpdateMonitor(zone))
+                using (TransactionScope scope = Db.CreateTransaction())
                 {
-                    PlantInfo plantInfo = zone.Terrain.Plants.GetValue(position);
-                    if (plantInfo.type == PlantType.NotDefined ||
-                        Zone.Configuration.PlantRules.GetPlantRule(plantInfo.type) == null ||
-                        plantInfo.material <= 0)
+                    using (new TerrainUpdateMonitor(zone))
                     {
-                        emptyTilesCounter++;
-                        _ = emptyTilesCounter
-                            .ThrowIfEqual(25, ErrorCodes.NoPlantOnTile);
+                        PlantInfo plantInfo = zone.Terrain.Plants.GetValue(position);
+                        if (plantInfo.type == PlantType.NotDefined ||
+                            Zone.Configuration.PlantRules.GetPlantRule(plantInfo.type) == null ||
+                            plantInfo.material <= 0)
+                        {
+                            emptyTilesCounter++;
+                            _ = emptyTilesCounter
+                                .ThrowIfEqual(25, ErrorCodes.NoPlantOnTile);
 
-                        continue;
+                            continue;
+                        }
+
+                        CreateBeam(position, BeamState.AlignToTerrain);
+
+                        double amountModifier = _harverstingAmountModifier.GetValueByPlantType(plantInfo.type);
+                        IPlantHarvester plantHarvester = _plantHarvesterFactory(zone, amountModifier);
+                        IEnumerable<ItemInfo> harvestedPlants = plantHarvester.HarvestPlant(position);
+
+
+                        Debug.Assert(ParentRobot != null, "ParentRobot != null");
+                        Robots.RobotInventory container = ParentRobot.GetContainer();
+                        Debug.Assert(container != null, "container != null");
+                        container.EnlistTransaction();
+                        Player player = ParentRobot is RemoteControlledCreature remoteControlledCreature &&
+                            remoteControlledCreature.CommandRobot is Player ownerPlayer
+                            ? ownerPlayer
+                            : ParentRobot as Player;
+
+                        Debug.Assert(player != null, "player != null");
+
+                        foreach (ItemInfo extractedMaterial in harvestedPlants)
+                        {
+                            Item item = (Item)Factory.CreateWithRandomEID(extractedMaterial.Definition);
+                            item.Owner = Owner;
+                            item.Quantity = extractedMaterial.Quantity;
+                            container.AddItem(item, true);
+                            int extractedHarvestDefinition = extractedMaterial.Definition;
+                            int extractedQuantity = extractedMaterial.Quantity;
+                            player.MissionHandler.EnqueueMissionEventInfo(new HarvestPlantEventInfo(player, extractedHarvestDefinition, extractedQuantity, position));
+                            player.Zone?.HarvestLogHandler.EnqueueHarvestLog(extractedHarvestDefinition, extractedQuantity);
+
+                            resourceStats.Add((extractedMaterial.EntityDefault.Name, extractedMaterial.Quantity));
+                        }
+
+                        container.Save();
+                        OnGathererMaterial(zone, player, (int)plantInfo.type);
+                        Transaction.Current.OnCommited(() => container.SendUpdateToOwnerAsync());
+                        scope.Complete();
                     }
+                }
+            }
 
-                    CreateBeam(position, BeamState.AlignToTerrain);
-
-                    double amountModifier = _harverstingAmountModifier.GetValueByPlantType(plantInfo.type);
-                    IPlantHarvester plantHarvester = _plantHarvesterFactory(zone, amountModifier);
-                    IEnumerable<ItemInfo> harvestedPlants = plantHarvester.HarvestPlant(position);
-
-
-                    Debug.Assert(ParentRobot != null, "ParentRobot != null");
-                    Robots.RobotInventory container = ParentRobot.GetContainer();
-                    Debug.Assert(container != null, "container != null");
-                    container.EnlistTransaction();
-                    Player? player = ParentRobot is RemoteControlledCreature remoteControlledCreature &&
-                        remoteControlledCreature.CommandRobot is Player ownerPlayer
-                        ? ownerPlayer
-                        : ParentRobot as Player;
-
-                    Debug.Assert(player != null, "player != null");
-                    foreach (ItemInfo extractedMaterial in harvestedPlants)
-                    {
-                        Item item = (Item)Factory.CreateWithRandomEID(extractedMaterial.Definition);
-                        item.Owner = Owner;
-                        item.Quantity = extractedMaterial.Quantity;
-                        container.AddItem(item, true);
-                        int extractedHarvestDefinition = extractedMaterial.Definition;
-                        int extractedQuantity = extractedMaterial.Quantity;
-                        player.MissionHandler.EnqueueMissionEventInfo(new HarvestPlantEventInfo(player, extractedHarvestDefinition, extractedQuantity, position));
-                        player.Zone?.HarvestLogHandler.EnqueueHarvestLog(extractedHarvestDefinition, extractedQuantity);
-                    }
-
-                    container.Save();
-                    OnGathererMaterial(zone, player, (int)plantInfo.type);
-                    Transaction.Current.OnCommited(() => container.SendUpdateToOwnerAsync());
-                    scope.Complete();
+            foreach (var (resourceName, quantity) in resourceStats)
+            {
+                try
+                {
+                    Db.Query()
+                        .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity")
+                        .SetParameter("@gathered_on", DateTime.UtcNow)
+                        .SetParameter("@resource_name", resourceName)
+                        .SetParameter("@quantity", quantity)
+                        .ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex.Message);
                 }
             }
 

@@ -1,8 +1,10 @@
 ﻿using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Finders.PositionFinders;
+using Perpetuum.Zones.NpcSystem;
 using Perpetuum.Zones.NpcSystem.Presences;
 using Perpetuum.Zones.NpcSystem.Reinforcements;
+using Perpetuum.Zones.NpcSystem.SapAttackers;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
 
 namespace Perpetuum.Services.EventServices.EventProcessors.NpcSpawnEventHandlers
@@ -20,29 +22,35 @@ namespace Perpetuum.Services.EventServices.EventProcessors.NpcSpawnEventHandlers
 
         public override EventType Type => EventType.NpcOre;
 
-        private readonly IDictionary<MineralNode, INpcReinforcements> _reinforcementsByNode = new Dictionary<MineralNode, INpcReinforcements>();
+        private readonly IDictionary<MineralNode, INpcPresences> _reinforcementsByNode = new Dictionary<MineralNode, INpcPresences>();
         private readonly IEnumerable<IMineralConfiguration> _mineralConfigs;
 
-        public OreNpcSpawner(IZone zone, INpcReinforcementsRepository reinforcementsRepo, IMineralConfigurationReader mineralConfigurationReader) : base(zone, reinforcementsRepo)
+        public OreNpcSpawner(
+            IZone zone,
+            INpcReinforcementsRepository reinforcementsRepo,
+            ISapAttackersRepository sapAttackersRepository,
+            IMineralConfigurationReader mineralConfigurationReader) : base(zone, reinforcementsRepo, sapAttackersRepository)
         {
             _mineralConfigs = mineralConfigurationReader.ReadAll().Where(c => c.ZoneId == zone.Id);
         }
 
-        protected override IEnumerable<INpcReinforcements> GetActiveReinforcments(Presence presence)
+        protected override IEnumerable<INpcPresences> GetActiveReinforcments(Presence presence)
         {
             return _reinforcementsByNode.Where(p => p.Value.HasActivePresence(presence)).Select(p => p.Value);
         }
 
-        protected override bool CheckMessage(IEventMessage inMsg, out OreNpcSpawnMessage? msg)
+        protected override bool CheckMessage(IEventMessage inMsg, out OreNpcSpawnMessage msg)
         {
             if (inMsg is OreNpcSpawnMessage message && _zone.Id == message.ZoneId)
             {
                 msg = message;
+
                 return true;
             }
             else
             {
                 msg = null;
+
                 return false;
             }
         }
@@ -52,7 +60,7 @@ namespace Perpetuum.Services.EventServices.EventProcessors.NpcSpawnEventHandlers
             MineralNode node = msg.Node;
             if (!_reinforcementsByNode.ContainsKey(node))
             {
-                INpcReinforcements oreSpawn = _npcReinforcementsRepo.CreateOreNPCSpawn(node.Type, msg.ZoneId);
+                INpcPresences oreSpawn = _npcReinforcementsRepo.CreateOreNPCSpawn(node.Type, msg.ZoneId);
                 _reinforcementsByNode.Add(node, oreSpawn);
             }
         }
@@ -61,22 +69,25 @@ namespace Perpetuum.Services.EventServices.EventProcessors.NpcSpawnEventHandlers
         {
             if (msg.NodeState == OreNodeState.Removed)
             {
-                CleanupAllReinforcements(msg);
+                CleanupAllAttackers(msg);
+
                 return true;
             }
+
             return false;
         }
 
-        protected override void CleanupAllReinforcements(OreNpcSpawnMessage msg)
+        protected override void CleanupAllAttackers(OreNpcSpawnMessage msg)
         {
             MineralNode node = msg.Node;
             if (_reinforcementsByNode.ContainsKey(node))
             {
-                INpcReinforcementWave[] activeWaves = _reinforcementsByNode[node].GetAllActiveWaves();
-                foreach (INpcReinforcementWave wave in activeWaves)
+                INpcPresence[] activeWaves = _reinforcementsByNode[node].GetAllActivePresences();
+                foreach (INpcPresence wave in activeWaves)
                 {
                     ExpireWave(wave);
                 }
+
                 _reinforcementsByNode.Remove(node);
             }
         }
@@ -84,7 +95,8 @@ namespace Perpetuum.Services.EventServices.EventProcessors.NpcSpawnEventHandlers
         protected override Position FindSpawnPosition(OreNpcSpawnMessage msg, int maxRange)
         {
             Position fieldCenter = msg.Node.Area.Center.ToPosition();
-            RandomWalkableOnCircle finder = new(_zone, fieldCenter, maxRange, MIN_SPAWN_DIST_TOLERANCE);
+            RandomWalkableOnCircle finder = new RandomWalkableOnCircle(_zone, fieldCenter, maxRange, MIN_SPAWN_DIST_TOLERANCE);
+
             return finder.Find(out Position result) ? result : Position.Empty;
         }
 
@@ -93,13 +105,15 @@ namespace Perpetuum.Services.EventServices.EventProcessors.NpcSpawnEventHandlers
             int current = Convert.ToInt32(node.GetTotalAmount());
             int total = _mineralConfigs.Single(c => c.Type == node.Type).TotalAmountPerNode;
             double percent = 1.0 - (current / (double)total).Clamp();
+
             return percent;
         }
 
-        protected override INpcReinforcementWave GetNextWave(OreNpcSpawnMessage msg)
+        protected override INpcPresence GetNextWave(OreNpcSpawnMessage msg)
         {
             MineralNode node = msg.Node;
             double percent = ComputeFieldPercentConsumed(node);
+
             return _reinforcementsByNode[node].GetNextPresence(percent);
         }
 

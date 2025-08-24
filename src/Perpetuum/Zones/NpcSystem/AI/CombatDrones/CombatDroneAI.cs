@@ -5,7 +5,6 @@ using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.Movements;
-using Perpetuum.Zones.NpcSystem.TargettingStrategies;
 using Perpetuum.Zones.RemoteControl;
 using System.Drawing;
 
@@ -17,13 +16,13 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
         private const int Sqrt2 = 141;
         private const int Weight = 1000;
         // Timer for periodically checking the main hostile target.
-        private readonly IntervalTimer updateHostileTimer = new(UpdateFrequency, true);
-        private readonly IntervalTimer primarySelectTimer = new(UpdateFrequency);
+        private readonly IntervalTimer updateHostileTimer = new IntervalTimer(UpdateFrequency, true);
+        private readonly IntervalTimer primarySelectTimer = new IntervalTimer(UpdateFrequency);
         private List<ModuleActivator> moduleActivators;
-        private readonly TimeSpan hostilesUpdateFrequency = TimeSpan.FromMilliseconds(UpdateFrequency);
-        private readonly CombatPrimaryLockSelectionStrategySelector stratSelector;
+        private TimeSpan hostilesUpdateFrequency = TimeSpan.FromMilliseconds(UpdateFrequency);
+        //private readonly CombatPrimaryLockSelectionStrategySelector stratSelector;
         private Position lastTargetPosition;
-        private PathMovement? movement;
+        private PathMovement movement;
         private PathMovement nextMovement;
 
         public CancellationTokenSource source;
@@ -214,7 +213,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             movement?.Update(smartCreature, time);
         }
 
-        protected UnitLock? GetPrimaryUnitLock()
+        protected UnitLock GetPrimaryUnitLock()
         {
             return (smartCreature as RemoteControlledCreature).CommandRobot
                 .GetLocks()
@@ -255,7 +254,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             return isNewLock;
         }
 
-        private List<Point>? FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)
+        private List<Point> FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)
         {
             Point end = hostile.CurrentPosition.GetRandomPositionInRange2D(0, smartCreature.BestActionRange - 1).ToPoint();
 
@@ -264,15 +263,15 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             movement = null;
 
             double maxNode = Math.Pow(smartCreature.HomeRange, 2) * Math.PI;
-            PriorityQueue<Node> priorityQueue = new((int)maxNode);
-            Node startNode = new(smartCreature.CurrentPosition);
+            PriorityQueue<Node> priorityQueue = new PriorityQueue<Node>((int)maxNode);
+            Node startNode = new Node(smartCreature.CurrentPosition);
 
             priorityQueue.Enqueue(startNode);
 
-            HashSet<Point> closed =
-            [
+            HashSet<Point> closed = new HashSet<Point>
+            {
                 startNode.position
-            ];
+            };
 
 
             while (priorityQueue.TryDequeue(out Node current))
@@ -308,7 +307,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 
                     int newG = current.g + (n.X - current.position.X == 0 || n.Y - current.position.Y == 0 ? 100 : Sqrt2);
                     int newH = Heuristic.Manhattan.Calculate(n.X, n.Y, end.X, end.Y) * Weight;
-                    Node newNode = new(n)
+                    Node newNode = new Node(n)
                     {
                         g = newG,
                         f = newG + newH,
@@ -338,7 +337,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 
         private static List<Point> BuildPath(Node current)
         {
-            Stack<Point> stack = new();
+            Stack<Point> stack = new Stack<Point>();
             Node node = current;
 
             while (node != null)

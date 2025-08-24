@@ -5,25 +5,25 @@ namespace Perpetuum
 {
     public class GlobalConfiguration
     {
-        public required string ListenerIP { get; set; }
+        public string ListenerIP { get; set; }
         public int ListenerPort { get; set; }
 
-        public required string GameRoot { get; set; }
-        public required string WebServiceIP { get; set; }
-        public required string PersonalConfig { get; set; }
-        public required string ConnectionString { get; set; }
+        public string GameRoot { get; set; }
+        public string WebServiceIP { get; set; }
+        public string PersonalConfig { get; set; }
+        public string ConnectionString { get; set; }
         public string RelayName => "relay";
 
         public bool EnableUpnp { get; set; }
 
         public int SteamAppID { get; set; }
-        public required byte[] SteamKey { get; set; }
+        public byte[] SteamKey { get; set; }
 
-        public required string ResourceServerURL { get; set; }
+        public string ResourceServerURL { get; set; }
 
         public bool EnableDev { get; set; }
 
-        public required CorporationConfiguration Corporation { get; set; }
+        public CorporationConfiguration Corporation { get; set; }
 
         public bool StartServerInAdminOnlyMode { get; set; }
 
@@ -42,5 +42,13 @@ namespace Perpetuum
         // Default camouflage bonus value.
         [DefaultValue(5), JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public int CamouflageBonus { get; set; }
+
+        public string WebHookId { get; set; }
+
+        public string WebHookOAuth { get; set; }
+
+        public string DiscordBotToken { get; set; }
+
+        public string OpHelpChannelId { get; set; }
     }
 }

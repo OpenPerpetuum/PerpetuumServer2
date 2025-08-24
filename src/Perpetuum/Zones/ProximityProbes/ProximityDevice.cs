@@ -24,7 +24,7 @@ namespace Perpetuum.Zones.ProximityProbes
     public abstract class ProximityDeviceBase : Unit, ICharactersRegistered
     {
         private readonly CharactersRegisterHelper<ProximityDeviceBase> _charactersRegisterHelper;
-        private IntervalTimer _probingInterval = new(TimeSpan.FromSeconds(10));
+        private IntervalTimer _probingInterval = new IntervalTimer(TimeSpan.FromSeconds(10));
         private UnitDespawnHelper _despawnHelper;
 
         protected ProximityDeviceBase()
@@ -45,7 +45,6 @@ namespace Perpetuum.Zones.ProximityProbes
 
         public void SetDespawnTime(TimeSpan despawnTime)
         {
-            _despawnHelper = UnitDespawnHelper.Create(this, despawnTime);
             _despawnHelper = UnitDespawnHelper.Create(GetThis(), despawnTime);
             _despawnHelper.DespawnStrategy = Kill;
         }
@@ -156,8 +155,6 @@ namespace Perpetuum.Zones.ProximityProbes
 
 
         public abstract void OnUnitsFound(List<Robot> unitsFound);
-
-        public abstract void OnUnitsFound(List<Player> unitsFound);
         #endregion
 
         protected override void OnDead(Unit killer)
@@ -170,7 +167,7 @@ namespace Perpetuum.Zones.ProximityProbes
         {
             Dictionary<string, object> info = BaseInfoToDictionary();
 
-            Dictionary<string, object> probeDict = [];
+            Dictionary<string, object> probeDict = new Dictionary<string, object>();
 
             if (includeRegistered)
             {
@@ -274,7 +271,7 @@ namespace Perpetuum.Zones.ProximityProbes
             int currentRegistered = GetRegisteredCharacters().Length;
             int boardMembers = ownerCorporation.GetBoardMembersCount();
 
-            Dictionary<string, object> result = new()
+            Dictionary<string, object> result = new Dictionary<string, object>
             {
                 {k.eid, Eid },
                 {"maxRegistered", maxRegistered},

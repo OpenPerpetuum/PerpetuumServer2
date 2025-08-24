@@ -17,6 +17,7 @@ using Perpetuum.Groups.Corporations;
 using Perpetuum.Groups.Corporations.Loggers;
 using Perpetuum.Groups.Gangs;
 using Perpetuum.Host;
+using Perpetuum.Host.Requests;
 using Perpetuum.IO;
 using Perpetuum.Items;
 using Perpetuum.Items.Templates;
@@ -62,6 +63,7 @@ using System.Numerics;
 using System.Runtime;
 using System.Runtime.Caching;
 using System.Text;
+using IContainer = Autofac.IContainer;
 using LogEvent = Perpetuum.Log.LogEvent;
 
 namespace Perpetuum.Bootstrapper
@@ -70,8 +72,8 @@ namespace Perpetuum.Bootstrapper
 
     public class PerpetuumBootstrapper
     {
-        private ContainerBuilder? _builder;
-        private IContainer? _container;
+        private ContainerBuilder _builder;
+        private IContainer _container;
 
         public void Start()
         {
@@ -98,7 +100,7 @@ namespace Perpetuum.Bootstrapper
 
         public void WaitForStop()
         {
-            AutoResetEvent are = new(false);
+            AutoResetEvent are = new AutoResetEvent(false);
 
             IHostStateService s = _container.Resolve<IHostStateService>();
             s.StateChanged += (sender, state) =>
@@ -112,9 +114,9 @@ namespace Perpetuum.Bootstrapper
             _ = are.WaitOne();
         }
 
-        public static void WriteCommandsToFile(string path)
+        public void WriteCommandsToFile(string path)
         {
-            StringBuilder sb = new();
+            StringBuilder sb = new StringBuilder();
 
             foreach (Command command in CommandsModule.GetCommands().OrderBy(c => c.Text))
             {
@@ -241,7 +243,7 @@ namespace Perpetuum.Bootstrapper
 
             try
             {
-                NatDiscoverer discoverer = new();
+                NatDiscoverer discoverer = new NatDiscoverer();
                 NatDiscoverer.ReleaseAll();
 
                 NatDevice natDevice = discoverer.DiscoverDeviceAsync().Result;
@@ -297,6 +299,17 @@ namespace Perpetuum.Bootstrapper
 
         private void InitContainer(string gameRoot)
         {
+            _ = _builder.Register(c => new FileSystem(gameRoot)).As<IFileSystem>();
+            _ = _builder.Register(c =>
+            {
+                IFileSystem fileManager = c.Resolve<IFileSystem>();
+                string settingsFile = fileManager.ReadAllText("perpetuum.ini");
+                GlobalConfiguration configuration = JsonConvert.DeserializeObject<GlobalConfiguration>(settingsFile);
+                configuration.GameRoot = gameRoot;
+
+                return configuration;
+            }).SingleInstance();
+
             _builder.RegisterModule(new CommandsModule());
             _builder.RegisterModule(new RequestHandlersModule());
             _builder.RegisterModule(new ZoneRequestHandlersModule());
@@ -324,7 +337,7 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<CharacterProfileRepository>().AsSelf().As<ICharacterProfileRepository>();
             _ = _builder.Register(c =>
             {
-                MemoryCache cache = new("CharacterProfiles");
+                MemoryCache cache = new MemoryCache("CharacterProfiles");
                 return new CachedReadOnlyRepository<int, CharacterProfile>(cache, c.Resolve<CharacterProfileRepository>());
             }).AsSelf().As<IReadOnlyRepository<int, CharacterProfile>>().SingleInstance();
 
@@ -351,16 +364,6 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<SessionManager>().As<ISessionManager>().SingleInstance();
 
             InitRelayManager();
-
-            _ = _builder.Register(c => new FileSystem(gameRoot)).As<IFileSystem>();
-            _ = _builder.Register(c =>
-            {
-                IFileSystem fileManager = c.Resolve<IFileSystem>();
-                string settingsFile = fileManager.ReadAllText("perpetuum.ini");
-                GlobalConfiguration configuration = JsonConvert.DeserializeObject<GlobalConfiguration>(settingsFile);
-                configuration.GameRoot = gameRoot;
-                return configuration;
-            }).SingleInstance();
 
             _ = _builder.RegisterType<AdminCommandRouter>().SingleInstance();
 
@@ -435,7 +438,6 @@ namespace Perpetuum.Bootstrapper
 
             _ = _builder.RegisterType<ServerInfo>();
             _ = _builder.RegisterType<ServerInfoManager>().As<IServerInfoManager>();
-
 
             _ = _builder.Register(x =>
             {
@@ -549,8 +551,12 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<AffectOutpostStability>();
             _ = _builder.RegisterType<PortalSpawner>();
             _ = _builder.RegisterType<NpcStateAnnouncer>();
+            _ = _builder.RegisterType<SapStateAnnouncer>();
             _ = _builder.RegisterType<OreNpcSpawner>().As<NpcSpawnEventHandler<OreNpcSpawnMessage>>();
             _ = _builder.RegisterType<NpcReinforcementSpawner>().As<NpcSpawnEventHandler<NpcReinforcementsMessage>>();
+            //_ = _builder.RegisterType<SapAttackerSpawner>().As<NpcSpawnEventHandler<SapAttackersSpawnMessage>>();
+            _ = _builder.RegisterType<DiscordIntegrationHandler>();
+
             _ = _builder.RegisterType<EventListenerService>().SingleInstance().OnActivated(e =>
             {
                 e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromSeconds(0.75)));
@@ -559,7 +565,9 @@ namespace Perpetuum.Bootstrapper
                 e.Instance.AttachListener(e.Context.Resolve<NpcChatEcho>());
                 e.Instance.AttachListener(e.Context.Resolve<PortalSpawner>());
                 e.Instance.AttachListener(e.Context.Resolve<NpcStateAnnouncer>());
-                GameTimeObserver obs = new(e.Instance);
+                e.Instance.AttachListener(e.Context.Resolve<SapStateAnnouncer>());
+                e.Instance.AttachListener(e.Context.Resolve<DiscordIntegrationHandler>());
+                GameTimeObserver obs = new GameTimeObserver(e.Instance);
                 obs.Subscribe(e.Context.Resolve<IGameTimeService>());
             });
 
@@ -586,9 +594,13 @@ namespace Perpetuum.Bootstrapper
             });
             _ = _builder.RegisterType<AccountTransactionLogger>();
             _ = _builder.RegisterType<EpForActivityLogger>();
+
+            _ = _builder.RegisterType<MarketAutoOrdersManager>().SingleInstance().AutoActivate().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
+            });
         }
 
-        /*
         private IRegistrationBuilder<TRequestHandler, ConcreteReflectionActivatorData, SingleRegistrationStyle>
             RegisterRequestHandler<TRequestHandler, TRequest>(Command command) where TRequestHandler : IRequestHandler<TRequest> where TRequest : IRequest
         {
@@ -601,22 +613,17 @@ namespace Perpetuum.Bootstrapper
 
             return res;
         }
-        */
 
-        /*
         private IRegistrationBuilder<T, ConcreteReflectionActivatorData, SingleRegistrationStyle> RegisterRequestHandler<T>(Command command) where T : IRequestHandler<IRequest>
         {
             return RegisterRequestHandler<T, IRequest>(command);
         }
-        */
 
-        /*
         private IRegistrationBuilder<T, ConcreteReflectionActivatorData, SingleRegistrationStyle>
             RegisterZoneRequestHandler<T>(Command command) where T : IRequestHandler<IZoneRequest>
         {
             return RegisterRequestHandler<T, IZoneRequest>(command);
         }
-        */
 
         private IRegistrationBuilder<T, ConcreteReflectionActivatorData, SingleRegistrationStyle> RegisterAutoActivate<T>(
             TimeSpan interval)

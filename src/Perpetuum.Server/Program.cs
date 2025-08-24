@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using Microsoft.Extensions.CommandLineUtils;
+﻿using Microsoft.Extensions.CommandLineUtils;
 using Perpetuum.Bootstrapper;
 
 namespace Perpetuum.Server
@@ -12,7 +10,7 @@ namespace Perpetuum.Server
         {
             var app = new CommandLineApplication();
             app.HelpOption("-h|--help");
-            var gameRoot = app.Argument("<GAMEROOT>","d:\\server\\genxy");
+            var gameRoot = app.Argument("<GAMEROOT>", "d:\\server\\genxy");
             var dumpCommands = app.Option("-dc|--dump-commands", "dump commands", CommandOptionType.NoValue);
 
             var bootstrapper = new PerpetuumBootstrapper();
@@ -22,7 +20,7 @@ namespace Perpetuum.Server
                 if (dumpCommands.HasValue())
                 {
                     Console.WriteLine("dumping commands to commands.txt");
-                    PerpetuumBootstrapper.WriteCommandsToFile("commands.txt");
+                    bootstrapper.WriteCommandsToFile("commands.txt");
                     return 0;
                 }
 
@@ -58,7 +56,7 @@ namespace Perpetuum.Server
                 err = app.Execute(args);
                 if (err == 0)
                 {
-                    Console.CancelKeyPress += (sender,eventArgs) =>
+                    Console.CancelKeyPress += (sender, eventArgs) =>
                     {
                         Console.WriteLine("");
                         Console.WriteLine("STOPPING HOST IN 4 SECONDS");
@@ -91,7 +89,7 @@ namespace Perpetuum.Server
             {
                 foreach (var innerException in aex.InnerExceptions)
                 {
-                    DisplayException(innerException);    
+                    DisplayException(innerException);
                 }
                 return;
             }

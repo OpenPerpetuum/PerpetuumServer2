@@ -13,7 +13,7 @@ using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
 using Perpetuum.Zones.NpcSystem.Presences.RandomExpiringPresence;
 using Perpetuum.Zones.NpcSystem.Reinforcements;
 using Perpetuum.Zones.NpcSystem.SafeSpawnPoints;
-using System;
+using Perpetuum.Zones.NpcSystem.SapAttackers;
 
 namespace Perpetuum.Bootstrapper.Modules
 {
@@ -24,6 +24,7 @@ namespace Perpetuum.Bootstrapper.Modules
             _ = builder.RegisterType<CustomRiftConfigReader>().As<ICustomRiftConfigReader>();
             _ = builder.RegisterType<NpcBossInfoBuilder>().SingleInstance();
             _ = builder.RegisterType<NpcReinforcementsRepository>().SingleInstance().As<INpcReinforcementsRepository>();
+            _ = builder.RegisterType<SapAttackersRepository>().SingleInstance().As<ISapAttackersRepository>();
 
             _ = builder.RegisterType<FlockConfiguration>().As<IFlockConfiguration>();
             _ = builder.RegisterType<FlockConfigurationBuilder>();
