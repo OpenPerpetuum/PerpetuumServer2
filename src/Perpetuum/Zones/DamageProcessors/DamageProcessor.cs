@@ -4,10 +4,6 @@ using Perpetuum.Modules.Weapons;
 using Perpetuum.Robots;
 using Perpetuum.Units;
 using Perpetuum.Zones.CombatLogs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Perpetuum.Zones.DamageProcessors
 {
@@ -44,9 +40,12 @@ namespace Perpetuum.Zones.DamageProcessors
             });
         }
 
+        public bool CannotTakeDamage =>
+            !unit.InZone || unit.IsAttackable != ErrorCodes.NoError || unit.States.Dead || unit.IsInvulnerable;
+
         public void TakeDamage(DamageInfo damageInfo)
         {
-            if (!unit.InZone || unit.IsAttackable != ErrorCodes.NoError || unit.States.Dead || unit.IsInvulnerable)
+            if (CannotTakeDamage)
             {
                 return;
             }
@@ -84,7 +83,7 @@ namespace Perpetuum.Zones.DamageProcessors
 
         private void ProcessDamage(DamageInfo damageInfo)
         {
-            if (!unit.InZone || unit.IsAttackable != ErrorCodes.NoError || unit.States.Dead || unit.IsInvulnerable)
+            if (CannotTakeDamage)
             {
                 return;
             }

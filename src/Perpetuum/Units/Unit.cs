@@ -388,6 +388,8 @@ namespace Perpetuum.Units
 
         public event UnitEventHandler<Unit, DamageTakenEventArgs> DamageTaken;
 
+        public bool CannotTakeDamage => _damageProcessor?.CannotTakeDamage ?? true;
+
         protected virtual void OnDamageTaken(Unit source, DamageTakenEventArgs e)
         {
             DamageTaken?.Invoke(this, source, e);
