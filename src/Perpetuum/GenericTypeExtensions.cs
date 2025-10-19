@@ -1,6 +1,6 @@
-﻿using System.Diagnostics;
+﻿using Force.DeepCloner;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
 
 namespace Perpetuum
 {
@@ -56,12 +56,8 @@ namespace Perpetuum
 
             // Debug.Assert(typeof(T).IsSerializable, "EZ NEM SERIALIZALHATO: " + typeof(T)); Obsolete, have to find anothr way
 
-            using MemoryStream ms = new();
-            DataContractSerializer dcs = new(typeof(T));
-            dcs.WriteObject(ms, source);
-            ms.Seek(0, SeekOrigin.Begin);
-
-            return (T?)dcs.ReadObject(ms);
+            var obj = (object)source;
+            return (T?)obj.DeepClone();
         }
     }
 }
