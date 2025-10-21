@@ -1,0 +1,35 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: Build Perpetuum.Server Service v2
+
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    env:
+      Workspace: ${{ github.workspace }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build src/Perpetuum.ServerService2/Perpetuum.ServerService2.csproj --no-restore --configuration Release --verbosity quiet
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Perpetuum-Server-v2-${{ github.sha }}
+        path: ${{ env.Workspace }}/bin/Release/net8.0
+      if: ${{ github.event_name == 'push'}}
