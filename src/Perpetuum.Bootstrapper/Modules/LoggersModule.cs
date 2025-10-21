@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Perpetuum.Common.Loggers;
+using Perpetuum.Host;
 using Perpetuum.Log;
 using Perpetuum.Log.Formatters;
 using Perpetuum.Log.Loggers;
@@ -87,6 +88,17 @@ namespace Perpetuum.Bootstrapper.Modules
                 FileLogger<LogEvent> fileLogger = c.Resolve<FileLogger<LogEvent>.Factory>().Invoke(formater, () => Path.Combine("logs", DateTime.Now.ToString("yyyy-MM-dd"), "hostlog.txt"));
                 fileLogger.BufferSize = 100;
                 fileLogger.AutoFlushInterval = TimeSpan.FromSeconds(10);
+
+                // It is necessary to terminate the file log in a normal manner
+                // in order to place the remaining information into the file log.
+                var hostStateService = c.Resolve<IHostStateService>();
+                hostStateService.StateChanged += (IHostStateService service, HostState state) =>
+                {
+                    if (state == HostState.Off)
+                    {
+                        fileLogger.Dispose();
+                    }
+                };
 
                 return new CompositeLogger<LogEvent>(fileLogger, new ColoredConsoleLogger(formater));
             }).As<ILogger<LogEvent>>();
