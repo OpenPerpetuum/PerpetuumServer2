@@ -70,12 +70,19 @@ namespace Perpetuum.Zones.PBS.DockingBases
             base.OnEnterZone(zone, enterType);
         }
 
+        /// <summary>
+        /// Call on first update
+        /// </summary>
         private void OnFirst()
         {
             firstUpdate = false;
             ChannelManager.JoinChannel(ChannelName, announcer, ChannelMemberRole.Operator, null);
             ChannelManager.SetTopic(ChannelName, announcer, $"Base Expires at {EndTime:F}");
-            SendMailStatusAsync();
+            // Disable spam when server restarts
+            if (EndTime - LifeTime + minLifeOnInit > DateTime.Now)
+            {
+                SendMailStatusAsync();
+            }
         }
 
         protected override void OnUpdate(TimeSpan time)
