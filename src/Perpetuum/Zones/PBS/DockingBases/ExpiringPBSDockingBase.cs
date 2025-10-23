@@ -100,7 +100,8 @@ namespace Perpetuum.Zones.PBS.DockingBases
         protected override void JoinChannel(Character character)
         {
             base.JoinChannel(character);
-            ChannelManager.Announcement(ChannelName, announcer, $"Base is going to expire in: {Remaining.ToHumanTimeString()}");
+            // Announce only for the joined character
+            ChannelManager.Announcement(ChannelName, announcer, $"Base is going to expire in: {Remaining.ToHumanTimeString()}", character);
         }
 
         public override ErrorCodes IsDeconstructAllowed()

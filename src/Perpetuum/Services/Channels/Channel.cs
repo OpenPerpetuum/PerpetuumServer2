@@ -286,7 +286,7 @@ namespace Perpetuum.Services.Channels
 
         public void SendToOne(ISessionManager sessionManager, Character character, MessageBuilder messageBuilder)
         {
-            ISession session = sessionManager?.GetByCharacter(character);
+            ISession? session = sessionManager?.GetByCharacter(character);
             session?.SendMessage(messageBuilder);
         }
 

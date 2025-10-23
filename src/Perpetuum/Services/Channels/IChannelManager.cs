@@ -22,7 +22,14 @@ namespace Perpetuum.Services.Channels
         void SetPassword(string channelName, Character issuer, string password);
         void SetTopic(string channelName, Character issuer, string topic);
         void Talk(string channelName, Character sender, string message, IRequest request);
-        void Announcement(string channelName, Character sender, string message);
+        /// <summary>
+        /// Post an announcement message for one/all member
+        /// </summary>
+        /// <param name="channelName"> Channel name</param>
+        /// <param name="sender">Sender character</param>
+        /// <param name="message">Message string</param>
+        /// <param name="rerecipient">Member to receive the announcement. null - for all members</param>
+        void Announcement(string channelName, Character sender, string message, Character? recipient = null);
         void KickOrBan(string channelName, Character issuer, Character character, string message, bool ban);
         void UnBan(string channelName, Character issuer, Character character);
 

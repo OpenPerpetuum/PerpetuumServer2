@@ -322,16 +322,29 @@ namespace Perpetuum.Services.Channels
             }
         }
 
-        public void Announcement(string channelName, Character sender, string message)
+        public void Announcement(string channelName, Character sender, string message, Character? recipient = null)
         {
-            if (!_channels.TryGetValue(channelName, out Channel channel))
+            if (!_channels.TryGetValue(channelName, out Channel? channel))
             {
                 return;
             }
-
             channel.Logger.LogMessage(sender, message);
 
-            channel.SendMessageToAll(_sessionManager, sender, message);
+            // If null, send message to all member
+            if (recipient is null)
+            {
+                channel.SendMessageToAll(_sessionManager, sender, message);
+                return;
+            }
+
+            // Send message to recipient
+            var data = new Dictionary<string, object>
+            {
+                { k.sender, sender.Id },
+                { k.message, message }
+            };
+            MessageBuilder builder = channel.CreateNotificationMessage(ChannelNotify.Message, data);
+            channel.SendToOne(_sessionManager, recipient, builder);
         }
 
         public void KickOrBan(string channelName, Character issuer, Character character, string message, bool ban)
