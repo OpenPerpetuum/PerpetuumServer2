@@ -76,9 +76,16 @@ namespace Perpetuum.ServerService2
         {
             ServerStart();
 
-            while (!stoppingToken.IsCancellationRequested && HostStateService.State != HostState.Off)
+            try
             {
-                await Task.Delay(1000, stoppingToken);
+                while (!stoppingToken.IsCancellationRequested && HostStateService.State != HostState.Off)
+                {
+                    await Task.Delay(1000, stoppingToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation($"Perpetuum Dedicated Server v2 Service - {ex.Message}");
             }
 
             StopServer();
