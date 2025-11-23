@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.CommandLineUtils;
+﻿using McMaster.Extensions.CommandLineUtils;
 using Perpetuum.Bootstrapper;
 
 namespace Perpetuum.Server
