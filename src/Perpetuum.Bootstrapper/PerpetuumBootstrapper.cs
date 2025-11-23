@@ -61,11 +61,13 @@ using SharpOpenNat;
 using System.Numerics;
 using System.Runtime;
 using System.Runtime.Caching;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Transactions;
 using IContainer = Autofac.IContainer;
 using LogEvent = Perpetuum.Log.LogEvent;
 
+[assembly: SupportedOSPlatform("windows")]
 namespace Perpetuum.Bootstrapper
 {
     public delegate ITerrain TerrainFactory(IZone zone);

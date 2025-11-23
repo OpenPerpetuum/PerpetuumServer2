@@ -1,6 +1,8 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Perpetuum.Bootstrapper;
+using System.Runtime.Versioning;
 
+[assembly: SupportedOSPlatform("windows")]
 namespace Perpetuum.Server
 {
     public static class Program
