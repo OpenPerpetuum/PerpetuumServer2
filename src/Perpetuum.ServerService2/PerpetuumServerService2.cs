@@ -23,7 +23,7 @@ namespace Perpetuum.ServerService2
         {
             // assumes the server is in the default installation directory.
             string gameroot = _configuration.GetValue<string>("GameRoot") ?? "C:\\PerpetuumServer\\data";
-            _logger.LogInformation("Starting Perpetuum Dedicated Server v2");
+            _logger.LogInformation("Perpetuum Dedicated Server v2 - starting");
 
             try
             {
@@ -45,12 +45,12 @@ namespace Perpetuum.ServerService2
         private void StartServer()
         {
             Bootstrapper.Start();
-            _logger.LogInformation("Perpetuum Dedicated Server v2 started");
+            _logger.LogInformation("Perpetuum Dedicated Server v2 - started");
         }
 
         private void StopServer()
         {
-            _logger.LogInformation("Stopping Perpetuum Dedicated Server v2");
+            _logger.LogInformation("Perpetuum Dedicated Server v2 - stopping");
 
             Bootstrapper ??= new PerpetuumBootstrapper();
             Container ??= Bootstrapper.GetContainer();
@@ -65,15 +65,16 @@ namespace Perpetuum.ServerService2
             // wait until we are stopped. (off)
             while (HostStateService.State != HostState.Off)
             {
-                _logger.LogInformation("Waiting Perpetuum Dedicated Server v2 to stop");
-                Thread.Sleep(10000);
+                _logger.LogInformation("Perpetuum Dedicated Server v2 - waiting to stop");
+                Thread.Sleep(1000);
             }
 
-            _logger.LogInformation("Perpetuum Dedicated Server v2 stopped");
+            _logger.LogInformation("Perpetuum Dedicated Server v2 - stopped");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _logger.LogInformation("Perpetuum Dedicated Server v2 Service - started");
             ServerStart();
 
             try
@@ -89,9 +90,9 @@ namespace Perpetuum.ServerService2
             }
 
             StopServer();
-            _logger.LogInformation("Stopping Perpetuum Dedicated Server v2 Service");
+            _logger.LogInformation("Perpetuum Dedicated Server v2 Service - stopping");
             _hostApplicationLifetime.StopApplication();
-            _logger.LogInformation("Perpetuum Dedicated Server v2 Service stopped");
+            _logger.LogInformation("Perpetuum Dedicated Server v2 Service - stopped");
         }
     }
 }
