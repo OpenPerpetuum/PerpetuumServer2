@@ -1,4 +1,7 @@
 ﻿<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
   </ItemGroup>

@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-Perpetuum.ServerService2-2430b5a9-ef7b-4104-bf93-33de462523f9</UserSecretsId>
+    <Platforms>x64</Platforms>
   </PropertyGroup>
 
   <PropertyGroup>
