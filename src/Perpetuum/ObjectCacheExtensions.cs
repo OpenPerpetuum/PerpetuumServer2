@@ -74,12 +74,13 @@ namespace Perpetuum
             CacheItemPolicy policy = new()
             {
                 RemovedCallback = HandleRemovedCacheItem,
-                AbsoluteExpiration = new DateTimeOffset(DateTime.Now.Add(expiration))
+                AbsoluteExpiration = expiration != TimeSpan.Zero ?
+                    new DateTimeOffset(DateTime.Now.Add(expiration)) : ObjectCache.InfiniteAbsoluteExpiration
             };
 
             objectCache.Set(key, value, policy);
 
-            Logger.Info($"Cache set. Name = {objectCache.Name} ({key} = {value}) expiration = {(expiration == null ? "never" : policy.AbsoluteExpiration.ToString(CultureInfo.InvariantCulture))}");
+            Logger.Info($"Cache set. Name = {objectCache.Name} ({key} = {value}) expiration = {(expiration == TimeSpan.Zero ? "never" : policy.AbsoluteExpiration.ToString(CultureInfo.InvariantCulture))}");
         }
 
         private static void HandleRemovedCacheItem(CacheEntryRemovedArguments removedArguments)

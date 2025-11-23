@@ -11,12 +11,14 @@ namespace Perpetuum.Network
         /// </summary>
         public static string Post(string address, IEnumerable<KeyValuePair<string, object>> data)
         {
+#pragma warning disable SYSLIB0014
             using (var client = new WebClient())
             {
                 client.Headers.Add("User-Agent", "PerpetuumServer/1.0");
                 var response = client.UploadValues(address, data.ToNameValueCollecion());
                 return Encoding.UTF8.GetString(response);
             }
+#pragma warning restore SYSLIB0014
         }
     }
 }

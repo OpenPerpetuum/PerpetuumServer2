@@ -2,10 +2,10 @@
 
 namespace Perpetuum
 {
+#pragma warning disable CS8981
     public class k
+#pragma warning restore CS8981
     {
-
-
         //keywords in abc order
         public const string absHeightH = "absHeightH";
         public const string absHeightL = "absHeightL";

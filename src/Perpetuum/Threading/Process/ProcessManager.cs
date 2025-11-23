@@ -56,14 +56,7 @@ namespace Perpetuum.Threading.Process
             {
                 if (!_thread.Join(TimeSpan.FromSeconds(5)))
                 {
-                    try
-                    {
-                        _thread.Abort();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Exception(ex);
-                    }
+                    Logger.Error($"Cannot stop thread: {_thread.Name}");
                 }
             }
 
@@ -106,7 +99,6 @@ namespace Perpetuum.Threading.Process
                 catch (ThreadAbortException)
                 {
                     _isRunning = false;
-                    Thread.ResetAbort();
                     return;
                 }
                 catch (Exception ex)
