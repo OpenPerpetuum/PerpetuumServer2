@@ -202,8 +202,15 @@ namespace Perpetuum.Players
             {
                 if (!IsRepackaged)
                 {
-                    DynamicProperties.Update(k.armor, Armor.Ratio(ArmorMax));
-                    DynamicProperties.Update(k.currentCore, Core);
+                    // Protection against zeroing of uninitialized robots.
+                    if (ArmorMax > 0)
+                    {
+                        DynamicProperties.Update(k.armor, Armor.Ratio(ArmorMax));
+                    }
+                    if (CoreMax > 0)
+                    {
+                        DynamicProperties.Update(k.currentCore, Core);
+                    }
                 }
 
                 IZone zone = Zone;
