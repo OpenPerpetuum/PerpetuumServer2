@@ -2,8 +2,6 @@
 using Autofac.Builder;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
-using Open.Nat;
-using Open.Nat.Enums;
 using Perpetuum.Accounting;
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Bootstrapper.Modules;
@@ -59,14 +57,17 @@ using Perpetuum.Zones.PBS;
 using Perpetuum.Zones.Teleporting;
 using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Terraforming;
+using SharpOpenNat;
 using System.Numerics;
 using System.Runtime;
 using System.Runtime.Caching;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Transactions;
 using IContainer = Autofac.IContainer;
 using LogEvent = Perpetuum.Log.LogEvent;
 
+[assembly: SupportedOSPlatform("windows")]
 namespace Perpetuum.Bootstrapper
 {
     public delegate ITerrain TerrainFactory(IZone zone);
@@ -212,7 +213,7 @@ namespace Perpetuum.Bootstrapper
                     case HostState.Stopping:
                         {
                             _container.Resolve<IProcessManager>().Stop();
-                            NatDiscoverer.ReleaseAll();
+                            ReleaseAllUpnp();
                             sender.State = HostState.Off;
                             break;
                         }
@@ -235,6 +236,31 @@ namespace Perpetuum.Bootstrapper
 
         }
 
+        private readonly string _upnpDescription = "Perpetuum.Nat";
+
+        private void ReleaseAllUpnp()
+        {
+            try
+            {
+                using var source = new CancellationTokenSource(5000);
+                var device = OpenNat.Discoverer.DiscoverDeviceAsync(PortMapper.Upnp, source.Token).Result;
+                if (device == null)
+                {
+                    return;
+                }
+
+                var mappings = device.GetAllMappingsAsync().Result;
+                mappings
+                    .Where(m => m.Description == _upnpDescription)
+                    .ForEach(m => device.DeletePortMapAsync(m).Wait());
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[UPNP] ReleaseAllUpnp: {ex.Message}");
+            }
+        }
+
+
         public bool TryInitUpnp(out bool success)
         {
             success = false;
@@ -246,23 +272,27 @@ namespace Perpetuum.Bootstrapper
 
             try
             {
-                NatDiscoverer discoverer = new NatDiscoverer();
-                NatDiscoverer.ReleaseAll();
+                ReleaseAllUpnp();
 
-                NatDevice natDevice = discoverer.DiscoverDeviceAsync().Result;
-                if (natDevice == null)
+                using var source = new CancellationTokenSource(5000);
+                var device = OpenNat.Discoverer.DiscoverDeviceAsync(PortMapper.Upnp, source.Token).Result;
+                if (device == null)
                 {
-                    Logger.Error("[UPNP] NAT device not found!");
                     return false;
                 }
 
+                var ip = device.GetExternalIPAsync().Result;
+                Logger.Info($"[UPNP] External IP: {ip}");
+
                 void Map(int port)
                 {
-                    System.Threading.Tasks.Task task = natDevice.CreatePortMapAsync(new Mapping(Protocol.Tcp, port, port)).ContinueWith(t =>
-                    {
-                        Logger.Info($"[UPNP] Port mapped: {port}");
-                    });
-                    task.Wait();
+                    device
+                        .CreatePortMapAsync(new Mapping(Protocol.Tcp, port, port, 0, _upnpDescription))
+                        .ContinueWith(t =>
+                        {
+                            Logger.Info($"[UPNP] Port mapped: {port}");
+                        })
+                        .Wait();
                 }
 
                 Map(config.ListenerPort);
@@ -276,7 +306,7 @@ namespace Perpetuum.Bootstrapper
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                Logger.Error($"[UPNP] TryInitUpnp: {ex.Message}");
             }
 
             return true;

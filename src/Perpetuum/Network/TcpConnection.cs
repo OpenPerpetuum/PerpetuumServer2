@@ -63,7 +63,7 @@ namespace Perpetuum.Network
                 return;
             }
 
-            Console.Beep(100, 200);
+            //Console.Beep(100, 200);
 
             Task.Run(OnDisconnected).ContinueWith(t => Dispose()).LogExceptions();
         }

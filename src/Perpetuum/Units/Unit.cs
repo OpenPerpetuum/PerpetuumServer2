@@ -254,7 +254,7 @@ namespace Perpetuum.Units
             OnUpdate(time);
         }
 
-        private readonly IntervalTimer _broadcastTimer = new IntervalTimer(200);
+        private readonly ShiftedConsumerTimer _broadcastTimer = new ShiftedConsumerTimer(200);
 
         protected virtual void OnUpdate(TimeSpan time)
         {
@@ -264,12 +264,8 @@ namespace Perpetuum.Units
 
             UnitUpdatedEventArgs e = null;
 
-            _ = _broadcastTimer.Update(time);
-
-            if (_broadcastTimer.Passed)
+            _broadcastTimer.Update(time).IsPassed((t) =>
             {
-                _broadcastTimer.Reset();
-
                 if (UpdateTypes > 0)
                 {
                     e = new UnitUpdatedEventArgs { UpdateTypes = UpdateTypes };
@@ -296,7 +292,7 @@ namespace Perpetuum.Units
                     UnitPropertiesUpdatePacketBuilder builder = new UnitPropertiesUpdatePacketBuilder(this, changedProperties);
                     OnBroadcastPacket(builder.ToProxy());
                 }
-            }
+            });
 
             if (e == null)
             {

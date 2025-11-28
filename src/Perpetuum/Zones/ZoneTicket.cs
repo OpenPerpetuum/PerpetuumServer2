@@ -10,15 +10,15 @@ namespace Perpetuum.Zones
 
         private static readonly MD5 _md5 = MD5.Create();
         private static readonly int _md5HashSize = _md5.HashSize / 8;
-        private static readonly Rijndael _rijndael = Rijndael.Create();
+        private static readonly Aes _aes = Aes.Create();
         private readonly DateTime _created;
 
         public int CharacterId { get; }
 
         static ZoneTicket()
         {
-            _rijndael.GenerateKey();
-            _rijndael.GenerateIV();
+            _aes.GenerateKey();
+            _aes.GenerateIV();
         }
 
         private ZoneTicket(int characterId) : this()
@@ -32,7 +32,7 @@ namespace Perpetuum.Zones
         private static byte[] Encrypt(ZoneTicket ticket)
         {
             using MemoryStream ms = new();
-            ICryptoTransform encryptor = _rijndael.CreateEncryptor(_rijndael.Key, _rijndael.IV);
+            ICryptoTransform encryptor = _aes.CreateEncryptor(_aes.Key, _aes.IV);
 
             using (CryptoStream cs = new(ms, encryptor, CryptoStreamMode.Write))
             {
@@ -50,7 +50,7 @@ namespace Perpetuum.Zones
             ticket = default;
 
             using MemoryStream ms = new();
-            ICryptoTransform decryptor = _rijndael.CreateDecryptor(_rijndael.Key, _rijndael.IV);
+            ICryptoTransform decryptor = _aes.CreateDecryptor(_aes.Key, _aes.IV);
 
             using (CryptoStream cs = new(ms, decryptor, CryptoStreamMode.Write))
             {

@@ -142,7 +142,7 @@ namespace Perpetuum.Modules
                 .GetMineralLayerOrThrow(
                     materialInfo.Type,
                     (PerpetuumException ex) =>
-                        (ParentRobot as RemoteControlledCreature)
+                        (ParentRobot as RemoteControlledCreature)?
                             .ProcessIndustrialTarget(terrainLock.Location.Center, 0));
             double materialAmount = materialInfo.Amount * MiningAmountModifier.Value;
             List<ItemInfo> extractedMaterials = Extract(mineralLayer, terrainLock.Location, (uint)materialAmount);
@@ -241,7 +241,7 @@ namespace Perpetuum.Modules
                 .ThrowIfFalse(
                     ErrorCodes.MiningEnablerEffectRequired,
                         (PerpetuumException ex) =>
-                            (ParentRobot as RemoteControlledCreature)
+                            (ParentRobot as RemoteControlledCreature)?
                                 .ProcessIndustrialTarget(position.Center, 0));
         }
 

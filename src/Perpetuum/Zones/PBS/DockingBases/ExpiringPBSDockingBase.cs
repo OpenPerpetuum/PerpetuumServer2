@@ -70,12 +70,19 @@ namespace Perpetuum.Zones.PBS.DockingBases
             base.OnEnterZone(zone, enterType);
         }
 
+        /// <summary>
+        /// Call on first update
+        /// </summary>
         private void OnFirst()
         {
             firstUpdate = false;
             ChannelManager.JoinChannel(ChannelName, announcer, ChannelMemberRole.Operator, null);
             ChannelManager.SetTopic(ChannelName, announcer, $"Base Expires at {EndTime:F}");
-            SendMailStatusAsync();
+            // Disable spam when server restarts
+            if (EndTime - LifeTime + minLifeOnInit > DateTime.Now)
+            {
+                SendMailStatusAsync();
+            }
         }
 
         protected override void OnUpdate(TimeSpan time)
@@ -93,7 +100,8 @@ namespace Perpetuum.Zones.PBS.DockingBases
         protected override void JoinChannel(Character character)
         {
             base.JoinChannel(character);
-            ChannelManager.Announcement(ChannelName, announcer, $"Base is going to expire in: {Remaining.ToHumanTimeString()}");
+            // Announce only for the joined character
+            ChannelManager.Announcement(ChannelName, announcer, $"Base is going to expire in: {Remaining.ToHumanTimeString()}", character);
         }
 
         public override ErrorCodes IsDeconstructAllowed()

@@ -267,7 +267,7 @@ namespace Perpetuum.Zones
 
         private ImmutableHashSet<Unit> _updatedUnits = ImmutableHashSet<Unit>.Empty;
 
-        private void ProcessUpdatedUnits()
+        private void ProcessUpdatedUnits(TimeSpan time)
         {
             ImmutableHashSet<Unit> updatedUnits;
 
@@ -325,7 +325,7 @@ namespace Perpetuum.Zones
             return _players.GetValueOrDefault(eid);
         }
 
-        private readonly IntervalTimer _updateUnitsTimer = new IntervalTimer(500);
+        private readonly ShiftedConsumerTimer _updateUnitsTimer = new ShiftedConsumerTimer(500);
 
         private Action<TimeSpan> _updateProfiler;
 

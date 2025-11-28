@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Logging.EventLog;
+using System.Runtime.Versioning;
 using MSHost = Microsoft.Extensions.Hosting.Host;
 
+[assembly: SupportedOSPlatform("windows")]
 namespace Perpetuum.ServerService2
 {
     public class Program
