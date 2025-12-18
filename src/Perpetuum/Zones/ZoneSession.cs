@@ -949,6 +949,7 @@ namespace Perpetuum.Zones
 
             using (TransactionScope scope = Db.CreateTransaction())
             {
+                _player.DynamicProperties.Update(k.armor, _player.Armor.Ratio(_player.ArmorMax));
                 _player.Save();
                 character.ZoneId = _zone.Id;
                 character.ZonePosition = _player.CurrentPosition;
