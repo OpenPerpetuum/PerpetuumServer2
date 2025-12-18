@@ -29,13 +29,17 @@ namespace Perpetuum.Zones.Terrains
 
         public override void Stop()
         {
-            SaveLayer();
+            // When stopping the server, we save only the modified layers.
+            if (Interlocked.CompareExchange(ref _dirty, 0, 1) == 1)
+            {
+                SaveLayer();
+            }
             base.Stop();
         }
 
         public override void Update(TimeSpan time)
         {
-            if ( Interlocked.CompareExchange(ref _dirty,0,1) == 0)
+            if (Interlocked.CompareExchange(ref _dirty, 0, 1) == 0)
                 return;
 
             SaveLayer();

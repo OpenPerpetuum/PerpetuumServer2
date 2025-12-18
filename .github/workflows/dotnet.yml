@@ -26,10 +26,10 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build src/Perpetuum.ServerService2/Perpetuum.ServerService2.csproj --no-restore --configuration Release --verbosity quiet
+      run: dotnet build src/Perpetuum.ServerService2/Perpetuum.ServerService2.csproj --no-restore --configuration Release --verbosity quiet -p:Platform=x64
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Perpetuum-Server-v2-${{ github.sha }}
-        path: ${{ env.Workspace }}/bin/Release/net8.0
+        path: ${{ env.Workspace }}/bin/x64/Release/net8.0
       if: ${{ github.event_name == 'push'}}
