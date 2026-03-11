@@ -11,12 +11,16 @@ using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Transactions;
 
 namespace Perpetuum.Modules
 {
     public class LargeDrillerModule : DrillerModule
     {
+        // Number of ore mining channels.
+        private int DRILLER_BEAMS = 9;
+
         public LargeDrillerModule(CategoryFlags ammoCategoryFlags, RareMaterialHandler rareMaterialHandler, MaterialHelper materialHelper)
             : base(ammoCategoryFlags, rareMaterialHandler, materialHelper)
         {
@@ -38,24 +42,44 @@ namespace Perpetuum.Modules
             MineralLayer mineralLayer = zone.Terrain
                 .GetMineralLayerOrThrow(materialInfo.Type);
             double materialAmount = materialInfo.Amount * MiningAmountModifier.Value;
-            List<Position> mineralPositions = centralTile.GetEightNeighbours(ParentRobot.Zone.Size).ToList();
+            // Ore mining area = 5x5 square by DRILLER_BEAMS channel
+            List<Position> mineralPositions = centralTile.GetTwentyFourNeighbours(ParentRobot.Zone.Size).ToList();
             mineralPositions.Add(centralTile);
-
-            int emptyTilesCounter = 0;
 
             List<(string resourceName, int quantity)> resourceStats = new List<(string resourceName, int quantity)>();
 
+            // We make a random permutation in the list of positions.
+            Random.Shared.Shuffle(CollectionsMarshal.AsSpan(mineralPositions));
+            var positionsCount = mineralPositions.Count;
+            var index = -1;
+
             // make it parallel 
-            foreach (Position position in mineralPositions)
+            for (var driller = 0; driller < DRILLER_BEAMS; driller++)
             {
-                List<ItemInfo> extractedMaterials = Extract(mineralLayer, position, (uint)materialAmount);
-                if (extractedMaterials.Count == 0)
+                List<ItemInfo> extractedMaterials = new List<ItemInfo>();
+
+                // We move one position in the list for each subsequent mining channel.
+                if (++index >= positionsCount)
                 {
+                    index = 0;
+                }
+                Position position = mineralPositions[index];
+                // Number of empty tiles, without ore.
+                int emptyTilesCounter = 0;
+                // We cycle through all the nearest tiles.
+                while ((extractedMaterials = Extract(mineralLayer, position, (uint)materialAmount)).Count == 0)
+                {
+                    // If we've gone through all the tiles and there's no ore, we stop mining.
                     emptyTilesCounter++;
                     _ = emptyTilesCounter
-                        .ThrowIfEqual(9, ErrorCodes.NoMineralOnTile);
+                        .ThrowIfEqual(positionsCount, ErrorCodes.NoMineralOnTile);
 
-                    continue;
+                    // Let's move on to the next tile.
+                    if (++index >= positionsCount)
+                    {
+                        index = 0;
+                    }
+                    position = mineralPositions[index];
                 }
 
                 extractedMaterials
