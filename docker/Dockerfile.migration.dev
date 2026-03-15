@@ -1,0 +1,24 @@
+# TODO check for specific tag instead of latest if possible
+FROM mcr.microsoft.com/mssql-tools:latest
+
+ARG ASSET_URL
+ARG CONNECTION_STRING
+ARG SERVER_PORT
+
+WORKDIR /work
+
+COPY script/migration.sh .
+COPY template/perpetuum.ini .
+COPY template/restore_DB_to_original_state.sql .
+
+RUN sed -i "s/{SERVER_PORT}/${SERVER_PORT}/" perpetuum.ini
+# Update the connection string but hides the command to hide the password
+RUN set +x && \
+    sed -i "s/{CONNECTION_STRING}/${CONNECTION_STRING}/" perpetuum.ini && \
+    set -x
+# Using # delimiter to avoid conflict with / from the url
+RUN sed -i "s#{ASSET_URL}#${ASSET_URL}#" perpetuum.ini
+
+
+
+ENTRYPOINT ["/work/migration.sh"]

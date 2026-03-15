@@ -1,0 +1,85 @@
+services:
+  asset:
+    build:
+      context: ./asset
+      dockerfile: ../docker/Dockerfile.asset.dev
+    restart: unless-stopped
+    networks:
+      - dev_env
+    volumes:
+      - .:/asset
+    ports:
+      - ${ASSET_PORT}:1337
+  
+  db:
+    # TODO: update to 2022
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    ports:
+      - ${DB_PORT}:1433
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
+    networks:
+      - dev_env
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -C -U sa -P "${DB_PASSWORD}" -Q "SELECT 1" -b -o /dev/null
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    hostname: db
+    volumes:
+      # Note for linux/WSL2, it can cause permission denied, fix:
+      #  mkdir mssql-data
+      #  sudo chown -R 10001:10001 mssql-data
+      - ./mssql-data:/var/opt/mssql
+      # Mount perpetuum database path that contains the perpetuumsa.bak
+      - "${PERPETUUM_DATA}/database:/data"
+
+  migration:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.migration.dev
+      args:
+        ASSET_URL: ${ASSET_URL}
+        CONNECTION_STRING: ${CONNECTION_STRING}
+        SERVER_PORT: ${SERVER_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      FORCE_MIGRATION: ${FORCE_MIGRATION}
+    networks:
+      - dev_env
+    volumes:
+      - ./db:/migration
+      - "${PERPETUUM_DATA}:/base-data"
+      - openperpetuum-data:/data
+  
+  server:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.server.dev
+      args:
+        RUNTIME_IDENTIFIER: ${RUNTIME_IDENTIFIER}
+    restart: unless-stopped
+    networks:
+      - dev_env
+    ports:
+      - ${SERVER_PORT}:17700
+    environment:
+      GameRoot: ${GAME_ROOT}
+      DistributedTransactions: ${DISTRIBUTED_TRANSACTIONS}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    volumes:
+      - openperpetuum-data:/data
+
+
+networks:
+  dev_env:
+    driver: bridge
+
+volumes:
+  openperpetuum-data:

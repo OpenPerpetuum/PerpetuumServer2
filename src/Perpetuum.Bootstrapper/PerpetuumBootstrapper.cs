@@ -128,7 +128,7 @@ namespace Perpetuum.Bootstrapper
             File.WriteAllText(path, sb.ToString());
         }
 
-        public void Init(string gameRoot)
+        public void Init(string gameRoot, bool distributedTransactions)
         {
             _builder = new ContainerBuilder();
             InitContainer(gameRoot);
@@ -144,7 +144,7 @@ namespace Perpetuum.Bootstrapper
             Logger.Info($"GC Latency mode: {GCSettings.LatencyMode}");
             Logger.Info($"Vector is hardware accelerated: {Vector.IsHardwareAccelerated}");
 
-            TransactionManager.ImplicitDistributedTransactions = true;
+            TransactionManager.ImplicitDistributedTransactions = distributedTransactions;
 
             Db.DbQueryFactory = _container.Resolve<Func<DbQuery>>();
 
