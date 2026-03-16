@@ -26,7 +26,9 @@ cp -rv /base-data/layers /data/
 
 runSqlCmd () {
     set +x
-    /opt/mssql-tools/bin/sqlcmd -S db -d perpetuumsa -C -U sa -P "${DB_PASSWORD}" -I -i $1
+    sqlcmd -S db -d perpetuumsa -C -U sa -P "${DB_PASSWORD}" -I -i $1
+    # Comment the line above and uncomment the following line if you want to stop at any error during execution of a script.
+    # sqlcmd -S db -d perpetuumsa -b -C -U sa -P "${DB_PASSWORD}" -I -i $1
     set -x
 }
 
@@ -35,28 +37,27 @@ runSqlCmd () {
 #
 # Arguments:
 # - 1: Name of the directory of the patch to apply (Ex: Live_99)
-# - 2: SQL File name to execute (Ex: some_patch.sql)
+# - 2: SQL File name OR directory to execute (Ex: some_patch.sql or Raw_SQL)
 # - 3: (optional) Name of the directory containing the "data" folder (Ex: Server)
 applyPatch () {
-    runSqlCmd "/migration/Patches/$1/$2"
+    PATCH_PATH="/migration/Patches/$1/$2"
+    if [ -d "$PATCH_PATH" ]; then
+        for f in "$PATCH_PATH"/*.sql; do
+            [ -e "$f" ] || continue
+            runSqlCmd "$f"
+        done
+    else
+        runSqlCmd "$PATCH_PATH"
+    fi
 
     if [ $# -eq 3 ]; then
         cp -rv "/migration/Patches/$1/$3/data/" /
     fi
 }
 
-# preparePatch concatenate all raw sql files into a single patch file.
-# save the patch as "$1.sql" in the folder of the patch.
-#
-# Arguments:
-# - 1: Name of the directory of the patch to prepare (Ex: Live_99)
-preparePatch () {
-    cat /migration/Patches/$1/Raw_SQL/* > /migration/Patches/$1/$1.sql
-}
-
 # Create perperuumsa database if it does not exist
 echo "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'perpetuumsa') CREATE DATABASE perpetuumsa" > /work/create-database.sql
-/opt/mssql-tools/bin/sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -I -i "/work/create-database.sql"
+sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -I -i "/work/create-database.sql"
 rm /work/create-database.sql
 
 # echo "CREATE LOGIN sa WITH PASSWORD = '${DB_PASSWORD}'" > /work/create-user.sql
@@ -108,10 +109,8 @@ applyPatch Live_30 live_patch_30.sql Server
 applyPatch Live_31 live_patch_31.sql Server
 applyPatch Live_32 live_patch_32.sql Server
 applyPatch Live_33 live_patch_33.sql Server
-preparePatch Live_34
-applyPatch Live_34 Live_34.sql Server
-preparePatch Live_35
-applyPatch Live_35 Live_35.sql Server
+applyPatch Live_34 Raw_SQL Server
+applyPatch Live_35 Raw_SQL Server
 
 
 # Add test account (user: test, pass: test)
