@@ -18,7 +18,10 @@ RUN dotnet publish --force src/Perpetuum.ServerService2/Perpetuum.ServerService2
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0
 
 # Install the missing GSSAPI/Kerberos dependency used by the SQL client
-RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 curl && rm -rf /var/lib/apt/lists/*
+
+# Install GDI+
+RUN curl https://raw.githubusercontent.com/stulzq/awesome-dotnetcore-image/master/install/ubuntu.sh|sh
 
 WORKDIR /runtime
 

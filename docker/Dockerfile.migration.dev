@@ -1,9 +1,27 @@
-# TODO check for specific tag instead of latest if possible
-FROM mcr.microsoft.com/mssql-tools:latest
+FROM ubuntu:22.04
 
 ARG ASSET_URL
 ARG CONNECTION_STRING
 ARG SERVER_PORT
+
+# Install dependencies for mssql-tools18
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add Microsoft repository
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | tee /etc/apt/sources.list.d/msprod.list
+
+# Install mssql-tools18
+RUN apt-get update && ACCEPT_EULA=Y apt-get install -y \
+    mssql-tools18 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add sqlcmd to PATH
+ENV PATH="/opt/mssql-tools18/bin:${PATH}"
 
 WORKDIR /work
 
