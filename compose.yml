@@ -29,9 +29,8 @@ services:
     hostname: db
     volumes:
       # Note for linux/WSL2, it can cause permission denied, fix:
-      #  mkdir mssql-data
-      #  sudo chown -R 10001:10001 mssql-data
-      - ./mssql-data:/var/opt/mssql
+      #  sudo chown -R 10001:10001 openperpetuum-db
+      - openperpetuum-db:/var/opt/mssql
       # Mount perpetuum database path that contains the perpetuumsa.bak
       - "${PERPETUUM_DATA}/database:/data"
 
@@ -83,3 +82,4 @@ networks:
 
 volumes:
   openperpetuum-data:
+  openperpetuum-db:
