@@ -10,7 +10,7 @@ using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.NpcSystem.TargettingStrategies;
 using Perpetuum.Zones.NpcSystem.ThreatManaging;
 using Perpetuum.Zones.Terrains;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {
@@ -225,7 +225,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             WriteLog("Enter evade mode.");
         }
 
-        protected Task<List<Point>> FindNewAttackPositionAsync(Unit hostile)
+        protected Task<List<SKPointI>> FindNewAttackPositionAsync(Unit hostile)
         {
             source?.Cancel();
             source = new CancellationTokenSource();
@@ -286,7 +286,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                             return;
                         }
 
-                        List<Point> path = t.Result;
+                        List<SKPointI> path = t.Result;
 
                         if (path == null)
                         {
@@ -370,9 +370,9 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return validLocks.Length >= 1 && (stratSelector?.TryUseStrategy(smartCreature, validLocks) ?? false);
         }
 
-        private List<Point> FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)
+        private List<SKPointI> FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)
         {
-            Point end = hostile.CurrentPosition.GetRandomPositionInRange2D(0, smartCreature.BestActionRange - 1).ToPoint();
+            SKPointI end = hostile.CurrentPosition.GetRandomPositionInRange2D(0, smartCreature.BestActionRange - 1).ToPoint();
 
             smartCreature.StopMoving();
             // Nulling movement so that the unit does not resume it at zero speed if the path is not found.
@@ -384,7 +384,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
             priorityQueue.Enqueue(startNode);
 
-            HashSet<Point> closed =
+            HashSet<SKPointI> closed =
             [
                 startNode.position
             ];
@@ -402,7 +402,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                     return BuildPath(current);
                 }
 
-                foreach (Point n in current.position.GetNeighbours())
+                foreach (SKPointI n in current.position.GetNeighbours())
                 {
                     if (closed.Contains(n))
                     {
@@ -437,7 +437,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return null;
         }
 
-        private bool IsValidAttackPosition(Unit hostile, Point position)
+        private bool IsValidAttackPosition(Unit hostile, SKPointI position)
         {
             Position position3 = smartCreature.Zone.FixZ(position.ToPosition()).AddToZ(smartCreature.Height);
 
@@ -451,9 +451,9 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return !r.hit;
         }
 
-        private static List<Point> BuildPath(Node current)
+        private static List<SKPointI> BuildPath(Node current)
         {
-            Stack<Point> stack = new();
+            Stack<SKPointI> stack = new();
             Node node = current;
 
             while (node != null)

@@ -1,17 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using Perpetuum.Log;
+﻿using Perpetuum.Log;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Zones;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 {
     public partial class ZoneDrawStatMap
     {
 
-        private Bitmap DrawWorstSpotsMap()
+        private SKBitmap DrawWorstSpotsMap()
         {
             _addtoradius = 0; //init the mf
             var b = _zone.CreatePassableBitmap(_passableColor, _islandColor);
@@ -35,11 +32,15 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             WriteReportByType(MissionSpotType.kiosk, spotStats,b);
             WriteReportByType(MissionSpotType.itemsupply, spotStats,b);
 
-            
-            b.WithGraphics(g => g.DrawString("switch", new Font("Tahoma", 15), new SolidBrush(_switchColor), new PointF(20, 60)));
-            b.WithGraphics(g => g.DrawString("item submit/kiosk", new Font("Tahoma", 15), new SolidBrush(_kioskColor), new PointF(20, 80)));
-            b.WithGraphics(g => g.DrawString("item supply", new Font("Tahoma", 15), new SolidBrush(_itemSupplyColor), new PointF(20, 100)));
-            b.WithGraphics(g => g.DrawString("random point", new Font("Tahoma", 15), new SolidBrush(_randomPointColor), new PointF(20, 120)));
+            var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 15);
+            var switchPaint = new SKPaint { Color = _switchColor };
+            var kioskPaint = new SKPaint { Color = _kioskColor };
+            var itemSupplyPaint = new SKPaint { Color = _itemSupplyColor };
+            var randomPointPaint = new SKPaint { Color = _randomPointColor };
+            b.WithCanvas(c => c.DrawText("switch", 20, 60, font, switchPaint));
+            b.WithCanvas(c => c.DrawText("item submit/kiosk", 20, 80, font, kioskPaint));
+            b.WithCanvas(c => c.DrawText("item supply", 20, 100, font, itemSupplyPaint));
+            b.WithCanvas(c => c.DrawText("random point", 20, 120, font, randomPointPaint));
 
 
             return b;
@@ -47,7 +48,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         }
 
         private int _addtoradius;
-        private void WriteReportByType(MissionSpotType missionSpotType, List<MissionSpotStat> spotStats, Bitmap bitmap)
+        private void WriteReportByType(MissionSpotType missionSpotType, List<MissionSpotStat> spotStats, SKBitmap bitmap)
         {
             var lines = new List<string>(spotStats.Count);
             var ordered = spotStats.OrderBy(s => s.GetAmountByType(missionSpotType)).ToArray();
@@ -72,7 +73,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             _fileSystem.WriteAllLines("worstSpots_" + missionSpotType + "_z" + _zone.Id + "_.txt",lines);
         }
 
-        private Color GetColorBySpotType(MissionSpotType missionSpotType)
+        private SKColor GetColorBySpotType(MissionSpotType missionSpotType)
         {
             switch (missionSpotType)
             {

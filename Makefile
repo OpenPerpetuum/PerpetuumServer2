@@ -33,4 +33,4 @@ log-db:
 log-server:
 	./script/compose.sh logs server -f
 
-phonyx: help compose-start compose-stop compose-down log-asset log-db log-server
+phonyx: help up start stop down log-asset log-db log-server

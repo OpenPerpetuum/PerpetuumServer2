@@ -19,10 +19,17 @@ set -eux
 # - Set initial state using backup
 # - Run migration for each patch
 
+# Copy the generated perpetuum.ini
 cp -v /work/perpetuum.ini /data/
 
 # Copy PerpetuumServer/data to the shared /data
 cp -rv /base-data/layers /data/
+
+# Copy the custom-layers to the shared /data/layers
+cp -rv /custom-layers/* /data/layers
+
+# Copy the Perpetuum.ServerService data directory
+cp -rv /perpetuum-service-data/* /data/
 
 runSqlCmd () {
     set +x

@@ -1,10 +1,6 @@
 using Perpetuum.Log;
 using Perpetuum.Threading.Process;
 using Perpetuum.Timers;
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Perpetuum.Zones.Terrains.Materials.Plants
 {
@@ -51,7 +47,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Plants
                 : TimeSpan.FromHours(FULL_PLANT_REGEN_PASS / _total_area);
             _plantsTimer = new IntervalTimer(refreshRate);
             _natureSleepAmount = refreshRate;
-            WorkArea = zone.Size.ToArea();
+            WorkArea = new Area(0, 0, zone.Size.Width, zone.Size.Height);
             ScannerMode = PlantScannerMode.Scanner;
             ResetState();
         }

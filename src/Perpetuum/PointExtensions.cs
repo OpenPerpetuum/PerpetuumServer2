@@ -1,6 +1,6 @@
 ﻿using Perpetuum.Zones;
-using System.Drawing;
 using System.Numerics;
+using SkiaSharp;
 
 namespace Perpetuum
 {
@@ -9,35 +9,35 @@ namespace Perpetuum
         private static readonly int[,] _neighbours = { { -1, -1 }, { 0, -1 }, { 1, -1 }, { -1, 0 }, { 1, 0 }, { -1, 1 }, { 0, 1 }, { 1, 1 } };
         private static readonly int[,] _nonDiagonalNeighbours = { { 0, 1 }, { 1, 0 }, { 0, -1 }, { -1, 0 } };
 
-        public static Position ToPosition(this Point p)
+        public static Position ToPosition(this SKPointI p)
         {
             return new Position(p.X + 0.5, p.Y + 0.5);
         }
 
-        public static Position ToPosition(this PointF p)
+        public static Position ToPosition(this SKPoint p)
         {
             return new Position(p.X, p.Y);
         }
 
-        public static IEnumerable<Point> GetNonDiagonalNeighbours(this Point point)
+        public static IEnumerable<SKPointI> GetNonDiagonalNeighbours(this SKPointI point)
         {
             for (int i = 0; i < 4; i++)
             {
                 int nx = point.X + _nonDiagonalNeighbours[i, 0];
                 int ny = point.Y + _nonDiagonalNeighbours[i, 1];
 
-                yield return new Point(nx, ny);
+                yield return new SKPointI(nx, ny);
             }
         }
 
-        public static IEnumerable<Point> GetNeighbours(this Point point)
+        public static IEnumerable<SKPointI> GetNeighbours(this SKPointI point)
         {
             for (int i = 0; i < 8; i++)
             {
                 int nx = point.X + _neighbours[i, 0];
                 int ny = point.Y + _neighbours[i, 1];
 
-                yield return new Point(nx, ny);
+                yield return new SKPointI(nx, ny);
             }
         }
 
@@ -53,7 +53,7 @@ namespace Perpetuum
         }
 
 
-        public static IEnumerable<Point> GetNeighbours(this Point point, int size)
+        public static IEnumerable<SKPointI> GetNeighbours(this SKPointI point, int size)
         {
             for (int y = -size; y <= size; y++)
             {
@@ -62,7 +62,7 @@ namespace Perpetuum
                     int nx = point.X + x;
                     int ny = point.Y + y;
 
-                    yield return new Point(nx, ny);
+                    yield return new SKPointI(nx, ny);
                 }
             }
         }
@@ -81,12 +81,12 @@ namespace Perpetuum
             }
         }
 
-        public static Point GetNearestPoint(this Point point, IEnumerable<Point> points)
+        public static SKPointI GetNearestPoint(this SKPointI point, IEnumerable<SKPointI> points)
         {
-            Point nearestPoint = Point.Empty;
+            SKPointI nearestPoint = SKPointI.Empty;
             int nearestDistSq = int.MaxValue;
 
-            foreach (Point p in points)
+            foreach (SKPointI p in points)
             {
                 int distSqr = SqrDistance(point, p);
                 if (distSqr >= nearestDistSq)
@@ -101,22 +101,22 @@ namespace Perpetuum
             return nearestPoint;
         }
 
-        public static bool IsInRange(this Point p1, Point p2, double range)
+        public static bool IsInRange(this SKPointI p1, SKPointI p2, double range)
         {
             return p1.SqrDistance(p2) <= range * range;
         }
 
-        public static double Distance(this Point p1, Point p2)
+        public static double Distance(this SKPointI p1, SKPointI p2)
         {
             return Math.Sqrt(SqrDistance(p1, p2));
         }
 
-        public static int SqrDistance(this Point p1, Point p2)
+        public static int SqrDistance(this SKPointI p1, SKPointI p2)
         {
             return SqrDistance(p1, p2.X, p2.Y);
         }
 
-        public static int SqrDistance(this Point p1, int x, int y)
+        public static int SqrDistance(this SKPointI p1, int x, int y)
         {
             int dx = p1.X - x;
             int dy = p1.Y - y;
@@ -124,7 +124,7 @@ namespace Perpetuum
         }
 
         [UsedImplicitly]
-        public static double DirectionTo(this Point from, Point to)
+        public static double DirectionTo(this SKPointI from, SKPointI to)
         {
             int dx = to.X - from.X;
             int dy = to.Y - from.Y;
@@ -157,29 +157,29 @@ namespace Perpetuum
 
         private const double PI2 = Math.PI * 2;
 
-        public static Point OffsetInDirection(this Point p, double direction, double distance)
+        public static SKPointI OffsetInDirection(this SKPointI p, double direction, double distance)
         {
             double angleRadians = direction * PI2;
 
             double deltaX = Math.Sin(angleRadians) * distance;
             double deltaY = Math.Cos(angleRadians) * distance;
 
-            return new Point((int)(p.X + deltaX), (int)(p.Y - deltaY));
+            return new SKPointI((int)(p.X + deltaX), (int)(p.Y - deltaY));
         }
 
-        public static IEnumerable<Point> FloodFill(this Point p, Func<Point, bool>? validator = null)
+        public static IEnumerable<SKPointI> FloodFill(this SKPointI p, Func<SKPointI, bool>? validator = null)
         {
-            Queue<Point> q = new();
+            Queue<SKPointI> q = new();
             q.Enqueue(p);
 
-            HashSet<Point> closed = new()
+            HashSet<SKPointI> closed = new()
             { p };
 
-            while (q.TryDequeue(out Point current))
+            while (q.TryDequeue(out SKPointI current))
             {
                 yield return current;
 
-                foreach (Point np in current.GetNeighbours())
+                foreach (SKPointI np in current.GetNeighbours())
                 {
                     if (closed.Contains(np))
                     {
@@ -198,7 +198,7 @@ namespace Perpetuum
             }
         }
 
-        public static Vector2 ToVector2(this Point p)
+        public static Vector2 ToVector2(this SKPointI p)
         {
             return new Vector2(p.X, p.Y);
         }

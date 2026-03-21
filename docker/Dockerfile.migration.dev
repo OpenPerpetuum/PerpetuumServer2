@@ -26,8 +26,10 @@ ENV PATH="/opt/mssql-tools18/bin:${PATH}"
 WORKDIR /work
 
 COPY script/migration.sh .
-COPY template/perpetuum.ini .
+COPY template/perpetuum.ini.template .
 COPY template/restore_DB_to_original_state.sql .
+
+RUN mv perpetuum.ini.template perpetuum.ini
 
 RUN sed -i "s/{SERVER_PORT}/${SERVER_PORT}/" perpetuum.ini
 # Update the connection string but hides the command to hide the password

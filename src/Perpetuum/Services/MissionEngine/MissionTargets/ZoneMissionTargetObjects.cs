@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Threading.Tasks;
-using Perpetuum.EntityFramework;
+﻿using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
 using Perpetuum.Log;
@@ -16,17 +11,18 @@ using Perpetuum.Zones.NpcSystem;
 using Perpetuum.Zones.NpcSystem.Flocks;
 using Perpetuum.Zones.NpcSystem.Presences;
 using Perpetuum.Zones.Scanning;
+using SkiaSharp;
 
 namespace Perpetuum.Services.MissionEngine.MissionTargets
 {
     public class LootMissionEventInfo : MissionEventInfo
     {
         public Item LootedItem { get; private set; }
-        public Point LootedPosition { get; private set; }
+        public SKPointI LootedPosition { get; private set; }
         public Guid MissionGuid { get; private set; }
         public int DisplayOrder { get; private set; }
 
-        public LootMissionEventInfo(Player player, Item lootedItem, Point lootedPosition, Guid missionGuid, int displayOrder) : base(player)
+        public LootMissionEventInfo(Player player, Item lootedItem, SKPointI lootedPosition, Guid missionGuid, int displayOrder) : base(player)
         {
             LootedItem = lootedItem;
             LootedPosition = lootedPosition;
@@ -108,9 +104,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
     public class ReachPositionEventInfo : MissionEventInfo
     {
-        public Point ReachedPoint { get; private set; }
+        public SKPointI ReachedPoint { get; private set; }
 
-        public ReachPositionEventInfo(Player player, Point reachedPoint) : base(player)
+        public ReachPositionEventInfo(Player player, SKPointI reachedPoint) : base(player)
         {
             ReachedPoint = reachedPoint;
         }
@@ -154,9 +150,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
     public class PopNpcEventInfo : MissionEventInfo
     {
-        public Point PoppedAtPoint { get; private set; }
+        public SKPointI PoppedAtPoint { get; private set; }
 
-        public PopNpcEventInfo(Player player, Point poppedAtpoint) : base(player)
+        public PopNpcEventInfo(Player player, SKPointI poppedAtpoint) : base(player)
         {
             PoppedAtPoint = poppedAtpoint;
         }
@@ -248,9 +244,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     public class LockUnitEventInfo : MissionEventInfo
     {
         public Npc LockedNpc { get; private set; }
-        public Point LockedPosition { get; private set; }
+        public SKPointI LockedPosition { get; private set; }
 
-        public LockUnitEventInfo(Player player, Npc lockedUnit, Point lockedPosition) : base(player)
+        public LockUnitEventInfo(Player player, Npc lockedUnit, SKPointI lockedPosition) : base(player)
         {
             LockedNpc = lockedUnit;
             LockedPosition = lockedPosition;
@@ -333,10 +329,10 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
 
     public class KillEventInfo : MissionEventInfo
     {
-        public Point KillPoint { get; private set; }
+        public SKPointI KillPoint { get; private set; }
         public Npc KilledNpc { get; private set; }
 
-        public KillEventInfo(Player player, Npc killedNpc, Point killPoint) : base(player)
+        public KillEventInfo(Player player, Npc killedNpc, SKPointI killPoint) : base(player)
         {
             KillPoint = killPoint;
             KilledNpc = killedNpc;
@@ -426,9 +422,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     {
         public int ScannedDefinition { get; private set; }
         public MaterialProbeType ScanProbeType { get; private set; }
-        public Point ScanPoint { get; private set; }
+        public SKPointI ScanPoint { get; private set; }
 
-        public ScanMaterialEventInfo(Player player, int scannedDefinition, MaterialProbeType probeType, Point scanPoint) : base(player)
+        public ScanMaterialEventInfo(Player player, int scannedDefinition, MaterialProbeType probeType, SKPointI scanPoint) : base(player)
         {
             ScannedDefinition = scannedDefinition;
             ScanProbeType = probeType;
@@ -490,9 +486,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     public class ScanUnitEventInfo : MissionEventInfo
     {
         public Npc ScannedNpc { get; private set; }
-        public Point ScannedPoint { get; private set; }
+        public SKPointI ScannedPoint { get; private set; }
 
-        public ScanUnitEventInfo(Player player, Npc scannedNpc, Point scannedPoint) : base(player)
+        public ScanUnitEventInfo(Player player, Npc scannedNpc, SKPointI scannedPoint) : base(player)
         {
             ScannedNpc = scannedNpc;
             ScannedPoint = scannedPoint;
@@ -566,9 +562,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     public class ScanContainerEventInfo : MissionEventInfo
     {
         public Npc ScannedNpc { get; private set; }
-        public Point ScanPoint { get; private set; }
+        public SKPointI ScanPoint { get; private set; }
 
-        public ScanContainerEventInfo(Player player, Npc scannedNpc, Point scanPoint) : base(player)
+        public ScanContainerEventInfo(Player player, Npc scannedNpc, SKPointI scanPoint) : base(player)
         {
             ScannedNpc = scannedNpc;
             ScanPoint = scanPoint;
@@ -643,9 +639,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     {
         public int HarvestedDefinition { get;private  set; }
         public int HarvestedQuantity { get; private set; }
-        public Point HarvestedPoint { get; private set; }
+        public SKPointI HarvestedPoint { get; private set; }
 
-        public HarvestPlantEventInfo(Player player, int harvestedDefinition, int harvestedQuantity, Point harvestedPoint):base(player)
+        public HarvestPlantEventInfo(Player player, int harvestedDefinition, int harvestedQuantity, SKPointI harvestedPoint):base(player)
         {
             HarvestedDefinition = harvestedDefinition;
             HarvestedQuantity = harvestedQuantity;
@@ -727,9 +723,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     {
         public int DrilledDefinition { get; private set; }
         public int DrilledQuantity { get; private set; }
-        public Point DrillPoint { get; private set; }
+        public SKPointI DrillPoint { get; private set; }
 
-        public DrillMineralEventInfo(Player player, int drilledDefinition, int drilledQuantity, Point drillPoint) : base(player)
+        public DrillMineralEventInfo(Player player, int drilledDefinition, int drilledQuantity, SKPointI drillPoint) : base(player)
         {
             DrilledDefinition = drilledDefinition;
             DrilledQuantity = drilledQuantity;
@@ -814,9 +810,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     {
         public Item SubmittedItem { get; private set; }
         public MissionStructure SubmitMissionStructure { get; private set; }
-        public Point SubmitPoint { get; private set; }
+        public SKPointI SubmitPoint { get; private set; }
         
-        public SubmitItemEventInfo(Player player, Item submittedItem, MissionStructure submitMissionStructure, Point submitPoint) : base(player)
+        public SubmitItemEventInfo(Player player, Item submittedItem, MissionStructure submitMissionStructure, SKPointI submitPoint) : base(player)
         {
             SubmittedItem = submittedItem;
             SubmitMissionStructure = submitMissionStructure;
@@ -910,9 +906,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     public class SwitchEventInfo : MissionEventInfo
     {
         public MissionStructure SwitchMissionStructure { get; private set; }
-        public Point SwitchPosition { get; private set; }
+        public SKPointI SwitchPosition { get; private set; }
 
-        public SwitchEventInfo(Player player, MissionStructure switchMissionStructure, Point switchPosition) : base(player)
+        public SwitchEventInfo(Player player, MissionStructure switchMissionStructure, SKPointI switchPosition) : base(player)
         {
             SwitchMissionStructure = switchMissionStructure;
             SwitchPosition = switchPosition;
@@ -955,9 +951,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     {
         public Item SuppliedItem { get; private set; }
         public MissionStructure ItemSupplyStructure { get; private set; }
-        public Point SupplyPoint { get; private set; }
+        public SKPointI SupplyPoint { get; private set; }
 
-        public ItemSupplyEventInfo(Player player, Item suppliedItem, MissionStructure itemSupplyStructure, Point supplyPoint) : base(player)
+        public ItemSupplyEventInfo(Player player, Item suppliedItem, MissionStructure itemSupplyStructure, SKPointI supplyPoint) : base(player)
         {
             SuppliedItem = suppliedItem;
             ItemSupplyStructure = itemSupplyStructure;
@@ -1032,9 +1028,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     public class FindArtifactEventInfo : MissionEventInfo
     {
         public ArtifactType FoundArtifactType { get; private set; }
-        public Point ArtifactPoint { get; private set; }
+        public SKPointI ArtifactPoint { get; private set; }
 
-        public FindArtifactEventInfo(Player player, ArtifactType foundArtifactType, Point artifactPoint) : base(player)
+        public FindArtifactEventInfo(Player player, ArtifactType foundArtifactType, SKPointI artifactPoint) : base(player)
         {
             FoundArtifactType = foundArtifactType;
             ArtifactPoint = artifactPoint;
@@ -1124,9 +1120,9 @@ namespace Perpetuum.Services.MissionEngine.MissionTargets
     public class SummonEggEventInfo : MissionEventInfo
     {
         public int SummonedEggDefinition { get; private set; }
-        public Point SummonedPoint { get; private set; }
+        public SKPointI SummonedPoint { get; private set; }
 
-        public SummonEggEventInfo(Player player, int summonedEggDefinition, Point summonedPoint) : base(player)
+        public SummonEggEventInfo(Player player, int summonedEggDefinition, SKPointI summonedPoint) : base(player)
         {
             SummonedEggDefinition = summonedEggDefinition;
             SummonedPoint = summonedPoint;

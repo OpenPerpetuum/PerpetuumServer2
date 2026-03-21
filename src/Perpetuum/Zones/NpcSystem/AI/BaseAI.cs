@@ -4,10 +4,7 @@ using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.NpcSystem.AI.IndustrialDrones;
 using Perpetuum.Zones.RemoteControl;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {

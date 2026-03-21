@@ -48,7 +48,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences
 
         public DirectPresenceConfiguration(IZone zone) : base(_idGenerator.GetNextID(), PresenceType.Direct)
         {
-            Area = zone.Configuration.Size.ToArea();
+            Area = new Area(0, 0, zone.Size.Width, zone.Size.Height);
             Name = "direct presence " + ID;
             SpawnId = 10; //dynamic kamubol, szerintem kicsit sem kell
             Note = "abs! rulez";

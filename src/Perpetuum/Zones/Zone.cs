@@ -31,8 +31,8 @@ using Perpetuum.Zones.Terrains.Terraforming;
 using Perpetuum.Zones.ZoneEntityRepositories;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Drawing;
 using System.Net.Sockets;
+using SkiaSharp;
 
 namespace Perpetuum.Zones
 {
@@ -43,7 +43,7 @@ namespace Perpetuum.Zones
         private ImmutableDictionary<long, Player> _players = ImmutableDictionary<long, Player>.Empty;
 
         public int Id => Configuration.Id;
-        public Size Size => Configuration.Size;
+        public SKSizeI Size => Configuration.Size;
 
         public IDecorHandler DecorHandler { get; set; }
 

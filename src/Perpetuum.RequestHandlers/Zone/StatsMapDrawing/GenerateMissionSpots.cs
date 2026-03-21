@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Linq;
-using System.Threading.Tasks;
-using Perpetuum.Data;
+﻿using Perpetuum.Data;
 using Perpetuum.Host.Requests;
 using Perpetuum.Log;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Terrains;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 {
@@ -143,7 +138,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         private const int structureToTerminals = 50;
         private const int randomPointToTerminals = 70;
 
-        private Bitmap GenerateMissionSpots(IRequest request)
+        private SKBitmap GenerateMissionSpots(IRequest request)
         {
             //-------- kick brute force fill in
 
@@ -176,26 +171,26 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             return resultBitmap;
         }
 
-        private static readonly Color _passableColor = Color.FromArgb(255,16, 26, 26);
-        private static readonly Color _fieldTerminalColor = Color.White;
-        private static readonly Color _switchColor = Color.FromArgb(255,255, 82, 0);
-        private static readonly Color _kioskColor = Color.FromArgb(255,153, 206, 70);
-        private static readonly Color _itemSupplyColor = Color.FromArgb(255,48, 198, 249);
-        private static readonly Color _randomPointColor = Color.FromArgb(255,237, 144, 251);
-        private static readonly Color _dockingBaseColor = Color.FromArgb(255,21, 68, 29);
-        private static readonly Color _teleportColor = Color.FromArgb(255,74, 78, 6);
-        private static readonly Color _sapColor = Color.FromArgb(255,54, 29, 99);
-        private static readonly Color _islandColor = Color.FromArgb(255,0, 24, 59);
-        private static readonly Color _findArtifactColor = Color.FromArgb(255,255, 204, 77);
-        private static readonly Color _popNpcColor = Color.FromArgb(255, 105, 82, 0);
-        private static readonly Color _lootColor = Color.FromArgb(255, 0, 151, 208);
-        private static readonly Color _fetchItemColor = Color.FromArgb(255, 12, 137, 119);
-        private static readonly Color _killColor = Color.FromArgb(255, 152, 15, 15);
-        private static readonly Color _scanMineralColor = Color.FromArgb(255, 124, 164, 255);
-        private static readonly Color _drillMineralColor = Color.FromArgb(255, 214, 144, 126);
-        private static readonly Color _harvestColor = Color.FromArgb(255, 164, 231, 72);
+        private static readonly SKColor _passableColor = new(16, 26, 26);
+        private static readonly SKColor _fieldTerminalColor = SKColors.White;
+        private static readonly SKColor _switchColor = new(255, 82, 0);
+        private static readonly SKColor _kioskColor = new(153, 206, 70);
+        private static readonly SKColor _itemSupplyColor = new(48, 198, 249);
+        private static readonly SKColor _randomPointColor = new(237, 144, 251);
+        private static readonly SKColor _dockingBaseColor = new(21, 68, 29);
+        private static readonly SKColor _teleportColor = new(74, 78, 6);
+        private static readonly SKColor _sapColor = new(54, 29, 99);
+        private static readonly SKColor _islandColor = new(0, 24, 59);
+        private static readonly SKColor _findArtifactColor = new(255, 204, 77);
+        private static readonly SKColor _popNpcColor = new(105, 82, 0);
+        private static readonly SKColor _lootColor = new(0, 151, 208);
+        private static readonly SKColor _fetchItemColor = new(12, 137, 119);
+        private static readonly SKColor _killColor = new(152, 15, 15);
+        private static readonly SKColor _scanMineralColor = new(124, 164, 255);
+        private static readonly SKColor _drillMineralColor = new(214, 144, 126);
+        private static readonly SKColor _harvestColor = new(164, 231, 72);
 
-        private Bitmap DrawResultOnBitmap(List<MissionSpot> spotInfos, Dictionary<MissionSpotType, List<Position>> staticObjects )
+        private SKBitmap DrawResultOnBitmap(List<MissionSpot> spotInfos, Dictionary<MissionSpotType, List<Position>> staticObjects )
         {
             var b = _zone.CreatePassableBitmap(_passableColor);
 
@@ -227,23 +222,23 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             {
                 var spotType = kvp.Key;
                 var positions = kvp.Value;
-                var objectColor = Color.DarkOliveGreen;
+                var objectColor = SKColors.DarkOliveGreen;
                 var radius = 2;
 
                 switch (spotType)
                 {
                         case MissionSpotType.terminal:
-                        objectColor = Color.FromArgb( 78, 98, 44);
+                        objectColor = new(78, 98, 44);
                         radius = 12;
                         break;
 
                         case MissionSpotType.teleport:
-                        objectColor = Color.FromArgb(31, 57, 70);
+                        objectColor = new(31, 57, 70);
                         radius = 10;
                         break;
 
                         case MissionSpotType.sap:
-                        objectColor = Color.FromArgb(48, 22, 41);
+                        objectColor = new(48, 22, 41);
                         radius = 8;
                         break;
 
@@ -271,26 +266,33 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             var istext = $"{nofItemsupply} item supply";
             var rptext = $"{nofRndPoint} random point";
 
-            b.WithGraphics(g => g.DrawString(fttext, new Font("Tahoma", 15), new SolidBrush(_fieldTerminalColor), new PointF(20, 40)));
-            b.WithGraphics(g => g.DrawString(swtext, new Font("Tahoma", 15), new SolidBrush(_switchColor), new PointF(20, 60)));
-            b.WithGraphics(g => g.DrawString(kiotext, new Font("Tahoma", 15), new SolidBrush(_kioskColor), new PointF(20, 80)));
-            b.WithGraphics(g => g.DrawString(istext, new Font("Tahoma", 15), new SolidBrush(_itemSupplyColor), new PointF(20, 100)));
-            b.WithGraphics(g => g.DrawString(rptext, new Font("Tahoma", 15), new SolidBrush(_randomPointColor), new PointF(20, 120)));
+            var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 15);
+            var fieldTerminalColorPaint = new SKPaint { Color = _fieldTerminalColor };
+            var switchPaint = new SKPaint { Color = _switchColor };
+            var kioskPaint = new SKPaint { Color = _kioskColor };
+            var itemSupplyPaint = new SKPaint { Color = _itemSupplyColor };
+            var randomPointPaint = new SKPaint { Color = _randomPointColor };
+
+            b.WithCanvas(c => c.DrawText(fttext, 20, 40, font, fieldTerminalColorPaint));
+            b.WithCanvas(c => c.DrawText(swtext, 20, 60, font, switchPaint));
+            b.WithCanvas(c => c.DrawText(kiotext, 20, 80, font, kioskPaint));
+            b.WithCanvas(c => c.DrawText(istext, 20, 100, font, itemSupplyPaint));
+            b.WithCanvas(c => c.DrawText(rptext, 20, 120, font, randomPointPaint));
 
             return b;
         }
 
-        private void FillEllipseOnPoint(Color color, int radius, Position position, Bitmap bitmap)
+        private void FillEllipseOnPoint(SKColor color, int radius, Position position, SKBitmap bitmap)
         {
-            var gfx = Graphics.FromImage(bitmap);
-            gfx.CompositingQuality = CompositingQuality.HighQuality;
-            gfx.SmoothingMode = SmoothingMode.AntiAlias;
+            var c = new SKCanvas(bitmap);
 
             var size = radius * 2;
             var x = position.intX - radius;
             var y = position.intY - radius;
 
-            gfx.FillEllipse(new SolidBrush(color),x,y,size,size );
+            var paint = new SKPaint { Color = color, Style = SKPaintStyle.Fill, IsAntialias = true };
+            var rect = new SKRect(x,y,size,size);
+            c.DrawOval(rect, paint);
 
 
             /*
@@ -306,18 +308,17 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         }
 
 
-        private void DrawEllipseOnPoint(Color color, int radius, Position position, Bitmap bitmap)
+        private void DrawEllipseOnPoint(SKColor color, int radius, Position position, SKBitmap bitmap)
         {
-            var gfx = Graphics.FromImage(bitmap);
-            gfx.CompositingQuality = CompositingQuality.HighQuality;
-            gfx.SmoothingMode = SmoothingMode.AntiAlias;
+            var c = new SKCanvas(bitmap);
             
             var size = radius * 2;
             var x = position.intX - radius;
             var y = position.intY - radius;
 
-            gfx.DrawEllipse(  new Pen(color,3), x, y, size, size);
-            
+            var paint = new SKPaint { Color = color, Style = SKPaintStyle.Stroke, StrokeWidth = 3, IsAntialias = true };
+            var rect = new SKRect(x, y, size, size);
+            c.DrawOval(rect, paint);
         }
 
 
@@ -335,7 +336,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             var currentBorder = accuracyInfo.initialBorder;
             var foundTotal = 0;
 
-            var freePoints = new List<Point>(_zone.Configuration.Size.Width * _zone.Configuration.Size.Height);
+            var freePoints = new List<SKPointI>(_zone.Configuration.Size.Width * _zone.Configuration.Size.Height);
             InitPoints(spotInfos, distanceInfos, staticObjects, freePoints);
 
             while (true)
@@ -421,7 +422,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             Task.Run(() => { si.Save(); });
         }
 
-        private void InitPoints(List<MissionSpot> spotInfos, Dictionary<MissionSpotType, int> distanceInfos, Dictionary<MissionSpotType, List<Position>> staticObjects, List<Point> freePoints)
+        private void InitPoints(List<MissionSpot> spotInfos, Dictionary<MissionSpotType, int> distanceInfos, Dictionary<MissionSpotType, List<Position>> staticObjects, List<SKPointI> freePoints)
         {
             var zoneWidth = _zone.Size.Width;
             var zoneHeight = _zone.Size.Height;
@@ -437,16 +438,16 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     if (IsAnySpotWithin(p, spotInfos, distanceInfos, staticObjects))
                         continue;
 
-                    freePoints.Add(new Point(i, j));
+                    freePoints.Add(new SKPointI(i, j));
                 }
             }
 
             freePoints.TrimExcess();
         }
 
-        private static void CleanUpOneSpot(Position center, int distance, ref List<Point> freePoints)
+        private static void CleanUpOneSpot(Position center, int distance, ref List<SKPointI> freePoints)
         {
-            var goodKeys = new List<Point>(freePoints.Count);
+            var goodKeys = new List<SKPointI>(freePoints.Count);
             foreach (var point in freePoints)
             {
                 var pos = point.ToPosition();
@@ -583,9 +584,9 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         private int _counter;
 
-        private void MakeASnapshot(MissionSpotType spotType, List<Point> freePoints)
+        private void MakeASnapshot(MissionSpotType spotType, List<SKPointI> freePoints)
         {
-            var pointsCopy = new List<Point>(freePoints);
+            var pointsCopy = new List<SKPointI>(freePoints);
 
             _counter++;
             var fileName = spotType + "_freepoints." + $"{_counter:0000}";
@@ -596,7 +597,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
                 foreach (var point in pointsCopy)
                 {
-                    bmp.SetPixel(point.X, point.Y, Color.White);
+                    bmp.SetPixel(point.X, point.Y, SKColors.White);
                 }
 
                 _saveBitmapHelper.SaveBitmap(_zone,bmp, fileName);

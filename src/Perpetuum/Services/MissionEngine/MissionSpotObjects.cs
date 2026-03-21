@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
-using System.Linq;
+﻿using System.Data;
 using Perpetuum.Data;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Services.MissionEngine.MissionDataCacheObjects;
@@ -121,7 +118,7 @@ namespace Perpetuum.Services.MissionEngine
         private int CountSelectableByType(MissionSpotType missionSpotType, List<MissionSpot> spots)
         {
             return spots.Count(s => s.type == missionSpotType &&
-                                 position.ToPoint().ToPosition().TotalDistance2D((Point) s.position.ToPoint()) > 0.5 &&
+                                 position.ToPoint().ToPosition().TotalDistance2D(s.position.ToPoint()) > 0.5 &&
                                  position.IsInRangeOf2D(s.position, s.findRadius) &&
                                  _missionDataCache.IsTargetSelectionValid(Zone, position, s.position));
         }

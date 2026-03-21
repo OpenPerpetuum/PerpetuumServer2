@@ -1,6 +1,4 @@
-﻿using System;
-using System.Linq;
-using Perpetuum.EntityFramework;
+﻿using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Units;
 using Perpetuum.Zones.Intrusion;

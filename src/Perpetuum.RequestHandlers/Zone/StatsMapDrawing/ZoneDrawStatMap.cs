@@ -13,9 +13,8 @@ using Perpetuum.Zones.Teleporting;
 using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
 using Perpetuum.Zones.Terrains.Materials.Plants;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Globalization;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 {
@@ -48,7 +47,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             RegisterCreator("wall", CreateWallMap);
             RegisterCreator("wallpossible", CreateWallPossibleMap);
             RegisterCreator("wallplaces", CreateWallPlaces);
-            RegisterCreator("passable", () => _zone.CreatePassableBitmap(Color.White));
+            RegisterCreator("passable", () => _zone.CreatePassableBitmap(SKColors.White));
             RegisterCreator("islandmask", CreateIslandMaskMap);
             RegisterCreator("controlmap", CreateControlMap);
             RegisterCreator("TerraformProtected", CreateControlFlagMap(TerrainControlFlags.TerraformProtected));
@@ -74,31 +73,33 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             RegisterCreator(k.groundType, CreateGroundTypeMap);
         }
 
-        private void RegisterCreator(string type, Func<IRequest, Bitmap> bitmapFactory)
+        private void RegisterCreator(string type, Func<IRequest, SKBitmap> bitmapFactory)
         {
             _actions[type] = (r) => CreateAndSave(type, () => bitmapFactory(r));
         }
 
-        private void RegisterCreator(string type, Func<Bitmap> bitmapFactory)
+        private void RegisterCreator(string type, Func<SKBitmap> bitmapFactory)
         {
             _actions[type] = (r) => CreateAndSave(type, bitmapFactory);
         }
 
-        private void CreateAndSave(string postfix, Func<Bitmap> bitmapFactory)
+        private void CreateAndSave(string postfix, Func<SKBitmap> bitmapFactory)
         {
-            Bitmap bmp = bitmapFactory();
+            SKBitmap bmp = bitmapFactory();
             if (bmp == null)
             {
                 return;
             }
 
-            bmp.WithGraphics(g => g.DrawString(_zone.Configuration.Name, new Font("Tahoma", 20), Brushes.Red, new PointF(10, 10)));
+            var paint = new SKPaint { Color = SKColors.Red };
+            var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 20);
+            bmp.WithCanvas(c => c.DrawText(_zone.Configuration.Name, 10, 10, font, paint));
             string fileName = "stat_" + postfix;
 
             if (_sendtoclient) // send to client.
             {
                 using MemoryStream ms = new();
-                bmp.Save(ms, ImageFormat.Png);
+                bmp.Encode(ms, SKEncodedImageFormat.Png, 100);
                 string Base64 = Convert.ToBase64String(ms.GetBuffer());
                 Message.Builder.FromRequest(_request).SetData("name", fileName).SetData("img", Base64).Send();
             }
@@ -251,17 +252,17 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             Message.Builder.FromRequest(request).WithData(data).Send();
         }
 
-        private Bitmap CreateAltitudeBitmap()
+        private SKBitmap CreateAltitudeBitmap()
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
                 byte altitudeValue = (byte)(_zone.Terrain.Altitude.GetAltitudeAsDouble(x, y) / 2048 * 612).Clamp(0, 255);
-                Color color = Color.FromArgb(altitudeValue, altitudeValue, altitudeValue);
+                SKColor color = new(altitudeValue, altitudeValue, altitudeValue);
                 bmp.SetPixel(x, y, color);
             });
         }
 
-        private Bitmap CreateSlopeBitmap()
+        private SKBitmap CreateSlopeBitmap()
         {
             const int threshold = 4 * 4;
 
@@ -275,12 +276,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                int c = 255 - (int)((double)slope / threshold * 255);
-                bmp.SetPixel(x, y, Color.FromArgb(c, c, c));
+                byte c = (byte)(255 - (int)((double)slope / threshold * 255));
+                bmp.SetPixel(x, y, new(c, c, c));
             });
         }
 
-        private Bitmap CreateBlockingMap()
+        private SKBitmap CreateBlockingMap()
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
@@ -290,7 +291,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                bmp.SetPixel(x, y, Color.White);
+                bmp.SetPixel(x, y, SKColors.White);
             });
         }
 
@@ -300,15 +301,15 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         }
 
 
-        private Bitmap CreateNewFlagsMap()
+        private SKBitmap CreateNewFlagsMap()
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
                 TerrainControlInfo ci = _zone.Terrain.Controls.GetValue(x, y);
 
-                int r = 0;
-                int g = 0;
-                int b = 0;
+                byte r = 0;
+                byte g = 0;
+                byte b = 0;
 
                 if (ci.PBSHighway)
                 {
@@ -325,51 +326,59 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     b = 255;
                 }
 
-                Color color = Color.FromArgb(255, r, g, b);
+                SKColor color = new(r, g, b);
 
                 bmp.SetPixel(x, y, color);
             });
         }
 
-        private Bitmap CreatePlayersMap()
+        private SKBitmap CreatePlayersMap()
         {
-            return CreateAltitudeBitmap().WithGraphics(g =>
+            return CreateAltitudeBitmap().WithCanvas(c =>
             {
                 foreach (Accounting.Characters.Character unit in _zone.GetCharacters())
                 {
                     int size = 12;
-                    Pen pen = Pens.Red;
 
                     int x = unit.GetPlayerRobotFromZone().CurrentPosition.intX - (size / 2);
                     int y = unit.GetPlayerRobotFromZone().CurrentPosition.intY - (size / 2);
 
-                    g.DrawEllipse(pen, x, y, size, size);
+                    var pen = new SKPaint { Color = SKColors.Red, Style = SKPaintStyle.Stroke };
+                    var rect1 = new SKRectI(x, y, size, size);
+                    c.DrawOval(rect1, pen);
                     const int width = 4;
-                    g.DrawEllipse(Pens.BlueViolet, x, y, width, width);
-                    g.DrawString(unit.Nick, new Font("Tahoma", 12), Brushes.Red, x + 10, y + 10);
+                    var pen2 = new SKPaint { Color = SKColors.BlueViolet, Style = SKPaintStyle.Stroke };
+                    var rect2 = new SKRectI(x, y, width, width);
+                    c.DrawOval(rect2, pen2);
+                    var textPaint = new SKPaint { Color = SKColors.Red };
+                    var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 12);
+                    c.DrawText(unit.Nick, x + 10, y + 10, font, textPaint);
                 }
             });
         }
 
-        private Bitmap CreateNPCMap()
+        private SKBitmap CreateNPCMap()
         {
-            return CreateAltitudeBitmap().WithGraphics(g =>
+            return CreateAltitudeBitmap().WithCanvas(g =>
             {
                 DrawNpcPresencesOnGraphic(g);
                 DrawNpcFlocksOnGraphic(g);
             });
         }
 
-        private void DrawNpcPresencesOnGraphic(Graphics graphics)
+        private void DrawNpcPresencesOnGraphic(SKCanvas canvas)
         {
             foreach (RoamingPresence presence in _zone.PresenceManager.GetPresences().OfType<RoamingPresence>())
             {
-                graphics.DrawRectangle(Pens.Blue, presence.Area.X1, presence.Area.Y1, presence.Area.Width, presence.Area.Height);
-                graphics.DrawString(presence.Configuration.Name, new Font("Tahoma", 8), Brushes.Red, presence.Area.X1, presence.Area.Y1);
+                var paint = new SKPaint { Color = SKColors.Blue, Style = SKPaintStyle.Stroke };
+                canvas.DrawRect(presence.Area.X1, presence.Area.Y1, presence.Area.Width, presence.Area.Height, paint);
+                var textPaint = new SKPaint { Color = SKColors.Red };
+                var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 8);
+                canvas.DrawText(presence.Configuration.Name, presence.Area.X1, presence.Area.Y1, font, textPaint);
             }
         }
 
-        private void DrawNpcFlocksOnGraphic(Graphics graphics)
+        private void DrawNpcFlocksOnGraphic(SKCanvas canvas)
         {
             foreach (Zones.NpcSystem.Flocks.Flock? flock in _zone.PresenceManager.GetPresences().OfType<RoamingPresence>().SelectMany(p => p.Flocks))
             {
@@ -381,18 +390,24 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 int tyHomeRange = flock.Configuration.SpawnOrigin.intY - flock.HomeRange;
                 int widthHome = flock.HomeRange * 2;
 
-                graphics.DrawEllipse(Pens.BlueViolet, txSpawnMax, tySpawnMax, widthSpawnMax, widthSpawnMax);
-                graphics.DrawEllipse(Pens.Red, txHomeRange, tyHomeRange, widthHome, widthHome);
-                graphics.DrawString(flock.Configuration.Name, new Font("Tahoma", 10), Brushes.Red, txSpawnMax, tySpawnMax);
+                var pen1 = new SKPaint { Color = SKColors.BlueViolet, Style = SKPaintStyle.Stroke };
+                var rect1 = new SKRectI(txSpawnMax, tySpawnMax, widthSpawnMax, widthSpawnMax);
+                canvas.DrawOval(rect1, pen1);
+                var pen2 = new SKPaint { Color = SKColors.Red, Style = SKPaintStyle.Stroke };
+                var rect2 = new SKRectI(txHomeRange, tyHomeRange, widthHome, widthHome);
+                canvas.DrawOval(rect2, pen2);
+                var textPaint = new SKPaint { Color = SKColors.Red };
+                var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 10);
+                canvas.DrawText(flock.Configuration.Name, txSpawnMax, tySpawnMax, font, textPaint);
             }
         }
 
-        private Bitmap CreateMissionTargetsMap()
+        private SKBitmap CreateMissionTargetsMap()
         {
-            return CreateAltitudeBitmap().WithGraphics(DrawMissionTargetsOnGraphics);
+            return CreateAltitudeBitmap().WithCanvas(DrawMissionTargetsOnGraphics);
         }
 
-        private void DrawMissionTargetsOnGraphics(Graphics graphics)
+        private void DrawMissionTargetsOnGraphics(SKCanvas canvas)
         {
             List<Services.MissionEngine.MissionTargets.MissionTarget> targets = _missionDataCache.GetAllMissionTargets.Where(t => t.ValidZoneSet && t.ZoneId == _zone.Id).ToList();
 
@@ -411,14 +426,18 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 int tx = missionTarget.targetPosition.intX - 2;
                 int ty = missionTarget.targetPosition.intY - 2;
                 const int width = 4;
-                graphics.DrawEllipse(Pens.BlueViolet, tx, ty, width, width);
-                graphics.DrawString(targetNames[missionTarget.id], new Font("Tahoma", 8), Brushes.White, tx, ty);
+                var pen = new SKPaint{ Color = SKColors.BlueViolet, Style = SKPaintStyle.Stroke };
+                var rect = new SKRectI(tx, ty, width, width);
+                canvas.DrawOval(rect, pen);
+                var textPaint = new SKPaint { Color = SKColors.White };
+                var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 8);
+                canvas.DrawText(targetNames[missionTarget.id], tx, ty, font, textPaint);
             }
         }
 
 
 
-        private Bitmap CreateDecorBlockingMap()
+        private SKBitmap CreateDecorBlockingMap()
         {
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
@@ -428,12 +447,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                Color color = blockingInfo.Height > 0 ? Color.Green : Color.Orange;
+                SKColor color = blockingInfo.Height > 0 ? SKColors.Green : SKColors.Orange;
                 bmp.SetPixel(x, y, color);
             });
         }
 
-        private Bitmap CreateElectroPlantMap()
+        private SKBitmap CreateElectroPlantMap()
         {
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
@@ -444,12 +463,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                int r = (255 / 5 * plantInfo.state).Clamp(0, 255);
-                Color color = Color.FromArgb(255, r, 128, 0);
+                byte r = (byte)(255 / 5 * plantInfo.state).Clamp(0, 255);
+                SKColor color = new(r, 128, 0);
 
                 if (plantInfo.state == 0)
                 {
-                    color = Color.FromArgb(255, 255, 0, 30);
+                    color = new(255, 0, 30);
                 }
 
                 bmp.SetPixel(x, y, color);
@@ -457,7 +476,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         }
 
-        private Bitmap CreatePlantMap(PlantType plantType)
+        private SKBitmap CreatePlantMap(PlantType plantType)
         {
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
@@ -468,12 +487,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                int r = (255 / 5 * plantInfo.state).Clamp(0, 255);
-                Color color = Color.FromArgb(255, r, 128, 0);
+                byte r = (byte)(255 / 5 * plantInfo.state).Clamp(0, 255);
+                SKColor color = new(r, 128, 0);
 
                 if (plantInfo.state == 0)
                 {
-                    color = Color.FromArgb(255, 255, 0, 30);
+                    color = new(255, 0, 30);
                 }
 
                 bmp.SetPixel(x, y, color);
@@ -481,7 +500,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         }
 
-        private Bitmap CreatePlantsMap()
+        private SKBitmap CreatePlantsMap()
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
@@ -497,44 +516,45 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                bmp.SetPixel(x, y, Color.White);
+                bmp.SetPixel(x, y, SKColors.White);
             });
         }
 
-        private Bitmap CreateStructuresMap()
+        private SKBitmap CreateStructuresMap()
         {
-            return _zone.CreateBitmap().WithGraphics(g =>
+            return _zone.CreateBitmap().WithCanvas(c =>
             {
                 foreach (Unit unit in _zone.GetStaticUnits())
                 {
                     int size = 3;
-                    Pen pen = Pens.White;
+                    var pen = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Stroke };
 
                     if (unit.IsCategory(CategoryFlags.cf_outpost))
                     {
-                        pen = Pens.LightSeaGreen;
+                        pen.Color = SKColors.LightSeaGreen;
                         size = 150;
                     }
                     else if (unit.IsCategory(CategoryFlags.cf_public_docking_base))
                     {
-                        pen = Pens.Yellow;
+                        pen.Color = SKColors.Yellow;
                         size = 150;
                     }
                     else if (unit.IsCategory(CategoryFlags.cf_teleport_column))
                     {
-                        pen = Pens.WhiteSmoke;
+                        pen.Color = SKColors.WhiteSmoke;
                         size = 100;
                     }
 
                     int x = unit.CurrentPosition.intX - (size / 2);
                     int y = unit.CurrentPosition.intY - (size / 2);
 
-                    g.DrawEllipse(pen, x, y, size, size);
+                    var rect = new SKRectI(x, y, size, size);
+                    c.DrawOval(rect, pen);
                 }
             });
         }
 
-        private Bitmap CreateWallMap()
+        private SKBitmap CreateWallMap()
         {
             return CreateAltitudeBitmap().ForEach((bmp, x, y) =>
             {
@@ -544,14 +564,14 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                int r = (255 / 11 * pInfo.state).Clamp(0, 255);
+                byte r = (byte)(255 / 11 * pInfo.state).Clamp(0, 255);
                 byte g = pInfo.health;
-                Color pColor = Color.FromArgb(255, r, g, 0);
+                SKColor pColor = new(r, g, 0);
                 bmp.SetPixel(x, y, pColor);
             });
         }
 
-        private Bitmap CreateWallPossibleMap()
+        private SKBitmap CreateWallPossibleMap()
         {
             Outpost[] outposts = _zone.Units.OfType<Outpost>().ToArray();
             Teleport[] teleports = _zone.Units.OfType<Teleport>().ToArray();
@@ -587,11 +607,11 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                Color pixel = bmp.GetPixel(x, y);
+                SKColor pixel = bmp.GetPixel(x, y);
 
-                byte r = pixel.R;
-                byte g = pixel.G;
-                byte b = pixel.B;
+                byte r = pixel.Red;
+                byte g = pixel.Green;
+                byte b = pixel.Blue;
 
                 if (allowed)
                 {
@@ -605,12 +625,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     b = 0;
                 }
 
-                bmp.SetPixel(x, y, Color.FromArgb(255, r, g, b));
+                bmp.SetPixel(x, y, new(r, g, b));
             });
 
         }
 
-        private Bitmap CreateWallPlaces()
+        private SKBitmap CreateWallPlaces()
         {
             Outpost[] outposts = _zone.Units.OfType<Outpost>().ToArray();
             Teleport[] teleports = _zone.Units.OfType<Teleport>().ToArray();
@@ -640,12 +660,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
                 if (allowed)
                 {
-                    bmp.SetPixel(x, y, Color.FromArgb(255, 255, 0, 0));
+                    bmp.SetPixel(x, y, new(255, 0, 0));
                 }
             });
         }
 
-        private Bitmap CreateIslandMaskMap()
+        private SKBitmap CreateIslandMaskMap()
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
@@ -655,11 +675,11 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     return;
                 }
 
-                bmp.SetPixel(x, y, Color.White);
+                bmp.SetPixel(x, y, SKColors.White);
             });
         }
 
-        private Func<Bitmap> CreateControlFlagMap(TerrainControlFlags flag)
+        private Func<SKBitmap> CreateControlFlagMap(TerrainControlFlags flag)
         {
             return () =>
             {
@@ -671,35 +691,35 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                         return;
                     }
 
-                    bmp.SetPixel(x, y, Color.White);
+                    bmp.SetPixel(x, y, SKColors.White);
                 });
             };
         }
 
 
-        private Bitmap CreateControlMap()
+        private SKBitmap CreateControlMap()
         {
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
                 TerrainControlInfo control = _zone.Terrain.Controls.GetValue(x, y);
-                int c = (int)control.Flags;
-                bmp.SetPixel(x, y, Color.FromArgb(c, c, c));
+                byte c = (byte)control.Flags;
+                bmp.SetPixel(x, y, new(c, c, c));
             });
         }
 
-        private Bitmap CreateGroundTypeMap()
+        private SKBitmap CreateGroundTypeMap()
         {
             int numGroundTypes = Enum.GetNames(typeof(GroundType)).Length;
-            Color[] colors = new Color[numGroundTypes];
+            SKColor[] colors = new SKColor[numGroundTypes];
             Random random = new(numGroundTypes);
             for (int i = 0; i < colors.Length; i++)
             {
-                colors[i] = Color.FromArgb(random.Next(255), random.Next(255), random.Next(255));
+                colors[i] = new((byte)random.Next(255), (byte)random.Next(255), (byte)random.Next(255));
             }
             return _zone.CreateBitmap().ForEach((bmp, x, y) =>
             {
                 GroundType groundType = _zone.Terrain.Plants.GetValue(x, y).groundType;
-                Color c = colors[((int)groundType).Clamp(0, numGroundTypes - 1)];
+                SKColor c = colors[((int)groundType).Clamp(0, numGroundTypes - 1)];
                 bmp.SetPixel(x, y, c);
             });
         }
@@ -714,9 +734,9 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         }
 
         [CanBeNull]
-        private Bitmap CreateMineralsToNormalizedBitmap(MineralLayer layer)
+        private SKBitmap CreateMineralsToNormalizedBitmap(MineralLayer layer)
         {
-            Bitmap bitmap = _zone.CreatePassableBitmap(_passableColor);
+            SKBitmap bitmap = _zone.CreatePassableBitmap(_passableColor);
 
             foreach (MineralNode node in layer.Nodes)
             {
@@ -729,24 +749,26 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                         double n = (double)node.GetValue(x, y) / maxAmount;
                         if (n > 0.0)
                         {
-                            int c = (int)(n * 255);
-                            bitmap.SetPixel(x, y, Color.FromArgb(c, 0, 0));
+                            byte c = (byte)(n * 255);
+                            bitmap.SetPixel(x, y, new(c, 0, 0));
                         }
                     }
 
                 }
             }
 
-            return bitmap.WithGraphics(g =>
+            return bitmap.WithCanvas(c =>
             {
                 string infoString = $"{layer.Type}";
-                g.DrawString(infoString, new Font("Tahoma", 10), Brushes.White, 10, 10);
+                var paint = new SKPaint { Color = SKColors.White };
+                var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 10);
+                c.DrawText(infoString, 10, 10, font, paint);
             });
         }
 
         private void CreateTeleportDecorMaps()
         {
-            CreateTeleportDecorMaps(out Bitmap bitmap, out Bitmap circlesBitmap);
+            CreateTeleportDecorMaps(out SKBitmap bitmap, out SKBitmap circlesBitmap);
 
             CreateAndSave("teleportdecor", () => bitmap);
             CreateAndSave("teleportdecor_circles", () => circlesBitmap);
@@ -756,7 +778,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         /// This function creates the blend map on gamma islands around the teleports
         /// Finds the farthest decor tile and draws a smooth circle gradient around the teleport
         /// </summary>
-        private void CreateTeleportDecorMaps(out Bitmap? bitmap, out Bitmap? circlesBitmap)
+        private void CreateTeleportDecorMaps(out SKBitmap? bitmap, out SKBitmap? circlesBitmap)
         {
             bitmap = null;
             circlesBitmap = null;
@@ -768,12 +790,12 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             ITerrain terrain = _zone.Terrain;
 
             bitmap = _zone.CreateBitmap();
-            Color color = Color.MediumVioletRed;
-            Font font = new("Tahoma", 8);
-            Graphics graphics = Graphics.FromImage(bitmap);
+            SKColor color = SKColors.MediumVioletRed;
+            SKFont font = new(SKTypeface.FromFamilyName("Tahoma"), 8);
+            SKCanvas canvas = new(bitmap);
 
             circlesBitmap = _zone.CreateBitmap();
-            Graphics circlesGraphics = Graphics.FromImage(circlesBitmap);
+            SKCanvas circlesGraphics = new(circlesBitmap);
 
             ushort[] blendData = _zone.Size.CreateArray<ushort>();
 
@@ -783,7 +805,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
                 double maximumDistance = 0.0;
 
-                Bitmap tmpBmp = bitmap;
+                SKBitmap tmpBmp = bitmap;
                 area.ForEachXY((x, y) =>
                 {
                     if (x < 0 || x >= _zone.Size.Width || y < 0 || y >= _zone.Size.Height)
@@ -806,14 +828,17 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     tmpBmp.SetPixel(x, y, color);
                 });
 
-                graphics.DrawString(maximumDistance.ToString(CultureInfo.InvariantCulture), font, Brushes.White, (float)td.CurrentPosition.X, (float)td.CurrentPosition.Y);
+                var textPaint = new SKPaint { Color = SKColors.White };
+                canvas.DrawText(maximumDistance.ToString(CultureInfo.InvariantCulture), (float)td.CurrentPosition.X, (float)td.CurrentPosition.Y, font, textPaint);
 
                 if (maximumDistance <= 0)
                 {
                     continue;
                 }
 
-                circlesGraphics.FillEllipse(Brushes.White, (float)(td.CurrentPosition.intX - maximumDistance), (float)(td.CurrentPosition.intY - maximumDistance), (float)(maximumDistance * 2), (float)(maximumDistance * 2));
+                var paint = new SKPaint { Color = SKColors.White, Style = SKPaintStyle.Fill };
+                var rect = SKRect.Create((float)(td.CurrentPosition.intX - maximumDistance), (float)(td.CurrentPosition.intY - maximumDistance), (float)(maximumDistance * 2), (float)(maximumDistance * 2));
+                circlesGraphics.DrawOval(rect, paint);
 
                 Area tpArea = Area.FromRadius(td.CurrentPosition, (int)maximumDistance + 200);
                 tpArea.ForEachXY((x, y) =>
@@ -850,39 +875,39 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
 
 
-        private Bitmap DrawMissionByLevels()
+        private SKBitmap DrawMissionByLevels()
         {
-            Bitmap b = CreateAltitudeBitmap();
+            SKBitmap b = CreateAltitudeBitmap();
 
             DrawPixels(b);
 
-            b.WithGraphics(DrawLayers);
+            b.WithCanvas(DrawLayers);
 
             return b;
 
 
         }
 
-        private void DrawLayers(Graphics g)
+        private void DrawLayers(SKCanvas g)
         {
             DrawStringTopLeft(g, "valami cucc rajta");
             //... tobbi graphics piszkalo
         }
 
-        private void DrawPixels(Bitmap bitmap)
+        private void DrawPixels(SKBitmap bitmap)
         {
             DrawPassableInGreen(bitmap);
             //... tobbi bitmap piszkalo
         }
 
 
-        private void DrawPassableInGreen(Bitmap bmp)
+        private void DrawPassableInGreen(SKBitmap bmp)
         {
             bmp.ForEach((b, x, y) =>
             {
 
-                Color blockedColor = Color.FromArgb(255, 0, 0, 0);
-                Color passableColor = Color.FromArgb(255, 60, 60, 60);
+                SKColor blockedColor = new(0, 0, 0);
+                SKColor passableColor = new(60, 60, 60);
 
                 if (_zone.Terrain.IsPassable(new Position(x, y)))
                 {
@@ -896,9 +921,11 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
         }
 
-        private void DrawStringTopLeft(Graphics graphics, string text)
+        private void DrawStringTopLeft(SKCanvas canvas, string text)
         {
-            graphics.DrawString(text, new Font("Tahoma", 20), Brushes.Chocolate, new PointF(50, 100));
+            var paint = new SKPaint { Color = SKColors.Chocolate };
+            var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 20);
+            canvas.DrawText(text, 50, 100, font, paint);
         }
 
         private void SendDrawFunctionFinished(IRequest request)

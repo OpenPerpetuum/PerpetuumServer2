@@ -1,5 +1,4 @@
-using System.Collections.Generic;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Collections.Spatial
 {
@@ -20,9 +19,9 @@ namespace Perpetuum.Collections.Spatial
             {GridDistricts.RightLower,new CellCoord(1, 1)}
         };
 
-        public static Size CalculateGridSize(Size size)
+        public static SKSizeI CalculateGridSize(SKSizeI size)
         {
-            return new Size(size.Width / TilesPerGrid, size.Height / TilesPerGrid);
+            return new SKSizeI(size.Width / TilesPerGrid, size.Height / TilesPerGrid);
         }
     }
 }

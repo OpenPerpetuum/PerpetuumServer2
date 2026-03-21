@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Threading;
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Log;
@@ -9,6 +5,7 @@ using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Terrains;
+using SkiaSharp;
 
 namespace Perpetuum.Services.RiftSystem
 {
@@ -22,12 +19,12 @@ namespace Perpetuum.Services.RiftSystem
             _zone = zone;
         }
 
-        public Point FindSpawnPosition()
+        public SKPointI FindSpawnPosition()
         {
             return FindSpawnPosition(_zone);
         }
 
-        protected abstract Point FindSpawnPosition(IZone zone);
+        protected abstract SKPointI FindSpawnPosition(IZone zone);
     }
 
     public class PveRiftSpawnPositionFinder : RiftSpawnPositionFinder
@@ -36,7 +33,7 @@ namespace Perpetuum.Services.RiftSystem
         {
         }
 
-        protected override Point FindSpawnPosition(IZone zone)
+        protected override SKPointI FindSpawnPosition(IZone zone)
         {
             return zone.GetRandomPassablePosition();
         }
@@ -48,9 +45,9 @@ namespace Perpetuum.Services.RiftSystem
         {
         }
 
-        protected override Point FindSpawnPosition(IZone zone)
+        protected override SKPointI FindSpawnPosition(IZone zone)
         {
-            var p = zone.FindWalkableArea(zone.Size.ToArea(), 20);
+            var p = zone.FindWalkableArea(new Area(0, 0, zone.Size.Width, zone.Size.Height), 20);
             return p.RandomElement();
         }
     }

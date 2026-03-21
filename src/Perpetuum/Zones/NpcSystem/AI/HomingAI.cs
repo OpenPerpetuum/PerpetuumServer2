@@ -1,9 +1,7 @@
 ﻿using Perpetuum.Modules;
 using Perpetuum.PathFinders;
 using Perpetuum.Zones.Movements;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {
@@ -33,7 +31,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 .FindPathAsync(smartCreature.CurrentPosition, randomHome)
                 .ContinueWith(t =>
                 {
-                    System.Drawing.Point[] path = t.Result;
+                    SKPointI[] path = t.Result;
 
                     if (path == null)
                     {

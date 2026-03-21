@@ -21,7 +21,7 @@ namespace Perpetuum.Zones.Finders.PositionFinders
             _slope = slope;
             _origin = origin;
             _maxRange = range;
-            _zoneArea = zone.Size.ToArea();
+            _zoneArea = new Area(0, 0, zone.Size.Width, zone.Size.Height);
         }
 
         protected Position FindClosestWalkable(IZone zone, Position pos)

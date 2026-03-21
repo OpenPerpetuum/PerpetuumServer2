@@ -1,13 +1,10 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Threading.Process;
 using Perpetuum.Timers;
 using Perpetuum.Zones.Beams;
 using Perpetuum.Zones.Terrains.Terraforming.Operations;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains.Terraforming
 {
@@ -152,12 +149,12 @@ namespace Perpetuum.Zones.Terrains.Terraforming
 
         private void SendAffectedPositions()
         {
-            var affectedTiles = new Dictionary<Point,TerraformType>();
+            var affectedTiles = new Dictionary<SKPointI,TerraformType>();
 
             AffectedTile tile;
             while (_affectedTiles.TryTake(out tile))
             {
-                affectedTiles[new Point(tile.x,tile.y)] = tile.Type;
+                affectedTiles[new SKPointI(tile.x,tile.y)] = tile.Type;
             }
 
             foreach (var pair in affectedTiles)

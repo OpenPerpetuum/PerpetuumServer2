@@ -1,7 +1,6 @@
-using System;
-using System.Linq;
 using Perpetuum.Timers;
 using Perpetuum.Zones.NpcSystem.Flocks;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.Presences
 {
@@ -57,7 +56,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences
 
         public override Area Area
         {
-            get { return Zone.Size.ToArea(); }
+            get { return new Area(0, 0, Zone.Size.Width, Zone.Size.Height); }
         }
 
         protected override void OnPresenceExpired()

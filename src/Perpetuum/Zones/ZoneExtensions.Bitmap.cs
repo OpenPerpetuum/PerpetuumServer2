@@ -1,7 +1,6 @@
-﻿using System.Drawing;
-using System.Drawing.Imaging;
-using Perpetuum.IO;
+﻿using Perpetuum.IO;
 using Perpetuum.Zones.Terrains;
+using SkiaSharp;
 
 namespace Perpetuum.Zones
 {
@@ -15,10 +14,11 @@ namespace Perpetuum.Zones
         }
 
 
-        public void SaveBitmap(IZone zone,Bitmap bitmap,string name)
+        public void SaveBitmap(IZone zone, SKBitmap bitmap, string name)
         {
             var fn = _fileSystem.CreatePath("bitmaps",zone.CreateTerrainDataFilename(name,"png"));
-            bitmap.Save(fn,ImageFormat.Png);
+            using var stream = File.Create(fn);
+            bitmap.Encode(stream, SKEncodedImageFormat.Png, 100);
         }
 
     }
@@ -26,12 +26,17 @@ namespace Perpetuum.Zones
 
     public static partial class ZoneExtensions
     {
-        public static Bitmap CreatePassableBitmap(this IZone zone, Color passableTileColor, Color islandTileColor = default(Color))
+        public static SKBitmap CreatePassableBitmap(this IZone zone, SKColor passableTileColor, SKColor islandTileColor = default)
         {
-            var skipIsland = islandTileColor.Equals(default(Color));
+            var skipIsland = islandTileColor.Equals(default);
 
             var b = zone.CreateBitmap();
-            b.WithGraphics(g => g.FillRectangle(new SolidBrush(Color.FromArgb(255, 0, 0, 0)), 0, 0, zone.Size.Width - 1, zone.Size.Height - 1));
+            var canvas = new SKCanvas(b);
+
+            SKPaint paint = new() { Color = SKColors.Black, Style = SKPaintStyle.Fill };
+            b.WithCanvas(g =>
+                g.DrawRect(0, 0, zone.Size.Width - 1, zone.Size.Height - 1, paint)
+            );
             
             return b.ForEach((bmp, x, y) =>
             {
@@ -49,10 +54,10 @@ namespace Perpetuum.Zones
             });
         }
         
-        public static Bitmap CreateBitmap(this IZone zone)
+        public static SKBitmap CreateBitmap(this IZone zone)
         {
             var size = zone.Size;
-            return new Bitmap(size.Width,size.Height,PixelFormat.Format32bppArgb);
+            return new SKBitmap(size.Width, size.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         }
     }
 

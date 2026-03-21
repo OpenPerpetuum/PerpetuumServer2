@@ -9,7 +9,10 @@ WORKDIR /build
 
 COPY src ./src/
 
-# Build the projectt (restore + compile)
+# Dedicated restore command to cache the layer for faster container boot time=
+RUN dotnet restore src/Perpetuum.ServerService2/Perpetuum.ServerService2.csproj
+
+# Build the project
 # Provides a self-contained executable (no dotnet runtime required)
 RUN dotnet publish --force src/Perpetuum.ServerService2/Perpetuum.ServerService2.csproj --configuration Release --self-contained --runtime $RUNTIME_IDENTIFIER -o out
 

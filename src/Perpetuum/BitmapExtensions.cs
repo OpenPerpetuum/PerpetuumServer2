@@ -1,20 +1,21 @@
-﻿using System.Drawing;
+﻿using SkiaSharp;
 
 namespace Perpetuum
 {
     public static class BitmapExtensions
     {
         [CanBeNull]
-        public static Bitmap? WithGraphics(this Bitmap bitmap, Action<Graphics> action)
+        public static SKBitmap? WithCanvas(this SKBitmap bitmap, Action<SKCanvas> action)
         {
             if (bitmap == null)
             {
                 return null;
             }
 
-            using (Graphics g = Graphics.FromImage(bitmap))
+            using (var surface = SKSurface.Create(new SKImageInfo(bitmap.Width, bitmap.Height)))
             {
-                action(g);
+                var canvas = surface.Canvas;
+                action(canvas);
             }
 
             return bitmap;
@@ -24,7 +25,7 @@ namespace Perpetuum
         /// Runs an action on every pixel of a bitmap
         /// </summary>
         [CanBeNull]
-        public static Bitmap? ForEach(this Bitmap bitmap, Action<Bitmap, int, int> action)
+        public static SKBitmap? ForEach(this SKBitmap bitmap, Action<SKBitmap, int, int> action)
         {
             if (bitmap == null)
             {

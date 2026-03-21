@@ -1,11 +1,10 @@
-using System.Drawing;
-using System.Linq;
 using Perpetuum.Data;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Log;
 using Perpetuum.Players;
 using Perpetuum.Zones.Artifacts.Repositories;
 using Perpetuum.Zones.Terrains;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Artifacts.Generators
 {
@@ -74,7 +73,7 @@ namespace Perpetuum.Zones.Artifacts.Generators
             return ArtifactType.undefined;
         }
 
-        private static Point FindArtifactPosition(IZone zone)
+        private static SKPointI FindArtifactPosition(IZone zone)
         {
             if (!zone.Configuration.Terraformable)
             {
@@ -82,7 +81,7 @@ namespace Perpetuum.Zones.Artifacts.Generators
             }
 
             // gamman keresunk teruletet
-            var p = zone.FindWalkableArea(zone.Size.ToArea(), 20);
+            var p = zone.FindWalkableArea(new Area(0, 0, zone.Size.Width, zone.Size.Height), 20);
             return p.RandomElement();
         }
 

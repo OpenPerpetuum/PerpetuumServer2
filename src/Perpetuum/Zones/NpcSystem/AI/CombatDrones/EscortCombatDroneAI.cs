@@ -1,6 +1,7 @@
 ﻿using Perpetuum.PathFinders;
 using Perpetuum.Zones.Movements;
 using Perpetuum.Zones.RemoteControl;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 {
@@ -29,7 +30,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
                 .FindPathAsync(smartCreature.CurrentPosition, randomHome)
                 .ContinueWith(t =>
                 {
-                    System.Drawing.Point[] path = t.Result;
+                    SKPointI[] path = t.Result;
 
                     if (path == null)
                     {

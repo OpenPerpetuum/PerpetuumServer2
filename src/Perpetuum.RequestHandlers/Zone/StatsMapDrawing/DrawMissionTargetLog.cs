@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Data;
 using Perpetuum.Data;
 using Perpetuum.Host.Requests;
 using Perpetuum.Log;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionStructures;
 using Perpetuum.Zones;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 {
@@ -70,7 +64,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         internal class MissionTargetSuccessLogEntry
         {
             public DateTime EventTime;
-            public Point point;
+            public SKPoint point;
             public MissionTargetType targetType;
             public Guid guid;
             public long locationEid;
@@ -82,7 +76,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 var mtsle = new MissionTargetSuccessLogEntry()
                 {
                     EventTime = record.GetValue<DateTime>("eventtime"),
-                    point = new Point(record.GetValue<int>("x"), record.GetValue<int>("y")),
+                    point = new SKPointI(record.GetValue<int>("x"), record.GetValue<int>("y")),
                     targetType = (MissionTargetType) record.GetValue<int>("targettype"),
                     guid = record.GetValue<Guid>("guid"),
                     locationEid = record.GetValue<long>("locationeid"),
@@ -121,8 +115,10 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
 
             var category1 = category;
-            bitmap.WithGraphics(gx => gx.DrawString(category1.ToString(), new Font("Tahoma", 15), new SolidBrush(Color.White), new PointF(20, 40)));
-            bitmap.WithGraphics(gx => gx.DrawString(littleText, new Font("Tahoma", 15), new SolidBrush(Color.White), new PointF(20, 60)));
+            var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 15);
+            var paint = new SKPaint { Color = SKColors.White };
+            bitmap.WithCanvas(gx => gx.DrawText(category1.ToString(), 20, 40, font, paint));
+            bitmap.WithCanvas(gx => gx.DrawText(littleText, 20, 60, font, paint));
 
             var idString = $"{missionLocation.id:0000}";
 
@@ -131,35 +127,33 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             _saveBitmapHelper.SaveBitmap(_zone,bitmap, fname);
         }
 
-        private void DrawEntriesOnBitmap(MissionTargetSuccessLogEntry[] entries, Bitmap background)
+        private void DrawEntriesOnBitmap(MissionTargetSuccessLogEntry[] entries, SKBitmap background)
         {
             var eventSeries = entries.GroupBy(t => t.guid);
 
             
-            var g = Graphics.FromImage(background);
-            var pen = new Pen(new SolidBrush(Color.FromArgb(25, Color.FromArgb(200, 200, 200))), 1.1f);
+            var c = new SKCanvas(background);
+            var pen = new SKPaint { Color = new SKColor(200, 200, 200, 25), Style = SKPaintStyle.Stroke, StrokeWidth = 1.1f, IsAntialias = true };
 
-            var switchBrush = new SolidBrush(Color.FromArgb(25, _switchColor));
-            var submitItemBrush = new SolidBrush(Color.FromArgb(25, _kioskColor));
-            var itemSupplyBrush = new SolidBrush(Color.FromArgb(25, _itemSupplyColor));
-            var findArtifactBrush = new SolidBrush(Color.FromArgb(50, _findArtifactColor));
-            var popNpcBrush = new SolidBrush(Color.FromArgb(50, _popNpcColor));
-            var lootBrush = new SolidBrush(Color.FromArgb(50, _lootColor));
-            var fetchItemBrush = new SolidBrush(Color.FromArgb(25, _fetchItemColor));
-            var killBrush = new SolidBrush(Color.FromArgb(30, _killColor));
-            var scanMineralBrush = new SolidBrush(Color.FromArgb(50, _scanMineralColor));
-            var drillMineralBrush = new SolidBrush(Color.FromArgb(50, _drillMineralColor));
-            var harvestBrush = new SolidBrush(Color.FromArgb(50, _harvestColor));
+            var switchBrush = new SKPaint { Color = new SKColor(_switchColor.Red, _switchColor.Green, _switchColor.Blue, 25), IsAntialias = true };
+            var submitItemBrush = new SKPaint { Color = new SKColor(_kioskColor.Red, _kioskColor.Green, _kioskColor.Blue, 25), Style = SKPaintStyle.Fill, IsAntialias = true };
+            var itemSupplyBrush = new SKPaint { Color = new SKColor(_itemSupplyColor.Red, _itemSupplyColor.Green, _itemSupplyColor.Blue, 25), Style = SKPaintStyle.Fill, IsAntialias = true };
+            var findArtifactBrush = new SKPaint { Color = new SKColor(_findArtifactColor.Red, _findArtifactColor.Green, _findArtifactColor.Blue, 50), Style = SKPaintStyle.Fill, IsAntialias = true };
+            var popNpcBrush = new SKPaint { Color = new SKColor(_popNpcColor.Red, _popNpcColor.Green, _popNpcColor.Blue, 50), Style = SKPaintStyle.Fill, IsAntialias = true };
+            var lootBrush = new SKPaint { Color = new SKColor(_lootColor.Red, _lootColor.Green, _lootColor.Blue, 50), Style = SKPaintStyle.Stroke, IsAntialias = true };
+            var fetchItemBrush = new SKPaint { Color = new SKColor(_fetchItemColor.Red, _fetchItemColor.Green, _fetchItemColor.Blue, 25), Style = SKPaintStyle.Fill, IsAntialias = true };
+            var killBrush = new SKPaint { Color = new SKColor(_killColor.Red, _killColor.Green, _killColor.Blue, 30), Style = SKPaintStyle.Fill, IsAntialias = true };
+            var scanMineralBrush = new SKPaint { Color = new SKColor(_scanMineralColor.Red, _scanMineralColor.Green, _scanMineralColor.Blue, 50), Style = SKPaintStyle.Fill, IsAntialias = true };
+            var drillMineralBrush = new SKPaint { Color = new SKColor(_drillMineralColor.Red, _drillMineralColor.Green, _drillMineralColor.Blue, 50), Style = SKPaintStyle.Fill, IsAntialias = true };
+            var harvestBrush = new SKPaint { Color = new SKColor(_harvestColor.Red, _harvestColor.Green, _harvestColor.Blue, 50), Style = SKPaintStyle.Stroke, IsAntialias = true };
 
             var circle = 10.0f;
 
-            g.CompositingQuality = CompositingQuality.HighQuality;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
             foreach (var series in eventSeries)
             {
                 var points = series.OrderBy(v => v.EventTime).Select(v => v.point).ToArray();
 
-                g.DrawLines(pen, points);
+                c.DrawPoints(SKPointMode.Polygon, points, pen);
 
                 var eventsAtStructures = series.Where(s => (
                     s.targetType == MissionTargetType.use_switch ||
@@ -177,66 +171,76 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
                 foreach (var logEntry in eventsAtStructures)
                 {
-                    Brush p;
-                    Pen pp;
+                    SKPaint paint;
                     switch (logEntry.targetType)
                     {
 
                         case MissionTargetType.submit_item:
-                            p = submitItemBrush;
-                            g.FillEllipse(p, logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            paint = submitItemBrush;
+                            SKRect rect = new(logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            c.DrawOval(rect, paint);
                             continue;
                         case MissionTargetType.use_switch:
-                            p = switchBrush;
-                            g.FillEllipse(p, logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            paint = switchBrush;
+                            rect = new(logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            c.DrawOval(rect, paint);
                             continue;
                         case MissionTargetType.use_itemsupply:
-                            p = itemSupplyBrush;
-                            g.FillEllipse(p, logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            paint = itemSupplyBrush;
+                            rect = new(logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            c.DrawOval(rect, paint);
                             continue;
 
                         case MissionTargetType.find_artifact:
-                            p = findArtifactBrush;
-                            g.FillRectangle(p, logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            paint = findArtifactBrush;
+                            rect = new(logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            c.DrawOval(rect, paint);
                             continue;
 
                         case MissionTargetType.pop_npc:
-                            p = popNpcBrush;
-                            g.FillRectangle(p, logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            paint = popNpcBrush;
+                            rect = new(logEntry.point.X - circle / 2.0f, logEntry.point.Y - circle / 2.0f, circle, circle);
+                            c.DrawOval(rect, paint);
                             continue;
 
                         case MissionTargetType.loot_item:
-                            pp = new Pen(lootBrush, 3);
+                            paint = lootBrush;
                             const int lootSize = 11;
-                            g.DrawRectangle(pp, logEntry.point.X - lootSize / 2.0f, logEntry.point.Y - lootSize / 2.0f, lootSize, lootSize);
+                            rect = new(logEntry.point.X - lootSize / 2.0f, logEntry.point.Y - lootSize / 2.0f, lootSize, lootSize);
+                            c.DrawOval(rect, paint);
                             continue;
 
                         case MissionTargetType.fetch_item:
-                            pp = new Pen(fetchItemBrush, 4);
+                            paint = fetchItemBrush;
                             const int fetchSize = 14;
-                            g.DrawRectangle(pp, logEntry.point.X - fetchSize / 2.0f, logEntry.point.Y - fetchSize / 2.0f, fetchSize, fetchSize);
+                            rect = new(logEntry.point.X - fetchSize / 2.0f, logEntry.point.Y - fetchSize / 2.0f, fetchSize, fetchSize);
+                            c.DrawOval(rect, paint);
                             continue;
 
                         case MissionTargetType.kill_definition:
                             const int tizenKetto = 12;
-                            pp = new Pen(killBrush, 4);
-                            g.DrawRectangle(pp, logEntry.point.X - tizenKetto / 2.0f, logEntry.point.Y - tizenKetto / 2.0f, tizenKetto, tizenKetto);
+                            rect = new(logEntry.point.X - tizenKetto / 2.0f, logEntry.point.Y - tizenKetto / 2.0f, tizenKetto, tizenKetto);
+                            paint = killBrush;
+                            c.DrawRect(rect, paint);
                             continue;
 
 
                         case MissionTargetType.scan_mineral:
-                            pp = new Pen(scanMineralBrush, 4);
-                            g.DrawEllipse(pp, logEntry.point.X - tizenKetto / 2.0f, logEntry.point.Y - tizenKetto / 2.0f, tizenKetto, tizenKetto);
+                            paint = scanMineralBrush;
+                            rect = new(logEntry.point.X - tizenKetto / 2.0f, logEntry.point.Y - tizenKetto / 2.0f, tizenKetto, tizenKetto);
+                            c.DrawOval(rect, paint);
                             continue;
 
                         case MissionTargetType.drill_mineral:
-                            pp = new Pen(drillMineralBrush, 4);
-                            g.DrawEllipse(pp, logEntry.point.X - tizenKetto / 2.0f, logEntry.point.Y - tizenKetto / 2.0f, tizenKetto, tizenKetto);
+                            paint = drillMineralBrush;
+                            rect = new(logEntry.point.X - tizenKetto / 2.0f, logEntry.point.Y - tizenKetto / 2.0f, tizenKetto, tizenKetto);
+                            c.DrawOval(rect, paint);
                             continue;
 
                         case MissionTargetType.harvest_plant:
-                            pp = new Pen(harvestBrush, 4);
-                            g.DrawEllipse(pp, logEntry.point.X - tizenKetto / 2.0f, logEntry.point.Y - tizenKetto / 2.0f, tizenKetto, tizenKetto);
+                            paint = harvestBrush;
+                            rect = new(logEntry.point.X - tizenKetto / 2.0f, logEntry.point.Y - tizenKetto / 2.0f, tizenKetto, tizenKetto);
+                            c.DrawOval(rect, paint );
                             continue;
 
                         default:
@@ -254,7 +258,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
 
 
-        private Bitmap DrawAllTargetsOnZone()
+        private SKBitmap DrawAllTargetsOnZone()
         {
             const string query = "SELECT * FROM dbo.missiontargetslog WHERE zoneid=@zoneId";
 
