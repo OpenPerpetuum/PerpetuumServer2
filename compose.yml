@@ -67,7 +67,7 @@ services:
     networks:
       - dev_env
     ports:
-      - ${SERVER_PORT}:17700
+      - ${SERVER_PORT}:17700-17900
     environment:
       GameRoot: ${GAME_ROOT}
       DistributedTransactions: ${DISTRIBUTED_TRANSACTIONS}

@@ -57,7 +57,7 @@ namespace Perpetuum.Zones
         public static SKBitmap CreateBitmap(this IZone zone)
         {
             var size = zone.Size;
-            return new SKBitmap(size.Width, size.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            return new SKBitmap(size.Width, size.Height, SKColorType.Rgba8888, SKAlphaType.Opaque);
         }
     }
 

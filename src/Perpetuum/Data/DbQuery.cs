@@ -49,7 +49,8 @@ namespace Perpetuum.Data
 
             if (Transaction.Current != null && connection is DbConnection dbConnection)
             {
-                dbConnection.EnlistTransaction(Transaction.Current);
+                // TODO: Make this disabled only for non-Windows
+                // dbConnection.EnlistTransaction(Transaction.Current);
             }
 
             IDbCommand command = connection.CreateCommand();
