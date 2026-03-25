@@ -49,7 +49,7 @@ namespace Perpetuum.Data
 
             if (Transaction.Current != null && connection is DbConnection dbConnection)
             {
-                // TODO: Make this disabled only for non-Windows
+                // TODO: Make this disabled only for non-Windows  
                 // dbConnection.EnlistTransaction(Transaction.Current);
             }
 
