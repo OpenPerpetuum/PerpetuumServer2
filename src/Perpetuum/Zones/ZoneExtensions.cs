@@ -8,7 +8,7 @@ using Perpetuum.Units;
 using Perpetuum.Zones.RemoteControl;
 using Perpetuum.Zones.Terrains;
 using System.Drawing;
-using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 
 namespace Perpetuum.Zones
 {
@@ -46,14 +46,14 @@ namespace Perpetuum.Zones
         public void SaveLayerToDisk<T>(IZone zone, ILayer<T> layer) where T : struct
         {
             string baseFilename = zone.CreateTerrainDataFilename(layer.LayerType.ToString().ToLower(), "");
-
-            using MD5 md5 = MD5.Create();
             string tmpFn = baseFilename + "tmp" + DateTime.Now.Ticks + ".bin";
-            byte[] layerData = layer.RawData.ToByteArray();
-            _fileSystem.WriteLayer(tmpFn, layerData);
+   
+            ReadOnlySpan<byte> layerData = MemoryMarshal.AsBytes(layer.RawData.AsSpan());
+            var hash = _fileSystem.WriteLayerAndMD5(tmpFn, layerData);
 
-            if (!md5.ComputeHash(layerData).SequenceEqual(md5.ComputeHash(_fileSystem.ReadLayerAsByteArray(tmpFn))))
+            if (!hash.SequenceEqual(_fileSystem.MD5(tmpFn)))
             {
+                Logger.Error("Layer not saved. (" + baseFilename + ")");
                 return;
             }
 
