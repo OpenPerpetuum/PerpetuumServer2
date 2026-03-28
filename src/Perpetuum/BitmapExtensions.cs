@@ -12,9 +12,8 @@ namespace Perpetuum
                 return null;
             }
 
-            using (var surface = SKSurface.Create(new SKImageInfo(bitmap.Width, bitmap.Height)))
+            using (var canvas = new SKCanvas(bitmap))
             {
-                var canvas = surface.Canvas;
                 action(canvas);
             }
 

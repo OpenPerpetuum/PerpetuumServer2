@@ -117,8 +117,8 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             var category1 = category;
             var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 15);
             var paint = new SKPaint { Color = SKColors.White };
-            bitmap.WithCanvas(gx => gx.DrawText(category1.ToString(), 20, 40, font, paint));
-            bitmap.WithCanvas(gx => gx.DrawText(littleText, 20, 60, font, paint));
+            bitmap.WithCanvas(gx => gx.DrawText(category1.ToString(), 20, 40 + font.size, font, paint));
+            bitmap.WithCanvas(gx => gx.DrawText(littleText, 20, 60 + font.size, font, paint));
 
             var idString = $"{missionLocation.id:0000}";
 
