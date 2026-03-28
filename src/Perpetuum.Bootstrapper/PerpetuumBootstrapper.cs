@@ -136,6 +136,7 @@ namespace Perpetuum.Bootstrapper
             Logger.Current = _container.Resolve<ILogger<LogEvent>>();
 
             GlobalConfiguration config = _container.Resolve<GlobalConfiguration>();
+            config.DistributedTransactions = distributedTransactions;
             _container.Resolve<IHostStateService>().State = HostState.Init;
 
 

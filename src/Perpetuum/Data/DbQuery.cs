@@ -6,7 +6,7 @@ namespace Perpetuum.Data
 {
     public delegate IDbConnection DbConnectionFactory();
 
-    public class DbQuery(DbConnectionFactory connectionFactory)
+    public class DbQuery(DbConnectionFactory connectionFactory, GlobalConfiguration configuration)
     {
         private readonly DbConnectionFactory _connectionFactory = connectionFactory;
 
@@ -47,10 +47,9 @@ namespace Perpetuum.Data
             using IDbConnection connection = _connectionFactory();
             connection.Open();
 
-            if (Transaction.Current != null && connection is DbConnection dbConnection)
+            if (configuration.DistributedTransactions && Transaction.Current != null && connection is DbConnection dbConnection)
             {
-                // TODO: Make this disabled only for non-Windows  
-                // dbConnection.EnlistTransaction(Transaction.Current);
+                dbConnection.EnlistTransaction(Transaction.Current);
             }
 
             IDbCommand command = connection.CreateCommand();

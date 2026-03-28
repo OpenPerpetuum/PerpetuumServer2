@@ -17,7 +17,7 @@ stop:
 down:
 	./script/compose.sh down
 
-# Stop and delete the containers, also delete the openperpetuum-data volume
+# Stop and delete the containers, also delete the volumes (openperpetuum-data, openperpetuum-db)
 delete:
 	./script/compose.sh down -v
 
