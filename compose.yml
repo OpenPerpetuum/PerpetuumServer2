@@ -12,8 +12,7 @@ services:
       - ${ASSET_PORT}:1337
   
   db:
-    # TODO: update to 2022
-    image: mcr.microsoft.com/mssql/server:2019-latest
+    image: mcr.microsoft.com/mssql/server:2025-latest
     ports:
       - ${DB_PORT}:1433
     environment:
