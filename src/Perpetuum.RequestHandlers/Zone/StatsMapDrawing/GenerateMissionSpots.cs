@@ -273,11 +273,11 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             var itemSupplyPaint = new SKPaint { Color = _itemSupplyColor };
             var randomPointPaint = new SKPaint { Color = _randomPointColor };
 
-            b.WithCanvas(c => c.DrawText(fttext, 20, 40 + font.size, font, fieldTerminalColorPaint));
-            b.WithCanvas(c => c.DrawText(swtext, 20, 60 + font.size, font, switchPaint));
-            b.WithCanvas(c => c.DrawText(kiotext, 20, 80 + font.size, font, kioskPaint));
-            b.WithCanvas(c => c.DrawText(istext, 20, 100 + font.size, font, itemSupplyPaint));
-            b.WithCanvas(c => c.DrawText(rptext, 20, 120 + font.size, font, randomPointPaint));
+            b.WithCanvas(c => c.DrawText(fttext, 20, 40 + font.Size, font, fieldTerminalColorPaint));
+            b.WithCanvas(c => c.DrawText(swtext, 20, 60 + font.Size, font, switchPaint));
+            b.WithCanvas(c => c.DrawText(kiotext, 20, 80 + font.Size, font, kioskPaint));
+            b.WithCanvas(c => c.DrawText(istext, 20, 100 + font.Size, font, itemSupplyPaint));
+            b.WithCanvas(c => c.DrawText(rptext, 20, 120 + font.Size, font, randomPointPaint));
 
             return b;
         }

@@ -93,7 +93,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
             var paint = new SKPaint { Color = SKColors.Red };
             var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 20);
-            bmp.WithCanvas(c => c.DrawText(_zone.Configuration.Name, 10, 10 + font.size, font, paint));
+            bmp.WithCanvas(c => c.DrawText(_zone.Configuration.Name, 10, 10 + font.Size, font, paint));
             string fileName = "stat_" + postfix;
 
             if (_sendtoclient) // send to client.
@@ -352,7 +352,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                     c.DrawOval(rect2, pen2);
                     var textPaint = new SKPaint { Color = SKColors.Red };
                     var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 12);
-                    c.DrawText(unit.Nick, x + 10, y + 10 + font.size, font, textPaint);
+                    c.DrawText(unit.Nick, x + 10, y + 10 + font.Size, font, textPaint);
                 }
             });
         }
@@ -374,7 +374,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 canvas.DrawRect(presence.Area.X1, presence.Area.Y1, presence.Area.Width, presence.Area.Height, paint);
                 var textPaint = new SKPaint { Color = SKColors.Red };
                 var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 8);
-                canvas.DrawText(presence.Configuration.Name, presence.Area.X1, presence.Area.Y1 + font.size, font, textPaint);
+                canvas.DrawText(presence.Configuration.Name, presence.Area.X1, presence.Area.Y1 + font.Size, font, textPaint);
             }
         }
 
@@ -398,7 +398,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 canvas.DrawOval(rect2, pen2);
                 var textPaint = new SKPaint { Color = SKColors.Red };
                 var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 10);
-                canvas.DrawText(flock.Configuration.Name, txSpawnMax, tySpawnMax + font.size, font, textPaint);
+                canvas.DrawText(flock.Configuration.Name, txSpawnMax, tySpawnMax + font.Size, font, textPaint);
             }
         }
 
@@ -431,7 +431,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 canvas.DrawOval(rect, pen);
                 var textPaint = new SKPaint { Color = SKColors.White };
                 var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 8);
-                canvas.DrawText(targetNames[missionTarget.id], tx, ty + font.size, font, textPaint);
+                canvas.DrawText(targetNames[missionTarget.id], tx, ty + font.Size, font, textPaint);
             }
         }
 
@@ -762,7 +762,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 string infoString = $"{layer.Type}";
                 var paint = new SKPaint { Color = SKColors.White };
                 var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 10);
-                c.DrawText(infoString, 10, 10 + font.size, font, paint);
+                c.DrawText(infoString, 10, 10 + font.Size, font, paint);
             });
         }
 
@@ -829,7 +829,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 });
 
                 var textPaint = new SKPaint { Color = SKColors.White };
-                canvas.DrawText(maximumDistance.ToString(CultureInfo.InvariantCulture), (float)td.CurrentPosition.X, (float)td.CurrentPosition.Y + font.size, font, textPaint);
+                canvas.DrawText(maximumDistance.ToString(CultureInfo.InvariantCulture), (float)td.CurrentPosition.X, (float)td.CurrentPosition.Y + font.Size, font, textPaint);
 
                 if (maximumDistance <= 0)
                 {
@@ -925,7 +925,7 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
         {
             var paint = new SKPaint { Color = SKColors.Chocolate };
             var font = new SKFont(SKTypeface.FromFamilyName("Tahoma"), 20);
-            canvas.DrawText(text, 50, 100 + font.size, font, paint);
+            canvas.DrawText(text, 50, 100 + font.Size, font, paint);
         }
 
         private void SendDrawFunctionFinished(IRequest request)

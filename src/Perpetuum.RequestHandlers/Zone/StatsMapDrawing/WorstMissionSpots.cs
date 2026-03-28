@@ -37,10 +37,10 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
             var kioskPaint = new SKPaint { Color = _kioskColor };
             var itemSupplyPaint = new SKPaint { Color = _itemSupplyColor };
             var randomPointPaint = new SKPaint { Color = _randomPointColor };
-            b.WithCanvas(c => c.DrawText("switch", 20, 60 + font.size, font, switchPaint));
-            b.WithCanvas(c => c.DrawText("item submit/kiosk", 20, 80 + font.size, font, kioskPaint));
-            b.WithCanvas(c => c.DrawText("item supply", 20, 100 + font.size, font, itemSupplyPaint));
-            b.WithCanvas(c => c.DrawText("random point", 20, 120 + font.size, font, randomPointPaint));
+            b.WithCanvas(c => c.DrawText("switch", 20, 60 + font.Size, font, switchPaint));
+            b.WithCanvas(c => c.DrawText("item submit/kiosk", 20, 80 + font.Size, font, kioskPaint));
+            b.WithCanvas(c => c.DrawText("item supply", 20, 100 + font.Size, font, itemSupplyPaint));
+            b.WithCanvas(c => c.DrawText("random point", 20, 120 + font.Size, font, randomPointPaint));
 
 
             return b;
