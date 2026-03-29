@@ -81,7 +81,7 @@ namespace Perpetuum.Zones.Artifacts.Generators
             }
 
             // gamman keresunk teruletet
-            var p = zone.FindWalkableArea(new Area(0, 0, zone.Size.Width, zone.Size.Height), 20);
+            var p = zone.FindWalkableArea(zone.Size.ToArea(), 20);
             return p.RandomElement();
         }
 

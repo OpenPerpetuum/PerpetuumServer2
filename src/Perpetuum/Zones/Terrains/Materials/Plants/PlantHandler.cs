@@ -47,7 +47,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Plants
                 : TimeSpan.FromHours(FULL_PLANT_REGEN_PASS / _total_area);
             _plantsTimer = new IntervalTimer(refreshRate);
             _natureSleepAmount = refreshRate;
-            WorkArea = new Area(0, 0, zone.Size.Width, zone.Size.Height);
+            WorkArea = zone.Size.ToArea();
             ScannerMode = PlantScannerMode.Scanner;
             ResetState();
         }

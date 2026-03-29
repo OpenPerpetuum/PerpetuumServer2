@@ -81,7 +81,7 @@ namespace Perpetuum.Services.Relics
                 var posFinder = new ClosestWalkablePositionFinder(_zone, randomPos);
 
                 posFinder.Find(out Position p);
-                var result = _zone.FindWalkableArea(p, new Area(0, 0, _zone.Size.Width, _zone.Size.Height), SPAWN_AREA_REQUIRED_SIZE);
+                var result = _zone.FindWalkableArea(p, _zone.Size.ToArea(), SPAWN_AREA_REQUIRED_SIZE);
                 if(result != null)
                 {
                     return p;

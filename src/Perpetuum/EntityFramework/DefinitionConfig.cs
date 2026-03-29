@@ -147,7 +147,7 @@ namespace Perpetuum.EntityFramework
                 bool success = SKColor.TryParse(tint, out _tint);
                 if (!success)
                 {
-                    Logger.Info($"Counld not parse tint {_tint}");
+                    Logger.Info($"Could not parse tint {_tint}");
                 }
             }
         }

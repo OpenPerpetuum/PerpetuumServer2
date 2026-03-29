@@ -37,7 +37,7 @@ namespace Perpetuum.Server
                     return 3;
                 }
 
-                // TODO: fix a way to take optional argument to be able to configure the DistributedTransactions from here
+                // When using PerpetuumServer, the DistributedTransactions is enabled
                 bootstrapper.Init(gameRoot.Value, true);
 
                 if (bootstrapper.TryInitUpnp(out bool upnpSuccess))
