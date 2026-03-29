@@ -27,7 +27,7 @@ namespace Perpetuum.RequestHandlers.Zone
             {
                 zone.Terrain.Controls.UpdateAll((x, y, c) =>
                 {
-                    if (bmp.GetPixel(x, y).GetLuminance() == 0)
+                    if (bmp.GetPixel(x, y).Alpha == 0)
                     {
                         return c;
                     }
