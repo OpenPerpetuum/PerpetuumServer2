@@ -163,9 +163,9 @@ namespace Perpetuum.Bootstrapper
                 ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
                 ?.InformationalVersion;
 #if DEBUG
-            Logger.Warning($"DEBUG Version: {version}");
+            Logger.Warning($"DEBUG Version: {version}, UserInteractive: {Environment.UserInteractive}");
 #else
-            Logger.Info($"RELEASE Version: {version}");
+            Logger.Info($"RELEASE Version: {version}, UserInteractive: {Environment.UserInteractive}");
 #endif
             Logger.Info($"Game root: {config.GameRoot}");
             Logger.Info($"GC isServerGC: {GCSettings.IsServerGC}");
