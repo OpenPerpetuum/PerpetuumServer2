@@ -30,6 +30,10 @@ namespace Perpetuum.Zones.NpcSystem
         private const double AggroRange = 30;
         private const double BestComnatRangeModifier = 0.9;
         private const double BaseCallForHelpArmorThreshold = 0.2;
+        public const double FleeArmorThreshold = 0.30;
+        public const double FleeArmorRestoreThreshold = 0.80;
+        public const double FleeCoreThreshold = 0.20;
+        public const double FleeCoreRestoreThreshold = 0.80;
         private readonly TimeKeeper debounceBodyPull = new(TimeSpan.FromSeconds(2.5));
         private readonly TimeKeeper debounceLockChange = new(TimeSpan.FromSeconds(2.5));
         private readonly IntervalTimer pseudoUpdateFreq = new(TimeSpan.FromMilliseconds(650));
@@ -65,6 +69,26 @@ namespace Perpetuum.Zones.NpcSystem
         public virtual double CallForHelpArmorThreshold => BaseCallForHelpArmorThreshold;
 
         public bool CallForHelp { private get; set; }
+
+        public virtual bool ShouldFlee()
+        {
+            if (IsStationary)
+            {
+                return false;
+            }
+
+            if (ArmorPercentage < FleeArmorThreshold)
+            {
+                return true;
+            }
+
+            if (HasShieldEffect && CorePercentage < FleeCoreThreshold)
+            {
+                return true;
+            }
+
+            return false;
+        }
 
         public NpcBossInfo BossInfo { get; set; }
 
