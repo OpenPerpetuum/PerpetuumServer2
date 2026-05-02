@@ -1,6 +1,7 @@
 ﻿using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
+using Perpetuum.Modules;
 using Perpetuum.Players;
 using Perpetuum.StateMachines;
 using Perpetuum.Timers;
@@ -397,6 +398,78 @@ namespace Perpetuum.Zones.NpcSystem
 
         public virtual bool IsFriendly(Unit source)
         {
+            return false;
+        }
+
+        public const double SupportThreshold = 0.75;
+
+        public bool HasRemoteArmorRepairer => ActiveModules.OfType<RemoteArmorRepairModule>().Any();
+
+        public bool HasEnergyTransferer => ActiveModules.OfType<EnergyTransfererModule>().Any();
+
+        public bool IsSupportCapable => HasRemoteArmorRepairer || HasEnergyTransferer;
+
+        public IEnumerable<SmartCreature> GetSupportCandidates()
+        {
+            HashSet<long> seen = new();
+
+            ISmartCreatureGroup group = Group;
+            if (group != null)
+            {
+                foreach (SmartCreature member in group.Members)
+                {
+                    if (member == this || member.States.Dead)
+                    {
+                        continue;
+                    }
+
+                    if (seen.Add(member.Eid))
+                    {
+                        yield return member;
+                    }
+                }
+            }
+
+            // Cross-faction friends (e.g. Niani <-> Cultist) aren't in the same group
+            // but show up in the visibility set because they belong to a different
+            // faction. IsHostile gives us the friend/foe verdict consistent with the
+            // existing Npc.IsHostile(Npc) faction logic.
+            foreach (IUnitVisibility visibility in GetVisibleUnits())
+            {
+                if (visibility.Target is SmartCreature creature &&
+                    creature != this &&
+                    !creature.States.Dead &&
+                    !IsHostile(creature) &&
+                    seen.Add(creature.Eid))
+                {
+                    yield return creature;
+                }
+            }
+        }
+
+        public bool HasFriendsNeedingSupport(double threshold = SupportThreshold)
+        {
+            if (!IsSupportCapable)
+            {
+                return false;
+            }
+
+            bool canRepair = HasRemoteArmorRepairer;
+            bool canTransfer = HasEnergyTransferer;
+
+            foreach (SmartCreature candidate in GetSupportCandidates())
+            {
+                if (canRepair && candidate.ArmorPercentage < threshold)
+                {
+                    return true;
+                }
+
+                if (canTransfer && candidate.CorePercentage < threshold)
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
 
