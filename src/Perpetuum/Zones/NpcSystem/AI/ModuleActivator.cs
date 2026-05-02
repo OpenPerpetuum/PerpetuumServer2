@@ -5,7 +5,6 @@ using Perpetuum.Modules.Weapons;
 using Perpetuum.Timers;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.Terrains;
-using System;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {

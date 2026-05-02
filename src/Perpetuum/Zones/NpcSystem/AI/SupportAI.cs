@@ -1,11 +1,11 @@
 using Perpetuum.Collections;
 using Perpetuum.Modules;
+using Perpetuum.Modules.EffectModules;
 using Perpetuum.PathFinders;
 using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.Movements;
-using Perpetuum.Zones.Terrains;
 using System.Drawing;
 
 namespace Perpetuum.Zones.NpcSystem.AI
@@ -17,7 +17,9 @@ namespace Perpetuum.Zones.NpcSystem.AI
         private const int Sqrt2 = 141;
         private const int Weight = 1000;
 
-        private readonly List<SupportModuleActivator> supportActivators = new();
+        private readonly List<SupportModuleActivator> repairActivators = new();
+        private readonly List<SupportModuleActivator> transferActivators = new();
+        private readonly List<SupportModuleActivator> selfCareActivators = new();
         private readonly bool canRepair;
         private readonly bool canTransfer;
         private readonly double supportRange;
@@ -29,6 +31,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
         private PathMovement movement;
         private PathMovement nextMovement;
         private CancellationTokenSource source;
+        private volatile bool pathPending;
 
         public SupportAI(SmartCreature smartCreature) : base(smartCreature)
         {
@@ -38,26 +41,37 @@ namespace Perpetuum.Zones.NpcSystem.AI
             List<EnergyTransfererModule> transferers = smartCreature.ActiveModules
                 .OfType<EnergyTransfererModule>()
                 .ToList();
+            selfCareActivators.AddRange(smartCreature.ActiveModules
+                .OfType<ShieldGeneratorModule>()
+                .Select(m => new SupportModuleActivator(m)));
 
             canRepair = repairers.Count > 0;
             canTransfer = transferers.Count > 0;
 
             foreach (RemoteArmorRepairModule m in repairers)
             {
-                supportActivators.Add(new SupportModuleActivator(m));
+                repairActivators.Add(new SupportModuleActivator(m));
             }
 
             foreach (EnergyTransfererModule m in transferers)
             {
-                supportActivators.Add(new SupportModuleActivator(m));
+                transferActivators.Add(new SupportModuleActivator(m));
             }
 
             // Use the smallest module range as the engagement range so we know we're in
             // range of every equipped support module before we stop and fire.
             double minRange = double.MaxValue;
-            foreach (SupportModuleActivator activator in supportActivators)
+            foreach (SupportModuleActivator a in repairActivators)
             {
-                double r = activator.Module.OptimalRange + activator.Module.Falloff;
+                double r = a.Module.OptimalRange + a.Module.Falloff;
+                if (r < minRange)
+                {
+                    minRange = r;
+                }
+            }
+            foreach (SupportModuleActivator a in transferActivators)
+            {
+                double r = a.Module.OptimalRange + a.Module.Falloff;
                 if (r < minRange)
                 {
                     minRange = r;
@@ -70,7 +84,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
         public override void Enter()
         {
             // Drop any combat locks that AggressorAI/IdleAI may have acquired so the
-            // support module activators only ever see friendly locks. AggressorAI
+            // support module activators only ever see the friendly lock. AggressorAI
             // re-acquires combat locks on resume via CombatAI.UpdateHostiles.
             smartCreature.ResetLocks();
             base.Enter();
@@ -91,7 +105,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 return;
             }
 
-            if (supportActivators.Count == 0)
+            if (repairActivators.Count == 0 && transferActivators.Count == 0)
             {
                 _ = smartCreature.AI.Pop();
 
@@ -118,6 +132,8 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 smartCreature.ResetLocks();
                 currentTarget = null;
             }
+
+            RunModules(time);
         }
 
         // SupportAI shouldn't auto-promote sideways into combat or homing — those
@@ -142,6 +158,8 @@ namespace Perpetuum.Zones.NpcSystem.AI
                         need = Math.Max(need, 1.0 - a);
                     }
                 }
+
+                need *= 1.1; // Repair is slightly more important than transfer, all else equal.
 
                 if (canTransfer)
                 {
@@ -189,63 +207,108 @@ namespace Perpetuum.Zones.NpcSystem.AI
             currentTarget = target;
         }
 
+        // Only tick the activators that match what the current target actually needs.
+        // This avoids wasting energy on a transfer when the ally's core is full, and
+        // vice versa.
         private void RunSupportModules(TimeSpan time)
         {
-            UnitLock supportLock = currentTarget != null ? smartCreature.GetLockByUnit(currentTarget) : null;
-
-            foreach (SupportModuleActivator activator in supportActivators)
+            foreach (SupportModuleActivator a in selfCareActivators)
             {
-                activator.Update(time, supportLock);
+                a.Update(time, null);
+            }
+
+            if (currentTarget == null)
+            {
+                return;
+            }
+
+            UnitLock supportLock = smartCreature.GetLockByUnit(currentTarget);
+
+            if (canRepair && currentTarget.ArmorPercentage < SupportThreshold)
+            {
+                foreach (SupportModuleActivator a in repairActivators)
+                {
+                    a.Update(time, supportLock);
+                }
+            }
+
+            if (canTransfer && currentTarget.CorePercentage < SupportThreshold)
+            {
+                foreach (SupportModuleActivator a in transferActivators)
+                {
+                    a.Update(time, supportLock);
+                }
             }
         }
 
         private void UpdateMovement(SmartCreature target, TimeSpan time)
         {
-            bool inRange = smartCreature.IsInRangeOf3D(target, supportRange * 0.9);
             _ = repathTimer.Update(time);
 
-            if (inRange)
-            {
-                if (movement != null)
-                {
-                    smartCreature.StopMoving();
-                    movement = null;
-                }
-
-                return;
-            }
-
+            bool inRange = smartCreature.IsInRangeOf3D(target, supportRange * 0.9);
             bool targetMoved = !target.CurrentPosition.IsEqual2D(lastTargetPosition);
+            bool forceRepath = repathTimer.Passed;
 
-            if (movement == null || targetMoved || repathTimer.Passed)
+            if (forceRepath)
             {
                 repathTimer.Reset();
+            }
+
+            // Mirror CombatAI's trigger: re-path only when the target moved or the
+            // periodic timer fires. Using `movement == null` here would re-issue the
+            // path search every tick until the first path comes back, cancelling each
+            // worker before it can finish.
+            if (!inRange && !pathPending && (targetMoved || forceRepath || movement == null))
+            {
                 lastTargetPosition = target.CurrentPosition;
+                pathPending = true;
 
                 _ = FindNewSupportPositionAsync(target).ContinueWith(t =>
                 {
-                    if (t.IsCanceled)
+                    try
                     {
-                        return;
-                    }
+                        if (t.IsCanceled || t.IsFaulted)
+                        {
+                            return;
+                        }
 
-                    List<Point> path = t.Result;
-                    if (path == null)
+                        List<Point> path = t.Result;
+                        if (path == null)
+                        {
+                            return;
+                        }
+
+                        _ = Interlocked.Exchange(ref nextMovement, new PathMovement(path));
+                    }
+                    finally
                     {
-                        return;
+                        pathPending = false;
                     }
-
-                    _ = Interlocked.Exchange(ref nextMovement, new PathMovement(path));
                 });
             }
 
             if (nextMovement != null)
             {
-                movement = Interlocked.Exchange(ref nextMovement, null);
-                movement.Start(smartCreature);
+                PathMovement pending = Interlocked.Exchange(ref nextMovement, null);
+                if (pending != null)
+                {
+                    movement = pending;
+                    movement.Start(smartCreature);
+                }
+            }
+
+            if (inRange && movement != null)
+            {
+                smartCreature.StopMoving();
+                movement = null;
             }
 
             movement?.Update(smartCreature, time);
+
+            if (movement != null && movement.Arrived)
+            {
+                movement = null;
+            }
         }
 
         private Task<List<Point>> FindNewSupportPositionAsync(Unit target)
@@ -257,86 +320,100 @@ namespace Perpetuum.Zones.NpcSystem.AI
         }
 
         // Modeled on CombatAI.FindNewAttackPosition — A* over walkable tiles inside the
-        // creature's home range, looking for a tile within the smallest equipped support
-        // module's range with LOS to the target.
+        // creature's home range, looking for a tile within the smallest equipped
+        // support module's range with LOS to the target. Runs on a worker thread, so
+        // it must NOT mutate AI fields like `movement` directly — that race was the
+        // source of the line-245 NRE.
         private List<Point> FindSupportPosition(Unit target, CancellationToken cancellationToken)
         {
-            int approachRange = (int)Math.Max(1, supportRange * 0.7);
-            Point end = target.CurrentPosition.GetRandomPositionInRange2D(0, approachRange).ToPoint();
-
-            smartCreature.StopMoving();
-            movement = null;
-
-            double maxNode = Math.Pow(smartCreature.HomeRange, 2) * Math.PI;
-            PriorityQueue<Node> priorityQueue = new((int)maxNode);
-            Node startNode = new(smartCreature.CurrentPosition);
-
-            priorityQueue.Enqueue(startNode);
-
-            HashSet<Point> closed =
-            [
-                startNode.position
-            ];
-
-            while (priorityQueue.TryDequeue(out Node current))
+            try
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return null;
-                }
+                int approachRange = (int)Math.Max(1, supportRange * 0.7);
+                Point end = target.CurrentPosition.GetRandomPositionInRange2D(0, approachRange).ToPoint();
 
-                if (IsValidSupportPosition(target, current.position))
-                {
-                    return BuildPath(current);
-                }
+                double maxNode = Math.Pow(smartCreature.HomeRange, 2) * Math.PI;
+                PriorityQueue<Node> priorityQueue = new((int)maxNode);
+                Node startNode = new(smartCreature.CurrentPosition);
 
-                foreach (Point n in current.position.GetNeighbours())
+                priorityQueue.Enqueue(startNode);
+
+                HashSet<Point> closed =
+                [
+                    startNode.position
+                ];
+
+                while (priorityQueue.TryDequeue(out Node current))
                 {
-                    if (closed.Contains(n))
+                    if (cancellationToken.IsCancellationRequested)
                     {
-                        continue;
+                        return null;
                     }
 
-                    _ = closed.Add(n);
-
-                    if (!smartCreature.IsWalkable(n.X, n.Y))
+                    if (IsValidSupportPosition(target, current.position))
                     {
-                        continue;
+                        return BuildPath(current);
                     }
 
-                    if (!n.IsInRange(smartCreature.HomePosition, smartCreature.HomeRange))
+                    foreach (Point n in current.position.GetNeighbours())
                     {
-                        continue;
+                        if (closed.Contains(n))
+                        {
+                            continue;
+                        }
+
+                        _ = closed.Add(n);
+
+                        if (!smartCreature.IsWalkable(n.X, n.Y))
+                        {
+                            continue;
+                        }
+
+                        if (!n.IsInRange(smartCreature.HomePosition, smartCreature.HomeRange))
+                        {
+                            continue;
+                        }
+
+                        int newG = current.g + (n.X - current.position.X == 0 || n.Y - current.position.Y == 0 ? 100 : Sqrt2);
+                        int newH = Heuristic.Manhattan.Calculate(n.X, n.Y, end.X, end.Y) * Weight;
+                        Node newNode = new(n)
+                        {
+                            g = newG,
+                            f = newG + newH,
+                            parent = current
+                        };
+
+                        priorityQueue.Enqueue(newNode);
                     }
-
-                    int newG = current.g + (n.X - current.position.X == 0 || n.Y - current.position.Y == 0 ? 100 : Sqrt2);
-                    int newH = Heuristic.Manhattan.Calculate(n.X, n.Y, end.X, end.Y) * Weight;
-                    Node newNode = new(n)
-                    {
-                        g = newG,
-                        f = newG + newH,
-                        parent = current
-                    };
-
-                    priorityQueue.Enqueue(newNode);
                 }
+
+                return null;
             }
-
-            return null;
+            catch
+            {
+                // Worker exceptions (e.g. zone teardown mid-search) must not fault the
+                // task — the AI tick will simply re-issue the request next cycle.
+                return null;
+            }
         }
 
         private bool IsValidSupportPosition(Unit target, Point position)
         {
-            Position position3 = smartCreature.Zone.FixZ(position.ToPosition()).AddToZ(smartCreature.Height);
+            IZone zone = smartCreature.Zone;
+            if (zone == null)
+            {
+                return false;
+            }
+
+            Position position3 = zone.FixZ(position.ToPosition()).AddToZ(smartCreature.Height);
 
             if (!target.CurrentPosition.IsInRangeOf3D(position3, supportRange * 0.9))
             {
                 return false;
             }
 
-            LOSResult r = smartCreature.Zone.IsInLineOfSight(position3, target, false);
+            LOSResult r = zone.IsInLineOfSight(position3, target, false);
 
-            return !r.hit;
+            return r != null && !r.hit;
         }
 
         private static List<Point> BuildPath(Node current)

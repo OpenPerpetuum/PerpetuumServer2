@@ -1,9 +1,8 @@
 using Perpetuum.Modules;
+using Perpetuum.Modules.EffectModules;
 using Perpetuum.Timers;
 using Perpetuum.Zones.Locking;
 using Perpetuum.Zones.Locking.Locks;
-using Perpetuum.Zones.Terrains;
-using System;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {
@@ -32,6 +31,13 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
             if (module.State.Type != ModuleStateType.Idle)
             {
+                return;
+            }
+
+            if (module is ShieldGeneratorModule)
+            {
+                module.State.SwitchTo(ModuleStateType.AutoRepeat);
+
                 return;
             }
 

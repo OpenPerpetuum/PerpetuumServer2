@@ -2,6 +2,7 @@
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
 using Perpetuum.Modules;
+using Perpetuum.Modules.EffectModules;
 using Perpetuum.Players;
 using Perpetuum.StateMachines;
 using Perpetuum.Timers;
@@ -74,6 +75,12 @@ namespace Perpetuum.Zones.NpcSystem
         public virtual bool ShouldFlee()
         {
             if (IsStationary)
+            {
+                return false;
+            }
+
+            if (!ActiveModules.OfType<ArmorRepairModule>().Any() &&
+                !ActiveModules.OfType<ShieldGeneratorModule>().Any())
             {
                 return false;
             }
