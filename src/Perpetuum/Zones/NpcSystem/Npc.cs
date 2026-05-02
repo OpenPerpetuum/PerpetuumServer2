@@ -28,6 +28,16 @@ namespace Perpetuum.Zones.NpcSystem
 
         public int EP { get; private set; }
 
+        public override bool ShouldFlee()
+        {
+            if (SpecialType == NpcSpecialType.Boss)
+            {
+                return false;
+            }
+
+            return base.ShouldFlee();
+        }
+
         public ILootGenerator LootGenerator { get; set; }
 
         public void Tag(Player tagger, TimeSpan duration)
