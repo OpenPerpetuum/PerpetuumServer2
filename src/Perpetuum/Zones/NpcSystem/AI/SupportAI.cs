@@ -144,7 +144,13 @@ namespace Perpetuum.Zones.NpcSystem.AI
         private SmartCreature SelectSupportTarget()
         {
             SmartCreature best = null;
-            double bestNeed = 0;
+            double bestScore = 0;
+
+            // Scale distance by twice the support range so a target at exactly
+            // supportRange away still scores ~0.67× its raw need, and a target
+            // twice as far scores ~0.5×.  This prevents the bot from chasing a
+            // fleeing member when closer wounded allies are available.
+            double distanceScale = supportRange > 0 ? supportRange * 2.0 : 1.0;
 
             foreach (SmartCreature candidate in smartCreature.GetSupportCandidates())
             {
@@ -175,9 +181,12 @@ namespace Perpetuum.Zones.NpcSystem.AI
                     continue;
                 }
 
-                if (need > bestNeed)
+                double distance = smartCreature.GetDistance(candidate);
+                double score = need / (1.0 + distance / distanceScale);
+
+                if (score > bestScore)
                 {
-                    bestNeed = need;
+                    bestScore = score;
                     best = candidate;
                 }
             }
@@ -246,6 +255,8 @@ namespace Perpetuum.Zones.NpcSystem.AI
             _ = repathTimer.Update(time);
 
             bool inRange = smartCreature.IsInRangeOf3D(target, supportRange * 0.9);
+            bool hasLoS = HasLineOfSight(target);
+            bool inPosition = inRange && hasLoS;
             bool targetMoved = !target.CurrentPosition.IsEqual2D(lastTargetPosition);
             bool forceRepath = repathTimer.Passed;
 
@@ -254,11 +265,11 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 repathTimer.Reset();
             }
 
-            // Mirror CombatAI's trigger: re-path only when the target moved or the
-            // periodic timer fires. Using `movement == null` here would re-issue the
-            // path search every tick until the first path comes back, cancelling each
-            // worker before it can finish.
-            if (!inRange && !pathPending && (targetMoved || forceRepath || movement == null))
+            // Re-path when out of range OR in range but LoS is blocked (e.g. an
+            // obstacle sits between the support bot and the target). Mirror CombatAI's
+            // trigger: only fire the search when the target moved, the periodic timer
+            // ticks, or we just arrived (movement == null) — not every single tick.
+            if (!inPosition && !pathPending && (targetMoved || forceRepath || movement == null))
             {
                 lastTargetPosition = target.CurrentPosition;
                 pathPending = true;
@@ -297,7 +308,9 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 }
             }
 
-            if (inRange && movement != null)
+            // Only stop moving when we have both range AND LoS — stopping on range
+            // alone would freeze the bot at an obstacle with no way to recover.
+            if (inPosition && movement != null)
             {
                 smartCreature.StopMoving();
                 movement = null;
@@ -309,6 +322,18 @@ namespace Perpetuum.Zones.NpcSystem.AI
             {
                 movement = null;
             }
+        }
+
+        private bool HasLineOfSight(Unit target)
+        {
+            IZone zone = smartCreature.Zone;
+            if (zone == null)
+            {
+                return false;
+            }
+
+            LOSResult r = zone.IsInLineOfSight(smartCreature, target, false);
+            return r != null && !r.hit;
         }
 
         private Task<List<Point>> FindNewSupportPositionAsync(Unit target)
