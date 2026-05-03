@@ -31,6 +31,13 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 return;
             }
 
+            if (smartCreature.HasFriendsNeedingSupport())
+            {
+                smartCreature.AI.Push(new SupportAI(smartCreature));
+
+                return;
+            }
+
             if (smartCreature.ThreatManager.IsThreatened)
             {
                 ToAggressorAI();

@@ -1,4 +1,5 @@
 ﻿using Perpetuum.Collections;
+using Perpetuum.Modules;
 using Perpetuum.Modules.Weapons;
 using Perpetuum.PathFinders;
 using Perpetuum.Timers;
@@ -39,9 +40,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
         public override void Enter()
         {
             stratSelector = InitSelector();
-            moduleActivators = smartCreature.ActiveModules
-                .Select(m => new ModuleActivator(m))
-                .ToList();
+            moduleActivators = BuildCombatModuleActivators();
             IsNpcHasMissiles = smartCreature.ActiveModules
                 .OfType<MissileWeaponModule>()
                 .Any();
@@ -53,7 +52,16 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
         protected override List<ModuleActivator> FillModuleActivators()
         {
-            return moduleActivators = smartCreature.ActiveModules
+            return moduleActivators = BuildCombatModuleActivators();
+        }
+
+        // Remote support modules are owned exclusively by SupportAI — without this
+        // filter the standard ModuleActivator visitors would happily target the
+        // current combat lock, healing/energy-feeding the enemy.
+        private List<ModuleActivator> BuildCombatModuleActivators()
+        {
+            return smartCreature.ActiveModules
+                .Where(m => m is not RemoteArmorRepairModule && m is not EnergyTransfererModule)
                 .Select(m => new ModuleActivator(m))
                 .ToList();
         }

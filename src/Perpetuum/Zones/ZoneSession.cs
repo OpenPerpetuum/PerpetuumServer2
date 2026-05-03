@@ -115,7 +115,7 @@ namespace Perpetuum.Zones
             {
                 OnStopped();
             }
-            else
+            else if (!_isInLogout)
             {
                 DisconnectTime = DateTime.Now; //for the logs
                 LogoutRequest(false);
@@ -211,6 +211,7 @@ namespace Perpetuum.Zones
             TimeSpan workTime = GlobalTimer.Elapsed - executeTime;
             packet.WorkTime = (int)workTime.TotalMilliseconds;
             SendPacket(packet);
+            WritePacketLog(packet, $"workTime = {workTime.TotalMilliseconds} ms");
 
             if (cancelLogout)
             {
@@ -946,28 +947,37 @@ namespace Perpetuum.Zones
         private void LogoutPlayer()
         {
             Character character = Character;
-
-            using (TransactionScope scope = Db.CreateTransaction())
+            try
             {
-                _player.DynamicProperties.Update(k.armor, _player.Armor.Ratio(_player.ArmorMax));
-                _player.Save();
-                character.ZoneId = _zone.Id;
-                character.ZonePosition = _player.CurrentPosition;
+                using (TransactionScope scope = Db.CreateTransaction())
+                {
+                    _player.DynamicProperties.Update(k.armor, _player.Armor.Ratio(_player.ArmorMax));
+                    _player.Save();
+                    character.ZoneId = _zone.Id;
+                    character.ZonePosition = _player.CurrentPosition;
 
+                    _player.RemoveFromZone();
+                    _player.SetSession(None);
+
+                    _sessionManager.DeselectCharacter(character);
+                    scope.Complete();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex);
                 _player.RemoveFromZone();
                 _player.SetSession(None);
-
-                _sessionManager.DeselectCharacter(character);
-                scope.Complete();
             }
-
-            Disconnect();
-            OnStopped();
+            finally
+            {
+                Disconnect();
+                OnStopped();
+            }
         }
 
         public void Disconnect()
         {
-            LogoutRequest(false);
             _connection?.Disconnect();
         }
 
