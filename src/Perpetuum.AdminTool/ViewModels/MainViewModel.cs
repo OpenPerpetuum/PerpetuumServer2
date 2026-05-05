@@ -25,6 +25,7 @@ namespace Perpetuum.AdminTool.ViewModels
         public AppSettingsStore Store => _store;
         public AppSession Session => _session;
         public TranslationsViewModel Translations { get; }
+        public EntitiesViewModel Entities { get; }
 
         public MainViewModel(AppSettingsStore store, AppSession session)
         {
@@ -33,6 +34,7 @@ namespace Perpetuum.AdminTool.ViewModels
             _currentMode = session.CurrentMode;
             Translations = new TranslationsViewModel(store);
             Translations.Load();
+            Entities = new EntitiesViewModel(store, session.Changes, Translations);
             UpdateStatus();
 
             Changes.Items.CollectionChanged += (_, _) =>

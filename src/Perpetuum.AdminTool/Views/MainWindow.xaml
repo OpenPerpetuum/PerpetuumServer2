@@ -45,6 +45,9 @@
         </StatusBar>
 
         <TabControl x:Name="ModuleTabs" Margin="0">
+            <TabItem Header="Entities">
+                <views:EntitiesView DataContext="{Binding Entities}"/>
+            </TabItem>
             <TabItem Header="Translations">
                 <views:TranslationsView DataContext="{Binding Translations}"/>
             </TabItem>
