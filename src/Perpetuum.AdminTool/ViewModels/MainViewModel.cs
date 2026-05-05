@@ -133,8 +133,25 @@ namespace Perpetuum.AdminTool.ViewModels
             }
 
             // Direct DB mode
+
+            // Extra guard for destructive operations (DELETE).
+            var destructiveCount = Changes.Items.Count(c => c.IsDestructive);
+            if (destructiveCount > 0)
+            {
+                var warn = MessageBox.Show(owner,
+                    $"{destructiveCount} of {Changes.Items.Count} pending change(s) are destructive (DELETE).\n\n" +
+                    "Applying directly to the database is irreversible from this tool.\n\n" +
+                    "Continue?",
+                    "Destructive operations pending",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+                if (warn != MessageBoxResult.Yes) return;
+            }
+
             var confirmVm = new ConfirmSqlViewModel(
-                $"About to apply {Changes.Items.Count} change(s) directly to the database.",
+                $"About to apply {Changes.Items.Count} change(s) directly to the database" +
+                (destructiveCount > 0 ? $" ({destructiveCount} destructive)." : "."),
                 script);
             var confirmWin = new ConfirmSqlWindow(confirmVm) { Owner = owner };
             if (confirmWin.ShowDialog() != true)

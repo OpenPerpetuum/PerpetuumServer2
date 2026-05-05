@@ -4,5 +4,6 @@ namespace Perpetuum.AdminTool.Editing
     {
         string Description { get; }
         string ToSql();
+        bool IsDestructive => false;
     }
 }

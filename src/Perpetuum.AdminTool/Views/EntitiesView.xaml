@@ -11,6 +11,7 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="Reload" Padding="10,2" Margin="0,0,8,0" Click="OnReloadClick"
                         IsEnabled="{Binding IsLoading, Converter={x:Static common:InverseBoolConverter.Instance}}"/>
+                <Button Content="New entity..." Padding="10,2" Margin="0,0,8,0" Click="OnNewEntityClick"/>
                 <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,4,0"/>
                 <TextBox Width="240"
                          Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged, Delay=200}"

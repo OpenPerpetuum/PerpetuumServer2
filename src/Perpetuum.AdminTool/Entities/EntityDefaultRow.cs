@@ -5,8 +5,34 @@ namespace Perpetuum.AdminTool.Entities
 {
     public partial class EntityDefaultRow : ObservableObject
     {
+        // Negative placeholder ids for in-memory new rows (real ids come from SQL identity).
+        private static int _placeholderCounter = 0;
+
         // Definition is the primary key; not editable.
+        // For new rows it is a negative placeholder until SQL Server assigns the real id.
         public int Definition { get; }
+
+        // True for rows created in-memory. The autoincrement id is unknown until insert applies,
+        // so this stays true even after Save until the user Reloads from DB.
+        public bool IsNew { get; set; }
+
+        // Suffix for SCOPE_IDENTITY-capturing T-SQL variable names. Stable per new row.
+        public string NewIdToken { get; init; }
+
+        // Set to true after Save queues this new row; locks the row from further edits.
+        [ObservableProperty] private bool _isQueued;
+
+        partial void OnIsQueuedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(DefinitionDisplay));
+        }
+
+        public string DefinitionDisplay =>
+            IsNew
+                ? (IsQueued
+                    ? "(pending insert — reload after commit)"
+                    : "(autoincrement on save)")
+                : Definition.ToString();
 
         // Snapshot of the row as loaded from DB; used for diffing.
         public EntityDefaultSnapshot Original { get; private set; }
@@ -35,8 +61,29 @@ namespace Perpetuum.AdminTool.Entities
         public EntityDefaultRow(EntityDefaultSnapshot snapshot)
         {
             Definition = snapshot.Definition;
+            NewIdToken = "";
             Original = snapshot;
             ApplySnapshot(snapshot);
+        }
+
+        public static EntityDefaultRow CreateNew(string definitionName)
+        {
+            var placeholderDef = System.Threading.Interlocked.Decrement(ref _placeholderCounter);
+            var snapshot = new EntityDefaultSnapshot
+            {
+                Definition = placeholderDef,
+                DefinitionName = definitionName,
+                Mass = 1.0,
+                Volume = 1.0,
+                Health = 100.0,
+                Quantity = 1
+            };
+            var row = new EntityDefaultRow(snapshot)
+            {
+                IsNew = true,
+                NewIdToken = System.Guid.NewGuid().ToString("N").Substring(0, 8)
+            };
+            return row;
         }
 
         public void ApplySnapshot(EntityDefaultSnapshot snapshot)

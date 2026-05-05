@@ -79,6 +79,16 @@ namespace Perpetuum.AdminTool.ViewModels
         public void Save()
         {
             if (Row == null) return;
+
+            // A new row that's already been queued cannot be edited further until Reload —
+            // the assigned identity isn't known to this client yet.
+            if (Row.IsNew && Row.IsQueued)
+            {
+                StatusIsError = true;
+                StatusMessage = "This row has been queued for INSERT. Reload after Commit to continue editing.";
+                return;
+            }
+
             var changes = EntityChanges.ComputeChanges(Row).ToList();
             if (changes.Count == 0)
             {
@@ -88,14 +98,23 @@ namespace Perpetuum.AdminTool.ViewModels
             }
             foreach (var c in changes) _queue.Add(c);
 
-            // Refresh original snapshots so subsequent edits diff correctly.
+            if (Row.IsNew)
+            {
+                // Lock the row. The real id will arrive via Reload after Commit.
+                Row.IsQueued = true;
+                StatusIsError = false;
+                StatusMessage =
+                    $"Queued INSERT (+{Row.Stats.Count} stat(s)). Reload after Commit to refresh the assigned id.";
+                return;
+            }
+
+            // Existing row: refresh snapshots so subsequent edits diff against new baseline.
             Row.RefreshOriginalFromCurrent();
             Row.OriginalStats.Clear();
             foreach (var s in Row.Stats)
             {
                 Row.OriginalStats[(int)s.Field] = s.Value;
             }
-            // Replace stat instances so WasInDb flips to true going forward.
             var rebuilt = Row.Stats
                 .Select(s => new StatRow(Row.Definition, s.Field, s.Value, wasInDb: true))
                 .ToList();
@@ -104,6 +123,18 @@ namespace Perpetuum.AdminTool.ViewModels
 
             StatusIsError = false;
             StatusMessage = $"Queued {changes.Count} change(s). Use the main Commit button to apply.";
+        }
+
+        public IReadOnlyList<IPendingChange> EnqueueDelete()
+        {
+            if (Row == null) return System.Array.Empty<IPendingChange>();
+
+            // For never-saved rows, just drop in-memory; emit no SQL.
+            if (Row.IsNew) return System.Array.Empty<IPendingChange>();
+
+            var changes = EntityChanges.ComputeDeleteChanges(Row).ToList();
+            foreach (var c in changes) _queue.Add(c);
+            return changes;
         }
 
         public void Discard()

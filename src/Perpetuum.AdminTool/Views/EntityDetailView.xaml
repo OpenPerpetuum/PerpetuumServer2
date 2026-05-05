@@ -9,7 +9,8 @@
         <Border DockPanel.Dock="Top" Background="#F8F8F8" Padding="8" BorderBrush="#DDD" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal">
                 <Button Content="Save changes" Padding="14,4" Margin="0,0,8,0" FontWeight="Bold" Click="OnSaveClick"/>
-                <Button Content="Discard" Padding="10,4" Click="OnDiscardClick"/>
+                <Button Content="Discard" Padding="10,4" Margin="0,0,8,0" Click="OnDiscardClick"/>
+                <Button Content="Delete entity..." Padding="10,4" Foreground="DarkRed" Click="OnDeleteEntityClick"/>
                 <TextBlock VerticalAlignment="Center" Margin="16,0,0,0"
                            Text="{Binding StatusMessage}">
                     <TextBlock.Style>
@@ -42,9 +43,25 @@
             </Grid.ColumnDefinitions>
 
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="10">
-                <StackPanel DataContext="{Binding Row}">
+                <StackPanel DataContext="{Binding Row}"
+                            IsEnabled="{Binding IsQueued, Converter={x:Static common:InverseBoolConverter.Instance}}">
+                    <Border Padding="8" Margin="0,0,0,8" Background="#FFF3CD" BorderBrush="#FFE08A" BorderThickness="1">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsQueued}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock TextWrapping="Wrap"
+                                   Text="This new row has been queued for INSERT. Reload after Commit to refresh its autoincrement id and continue editing."/>
+                    </Border>
+
                     <TextBlock Text="Definition (PK)" Margin="0,0,0,2" FontWeight="Bold"/>
-                    <TextBox IsReadOnly="True" Text="{Binding Definition, Mode=OneWay}" Margin="0,0,0,8"/>
+                    <TextBox IsReadOnly="True" Text="{Binding DefinitionDisplay, Mode=OneWay}" Margin="0,0,0,8"/>
 
                     <TextBlock Text="definitionName" Margin="0,0,0,2" FontWeight="Bold"/>
                     <TextBox Text="{Binding DefinitionName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
@@ -99,7 +116,8 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <DockPanel Grid.Column="1" Margin="6,10,10,10">
+            <DockPanel Grid.Column="1" Margin="6,10,10,10"
+                       IsEnabled="{Binding Row.IsQueued, Converter={x:Static common:InverseBoolConverter.Instance}}">
                 <TextBlock DockPanel.Dock="Top" Text="Stats (aggregatevalues)" FontWeight="Bold" Margin="0,0,0,6"/>
 
                 <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="6"

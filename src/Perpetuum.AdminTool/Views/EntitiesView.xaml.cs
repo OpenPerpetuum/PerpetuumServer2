@@ -18,5 +18,23 @@ namespace Perpetuum.AdminTool.Views
             if (Vm == null) return;
             await Vm.ReloadAsync();
         }
+
+        private void OnNewEntityClick(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+
+            while (true)
+            {
+                var win = new NewEntityWindow { Owner = Window.GetWindow(this) };
+                if (win.ShowDialog() != true) return;
+
+                if (Vm.TryAddNew(win.ViewModel.DefinitionName, out var error))
+                {
+                    return;
+                }
+                MessageBox.Show(Window.GetWindow(this), error, "Cannot create entity",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
     }
 }

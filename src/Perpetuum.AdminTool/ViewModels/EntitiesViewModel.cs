@@ -82,6 +82,34 @@ namespace Perpetuum.AdminTool.ViewModels
             return match?[EnglishLangId] ?? "";
         }
 
+        public bool TryAddNew(string definitionName, out string error)
+        {
+            error = "";
+            if (string.IsNullOrWhiteSpace(definitionName))
+            {
+                error = "definitionName is required.";
+                return false;
+            }
+            var trimmed = definitionName.Trim();
+            if (AllRows.Any(r => string.Equals(r.DefinitionName, trimmed, StringComparison.Ordinal)))
+            {
+                error = $"definitionName '{trimmed}' is already used by another row.";
+                return false;
+            }
+
+            var row = EntityDefaultRow.CreateNew(trimmed);
+            AllRows.Insert(0, row);
+            SelectedRow = row;
+            return true;
+        }
+
+        public void RemoveRow(EntityDefaultRow row)
+        {
+            if (row == null) return;
+            if (ReferenceEquals(SelectedRow, row)) SelectedRow = null;
+            AllRows.Remove(row);
+        }
+
         public async Task ReloadAsync()
         {
             IsLoading = true;
