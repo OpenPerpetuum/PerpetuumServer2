@@ -34,5 +34,31 @@ namespace Perpetuum.AdminTool.Views
         {
             Vm?.RemoveSelectedStat();
         }
+
+        private void OnPickCategoryClick(object sender, RoutedEventArgs e)
+        {
+            if (Vm?.Row == null) return;
+            var win = new CategoryFlagsPickerWindow(Vm.Row.CategoryFlags)
+            {
+                Owner = Window.GetWindow(this)
+            };
+            if (win.ShowDialog() == true && win.ViewModel.Selected != null)
+            {
+                Vm.Row.CategoryFlags = win.ViewModel.Selected.Value;
+            }
+        }
+
+        private void OnPickAttributeClick(object sender, RoutedEventArgs e)
+        {
+            if (Vm?.Row == null) return;
+            var win = new AttributeFlagsPickerWindow(unchecked((ulong)Vm.Row.AttributeFlags))
+            {
+                Owner = Window.GetWindow(this)
+            };
+            if (win.ShowDialog() == true)
+            {
+                Vm.Row.AttributeFlags = unchecked((long)win.ViewModel.ComposeValue());
+            }
+        }
     }
 }

@@ -53,10 +53,20 @@
                     <TextBox Text="{Binding DescriptionToken, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" Margin="0,0,0,8"/>
 
                     <TextBlock Text="categoryflags (long)" Margin="0,0,0,2" FontWeight="Bold"/>
-                    <TextBox Text="{Binding CategoryFlags, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <DockPanel Margin="0,0,0,2">
+                        <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="6,0,0,0" Click="OnPickCategoryClick"/>
+                        <TextBox Text="{Binding CategoryFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                    </DockPanel>
+                    <TextBlock Margin="0,0,0,8" Foreground="DimGray" FontStyle="Italic"
+                               Text="{Binding CategoryFlags, Converter={x:Static common:CategoryFlagsDescriptionConverter.Instance}}"/>
 
                     <TextBlock Text="attributeflags (long)" Margin="0,0,0,2" FontWeight="Bold"/>
-                    <TextBox Text="{Binding AttributeFlags, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <DockPanel Margin="0,0,0,2">
+                        <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="6,0,0,0" Click="OnPickAttributeClick"/>
+                        <TextBox Text="{Binding AttributeFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                    </DockPanel>
+                    <TextBlock Margin="0,0,0,8" Foreground="DimGray" FontStyle="Italic" TextWrapping="Wrap"
+                               Text="{Binding AttributeFlags, Converter={x:Static common:AttributeFlagsDescriptionConverter.Instance}}"/>
 
                     <TextBlock Text="mass" Margin="0,0,0,2" FontWeight="Bold"/>
                     <TextBox Text="{Binding Mass, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
