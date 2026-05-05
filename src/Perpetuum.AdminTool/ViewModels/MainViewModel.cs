@@ -24,12 +24,15 @@ namespace Perpetuum.AdminTool.ViewModels
         public string ConnectedAs => _session.DisplayName;
         public AppSettingsStore Store => _store;
         public AppSession Session => _session;
+        public TranslationsViewModel Translations { get; }
 
         public MainViewModel(AppSettingsStore store, AppSession session)
         {
             _store = store;
             _session = session;
             _currentMode = session.CurrentMode;
+            Translations = new TranslationsViewModel(store);
+            Translations.Load();
             UpdateStatus();
 
             Changes.Items.CollectionChanged += (_, _) =>
@@ -75,7 +78,11 @@ namespace Perpetuum.AdminTool.ViewModels
         {
             var vm = new ConnectionSettingsViewModel(_store);
             var w = new ConnectionSettingsWindow(vm) { Owner = owner };
-            w.ShowDialog();
+            if (w.ShowDialog() == true)
+            {
+                // Reload translations so a freshly-set GameRoot path takes effect.
+                Translations.Load();
+            }
             UpdateStatus();
         }
 
