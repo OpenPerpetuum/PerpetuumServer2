@@ -16,6 +16,20 @@ namespace Perpetuum.Zones.NpcSystem.AI
         private const int RepathFrequencyMs = 1500;
         private const int Sqrt2 = 141;
         private const int Weight = 1000;
+        // T7: how many valid candidate tiles to collect before scoring. 5 keeps
+        // the search bounded (in practice we exhaust this within a few extra
+        // dequeues of the same fringe) while giving the screen-bonus enough
+        // alternatives to bite.
+        private const int CandidateCap = 5;
+        // Tile-equivalent score adjustment when a friendly screens the candidate
+        // tile from the threat centroid. Negative because lower scores win, and
+        // 3.0 makes a screened tile preferred over an unscreened tile up to
+        // 3 tiles closer to the support target.
+        private const double ScreenBonus = -3.0;
+        // Perpendicular distance (tiles) from the centroid→candidate line within
+        // which a friendly counts as screening. ~2 covers a friendly hitbox
+        // without snapping to anyone vaguely in the same direction.
+        private const double ScreenLineTolerance = 2.0;
 
         private readonly List<SupportModuleActivator> repairActivators = new();
         private readonly List<SupportModuleActivator> transferActivators = new();
@@ -43,6 +57,9 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 .ToList();
             selfCareActivators.AddRange(smartCreature.ActiveModules
                 .OfType<ShieldGeneratorModule>()
+                .Select(m => new SupportModuleActivator(m)));
+            selfCareActivators.AddRange(smartCreature.ActiveModules
+                .OfType<SensorBoosterModule>()
                 .Select(m => new SupportModuleActivator(m)));
 
             canRepair = repairers.Count > 0;
@@ -338,10 +355,27 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
         private Task<List<Point>> FindNewSupportPositionAsync(Unit target)
         {
+            // T7: snapshot the screen-positioning inputs on the main thread so the
+            // worker doesn't iterate live ThreatManager / Group / Visibility state.
+            // Both can be null/empty — scorer treats that as "no screen bonus".
+            Position? threatCentroid = smartCreature.ThreatCentroid();
+            List<Position> friendlyPositions = SnapshotFriendlyPositions();
+
             source?.Cancel();
             source = new CancellationTokenSource();
 
-            return Task.Run(() => FindSupportPosition(target, source.Token), source.Token);
+            return Task.Run(() => FindSupportPosition(target, threatCentroid, friendlyPositions, source.Token), source.Token);
+        }
+
+        private List<Position> SnapshotFriendlyPositions()
+        {
+            List<Position> positions = new();
+            foreach (SmartCreature candidate in smartCreature.GetSupportCandidates())
+            {
+                positions.Add(candidate.CurrentPosition);
+            }
+
+            return positions;
         }
 
         // Modeled on CombatAI.FindNewAttackPosition — A* over walkable tiles inside the
@@ -349,7 +383,12 @@ namespace Perpetuum.Zones.NpcSystem.AI
         // support module's range with LOS to the target. Runs on a worker thread, so
         // it must NOT mutate AI fields like `movement` directly — that race was the
         // source of the line-245 NRE.
-        private List<Point> FindSupportPosition(Unit target, CancellationToken cancellationToken)
+        //
+        // T7: instead of returning the first valid hit, collect up to CandidateCap
+        // valid tiles, then score `distance(target) + screenBonus` and return the
+        // best — so support bots prefer to sit behind a friendly relative to the
+        // hostile centroid when otherwise equivalent.
+        private List<Point> FindSupportPosition(Unit target, Position? threatCentroid, List<Position> friendlyPositions, CancellationToken cancellationToken)
         {
             try
             {
@@ -367,6 +406,8 @@ namespace Perpetuum.Zones.NpcSystem.AI
                     startNode.position
                 ];
 
+                List<Node> candidates = new(CandidateCap);
+
                 while (priorityQueue.TryDequeue(out Node current))
                 {
                     if (cancellationToken.IsCancellationRequested)
@@ -376,7 +417,11 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
                     if (IsValidSupportPosition(target, current.position))
                     {
-                        return BuildPath(current);
+                        candidates.Add(current);
+                        if (candidates.Count >= CandidateCap)
+                        {
+                            break;
+                        }
                     }
 
                     foreach (Point n in current.position.GetNeighbours())
@@ -411,7 +456,24 @@ namespace Perpetuum.Zones.NpcSystem.AI
                     }
                 }
 
-                return null;
+                if (candidates.Count == 0)
+                {
+                    return null;
+                }
+
+                Node best = candidates[0];
+                double bestScore = ScoreCandidate(best.position, target.CurrentPosition, threatCentroid, friendlyPositions);
+                for (int i = 1; i < candidates.Count; i++)
+                {
+                    double score = ScoreCandidate(candidates[i].position, target.CurrentPosition, threatCentroid, friendlyPositions);
+                    if (score < bestScore)
+                    {
+                        bestScore = score;
+                        best = candidates[i];
+                    }
+                }
+
+                return BuildPath(best);
             }
             catch
             {
@@ -419,6 +481,62 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 // task — the AI tick will simply re-issue the request next cycle.
                 return null;
             }
+        }
+
+        private static double ScoreCandidate(Point candidate, Position targetPosition, Position? threatCentroid, List<Position> friendlyPositions)
+        {
+            double distance = targetPosition.TotalDistance2D(candidate);
+            double bonus = HasScreeningFriendly(candidate, threatCentroid, friendlyPositions) ? ScreenBonus : 0.0;
+
+            return distance + bonus;
+        }
+
+        private static bool HasScreeningFriendly(Point candidate, Position? threatCentroid, List<Position> friendlyPositions)
+        {
+            if (!threatCentroid.HasValue || friendlyPositions == null || friendlyPositions.Count == 0)
+            {
+                return false;
+            }
+
+            double cx = threatCentroid.Value.X;
+            double cy = threatCentroid.Value.Y;
+            // Tile-center coordinates so the geometry lines up with hitboxes.
+            double px = candidate.X + 0.5;
+            double py = candidate.Y + 0.5;
+            double dx = px - cx;
+            double dy = py - cy;
+            double lenSq = (dx * dx) + (dy * dy);
+            if (lenSq <= 0.001)
+            {
+                return false;
+            }
+
+            foreach (Position f in friendlyPositions)
+            {
+                double fx = f.X;
+                double fy = f.Y;
+                // Project friendly onto the centroid→candidate segment. t in (0,1)
+                // means the friendly sits between the threat and the candidate; t
+                // outside that range means the friendly is behind the threat or
+                // past the candidate, neither of which screens us.
+                double t = (((fx - cx) * dx) + ((fy - cy) * dy)) / lenSq;
+                if (t <= 0.0 || t >= 1.0)
+                {
+                    continue;
+                }
+
+                double projX = cx + (t * dx);
+                double projY = cy + (t * dy);
+                double perpX = fx - projX;
+                double perpY = fy - projY;
+                double perpDist = Math.Sqrt((perpX * perpX) + (perpY * perpY));
+                if (perpDist <= ScreenLineTolerance)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private bool IsValidSupportPosition(Unit target, Point position)

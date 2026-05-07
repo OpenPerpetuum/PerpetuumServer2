@@ -480,6 +480,42 @@ namespace Perpetuum.Zones.NpcSystem
             return false;
         }
 
+        public IEnumerable<Hostile> GetActiveHostiles()
+        {
+            foreach (Hostile hostile in ThreatManager.Hostiles)
+            {
+                Unit unit = hostile.Unit;
+                if (unit == null || unit.States.Dead || !unit.InZone)
+                {
+                    continue;
+                }
+
+                yield return hostile;
+            }
+        }
+
+        public Position? ThreatCentroid()
+        {
+            double sumX = 0;
+            double sumY = 0;
+            int count = 0;
+
+            foreach (Hostile hostile in GetActiveHostiles())
+            {
+                Position p = hostile.Unit.CurrentPosition;
+                sumX += p.X;
+                sumY += p.Y;
+                count++;
+            }
+
+            if (count == 0)
+            {
+                return null;
+            }
+
+            return new Position(sumX / count, sumY / count);
+        }
+
         protected override void OnTileChanged()
         {
             base.OnTileChanged();

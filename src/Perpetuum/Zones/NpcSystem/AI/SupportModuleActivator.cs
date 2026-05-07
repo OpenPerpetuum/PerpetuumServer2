@@ -34,7 +34,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 return;
             }
 
-            if (module is ShieldGeneratorModule)
+            if (module is ShieldGeneratorModule || module is SensorBoosterModule)
             {
                 module.State.SwitchTo(ModuleStateType.AutoRepeat);
 
