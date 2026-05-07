@@ -100,6 +100,12 @@ namespace Perpetuum.AdminTool.ViewModels
 
             if (Row.IsNew)
             {
+                // Capture the definitionName so commit can auto-create a translation key for it.
+                if (!string.IsNullOrWhiteSpace(Row.DefinitionName))
+                {
+                    _queue.AddNewEntityName(Row.DefinitionName);
+                }
+
                 // Lock the row. The real id will arrive via Reload after Commit.
                 Row.IsQueued = true;
                 StatusIsError = false;

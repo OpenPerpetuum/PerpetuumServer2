@@ -1,0 +1,25 @@
+You are implementing a feature.
+
+Use ONLY the provided documents as context:
+- PROJECT_PLAN.md
+- DECISIONS.md
+- TASKS.md
+- STATE_SUMMARY.md
+
+All these documents can be found in the folder docs/Patches/p35.10/Features/AI_Changes. Ask for clarification if files are missing.
+
+Do NOT reconstruct previous conversations.
+
+For database structure, refer to solution root, folder docs/db_structure. Each script is named after the table it creates. Ask for specific table structure if needed.
+
+Current goal:
+Implement the feature.
+
+Focus on the tasks enlisted in TASKS.md. Ensure they are up-to-date with STATE_SUMMARY.md.
+Refer to DECISIONS.md for any design choices that have been made. If there are any discrepancies or if any information is missing, ask for clarification before proceeding. Store answers in DECISIONS.md.
+Refer to PROJECT_PLAN.md for the details.
+Ask for continuation before starting each task. After completing a task, update TASKS.md and STATE_SUMMARY with related information to store progress. Do not proceed without confirmation.
+
+Output:
+- Code only
+- No explanations unless necessary

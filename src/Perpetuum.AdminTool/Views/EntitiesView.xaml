@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:Perpetuum.AdminTool.Views"
              xmlns:common="clr-namespace:Perpetuum.AdminTool.Common"
+             xmlns:entities="clr-namespace:Perpetuum.AdminTool.Entities"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d">
@@ -34,12 +35,42 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="380"/>
+                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="320"/>
                 <ColumnDefinition Width="6"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <DataGrid Grid.Column="0"
+            <DockPanel Grid.Column="0">
+                <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="6"
+                        BorderBrush="#DDD" BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Categories" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Button Content="Show all" Padding="6,1" Margin="0,0,4,0" Click="OnShowAllCategoriesClick"/>
+                        <Button Content="Apply to entity" Padding="6,1" Click="OnApplyCategoryClick"
+                                ToolTip="Set the selected entity's categoryflags to the selected tree node."/>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock DockPanel.Dock="Top" Padding="6,4" Foreground="DimGray" FontStyle="Italic"
+                           Text="{Binding SelectedCategoryNode.Display, Mode=OneWay, StringFormat='Filtering by: {0}', FallbackValue='Filtering by: (none — showing all)', TargetNullValue='Filtering by: (none — showing all)'}"/>
+
+                <TreeView x:Name="CategoryTree"
+                          ItemsSource="{Binding CategoryRoots}"
+                          SelectedItemChanged="OnCategoryTreeSelectedItemChanged">
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate DataType="{x:Type entities:CategoryFlagsNode}"
+                                                  ItemsSource="{Binding Children}">
+                            <TextBlock Text="{Binding Display}"/>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="#DDD"/>
+
+            <DataGrid Grid.Column="2"
                       ItemsSource="{Binding View}"
                       SelectedItem="{Binding SelectedRow}"
                       AutoGenerateColumns="False"
@@ -54,10 +85,9 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
-                          Background="#DDD"/>
+            <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Background="#DDD"/>
 
-            <views:EntityDetailView Grid.Column="2" DataContext="{Binding Detail}"/>
+            <views:EntityDetailView Grid.Column="4" DataContext="{Binding Detail}"/>
         </Grid>
     </DockPanel>
 </UserControl>

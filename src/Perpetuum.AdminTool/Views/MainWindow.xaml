@@ -48,6 +48,21 @@
             <TabItem Header="Entities">
                 <views:EntitiesView DataContext="{Binding Entities}"/>
             </TabItem>
+            <TabItem Header="Robot templates">
+                <views:RobotTemplatesView DataContext="{Binding RobotTemplates}"/>
+            </TabItem>
+            <TabItem Header="Template relations">
+                <views:RobotTemplateRelationsView DataContext="{Binding RobotTemplateRelations}"/>
+            </TabItem>
+            <TabItem Header="NPC loot">
+                <views:NpcLootView DataContext="{Binding NpcLoot}"/>
+            </TabItem>
+            <TabItem Header="NPC presences">
+                <views:PresencesView DataContext="{Binding Presences}"/>
+            </TabItem>
+            <TabItem Header="NPC flocks">
+                <views:FlocksView DataContext="{Binding Flocks}"/>
+            </TabItem>
             <TabItem Header="Translations">
                 <views:TranslationsView DataContext="{Binding Translations}"/>
             </TabItem>

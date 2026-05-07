@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.Settings;
@@ -18,6 +19,7 @@ namespace Perpetuum.AdminTool.ViewModels
         private readonly AppSettingsStore _settings;
         private readonly ChangeQueue _queue;
         private readonly TranslationsViewModel _translations;
+        private readonly LookupCache _lookups;
         private const int EnglishLangId = 0;
 
         [ObservableProperty] private bool _isLoading;
@@ -32,17 +34,28 @@ namespace Perpetuum.AdminTool.ViewModels
         public IReadOnlyDictionary<int, AggregateFieldInfo> Fields { get; private set; }
             = new Dictionary<int, AggregateFieldInfo>();
 
-        public EntitiesViewModel(AppSettingsStore settings, ChangeQueue queue, TranslationsViewModel translations)
+        // Static category-flag tree, built once from the enum.
+        public IReadOnlyList<CategoryFlagsNode> CategoryRoots { get; } =
+            CategoryFlagsHierarchy.BuildRoots();
+
+        // When non-null, the entities grid is filtered to rows whose CategoryFlags is
+        // this node's value or any descendant.
+        [ObservableProperty] private CategoryFlagsNode? _selectedCategoryNode;
+
+        public EntitiesViewModel(AppSettingsStore settings, ChangeQueue queue, TranslationsViewModel translations, LookupCache lookups)
         {
             _settings = settings;
             _queue = queue;
             _translations = translations;
+            _lookups = lookups;
 
             View = CollectionViewSource.GetDefaultView(AllRows);
             View.Filter = MatchesFilter;
         }
 
         partial void OnFilterTextChanged(string value) => View.Refresh();
+
+        partial void OnSelectedCategoryNodeChanged(CategoryFlagsNode? value) => View.Refresh();
 
         partial void OnSelectedRowChanged(EntityDefaultRow? value)
         {
@@ -59,6 +72,14 @@ namespace Perpetuum.AdminTool.ViewModels
         private bool MatchesFilter(object obj)
         {
             if (obj is not EntityDefaultRow row) return false;
+
+            // Category filter (if active) ANDs with the text filter.
+            if (SelectedCategoryNode != null &&
+                !SelectedCategoryNode.ContainsOrEquals(row.CategoryFlags))
+            {
+                return false;
+            }
+
             if (string.IsNullOrWhiteSpace(FilterText)) return true;
 
             var f = FilterText.Trim();
@@ -71,6 +92,28 @@ namespace Perpetuum.AdminTool.ViewModels
                 translated.Contains(f, StringComparison.OrdinalIgnoreCase)) return true;
 
             return false;
+        }
+
+        public bool ApplySelectedCategoryToCurrentRow(out string error)
+        {
+            error = "";
+            if (SelectedCategoryNode == null)
+            {
+                error = "Select a category in the tree first.";
+                return false;
+            }
+            if (SelectedRow == null)
+            {
+                error = "Select an entity in the list first.";
+                return false;
+            }
+            if (SelectedRow.IsQueued)
+            {
+                error = "This row is already queued for INSERT — reload after Commit before editing.";
+                return false;
+            }
+            SelectedRow.CategoryFlags = SelectedCategoryNode.Value;
+            return true;
         }
 
         public string TranslatedName(EntityDefaultRow row)
@@ -124,6 +167,12 @@ namespace Perpetuum.AdminTool.ViewModels
                 foreach (var r in snapshot.Rows) AllRows.Add(r);
                 Detail = new EntityDetailViewModel(_queue, Fields);
                 SelectedRow = null;
+
+                // Reload pulls the freshest entitydefaults — push that into the shared
+                // cache so other tabs' dropdowns reflect the new state.
+                try { await _lookups.RefreshEntitiesAsync(_settings.Settings.Connection); }
+                catch { /* non-fatal */ }
+
                 StatusMessage =
                     $"Loaded {AllRows.Count} entity definition(s) and {Fields.Count} aggregate field definition(s).";
             }

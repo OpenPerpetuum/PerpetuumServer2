@@ -47,6 +47,7 @@ namespace Perpetuum.AdminTool.Entities
         [ObservableProperty] private int _quantity;
         [ObservableProperty] private bool _hidden;
         [ObservableProperty] private bool _purchasable;
+        [ObservableProperty] private bool _enabled = true;
         [ObservableProperty] private int? _tierType;
         [ObservableProperty] private int? _tierLevel;
         [ObservableProperty] private string? _options; // raw Genxy string; read-only in 3a
@@ -76,7 +77,8 @@ namespace Perpetuum.AdminTool.Entities
                 Mass = 1.0,
                 Volume = 1.0,
                 Health = 100.0,
-                Quantity = 1
+                Quantity = 1,
+                Enabled = true
             };
             var row = new EntityDefaultRow(snapshot)
             {
@@ -99,6 +101,7 @@ namespace Perpetuum.AdminTool.Entities
             Quantity = snapshot.Quantity;
             Hidden = snapshot.Hidden;
             Purchasable = snapshot.Purchasable;
+            Enabled = snapshot.Enabled;
             TierType = snapshot.TierType;
             TierLevel = snapshot.TierLevel;
             Options = snapshot.Options;
@@ -119,6 +122,7 @@ namespace Perpetuum.AdminTool.Entities
                 Quantity = Quantity,
                 Hidden = Hidden,
                 Purchasable = Purchasable,
+                Enabled = Enabled,
                 TierType = TierType,
                 TierLevel = TierLevel,
                 Options = Options
@@ -139,6 +143,7 @@ namespace Perpetuum.AdminTool.Entities
         public int Quantity { get; init; }
         public bool Hidden { get; init; }
         public bool Purchasable { get; init; }
+        public bool Enabled { get; init; } = true;
         public int? TierType { get; init; }
         public int? TierLevel { get; init; }
         public string? Options { get; init; }

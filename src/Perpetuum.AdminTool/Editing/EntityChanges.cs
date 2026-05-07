@@ -65,7 +65,7 @@ namespace Perpetuum.AdminTool.Editing
             sql.Append(SqlLiteral.OfNullableInt(row.TierType)).Append(", ");
             sql.Append(SqlLiteral.OfNullableInt(row.TierLevel)).Append(", ");
             sql.Append(SqlLiteral.Of(row.Options)).Append(", ");
-            sql.Append("1);");
+            sql.Append(SqlLiteral.Of(row.Enabled)).Append(");");
             sql.AppendLine();
             sql.Append("DECLARE ").Append(varName).Append(" INT = SCOPE_IDENTITY();");
 
@@ -106,6 +106,8 @@ namespace Perpetuum.AdminTool.Editing
             AddIfChanged("quantity", o.Quantity, row.Quantity);
             AddIfChanged("hidden", o.Hidden, row.Hidden);
             AddIfChanged("purchasable", o.Purchasable, row.Purchasable);
+            AddIfChanged("enabled", o.Enabled, row.Enabled);
+            AddIfChanged("options", o.Options, row.Options);
 
             if (o.TierType != row.TierType)
             {

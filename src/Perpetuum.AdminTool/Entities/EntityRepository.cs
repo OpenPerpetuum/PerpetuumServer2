@@ -63,11 +63,14 @@ namespace Perpetuum.AdminTool.Entities
         {
             var rows = new List<EntityDefaultRow>(2048);
             await using var cmd = cn.CreateCommand();
+            // Load every row regardless of `enabled`. Disabled entities still need to be
+            // visible so the user can flip them back on; downstream selectors apply their
+            // own enabled filter.
             cmd.CommandText =
                 "select definition, definitionName, descriptionToken, " +
                 "categoryflags, attributeflags, mass, volume, health, quantity, " +
-                "hidden, purchasable, tiertype, tierlevel, options " +
-                "from entitydefaults where enabled = 1 order by definition";
+                "hidden, purchasable, enabled, tiertype, tierlevel, options " +
+                "from entitydefaults order by definition";
 
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -85,9 +88,10 @@ namespace Perpetuum.AdminTool.Entities
                     Quantity = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
                     Hidden = !reader.IsDBNull(9) && reader.GetBoolean(9),
                     Purchasable = !reader.IsDBNull(10) && reader.GetBoolean(10),
-                    TierType = reader.IsDBNull(11) ? null : (int?)reader.GetInt32(11),
-                    TierLevel = reader.IsDBNull(12) ? null : (int?)reader.GetInt32(12),
-                    Options = reader.IsDBNull(13) ? null : reader.GetString(13),
+                    Enabled = reader.IsDBNull(11) || reader.GetBoolean(11),
+                    TierType = reader.IsDBNull(12) ? null : (int?)reader.GetInt32(12),
+                    TierLevel = reader.IsDBNull(13) ? null : (int?)reader.GetInt32(13),
+                    Options = reader.IsDBNull(14) ? null : reader.GetString(14),
                 };
                 rows.Add(new EntityDefaultRow(snapshot));
             }

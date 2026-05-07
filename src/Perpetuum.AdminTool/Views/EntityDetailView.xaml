@@ -98,7 +98,8 @@
                     <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
 
                     <CheckBox Content="hidden" IsChecked="{Binding Hidden}" Margin="0,4"/>
-                    <CheckBox Content="purchasable" IsChecked="{Binding Purchasable}" Margin="0,4,0,8"/>
+                    <CheckBox Content="purchasable" IsChecked="{Binding Purchasable}" Margin="0,4"/>
+                    <CheckBox Content="enabled" IsChecked="{Binding Enabled}" Margin="0,4,0,8"/>
 
                     <TextBlock Text="tiertype (nullable int)" Margin="0,0,0,2" FontWeight="Bold"/>
                     <TextBox Text="{Binding TierType, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" Margin="0,0,0,8"/>
@@ -106,9 +107,8 @@
                     <TextBlock Text="tierlevel (nullable int)" Margin="0,0,0,2" FontWeight="Bold"/>
                     <TextBox Text="{Binding TierLevel, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" Margin="0,0,0,8"/>
 
-                    <TextBlock Text="options (Genxy, read-only in this iteration)" Margin="0,8,0,2" FontWeight="Bold"/>
-                    <TextBox IsReadOnly="True"
-                             Text="{Binding Options, Mode=OneWay, TargetNullValue=''}"
+                    <TextBlock Text="options (Genxy)" Margin="0,8,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding Options, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
                              FontFamily="Consolas" FontSize="11"
                              TextWrapping="Wrap" AcceptsReturn="True"
                              Height="120"

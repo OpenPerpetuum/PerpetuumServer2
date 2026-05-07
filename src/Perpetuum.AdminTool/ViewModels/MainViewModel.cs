@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Views;
@@ -24,8 +25,14 @@ namespace Perpetuum.AdminTool.ViewModels
         public string ConnectedAs => _session.DisplayName;
         public AppSettingsStore Store => _store;
         public AppSession Session => _session;
+        public LookupCache Lookups => _session.Lookups;
         public TranslationsViewModel Translations { get; }
         public EntitiesViewModel Entities { get; }
+        public RobotTemplatesViewModel RobotTemplates { get; }
+        public RobotTemplateRelationsViewModel RobotTemplateRelations { get; }
+        public NpcLootViewModel NpcLoot { get; }
+        public PresencesViewModel Presences { get; }
+        public FlocksViewModel Flocks { get; }
 
         public MainViewModel(AppSettingsStore store, AppSession session)
         {
@@ -34,8 +41,15 @@ namespace Perpetuum.AdminTool.ViewModels
             _currentMode = session.CurrentMode;
             Translations = new TranslationsViewModel(store);
             Translations.Load();
-            Entities = new EntitiesViewModel(store, session.Changes, Translations);
+            Entities = new EntitiesViewModel(store, session.Changes, Translations, session.Lookups);
+            RobotTemplates = new RobotTemplatesViewModel(store, session.Changes, session.Lookups);
+            RobotTemplateRelations = new RobotTemplateRelationsViewModel(store, session.Changes, session.Lookups);
+            NpcLoot = new NpcLootViewModel(store, session.Changes, session.Lookups);
+            Presences = new PresencesViewModel(store, session.Changes);
+            Flocks = new FlocksViewModel(store, session.Changes, session.Lookups);
             UpdateStatus();
+
+            _ = InitializeLookupsAsync();
 
             Changes.Items.CollectionChanged += (_, _) =>
             {
@@ -56,6 +70,56 @@ namespace Perpetuum.AdminTool.ViewModels
         {
             StatusText =
                 $"Mode: {CurrentMode}    |    Pending changes: {Changes.Items.Count}    |    {ConnectedAs}";
+        }
+
+        private async Task InitializeLookupsAsync()
+        {
+            try
+            {
+                await _session.Lookups.RefreshAllAsync(_store.Settings.Connection);
+            }
+            catch
+            {
+                // Per-tab Reload buttons are the fallback if startup refresh fails
+                // (e.g. transient DB hiccup). Don't surface a modal here.
+            }
+        }
+
+        // Drains queued new-entity definition names into the translation store.
+        // Each name becomes a key; English (lang 0) is pre-filled with the name itself
+        // so the user has a working English label out of the box. Existing keys are
+        // skipped silently so we never clobber user-entered values. Returns a short
+        // human-readable note appended to the commit-success dialog (or "" if nothing
+        // was done).
+        private string ApplyPendingTranslationKeys()
+        {
+            var pending = Changes.PendingNewEntityNames;
+            if (pending.Count == 0) return "";
+
+            var store = Translations.Store;
+            if (store == null) return "";
+
+            var added = 0;
+            try
+            {
+                foreach (var name in pending)
+                {
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+                    if (!store.TryAddKey(name, out _)) continue;
+                    var row = store.Rows.FirstOrDefault(r => r.Key == name);
+                    if (row != null) row[0] = name;
+                    added++;
+                }
+
+                if (added == 0) return "";
+
+                store.Save();
+                return $"\n\nAlso created {added} translation key(s) (English = definitionName).";
+            }
+            catch (Exception ex)
+            {
+                return $"\n\nNote: failed to update translation files: {ex.Message}";
+            }
         }
 
         [RelayCommand]
@@ -117,8 +181,10 @@ namespace Perpetuum.AdminTool.ViewModels
                     var path = Path.Combine(dir, fileName);
                     await File.WriteAllTextAsync(path, script);
 
+                    var translationNote = ApplyPendingTranslationKeys();
+
                     MessageBox.Show(owner,
-                        $"Wrote {Changes.Items.Count} change(s) to:\n{path}",
+                        $"Wrote {Changes.Items.Count} change(s) to:\n{path}{translationNote}",
                         "Script saved", MessageBoxButton.OK, MessageBoxImage.Information);
 
                     Changes.Clear();
@@ -164,8 +230,15 @@ namespace Perpetuum.AdminTool.ViewModels
                 var applier = new ChangeApplier(_store.Settings.Connection);
                 await applier.ExecuteAsync(Changes.Items.ToArray());
 
+                // Commits may have touched entitydefaults / robottemplates — refresh both
+                // caches so dropdowns reflect the new state on the next edit.
+                try { await _session.Lookups.RefreshAllAsync(_store.Settings.Connection); }
+                catch { /* non-fatal — per-tab Reload still works */ }
+
+                var translationNote = ApplyPendingTranslationKeys();
+
                 MessageBox.Show(owner,
-                    $"Applied {Changes.Items.Count} change(s) successfully.",
+                    $"Applied {Changes.Items.Count} change(s) successfully.{translationNote}",
                     "Done", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 Changes.Clear();

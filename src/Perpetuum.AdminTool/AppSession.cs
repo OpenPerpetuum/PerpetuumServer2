@@ -1,3 +1,4 @@
+using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Settings;
 
@@ -10,6 +11,7 @@ namespace Perpetuum.AdminTool
         public AccessLevel AccessLevel { get; set; } = AccessLevel.notDefined;
         public ApplyMode CurrentMode { get; set; } = ApplyMode.SqlScript;
         public ChangeQueue Changes { get; } = new ChangeQueue();
+        public LookupCache Lookups { get; } = new LookupCache();
 
         public bool IsAuthenticated => AccountId.HasValue;
 
