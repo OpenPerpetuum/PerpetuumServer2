@@ -25,6 +25,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
         public override void Enter()
         {
+            smartCreature.CurrentSpeed = 0.75;
             moduleActivators.AddRange(smartCreature.ActiveModules
                 .OfType<ArmorRepairModule>()
                 .Select(m => new ModuleActivator(m)));
@@ -45,6 +46,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
         {
             if (ShouldStopFleeing())
             {
+                smartCreature.CurrentSpeed = 1.0;
                 _ = smartCreature.AI.Pop();
 
                 return;
