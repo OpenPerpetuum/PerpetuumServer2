@@ -18,3 +18,4 @@ src/Perpetuum.ServerService2/data/layers/
 src/Perpetuum.ServerService2/data/logs/
 bin/
 Releases/
+.claude/settings.local.json
