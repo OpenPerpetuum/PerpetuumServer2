@@ -258,6 +258,14 @@ Generated from DBML structure.
 - [runningproduction](#runningproduction)
 - [runningproductionreserveditem](#runningproductionreserveditem)
 - [savedeffects](#savedeffects)
+- [season_activity_rates](#season-activity-rates)
+- [season_character_points](#season-character-points)
+- [season_leaderboard_rewards](#season-leaderboard-rewards)
+- [season_objective_progress](#season-objective-progress)
+- [season_objectives](#season-objectives)
+- [season_tier_claims](#season-tier-claims)
+- [season_tiers](#season-tiers)
+- [seasons](#seasons)
 - [serverinfo](#serverinfo)
 - [settings](#settings)
 - [siegeitems](#siegeitems)
@@ -5974,6 +5982,218 @@ Generated from DBML structure.
 |---|---|
 | `eid` | `bigint [not null]` |
 | `effects` | `varchar(MAX) [not null]` |
+
+---
+
+## season_activity_rates
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `id` | `"int IDENTITY(1,1)" [not null]` |
+| `season_id` | `int [not null]` |
+| `activity_type` | `int [not null]` |
+| `points_per_unit` | `float [not null]` |
+| `unit_scale` | `int [not null, default: 1]` |
+
+### Indexes
+
+- `id [pk, name: "PK_season_activity_rates"]`
+
+### Relations
+
+- `season_id` → `seasons.id`
+
+---
+
+## season_character_points
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `character_id` | `int [not null]` |
+| `season_id` | `int [not null]` |
+| `total_points` | `bigint [not null, default: 0]` |
+| `last_updated` | `datetime [not null, default: \`getutcdate()\`]` |
+| `intro_mail_sent` | `bit [not null, default: 0]` |
+| `leaderboard_reward_delivered` | `bit [not null, default: 0]` |
+
+### Indexes
+
+- `character_id, season_id [pk, name: "PK_season_character_points"]`
+- `season_id, total_points [name: "IX_season_character_points_season"]`
+
+### Relations
+
+- `season_id` → `seasons.id`
+
+---
+
+## season_leaderboard_rewards
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `id` | `"int IDENTITY(1,1)" [not null]` |
+| `season_id` | `int [not null]` |
+| `rank_min` | `int [not null]` |
+| `rank_max` | `int [not null]` |
+| `package_id` | `int [not null]` |
+
+### Indexes
+
+- `id [pk, name: "PK_season_leaderboard_rewards"]`
+
+### Relations
+
+- `season_id` → `seasons.id`
+
+---
+
+## season_objective_progress
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `character_id` | `int [not null]` |
+| `season_id` | `int [not null]` |
+| `objective_id` | `int [not null]` |
+| `current_value` | `bigint [not null, default: 0]` |
+| `completed` | `bit [not null, default: 0]` |
+| `completed_time` | `datetime` |
+| `bonus_awarded` | `bit [not null, default: 0]` |
+
+### Indexes
+
+- `character_id, season_id, objective_id [pk, name: "PK_season_objective_progress"]`
+- `character_id, season_id [name: "IX_season_objective_progress_char"]`
+
+### Relations
+
+- `season_id` → `seasons.id`
+- `objective_id` → `season_objectives.id`
+
+---
+
+## season_objectives
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `id` | `"int IDENTITY(1,1)" [not null]` |
+| `season_id` | `int [not null]` |
+| `name` | `varchar(128) [not null]` |
+| `description` | `varchar(512) [not null, default: '']` |
+| `activity_type` | `int [not null]` |
+| `target_value` | `bigint [not null]` |
+| `bonus_points` | `int [not null]` |
+| `display_order` | `int [not null, default: 0]` |
+
+### Indexes
+
+- `id [pk, name: "PK_season_objectives"]`
+
+### Relations
+
+- `season_id` → `seasons.id`
+- `id` → `season_objective_progress.objective_id`
+
+---
+
+## season_tier_claims
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `character_id` | `int [not null]` |
+| `season_id` | `int [not null]` |
+| `tier_id` | `int [not null]` |
+| `claimed_time` | `datetime [not null, default: \`getutcdate()\`]` |
+
+### Indexes
+
+- `character_id, season_id, tier_id [pk, name: "PK_season_tier_claims"]`
+- `character_id, season_id [name: "IX_season_tier_claims_char"]`
+
+### Relations
+
+- `season_id` → `seasons.id`
+- `tier_id` → `season_tiers.id`
+
+---
+
+## season_tiers
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `id` | `"int IDENTITY(1,1)" [not null]` |
+| `season_id` | `int [not null]` |
+| `tier_number` | `int [not null]` |
+| `tier_name` | `varchar(64) [not null]` |
+| `points_required` | `int [not null]` |
+| `package_id` | `int [not null]` |
+
+### Indexes
+
+- `id [pk, name: "PK_season_tiers"]`
+
+### Relations
+
+- `season_id` → `seasons.id`
+- `id` → `season_tier_claims.tier_id`
+
+---
+
+## seasons
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `id` | `"int IDENTITY(1,1)" [not null]` |
+| `name` | `varchar(128) [not null]` |
+| `description` | `varchar(512) [not null, default: '']` |
+| `start_time` | `datetime [not null]` |
+| `end_time` | `datetime [not null]` |
+| `is_active` | `bit [not null, default: 0]` |
+
+### Indexes
+
+- `id [pk, name: "PK_seasons"]`
+
+### Relations
+
+- `id` → `season_activity_rates.season_id`
+- `id` → `season_objectives.season_id`
+- `id` → `season_tiers.season_id`
+- `id` → `season_leaderboard_rewards.season_id`
+- `id` → `season_character_points.season_id`
+- `id` → `season_objective_progress.season_id`
+- `id` → `season_tier_claims.season_id`
 
 ---
 

@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Data;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Log;
 using Perpetuum.Services.EventServices;
 using Perpetuum.Services.ExtensionService;
@@ -312,6 +313,8 @@ namespace Perpetuum.Accounting
                 .SetParameter("@extensionLevel", extensionLevel)
                 .SetParameter("@characterID", character.Id)
                 .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLInsertError);
+
+            SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.EpSpent, spentPoints);
         }
 
         /// <summary>

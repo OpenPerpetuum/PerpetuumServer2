@@ -361,6 +361,7 @@ namespace Perpetuum.Bootstrapper
             _builder.RegisterModule(new IntrusionsModule());
             _builder.RegisterModule(new ZonesModule());
             _builder.RegisterModule(new PbsModule());
+            _builder.RegisterModule(new SeasonModule());
 
             _ = _builder.Register<Func<string, ObjectCache>>(x =>
             {

@@ -1,5 +1,6 @@
 ﻿using Perpetuum.Accounting.Characters;
 using Perpetuum.Data;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Items;
 using Perpetuum.Log;
 using Perpetuum.Services.MissionEngine.AdministratorObjects;
@@ -549,6 +550,12 @@ namespace Perpetuum.Services.MissionEngine.MissionProcessorObjects
 
                 //write mission log - mission completed
                 missionInProgress.SetSuccessToMissionLog(true).ThrowIfError();
+
+                foreach (Character? p in participants)
+                {
+                    if (p != null)
+                        SeasonServiceLocator.Instance?.RecordActivity(p.Id, SeasonActivityType.MissionComplete, 1);
+                }
 
                 AdvanceBonusInGang(participants, missionInProgress);
 

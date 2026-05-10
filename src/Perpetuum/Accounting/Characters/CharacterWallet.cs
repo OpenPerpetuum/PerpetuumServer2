@@ -1,5 +1,7 @@
 using Perpetuum.Common.Loggers.Transaction;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Wallets;
+using System;
 using System.Collections.Generic;
 
 namespace Perpetuum.Accounting.Characters
@@ -49,6 +51,11 @@ namespace Perpetuum.Accounting.Characters
                 .WithData(info)
                 .ToCharacter(character)
                 .Send();
+
+            if (change > 0)
+                SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicEarned, (long)change);
+            else if (change < 0)
+                SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicSpent, (long)Math.Abs(change));
         }
     }
 }

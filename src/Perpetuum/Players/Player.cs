@@ -14,6 +14,7 @@ using Perpetuum.Log;
 using Perpetuum.Modules;
 using Perpetuum.Robots;
 using Perpetuum.Services.ExtensionService;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Services.Looting;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionTargets;
@@ -1086,6 +1087,9 @@ namespace Perpetuum.Players
                     killer = zone.ToPlayerOrGetOwnerPlayer(killer) ?? killer;
 
                     SaveCombatLog(zone, killer);
+
+                    if (killer is Player killerPlayer && killerPlayer != this)
+                        SeasonServiceLocator.Instance?.RecordActivity(killerPlayer.Character.Id, SeasonActivityType.PvpKill, 1);
 
                     Character character = Character;
                     DockingBase dockingBase = character.GetHomeBaseOrCurrentBase();
