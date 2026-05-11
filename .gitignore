@@ -20,3 +20,4 @@ src/Perpetuum.ServerService2/data/logs/
 bin/
 Releases/
 .claude/settings.local.json
+.planning/

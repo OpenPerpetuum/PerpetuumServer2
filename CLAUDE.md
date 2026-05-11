@@ -42,6 +42,337 @@ The server reads two config files:
 
 Server startup sequence: `Perpetuum.Server` → `PerpetuumBootstrapper.Init(gameRoot)` → loads 18+ Autofac modules → connects to SQL Server → loads entity definitions → `bootstrapper.Start()` → host transitions Init → Starting → Online.
 
+## Engineering Source of Truth
+
+The `docs/codebase` directory contains the authoritative engineering documentation for this repository.
+
+Claude MUST consult these documents before proposing, planning, modifying, refactoring, debugging, or validating code.
+
+### Documentation Sources
+
+#### Architecture
+- `docs/codebase/ARCHITECTURE.md`
+  - System architecture
+  - Runtime model
+  - Request flow
+  - Zone model
+  - Entity hierarchy
+  - Concurrency model
+  - Core subsystems
+  - Dependency injection patterns
+
+#### Technical Risks and Debt
+- `docs/CONCERNS.md`
+  - Existing technical debt
+  - Architectural constraints
+  - Security concerns
+  - Performance hotspots
+  - Operational limitations
+
+#### Coding Conventions
+- `docs/CONVENTIONS.md`
+  - Naming conventions
+  - File organization
+  - Error handling
+  - Async patterns
+  - Repository patterns
+  - Handler patterns
+  - Guard patterns
+
+#### External Integrations
+- `docs/INTEGRATIONS.md`
+  - SQL Server integration
+  - Discord integration
+  - Steam integration
+  - Network protocols
+  - Encryption
+  - File system layout
+
+#### Technology Stack
+- `docs/STACK.md`
+  - Runtime versions
+  - Libraries
+  - Frameworks
+  - Build tooling
+  - Deployment assumptions
+
+#### Project Structure
+- `docs/STRUCTURE.md`
+  - Solution layout
+  - Project responsibilities
+  - Directory organization
+  - Autofac module structure
+  - Placement rules for new code
+
+#### Testing Constraints
+- `docs/TESTING.md`
+  - Current testing limitations
+  - Manual validation requirements
+  - Existing testing patterns
+  - Safe areas for automated testing
+
+#### Database Documentation
+- `docs/db_structure/database_schema_documentation.md`
+- `docs/db_structure/stored_procedures/*.sql`
+- `docs/db_structure/functions/*.sql`
+- `docs/db_structure/views/*.sql`
+
+Database documentation is authoritative for:
+- schema
+- relationships
+- procedures
+- views
+- SQL contracts
+
+---
+
+## Mandatory Workflow
+
+For ANY non-trivial task:
+
+1. Identify affected subsystems
+2. Consult relevant docs under `docs/`
+3. Identify existing patterns
+4. Locate similar implementations
+5. Produce a short implementation plan
+6. Only then generate code
+
+Never skip the research phase.
+
+---
+
+## Change Planning Rules
+
+Before making changes, Claude MUST:
+
+- identify affected projects
+- identify affected services
+- identify affected handlers
+- identify affected DB objects
+- identify runtime implications
+- identify threading implications
+- identify zone-loop implications
+- identify transaction implications
+
+For zone-related logic:
+- verify thread-safety assumptions
+- verify ProcessManager behavior
+- verify immutable collection usage
+- avoid blocking operations in zone updates
+
+For DB-related logic:
+- verify schema documentation
+- verify stored procedures/functions/views first
+- avoid inventing schema
+- avoid introducing `SELECT *`
+- prefer existing repository patterns
+
+---
+
+## Architectural Rules
+
+### Dependency Injection
+
+Use constructor injection exclusively for new code.
+
+Do NOT introduce new static service locators.
+
+Existing static service locators are legacy technical debt and must not be expanded.
+
+### Request Handling
+
+All client commands MUST follow the existing handler pattern:
+- command definition in `Commands.cs`
+- handler in `Perpetuum.RequestHandlers`
+- Autofac registration
+
+Handlers should remain thin orchestration layers.
+
+Business logic belongs in services/domain classes.
+
+### Zone Safety
+
+Never:
+- block inside zone update loops
+- call `.Result` on tasks inside zone logic
+- introduce long synchronous DB operations in hot paths
+- mutate shared collections unsafely
+
+Respect the single ProcessManager loop architecture.
+
+### Database Access
+
+New database access SHOULD:
+- use repositories/services
+- avoid inline SQL duplication
+- reuse existing stored procedures/functions/views where possible
+
+Never:
+- introduce unsafe SQL interpolation
+- use `SELECT *`
+- assume schema details
+
+### Logging
+
+Follow existing logger abstractions.
+
+Do not introduce unrelated logging frameworks unless explicitly requested.
+
+### Error Handling
+
+Use:
+- `PerpetuumException`
+- `ErrorCodes`
+- `ThrowIf*` guard extensions
+
+Do not introduce inconsistent exception patterns.
+
+---
+
+## Technical Debt Rules
+
+Claude MUST avoid worsening known technical debt documented in `CONCERNS.md`.
+
+Specifically:
+- do not add new static service locators
+- do not add new magic constants
+- do not introduce more inline SQL interpolation
+- do not introduce more fire-and-forget async without cancellation
+- do not introduce additional `#if DEBUG` behavioral divergence
+
+When possible:
+- improve nearby code incrementally
+- preserve backward compatibility
+
+---
+
+## Code Placement Rules
+
+Before creating new files:
+- verify the correct subsystem from `STRUCTURE.md`
+- follow existing namespace layout
+- follow existing folder organization
+
+New code MUST be placed consistently with existing architecture.
+
+Do not create parallel abstractions unless necessary.
+
+---
+
+## Modification Rules
+
+When modifying existing systems:
+- preserve public contracts unless explicitly changing them
+- preserve network protocol compatibility
+- preserve DB compatibility
+- preserve serialization formats
+- preserve command names
+- preserve runtime threading assumptions
+
+Avoid broad refactors unless explicitly requested.
+
+---
+
+## Performance Rules
+
+Before introducing:
+- LINQ in hot paths
+- allocations inside loops
+- synchronous DB calls in updates
+- blocking waits
+- large immutable collection churn
+
+evaluate runtime impact.
+
+Hot-path systems include:
+- zone updates
+- NPC AI
+- combat
+- movement
+- market updates
+- season activity tracking
+
+---
+
+## Security Rules
+
+Never:
+- store plaintext secrets
+- introduce plaintext credentials
+- weaken authentication
+- add unsafe SQL construction
+- bypass permission/access checks
+
+Prefer:
+- parameterized queries
+- existing auth flows
+- existing validation patterns
+
+---
+
+## Testing and Validation Rules
+
+Because no automated test suite exists:
+
+Claude MUST always propose:
+- manual validation steps
+- affected gameplay systems
+- affected DB state
+- possible regression areas
+
+For risky changes:
+- explain operational risks
+- identify rollback concerns
+
+When possible:
+- isolate pure logic for future testability
+- avoid increasing coupling
+
+---
+
+## Output Expectations
+
+For implementation tasks, Claude should produce:
+
+1. Affected systems
+2. Relevant files/docs consulted
+3. Risks/constraints
+4. Implementation plan
+5. Code changes
+6. Manual validation steps
+7. Potential regressions
+
+Do not jump directly into code generation without analysis.
+
+---
+
+## Research Expectations
+
+Before answering architecture questions:
+- inspect existing implementation patterns
+- prefer consistency over novelty
+- identify existing abstractions before proposing new ones
+
+Never assume a subsystem does not exist without searching first.
+
+---
+
+## Preferred Engineering Style
+
+Prefer:
+- consistency
+- incremental improvements
+- explicitness
+- low-risk changes
+- existing patterns
+- minimal architectural disruption
+
+Avoid:
+- speculative abstractions
+- framework rewrites
+- unnecessary modernisation
+- introducing incompatible paradigms
+
 ## Database Source of Truth
 
 The database structure documentation located under `docs/db_structure` is the authoritative source of truth for all database-related work.
