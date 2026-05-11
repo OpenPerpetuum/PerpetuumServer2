@@ -1,0 +1,102 @@
+<h2>Design Section 4 — Packages View</h2>
+<p class="subtitle">Accessed via the "Packages" switcher in the Seasons tab header. Master-detail: package list left, items right. Mirrors the existing EntitiesView pattern.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Seasons Tab → Packages View</div>
+  <div class="mockup-body" style="padding:0;min-height:340px;font-size:12px">
+
+    <!-- Tab-level header -->
+    <div style="display:flex;align-items:center;gap:0;padding:8px 14px;border-bottom:1px solid #333;background:#1a1a1a">
+      <div style="display:flex;border:1px solid #444;border-radius:4px;overflow:hidden;margin-right:auto">
+        <div style="padding:4px 18px;background:#222;color:#888;font-size:12px;cursor:pointer">Seasons</div>
+        <div style="padding:4px 18px;background:#2a6496;color:#fff;font-size:12px;cursor:pointer">Packages</div>
+      </div>
+      <div class="mock-button" style="font-size:11px;padding:4px 14px">+ New Package</div>
+    </div>
+
+    <!-- Master-detail layout -->
+    <div style="display:flex;min-height:300px">
+
+      <!-- Left: package list -->
+      <div style="width:240px;border-right:1px solid #333;display:flex;flex-direction:column;flex-shrink:0">
+        <div style="padding:8px 10px;border-bottom:1px solid #2a2a2a">
+          <div class="mock-input" style="padding:3px 8px;font-size:11px;width:100%;box-sizing:border-box">🔍 Filter packages…</div>
+        </div>
+        <div style="flex:1;overflow-y:auto">
+          <!-- Selected -->
+          <div style="padding:8px 12px;background:#1e2a3a;border-left:3px solid #2a6496;cursor:pointer">
+            <div style="font-size:12px;font-weight:bold">Gold Reward</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">3 items · Used by 2 seasons</div>
+          </div>
+          <div style="padding:8px 12px;border-left:3px solid transparent;cursor:pointer;border-bottom:1px solid #222">
+            <div style="font-size:12px">Silver Reward</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">2 items · Used by 2 seasons</div>
+          </div>
+          <div style="padding:8px 12px;border-left:3px solid transparent;cursor:pointer;border-bottom:1px solid #222">
+            <div style="font-size:12px">Bronze Reward</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">2 items · Used by 1 season</div>
+          </div>
+          <div style="padding:8px 12px;border-left:3px solid transparent;cursor:pointer;border-bottom:1px solid #222">
+            <div style="font-size:12px">Starter Pack</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">4 items · Used by 3 seasons</div>
+          </div>
+          <div style="padding:8px 12px;border-left:3px solid transparent;cursor:pointer;border-bottom:1px solid #222">
+            <div style="font-size:12px">Leaderboard Top 3</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">5 items · Used by 1 season</div>
+          </div>
+          <div style="padding:8px 12px;border-left:3px solid transparent;cursor:pointer">
+            <div style="font-size:12px;color:#888">Unused Prototype</div>
+            <div style="font-size:10px;color:#555;margin-top:2px">1 item · Not used</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: package detail -->
+      <div style="flex:1;padding:14px;min-width:0">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:14px;font-weight:bold;margin-bottom:2px">Gold Reward</div>
+            <div style="font-size:11px;color:#5bc0de">Used by Season 2 (Tier 4) · Season 3 (Tier 4)</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <div class="mock-button" style="font-size:11px;padding:3px 10px">+ Add Item</div>
+            <div class="mock-button" style="font-size:11px;padding:3px 10px;background:#7a2a2a;border-color:#a03030;color:#ffaaaa">Delete Package</div>
+          </div>
+        </div>
+
+        <!-- Warning if used by active season -->
+        <div style="background:#2a2a1a;border:1px solid #6a6a2a;border-radius:4px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:#f0e68c">
+          ⚠ This package is used by an active season. Changes will affect players who have not yet claimed this tier reward.
+        </div>
+
+        <!-- Items grid -->
+        <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 60px;gap:0;font-size:11px;color:#888;padding:6px 10px;border-bottom:1px solid #333;background:#252525">
+            <span>Item (Definition)</span><span style="text-align:right">Quantity</span><span style="text-align:right">Is Stackable</span><span style="text-align:center">Del</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 60px;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+            <span>Syndicate Veteran Token</span>
+            <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+            <div style="text-align:right;color:#888">Yes</div>
+            <div style="text-align:center;color:#a03030;cursor:pointer">✕</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 60px;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+            <span>Prototype Frame (Light)</span>
+            <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+            <div style="text-align:right;color:#888">No</div>
+            <div style="text-align:center;color:#a03030;cursor:pointer">✕</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 60px;gap:0;font-size:11px;padding:5px 10px;align-items:center">
+            <span>NIC Voucher (500,000)</span>
+            <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+            <div style="text-align:right;color:#888">Yes</div>
+            <div style="text-align:center;color:#a03030;cursor:pointer">✕</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:#555">Items are pulled from the entity definitions. Quantities are editable. Changes are queued.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px">Package list shows item count and which seasons use each package. The detail warns you if you're editing a package used by an active season. Does this look right?</p>

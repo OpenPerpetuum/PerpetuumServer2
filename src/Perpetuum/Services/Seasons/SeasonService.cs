@@ -31,6 +31,8 @@ namespace Perpetuum.Services.Seasons
 
         // Tracks which season we have already dispatched intro mail for. 0 = never notified.
         private volatile int _lastNotifiedSeasonId;
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Character> _pendingIntroChars
+            = new System.Collections.Concurrent.ConcurrentQueue<Character>();
 
         // Trigger immediate load on first Update tick
         private TimeSpan _cacheAge = CacheRefreshInterval;
@@ -67,14 +69,26 @@ namespace Perpetuum.Services.Seasons
 
         internal void RefreshCache()
         {
-            var season = _repository.GetActiveSeason();
+            var previous = _activeSeason;
+            var season   = _repository.GetActiveSeason();
+
             if (season == null)
             {
-                _activeSeason      = null;
-                _activeRates       = ImmutableList<SeasonActivityRate>.Empty;
-                _activeObjectives  = ImmutableList<SeasonObjective>.Empty;
-                _activeTiers       = ImmutableList<SeasonTier>.Empty;
-                _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+                // If admin deactivated before natural end, trigger end processing now
+                if (previous != null && DateTime.UtcNow < previous.EndTime)
+                {
+                    ProcessSeasonEnd(previous);
+                }
+                else
+                {
+                    _activeSeason      = null;
+                    _activeRates       = ImmutableList<SeasonActivityRate>.Empty;
+                    _activeObjectives  = ImmutableList<SeasonObjective>.Empty;
+                    _activeTiers       = ImmutableList<SeasonTier>.Empty;
+                    _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+                }
+                // No active season — discard any pending login chars
+                while (_pendingIntroChars.TryDequeue(out _)) { }
                 return;
             }
 
@@ -88,6 +102,14 @@ namespace Perpetuum.Services.Seasons
             {
                 _lastNotifiedSeasonId = season.Id;
                 NotifyOnlinePlayersSeasonStarted(season);
+            }
+
+            // Send intro mail to characters that connected while cache was null
+            while (_pendingIntroChars.TryDequeue(out var character))
+            {
+                if (DateTime.UtcNow <= season.EndTime &&
+                    _repository.TryMarkIntroMailSent(character.Id, season.Id))
+                    SendIntroMail(character, season);
             }
         }
 
@@ -145,9 +167,14 @@ namespace Perpetuum.Services.Seasons
         public void OnCharacterLogin(Character character)
         {
             var season = _activeSeason;
-            if (season == null || DateTime.UtcNow > season.EndTime)
+            if (season == null)
+            {
+                // Process loop hasn't warmed the cache yet — defer until RefreshCache runs
+                _pendingIntroChars.Enqueue(character);
                 return;
-
+            }
+            if (DateTime.UtcNow > season.EndTime)
+                return;
             if (_repository.TryMarkIntroMailSent(character.Id, season.Id))
                 SendIntroMail(character, season);
         }

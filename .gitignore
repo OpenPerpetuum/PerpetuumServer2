@@ -10,6 +10,7 @@ src/Perpetuum/bin/
 src/Perpetuum.ServerService2/Properties/PublishProfiles/
 *.user
 packages/
+!src/Perpetuum.AdminTool/Packages/
 src/Perpetuum.ServerService2Installer/bin/
 src/Perpetuum.ServerService2/data/bitmaps/
 src/Perpetuum.ServerService2/data/chatlogs/

@@ -284,6 +284,249 @@ The `Seasons` tab is registered in `MainViewModel` alongside existing tabs and w
 
 ---
 
+## Repository SQL Reference
+
+### SeasonRepository
+
+```sql
+-- LoadAllSeasonsAsync()
+SELECT id, name, description, start_time, end_time, is_active
+FROM seasons
+ORDER BY start_time DESC
+
+-- LoadActivityRatesAsync(@seasonId)
+SELECT id, season_id, activity_type, points_per_unit, unit_scale
+FROM season_activity_rates
+WHERE season_id = @seasonId
+
+-- LoadObjectivesAsync(@seasonId)
+SELECT id, season_id, name, description, activity_type, target_value, bonus_points, display_order
+FROM season_objectives
+WHERE season_id = @seasonId
+ORDER BY display_order
+
+-- LoadTiersAsync(@seasonId)
+SELECT id, season_id, tier_number, tier_name, points_required, package_id
+FROM season_tiers
+WHERE season_id = @seasonId
+ORDER BY tier_number
+
+-- LoadLeaderboardRewardsAsync(@seasonId)
+SELECT id, season_id, rank_min, rank_max, package_id
+FROM season_leaderboard_rewards
+WHERE season_id = @seasonId
+ORDER BY rank_min
+
+-- LoadParticipantCountAsync(@seasonId)
+SELECT COUNT(*) FROM season_character_points WHERE season_id = @seasonId
+
+-- LoadActiveLast7DaysAsync(@seasonId)
+SELECT COUNT(*) FROM season_character_points
+WHERE season_id = @seasonId AND last_updated >= DATEADD(day, -7, GETUTCDATE())
+
+-- LoadTierDistributionAsync(@seasonId)
+SELECT t.tier_number, t.tier_name, COUNT(c.character_id) AS claim_count
+FROM season_tiers t
+LEFT JOIN season_tier_claims c ON c.tier_id = t.id AND c.season_id = @seasonId
+WHERE t.season_id = @seasonId
+GROUP BY t.id, t.tier_number, t.tier_name
+ORDER BY t.tier_number
+
+-- LoadTop10LeaderboardAsync(@seasonId)
+SELECT TOP 10 scp.character_id, ch.nick AS character_name, scp.total_points
+FROM season_character_points scp
+JOIN characters ch ON ch.characterid = scp.character_id
+WHERE scp.season_id = @seasonId
+ORDER BY scp.total_points DESC
+
+-- LoadObjectiveCompletionAsync(@seasonId)
+SELECT o.id, o.name, COUNT(p.character_id) AS completed_count
+FROM season_objectives o
+LEFT JOIN season_objective_progress p ON p.objective_id = o.id
+    AND p.season_id = @seasonId AND p.completed = 1
+WHERE o.season_id = @seasonId
+GROUP BY o.id, o.name
+ORDER BY o.display_order
+
+-- LoadAvgPointsPerDayAsync(@seasonId)
+-- Returns total_points / participants / elapsed_days for each elapsed day
+SELECT
+    CAST(SUM(total_points) AS float) /
+    NULLIF(COUNT(*), 0) /
+    NULLIF(DATEDIFF(day, s.start_time, GETUTCDATE()), 0) AS avg_points_per_day
+FROM season_character_points scp
+JOIN seasons s ON s.id = scp.season_id
+WHERE scp.season_id = @seasonId
+GROUP BY s.start_time
+```
+
+### PackageRepository
+
+```sql
+-- LoadAllPackagesAsync()
+-- Returns package list with item count and season usage count
+SELECT
+    p.id,
+    p.name,
+    (SELECT COUNT(*) FROM packageitems pi WHERE pi.packageid = p.id) AS item_count,
+    (SELECT COUNT(DISTINCT season_id)
+     FROM (
+         SELECT season_id FROM season_tiers WHERE package_id = p.id
+         UNION ALL
+         SELECT season_id FROM season_leaderboard_rewards WHERE package_id = p.id
+     ) refs
+    ) AS season_count
+FROM packages p
+ORDER BY p.name
+
+-- LoadPackageItemsAsync(@packageId)
+SELECT id, packageid, definition, quantity
+FROM packageitems
+WHERE packageid = @packageId
+
+-- LoadSeasonUsageAsync(@packageId)
+-- Returns all seasons that reference this package via tiers or leaderboard rewards
+SELECT s.id AS season_id, s.name AS season_name, s.is_active,
+       'Tier' AS context, t.tier_name AS detail
+FROM season_tiers t
+JOIN seasons s ON s.id = t.season_id
+WHERE t.package_id = @packageId
+UNION ALL
+SELECT s.id, s.name, s.is_active,
+       'Leaderboard' AS context,
+       'Rank ' + CAST(lr.rank_min AS varchar) + '–' + CAST(lr.rank_max AS varchar) AS detail
+FROM season_leaderboard_rewards lr
+JOIN seasons s ON s.id = lr.season_id
+WHERE lr.package_id = @packageId
+ORDER BY s.name, context
+```
+
+---
+
+## Change Object SQL Patterns
+
+### SeasonChanges — seasons table
+
+```sql
+-- BuildInsert(SeasonRow row)
+INSERT INTO seasons (name, description, start_time, end_time, is_active)
+VALUES (@name, @description, @startTime, @endTime, 0)
+
+-- BuildUpdate(int id, changed fields only — same approach as FlockChanges)
+UPDATE seasons SET name = @name, description = @description,
+    start_time = @startTime, end_time = @endTime
+WHERE id = @id
+
+-- BuildActivate(int id)
+UPDATE seasons SET is_active = 1 WHERE id = @id
+
+-- BuildDeactivate(int id)
+UPDATE seasons SET is_active = 0 WHERE id = @id
+```
+
+### SeasonChanges — activity rates
+
+```sql
+-- BuildUpsertActivityRate(SeasonActivityRateRow row)
+-- MERGE avoids race conditions on SQL Server
+MERGE season_activity_rates AS target
+USING (SELECT @seasonId AS season_id, @activityType AS activity_type) AS src
+ON target.season_id = src.season_id AND target.activity_type = src.activity_type
+WHEN MATCHED THEN
+    UPDATE SET points_per_unit = @pointsPerUnit, unit_scale = @unitScale
+WHEN NOT MATCHED THEN
+    INSERT (season_id, activity_type, points_per_unit, unit_scale)
+    VALUES (@seasonId, @activityType, @pointsPerUnit, @unitScale);
+
+-- BuildDeleteActivityRate(int id)
+DELETE FROM season_activity_rates WHERE id = @id
+```
+
+### SeasonChanges — objectives, tiers, leaderboard rewards
+
+```sql
+-- objectives: BuildInsertObjective / BuildUpdateObjective / BuildDeleteObjective
+INSERT INTO season_objectives
+    (season_id, name, description, activity_type, target_value, bonus_points, display_order)
+VALUES (@seasonId, @name, @description, @activityType, @targetValue, @bonusPoints, @displayOrder)
+
+UPDATE season_objectives SET name = @name, description = @description,
+    activity_type = @activityType, target_value = @targetValue,
+    bonus_points = @bonusPoints, display_order = @displayOrder
+WHERE id = @id
+
+DELETE FROM season_objectives WHERE id = @id
+
+-- tiers: BuildInsertTier / BuildUpdateTier / BuildDeleteTier
+INSERT INTO season_tiers (season_id, tier_number, tier_name, points_required, package_id)
+VALUES (@seasonId, @tierNumber, @tierName, @pointsRequired, @packageId)
+
+UPDATE season_tiers SET tier_number = @tierNumber, tier_name = @tierName,
+    points_required = @pointsRequired, package_id = @packageId
+WHERE id = @id
+
+DELETE FROM season_tiers WHERE id = @id
+
+-- leaderboard rewards: BuildInsertLeaderboardReward / BuildUpdateLeaderboardReward / BuildDeleteLeaderboardReward
+INSERT INTO season_leaderboard_rewards (season_id, rank_min, rank_max, package_id)
+VALUES (@seasonId, @rankMin, @rankMax, @packageId)
+
+UPDATE season_leaderboard_rewards SET rank_min = @rankMin, rank_max = @rankMax, package_id = @packageId
+WHERE id = @id
+
+DELETE FROM season_leaderboard_rewards WHERE id = @id
+```
+
+### PackageChanges
+
+```sql
+-- BuildInsertPackage(string name)   IsDestructive = false
+INSERT INTO packages (name) VALUES (@name)
+
+-- BuildUpdatePackage(int id, string name)   IsDestructive = false
+UPDATE packages SET name = @name WHERE id = @id
+
+-- BuildDeletePackage(int id)   IsDestructive = true
+DELETE FROM packages WHERE id = @id
+
+-- BuildInsertPackageItem(int packageId, int definition, int quantity)   IsDestructive = false
+INSERT INTO packageitems (packageid, definition, quantity)
+VALUES (@packageId, @definition, @quantity)
+
+-- BuildDeletePackageItem(int id)   IsDestructive = true
+DELETE FROM packageitems WHERE id = @id
+```
+
+---
+
+## Activity Rate Label Format
+
+The "Effective rate" label is computed by `SeasonActivityRateRow.GetEffectiveRateLabel()` and shown inline in the Activity Rates tab and in wizard Step 2.
+
+| SeasonActivityType | Value | Label format |
+|---|---|---|
+| `NpcKill` | 1 | `X pts per kill` |
+| `PvpKill` | 2 | `X pts per kill` |
+| `MissionComplete` | 3 | `X pts per completion` |
+| `MineralMined` | 4 | `X pts per {unit_scale} units mined` |
+| `EpSpent` | 5 | `X pts per {unit_scale} EP spent` |
+| `NicEarned` | 6 | `X pts per {unit_scale} NIC earned` |
+| `NicSpent` | 7 | `X pts per {unit_scale} NIC spent` |
+| `IntrusionPoint` | 8 | `X pts per intrusion point` |
+
+**Rules:**
+- If `points_per_unit = 0`: display `"Disabled"` regardless of scale.
+- If `unit_scale = 1` (or the type does not use scale — types 1, 2, 3, 8): omit the scale from the label.
+- If `unit_scale > 1`: include it in the label (e.g., `"5 pts per 1000 units mined"`).
+- Format large scale values with comma separators for readability (e.g., `1,000`, `10,000`).
+
+Example output for `MineralMined` with `points_per_unit = 5`, `unit_scale = 1000`:
+```
+5 pts per 1,000 units mined
+```
+
+---
+
 ## Out of Scope
 
 - Per-activity-type point breakdown in statistics (schema limitation — reserved placeholder in UI)

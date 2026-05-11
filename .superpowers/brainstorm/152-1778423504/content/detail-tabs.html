@@ -1,0 +1,122 @@
+<h2>Design Section 3 — Season Detail Tabs</h2>
+<p class="subtitle">After clicking "Manage →" on a season card. Tab bar at top, each section is an editable DataGrid or form. Changes go to the change queue on edit.</p>
+
+<div class="mockup" style="margin-bottom:20px">
+  <div class="mockup-header">Season 3 — Tiers Tab (example)</div>
+  <div class="mockup-body" style="padding:0;min-height:300px;font-size:12px">
+
+    <!-- Back + title bar -->
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid #333;background:#1a1a1a">
+      <span style="color:#5bc0de;font-size:12px;cursor:pointer">← All Seasons</span>
+      <span style="font-size:13px;font-weight:bold">Season 3</span>
+      <span style="font-size:11px;color:#5cb85c;background:#1a3a1a;padding:2px 8px;border-radius:10px">● Active</span>
+      <span style="flex:1"></span>
+      <div class="mock-button" style="font-size:11px;padding:3px 12px;background:#7a2a2a;border-color:#a03030;color:#ffaaaa">Deactivate</div>
+      <div class="mock-button" style="font-size:11px;padding:3px 12px">Activate</div>
+    </div>
+
+    <!-- Tab bar -->
+    <div style="display:flex;gap:0;border-bottom:1px solid #444;padding:0 14px;background:#1e1e1e;overflow-x:auto">
+      <span style="padding:6px 14px;font-size:12px;color:#888;white-space:nowrap">General</span>
+      <span style="padding:6px 14px;font-size:12px;color:#888;white-space:nowrap">Activity Rates</span>
+      <span style="padding:6px 14px;font-size:12px;color:#888;white-space:nowrap">Objectives</span>
+      <span style="padding:6px 14px;font-size:12px;border-bottom:2px solid #2a6496;color:#fff;white-space:nowrap">Tiers</span>
+      <span style="padding:6px 14px;font-size:12px;color:#888;white-space:nowrap">Leaderboard</span>
+      <span style="padding:6px 14px;font-size:12px;color:#888;white-space:nowrap">Packages</span>
+      <span style="padding:6px 14px;font-size:12px;color:#f0ad4e;white-space:nowrap">📊 Statistics</span>
+    </div>
+
+    <!-- Tiers tab content -->
+    <div style="padding:12px 14px">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="color:#aaa;font-size:11px">Define point thresholds that unlock reward packages. Tiers must be in ascending order by points required.</div>
+        <div class="mock-button" style="font-size:11px;padding:3px 12px;white-space:nowrap">+ Add Tier</div>
+      </div>
+
+      <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;overflow:hidden">
+        <!-- Header -->
+        <div style="display:grid;grid-template-columns:60px 120px 130px 1fr 80px;gap:0;font-size:11px;color:#888;padding:6px 10px;border-bottom:1px solid #333;background:#252525">
+          <span>#</span><span>Tier Name</span><span>Points Required</span><span>Reward Package</span><span style="text-align:center">Actions</span>
+        </div>
+        <!-- Row 1 -->
+        <div style="display:grid;grid-template-columns:60px 120px 130px 1fr 80px;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span style="color:#888">1</span>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">Stone</div>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">1,000</div>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">▾ Starter Pack</div>
+          <div style="display:flex;gap:4px;justify-content:center">
+            <span style="color:#888;cursor:pointer;font-size:11px">✎</span>
+            <span style="color:#a03030;cursor:pointer;font-size:11px">✕</span>
+          </div>
+        </div>
+        <!-- Row 2 -->
+        <div style="display:grid;grid-template-columns:60px 120px 130px 1fr 80px;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span style="color:#888">2</span>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">Bronze</div>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">5,000</div>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">▾ Bronze Reward</div>
+          <div style="display:flex;gap:4px;justify-content:center">
+            <span style="color:#888;cursor:pointer;font-size:11px">✎</span>
+            <span style="color:#a03030;cursor:pointer;font-size:11px">✕</span>
+          </div>
+        </div>
+        <!-- Row 3 -->
+        <div style="display:grid;grid-template-columns:60px 120px 130px 1fr 80px;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span style="color:#888">3</span>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">Silver</div>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">15,000</div>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">▾ Silver Reward</div>
+          <div style="display:flex;gap:4px;justify-content:center">
+            <span style="color:#888;cursor:pointer;font-size:11px">✎</span>
+            <span style="color:#a03030;cursor:pointer;font-size:11px">✕</span>
+          </div>
+        </div>
+        <!-- Row 4 -->
+        <div style="display:grid;grid-template-columns:60px 120px 130px 1fr 80px;gap:0;font-size:11px;padding:5px 10px;align-items:center">
+          <span style="color:#888">4</span>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">Gold</div>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">35,000</div>
+          <div class="mock-input" style="padding:2px 6px;font-size:11px">▾ Gold Reward</div>
+          <div style="display:flex;gap:4px;justify-content:center">
+            <span style="color:#888;cursor:pointer;font-size:11px">✎</span>
+            <span style="color:#a03030;cursor:pointer;font-size:11px">✕</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;font-size:10px;color:#555">Changes are queued — commit via the Pending Changes tab when ready.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab summary -->
+<h3>All Tabs at a Glance</h3>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;font-size:12px">
+  <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+    <div style="font-weight:bold;color:#ccc;margin-bottom:4px">General</div>
+    <div style="color:#888;font-size:11px">Name, description, start/end dates. Activate / Deactivate buttons with confirmation dialog. Season ID shown read-only.</div>
+  </div>
+  <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+    <div style="font-weight:bold;color:#ccc;margin-bottom:4px">Activity Rates</div>
+    <div style="color:#888;font-size:11px">Same grid as wizard Step 2 — all 8 types, editable pts/unit and scale, live effective rate label.</div>
+  </div>
+  <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+    <div style="font-weight:bold;color:#ccc;margin-bottom:4px">Objectives</div>
+    <div style="color:#888;font-size:11px">DataGrid: name, activity type (dropdown), target value, bonus points, display order. Add/edit via inline row or dialog. Delete with confirmation.</div>
+  </div>
+  <div style="background:#1e2a3a;border:1px solid #2a6496;border-radius:4px;padding:10px">
+    <div style="font-weight:bold;color:#fff;margin-bottom:4px">Tiers ← shown above</div>
+    <div style="color:#888;font-size:11px">DataGrid: tier #, name, points required, package (dropdown). Add/delete rows. Edit inline.</div>
+  </div>
+  <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+    <div style="font-weight:bold;color:#ccc;margin-bottom:4px">Leaderboard</div>
+    <div style="color:#888;font-size:11px">DataGrid: rank min, rank max, package (dropdown). Validation: ranges must not overlap. Gap warning if ranks are skipped.</div>
+  </div>
+  <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+    <div style="font-weight:bold;color:#ccc;margin-bottom:4px">Packages</div>
+    <div style="color:#888;font-size:11px">Same as the top-level Packages view, scoped for convenience. Shows all packages; highlights which ones are used by this season's tiers/leaderboard.</div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px">Does the detail view structure look right?</p>

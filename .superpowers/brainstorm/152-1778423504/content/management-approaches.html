@@ -1,0 +1,114 @@
+<h2>Seasons Management Layout</h2>
+<p class="subtitle">How should the management view look for existing seasons? Pick an approach — or describe what you'd change.</p>
+
+<div class="options">
+
+  <!-- Option A -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Master-Detail (Recommended)</h3>
+      <p>Season list on the left, tabbed detail panel on the right — mirrors the existing EntitiesView pattern. Familiar, compact, lets you switch seasons quickly.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Seasons Tab — Master-Detail</div>
+        <div class="mockup-body" style="display:flex;gap:0;padding:0;min-height:200px">
+          <div style="width:200px;border-right:1px solid #444;padding:8px;flex-shrink:0">
+            <div style="font-size:11px;text-transform:uppercase;color:#888;margin-bottom:6px">Seasons</div>
+            <div style="background:#2a6496;color:#fff;padding:5px 8px;border-radius:3px;margin-bottom:4px;font-size:12px">
+              ● Season 3 <span style="font-size:10px;opacity:0.7">ACTIVE</span>
+            </div>
+            <div style="padding:5px 8px;border-radius:3px;margin-bottom:4px;font-size:12px;color:#ccc">Season 2</div>
+            <div style="padding:5px 8px;border-radius:3px;margin-bottom:4px;font-size:12px;color:#ccc">Season 1</div>
+            <div style="margin-top:12px;padding:5px 8px;border:1px dashed #555;border-radius:3px;font-size:11px;color:#888;text-align:center">+ New Season</div>
+          </div>
+          <div style="flex:1;padding:10px;min-width:0">
+            <div style="display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid #444">
+              <span style="padding:4px 12px;font-size:12px;border-bottom:2px solid #2a6496;color:#fff">General</span>
+              <span style="padding:4px 12px;font-size:12px;color:#888">Activity Rates</span>
+              <span style="padding:4px 12px;font-size:12px;color:#888">Objectives</span>
+              <span style="padding:4px 12px;font-size:12px;color:#888">Tiers</span>
+              <span style="padding:4px 12px;font-size:12px;color:#888">Leaderboard</span>
+              <span style="padding:4px 12px;font-size:12px;color:#888">Packages</span>
+              <span style="padding:4px 12px;font-size:12px;color:#888">Statistics</span>
+            </div>
+            <div style="display:grid;grid-template-columns:120px 1fr;gap:6px;align-items:center;font-size:12px">
+              <span style="color:#888">Name</span><div class="mock-input" style="padding:3px 6px;font-size:12px">Season 3</div>
+              <span style="color:#888">Description</span><div class="mock-input" style="padding:3px 6px;font-size:12px">Spring 2026</div>
+              <span style="color:#888">Start</span><div class="mock-input" style="padding:3px 6px;font-size:12px">2026-03-01 00:00</div>
+              <span style="color:#888">End</span><div class="mock-input" style="padding:3px 6px;font-size:12px">2026-05-31 23:59</div>
+              <span style="color:#888">Status</span><span style="color:#5cb85c;font-size:12px">● Active</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Accordion Sections</h3>
+      <p>Season selector at the top, then all config sections stacked below as expandable panels. You see everything for one season at once; collapse sections you're not working on.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Seasons Tab — Accordion</div>
+        <div class="mockup-body" style="padding:10px;min-height:200px">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+            <span style="font-size:12px;color:#888">Season:</span>
+            <div class="mock-input" style="padding:3px 10px;font-size:12px;min-width:160px">▾ Season 3 (ACTIVE)</div>
+            <div class="mock-button" style="font-size:11px;padding:3px 10px">+ New Season</div>
+          </div>
+          <div style="font-size:12px">
+            <div style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:6px 10px;margin-bottom:4px;cursor:pointer">▶ General Info <span style="color:#888;font-size:11px">Season 3 · 2026-03-01 → 2026-05-31</span></div>
+            <div style="background:#1e2a1e;border:1px solid #3a5a3a;border-radius:3px;padding:8px 12px;margin-bottom:4px">
+              <div style="font-weight:bold;color:#aed6a0;margin-bottom:6px">▼ Activity Rates <span style="color:#888;font-size:11px">8 types configured</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:11px;color:#ccc">
+                <span style="color:#888">Activity</span><span style="color:#888">Pts/Unit</span><span style="color:#888">Scale</span>
+                <span>NPC Kill</span><span>10</span><span>1</span>
+                <span>PvP Kill</span><span>50</span><span>1</span>
+                <span>Mining</span><span>1</span><span>1000</span>
+              </div>
+            </div>
+            <div style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:6px 10px;margin-bottom:4px;cursor:pointer">▶ Objectives <span style="color:#888;font-size:11px">3 configured</span></div>
+            <div style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:6px 10px;margin-bottom:4px;cursor:pointer">▶ Tiers <span style="color:#888;font-size:11px">4 tiers</span></div>
+            <div style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:6px 10px;cursor:pointer">▶ Leaderboard Rewards <span style="color:#888;font-size:11px">3 brackets</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Dashboard Cards</h3>
+      <p>Overview page with season cards (active season highlighted). Clicking a card opens a full-page detail view. More visual, but requires navigation back and forth.</p>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Seasons Tab — Cards Dashboard</div>
+        <div class="mockup-body" style="padding:10px;min-height:200px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="border:2px solid #2a6496;border-radius:6px;padding:10px;min-width:150px;background:#1a2a3a">
+              <div style="font-size:11px;color:#5bc0de;margin-bottom:4px">● ACTIVE</div>
+              <div style="font-size:13px;font-weight:bold;margin-bottom:4px">Season 3</div>
+              <div style="font-size:11px;color:#888">Ends: 2026-05-31</div>
+              <div style="font-size:11px;color:#aed6a0;margin-top:6px">1,247 participants</div>
+              <div class="mock-button" style="font-size:10px;padding:2px 8px;margin-top:8px">Manage →</div>
+            </div>
+            <div style="border:1px solid #444;border-radius:6px;padding:10px;min-width:150px;background:#222">
+              <div style="font-size:11px;color:#888;margin-bottom:4px">ENDED</div>
+              <div style="font-size:13px;font-weight:bold;margin-bottom:4px">Season 2</div>
+              <div style="font-size:11px;color:#888">Mar–Apr 2026</div>
+              <div style="font-size:11px;color:#888;margin-top:6px">892 participants</div>
+              <div class="mock-button" style="font-size:10px;padding:2px 8px;margin-top:8px">View →</div>
+            </div>
+            <div style="border:1px dashed #555;border-radius:6px;padding:10px;min-width:150px;background:#1a1a1a;display:flex;align-items:center;justify-content:center">
+              <div style="text-align:center;color:#666;font-size:12px">+ New Season</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
