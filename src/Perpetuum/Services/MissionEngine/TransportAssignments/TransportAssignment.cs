@@ -1,19 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Transactions;
-using Perpetuum.Accounting.Characters;
+﻿using Perpetuum.Accounting.Characters;
 using Perpetuum.Common.Loggers.Transaction;
 using Perpetuum.Containers;
 using Perpetuum.Data;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Units.DockingBases;
+using System.Data;
+using System.Transactions;
 
 namespace Perpetuum.Services.MissionEngine.TransportAssignments
 {
     public partial class TransportAssignment
     {
         private const double COLLATERAL_PENALTY = 0.5;
-        
+
         public int id;
         public DateTime creation;
         public long sourcebaseeid;
@@ -100,7 +99,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
                 containername
             }).ThrowIfLessOrEqual(0, ErrorCodes.SQLInsertError);
         }
-     
+
         public void UpdateToDb()
         {
             DynamicSqlQuery.Update("transportassignments", new
@@ -117,7 +116,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
 
         private void GetLocalPublicContainer(Character characterForVolumeWrapper, out VolumeWrapperContainer volumeWrapperContainer, Character characterForPublicContainer, out PublicContainer publicContainer)
         {
-            volumeWrapperContainer = (VolumeWrapperContainer) Container.GetWithItems(containereid, characterForVolumeWrapper, ContainerAccess.List);
+            volumeWrapperContainer = (VolumeWrapperContainer)Container.GetWithItems(containereid, characterForVolumeWrapper, ContainerAccess.List);
             var storage = Container.GetOrThrow(volumeWrapperContainer.Parent);
             publicContainer = Container.GetFromStructure(storage.Parent);
             publicContainer.ReloadItems(characterForPublicContainer);
@@ -144,7 +143,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
             Message.Builder.SetCommand(Commands.TransportAssignmentDelivered).WithData(principalResult).ToCharacter(ownercharacter).Send();
         }
 
-        public void WriteLog(TransportAssignmentEvent transportAssignmentEvent,long baseEid)
+        public void WriteLog(TransportAssignmentEvent transportAssignmentEvent, long baseEid)
         {
             var o = new
             {
@@ -156,7 +155,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
                 containername,
             };
 
-            DynamicSqlQuery.Insert("transportassignmentslog", o).ThrowIfEqual(0,ErrorCodes.SQLInsertError);
+            DynamicSqlQuery.Insert("transportassignmentslog", o).ThrowIfEqual(0, ErrorCodes.SQLInsertError);
         }
 
         public void DeleteFromDb()
@@ -168,7 +167,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
                 .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLDeleteError);
         }
 
-       
+
 
         private bool Retrieved
         {
@@ -178,40 +177,46 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
                 Db.Query().CommandText("update transportassignments set retrieved=@state where id=@id")
                     .SetParameter("@id", id)
                     .SetParameter("@state", value)
-                    .ExecuteNonQuery().ThrowIfEqual(0,ErrorCodes.SQLUpdateError);
-                
+                    .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLUpdateError);
+
                 _retrieved = value;
             }
         }
 
         private void PayCollateralToPrincipal()
         {
-            ownercharacter.AddToWallet(TransactionType.TransportAssignmentCollateral,collateral);
+            ownercharacter.AddToWallet(TransactionType.TransportAssignmentCollateral, collateral);
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(collateral));
         }
 
         private void PaybackCollateral()
         {
-            volunteercharacter.AddToWallet(TransactionType.TransportAssignmentCollateralPayback,collateral);
+            volunteercharacter.AddToWallet(TransactionType.TransportAssignmentCollateralPayback, collateral);
+            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(collateral));
         }
 
         private void PaybackHalfCollateral()
         {
-            volunteercharacter.AddToWallet(TransactionType.TransportAssignmentCollateralPaybackOnGiveUp,collateral * COLLATERAL_PENALTY);
+            volunteercharacter.AddToWallet(TransactionType.TransportAssignmentCollateralPaybackOnGiveUp, collateral * COLLATERAL_PENALTY);
+            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(collateral * COLLATERAL_PENALTY));
         }
 
         private void PaybackReward()
         {
-            ownercharacter.AddToWallet(TransactionType.TransportAssignmentRewardPayback,reward);
+            ownercharacter.AddToWallet(TransactionType.TransportAssignmentRewardPayback, reward);
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(reward));
         }
 
         private void PayOutReward()
         {
-            volunteercharacter.AddToWallet(TransactionType.TransportAssignmentDeliver,reward + collateral);
+            volunteercharacter.AddToWallet(TransactionType.TransportAssignmentDeliver, reward + collateral);
+            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(reward + collateral));
         }
 
         public void TakeCollateral(Character volunteer)
         {
-            volunteer.SubtractFromWallet(TransactionType.TransportAssignmentCollateral,collateral);
+            volunteer.SubtractFromWallet(TransactionType.TransportAssignmentCollateral, collateral);
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, (long)Math.Abs(collateral));
         }
 
         //storage => base => public container -> owner character
@@ -230,13 +235,13 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
         {
             var baseEid = sourcebaseeid;
 
-            if (targetBaseEid != 0) 
+            if (targetBaseEid != 0)
                 baseEid = targetBaseEid;
 
             var volumeInitCharacter = taken ? volunteercharacter : ownercharacter;
             var sourcePublicContainer = Container.GetFromStructure(volumeWrapperContainer.TraverseForStructureRootEid());
             sourcePublicContainer.ReloadItems(volumeInitCharacter);
-            
+
             var wrapperContainer = sourcePublicContainer.GetItem(volumeWrapperContainer.Eid) as VolumeWrapperContainer;
             if (wrapperContainer != null && wrapperContainer.Parent == sourcePublicContainer.Eid)
             {
@@ -250,7 +255,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
 
             volumeWrapperContainer.Owner = ownercharacter.Eid;
             volumeWrapperContainer.ClearAssignmentId();
-            
+
             targetPublicContainer.AddItem(volumeWrapperContainer, false);
 
             PaybackCollateral();
@@ -285,13 +290,13 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
             });
         }
 
-        public void GiveToVolunteer(out VolumeWrapperContainer volumeWrapperContainer, out  PublicContainer publicContainer)
+        public void GiveToVolunteer(out VolumeWrapperContainer volumeWrapperContainer, out PublicContainer publicContainer)
         {
             if (volunteercharacter == Character.None)
                 throw new PerpetuumException(ErrorCodes.WTFErrorMedicalAttentionSuggested);
 
             GetLocalPublicContainer(ownercharacter, out volumeWrapperContainer, volunteercharacter, out publicContainer);
-           
+
             volumeWrapperContainer.Owner = volunteercharacter.Eid;
             publicContainer.AddItem(volumeWrapperContainer, false);
             volumeWrapperContainer.Save();
@@ -299,24 +304,25 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
 
         private void CashInOnSubmit()
         {
-            ownercharacter.SubtractFromWallet(TransactionType.TransportAssignmentSubmit,reward);
+            ownercharacter.SubtractFromWallet(TransactionType.TransportAssignmentSubmit, reward);
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, (long)Math.Abs(reward));
         }
 
         public VolumeWrapperContainer GetContainer()
         {
-            return (VolumeWrapperContainer) Container.GetOrThrow(containereid);
+            return (VolumeWrapperContainer)Container.GetOrThrow(containereid);
         }
 
         public void GiveUpAssignment(Character issuerCharacter)
         {
             taken.ThrowIfFalse(ErrorCodes.AccessDenied);
 
-            volunteercharacter.ThrowIfEqual(null,ErrorCodes.AccessDenied);
-            volunteercharacter.ThrowIfNotEqual(issuerCharacter,ErrorCodes.AccessDenied);
+            volunteercharacter.ThrowIfEqual(null, ErrorCodes.AccessDenied);
+            volunteercharacter.ThrowIfNotEqual(issuerCharacter, ErrorCodes.AccessDenied);
 
             var volumeWrapperContainer = GetContainer();
             volumeWrapperContainer.ReloadItems(volunteercharacter);
-            volumeWrapperContainer.TraverseForStructureRootEid().ThrowIfLessOrEqual(0,ErrorCodes.ContainerHasToBeOnADockingBase);
+            volumeWrapperContainer.TraverseForStructureRootEid().ThrowIfLessOrEqual(0, ErrorCodes.ContainerHasToBeOnADockingBase);
 
             //container is on a base somewhere
             var baseEid = sourcebaseeid;

@@ -54,7 +54,7 @@ CREATE TABLE season_leaderboard_rewards (
 CREATE TABLE season_character_points (
     character_id                 INT      NOT NULL,
     season_id                    INT      NOT NULL REFERENCES seasons(id),
-    total_points                 BIGINT   NOT NULL DEFAULT 0,
+    total_points                 FLOAT           NOT NULL DEFAULT 0,
     last_updated                 DATETIME NOT NULL DEFAULT GETUTCDATE(),
     intro_mail_sent              BIT      NOT NULL DEFAULT 0,
     leaderboard_reward_delivered BIT      NOT NULL DEFAULT 0,
@@ -65,7 +65,7 @@ CREATE TABLE season_objective_progress (
     character_id   INT          NOT NULL,
     season_id      INT          NOT NULL REFERENCES seasons(id),
     objective_id   INT          NOT NULL REFERENCES season_objectives(id),
-    current_value  BIGINT       NOT NULL DEFAULT 0,
+    current_value  FLOAT               NOT NULL DEFAULT 0,
     completed      BIT          NOT NULL DEFAULT 0,
     completed_time DATETIME         NULL,
     bonus_awarded  BIT          NOT NULL DEFAULT 0,

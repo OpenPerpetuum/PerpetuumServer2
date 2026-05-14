@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.Services.Seasons;
@@ -213,7 +211,7 @@ namespace Perpetuum.AdminTool.Seasons
             while (await reader.ReadAsync())
             {
                 var nick = reader.IsDBNull(1) ? $"(char {reader.GetInt32(0)})" : reader.GetString(1);
-                result.Add(new LeaderboardEntryRow(rank++, nick, reader.GetInt64(2)));
+                result.Add(new LeaderboardEntryRow(rank++, nick, Math.Round(reader.GetDouble(2), 2)));
             }
             return result;
         }
@@ -265,6 +263,6 @@ namespace Perpetuum.AdminTool.Seasons
     }
 
     public record TierDistributionRow(int TierNumber, string TierName, int ClaimCount);
-    public record LeaderboardEntryRow(int Rank, string CharacterName, long TotalPoints);
+    public record LeaderboardEntryRow(int Rank, string CharacterName, double TotalPoints);
     public record ObjectiveCompletionRow(string Name, int CompletedCount);
 }

@@ -101,7 +101,7 @@ Running totals per character per season.
 |---|---|---|
 | `character_id` | int PK, FK | |
 | `season_id` | int PK, FK | |
-| `total_points` | bigint | Atomically incremented |
+| `total_points` | float | Atomically incremented; C# type `double` |
 | `last_updated` | datetime | |
 | `intro_mail_sent` | bit | Prevents duplicate login intro mail |
 | `leaderboard_reward_delivered` | bit | Guards against double-delivery at season end |
@@ -115,7 +115,7 @@ Per-character per-objective tracking.
 | `character_id` | int PK, FK | |
 | `season_id` | int PK, FK | |
 | `objective_id` | int PK, FK | |
-| `current_value` | bigint | Raw activity units accumulated |
+| `current_value` | float | Accumulated progress value; C# type `double` |
 | `completed` | bit | Set when `current_value >= target_value` |
 | `completed_time` | datetime | Nullable |
 | `bonus_awarded` | bit | Prevents double bonus on restart |
@@ -159,16 +159,17 @@ Singleton registered via Autofac in a new `SeasonModule`. Responsibilities:
 
 - Loads and caches the active season (rates, objectives, tiers) from DB on startup and every 5 minutes.
 - Exposes `RecordActivity(int characterId, SeasonActivityType type, long amount)` for all event hooks to call.
-- Runs a background timer for end-of-season detection and processing.
+- Runs a background timer for end-of-season detection, hourly leaderboard announcements, and processing.
+- Depends on `Lazy<IChannelManager>` (injected via constructor) for chat channel announcements to the "Seasons Info" channel.
 
 **`RecordActivity` flow:**
 
 1. If no active season or season has ended, return immediately.
-2. Compute base points: `floor(amount / unit_scale) * points_per_unit`.
+2. Compute base points (as `double`): `round(amount / unit_scale * points_per_unit, 2)`, summed across all matching rates.
 3. Atomically increment `season_character_points.total_points` (upsert).
-4. For each objective matching `activity_type`: increment `current_value`.
-5. For any objective newly completed: award bonus points, set `bonus_awarded`, send objective-complete mail.
-6. For any tier threshold newly crossed (not yet claimed): insert `season_tier_claims`, insert into `accountredeemableitems`, send tier-unlock mail.
+4. For each objective matching `activity_type`: increment `current_value` by `basePoints` (not raw amount).
+5. For any objective newly completed: award bonus points, set `bonus_awarded`, send objective-complete mail, post chat announcement to "Seasons Info" channel.
+6. For any tier threshold newly crossed (not yet claimed): insert `season_tier_claims`, insert into `accountredeemableitems`, send tier-unlock mail, post chat announcement to "Seasons Info" channel.
 
 **End-of-season timer:**
 
@@ -179,21 +180,26 @@ Fires every minute, checks if `end_time` has passed and `is_active = 1`:
 3. For each character, match rank to `season_leaderboard_rewards` ranges.
 4. Deliver matching reward packages via `accountredeemableitems` (guarded by `leaderboard_reward_delivered` flag).
 5. Send final-standings mail to every participant.
+6. Post final leaderboard (top 10) to "Seasons Info" channel; update channel topic to "No active seasons".
+
+**Hourly leaderboard announcement:**
+
+Every hour during an active season, posts the current top-10 leaderboard to the "Seasons Info" channel.
 
 ### Event Hooks
 
 `SeasonService` subscribes to existing game events at startup:
 
-| Activity | Hook point |
-|---|---|
-| NPC kill | `SmartCreature` death event, extract killer character |
-| PvP kill | Player death event in zone |
-| Mission complete | `MissionInProgress` completion callback |
-| Mining / harvesting | Production/gathering completion event |
-| EP spent | `EpForActivityLogEvent` when EP is consumed on extension |
-| NIC earned | `CharacterWallet` credit transaction log (credit events) |
-| NIC spent | `CharacterWallet` credit transaction log (debit events) |
-| Intrusion point | SAP/intrusion completion event in zone |
+| Activity | Hook point | Notes |
+|---|---|---|
+| NPC kill | `SmartCreature` death event, extract killer character | |
+| PvP kill | Player death event in zone (`Player.HandlePlayerDead`) | Skipped if victim is blessed (`IsBlessed`), or if victim and killer share the same account IP (anti-self-farming check) |
+| Mission complete | `MissionInProgress` completion callback | |
+| Mineral mined | `HarvesterModule` extraction loop | Quantity per extracted material |
+| EP spent | `EpForActivityLogEvent` when EP is consumed on extension | |
+| NIC earned | `CharacterWallet.OnCommited` — filtered to specific `TransactionType` values: `marketSell`, `buyOrderPayBack`, `missionPayOut`, `refund`, `InsurancePayOut`, `GoodiePackCredit`; and directly in `TransportAssignment` for collateral/reward paybacks | |
+| NIC spent | `CharacterWallet.OnCommited` — filtered to specific `TransactionType` values: `marketBuy`, `marketFee`, `extensionLearn`, `ItemRepair`, `ProductionManufacture`, `InsuranceFee`, `TransportAssignmentSubmit`, and others; and directly in `TransportAssignment` for collateral and reward submission | |
+| Intrusion point | SAP/intrusion completion event in zone | |
 
 ---
 
@@ -214,15 +220,30 @@ Tier and leaderboard rewards are both delivered via `accountredeemableitems`:
 
 ## Mail Notifications
 
-All mails sent via existing `MailHandler`.
+All mails sent via existing `MailHandler` from the "[OPP] Announcer" character.
 
 | Trigger | Recipients | Content |
 |---|---|---|
-| Season activates | All online characters | Season name, duration, objective list, tier thresholds |
-| Character logs in during active season (first time) | That character | Same as activation mail; gated by `intro_mail_sent` flag |
+| Season activates (first login during active season) | That character | Season name, description, activity rates; gated by `intro_mail_sent` flag |
 | Objective completed | That character | Objective name, bonus points, running total |
-| Tier unlocked | That character | Tier name, points reached, redeem reminder |
+| Tier unlocked | That character | Tier name, points reached, redeem reminder, reward item list |
 | Season ends | All participants | Final rank, total points, leaderboard reward notification if applicable |
+
+---
+
+## Chat Channel Announcements
+
+All announcements are posted to the **"Seasons Info"** channel by the "[OPP] Announcer" character. The channel topic is also updated on season start and end.
+
+| Trigger | Content |
+|---|---|
+| Season activates | Full season details: name, description, end date, activity rates, objectives with targets, tier thresholds |
+| Objective completed | Character name, objective name, new total points |
+| Tier unlocked | Character name, tier name, total points, reward item list |
+| Season ends | Final leaderboard top 10 with points; "Thanks for participating" message |
+| Hourly (during active season) | Current top-10 leaderboard with points |
+| Channel topic on start | `Season {name}: {start_time} - {end_time}` |
+| Channel topic on end | `No active seasons` |
 
 ---
 

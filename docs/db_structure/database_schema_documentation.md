@@ -6019,7 +6019,7 @@ Generated from DBML structure.
 |---|---|
 | `character_id` | `int [not null]` |
 | `season_id` | `int [not null]` |
-| `total_points` | `bigint [not null, default: 0]` |
+| `total_points` | `float [not null, default: 0]` |
 | `last_updated` | `datetime [not null, default: \`getutcdate()\`]` |
 | `intro_mail_sent` | `bit [not null, default: 0]` |
 | `leaderboard_reward_delivered` | `bit [not null, default: 0]` |
@@ -6070,7 +6070,7 @@ Generated from DBML structure.
 | `character_id` | `int [not null]` |
 | `season_id` | `int [not null]` |
 | `objective_id` | `int [not null]` |
-| `current_value` | `bigint [not null, default: 0]` |
+| `current_value` | `float [not null, default: 0]` |
 | `completed` | `bit [not null, default: 0]` |
 | `completed_time` | `datetime` |
 | `bonus_awarded` | `bit [not null, default: 0]` |

@@ -234,6 +234,7 @@ Implemented as `MaxTierPoints` computed property. A note warns if `MaxTierPoints
 | File | Change |
 |---|---|
 | `src/Perpetuum/Services/Seasons/SeasonService.cs` | Fixes 7 & 8 |
+| `src/Perpetuum.AdminTool/Seasons/SeasonRepository.cs` | `LeaderboardEntryRow.TotalPoints` changed from `long` to `double` (matches `float` DB column) |
 | `src/Perpetuum.AdminTool/Packages/PackageChanges.cs` | Fix 1 |
 | `src/Perpetuum.AdminTool/Seasons/SeasonActivityRateRow.cs` | Fix 5 |
 | `src/Perpetuum.AdminTool/Seasons/SeasonTierRow.cs` | Fix 3/4 |

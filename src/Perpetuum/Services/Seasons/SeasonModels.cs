@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace Perpetuum.Services.Seasons
 {
     public class Season
@@ -57,7 +54,7 @@ namespace Perpetuum.Services.Seasons
     {
         public int CharacterId { get; set; }
         public int SeasonId { get; set; }
-        public long TotalPoints { get; set; }
+        public double TotalPoints { get; set; }
         public bool IntroMailSent { get; set; }
         public bool LeaderboardRewardDelivered { get; set; }
     }

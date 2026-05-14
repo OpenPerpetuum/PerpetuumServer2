@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Perpetuum.Data;
 
 namespace Perpetuum.Services.Seasons
@@ -19,12 +16,12 @@ namespace Perpetuum.Services.Seasons
 
             return new Season
             {
-                Id          = record.GetValue<int>("id"),
-                Name        = record.GetValue<string>("name"),
+                Id = record.GetValue<int>("id"),
+                Name = record.GetValue<string>("name"),
                 Description = record.GetValue<string>("description"),
-                StartTime   = DateTime.SpecifyKind(record.GetValue<DateTime>("start_time"), DateTimeKind.Utc),
-                EndTime     = DateTime.SpecifyKind(record.GetValue<DateTime>("end_time"),   DateTimeKind.Utc),
-                IsActive    = record.GetValue<bool>("is_active"),
+                StartTime = DateTime.SpecifyKind(record.GetValue<DateTime>("start_time"), DateTimeKind.Utc),
+                EndTime = DateTime.SpecifyKind(record.GetValue<DateTime>("end_time"), DateTimeKind.Utc),
+                IsActive = record.GetValue<bool>("is_active"),
             };
         }
 
@@ -36,11 +33,11 @@ namespace Perpetuum.Services.Seasons
                      .Execute()
                      .Select(r => new SeasonActivityRate
                      {
-                         Id            = r.GetValue<int>("id"),
-                         SeasonId      = r.GetValue<int>("season_id"),
-                         ActivityType  = (SeasonActivityType)r.GetValue<int>("activity_type"),
+                         Id = r.GetValue<int>("id"),
+                         SeasonId = r.GetValue<int>("season_id"),
+                         ActivityType = (SeasonActivityType)r.GetValue<int>("activity_type"),
                          PointsPerUnit = r.GetValue<double>("points_per_unit"),
-                         UnitScale     = r.GetValue<int>("unit_scale"),
+                         UnitScale = r.GetValue<int>("unit_scale"),
                      })
                      .ToList();
         }
@@ -54,13 +51,13 @@ namespace Perpetuum.Services.Seasons
                      .Execute()
                      .Select(r => new SeasonObjective
                      {
-                         Id           = r.GetValue<int>("id"),
-                         SeasonId     = r.GetValue<int>("season_id"),
-                         Name         = r.GetValue<string>("name"),
-                         Description  = r.GetValue<string>("description"),
+                         Id = r.GetValue<int>("id"),
+                         SeasonId = r.GetValue<int>("season_id"),
+                         Name = r.GetValue<string>("name"),
+                         Description = r.GetValue<string>("description"),
                          ActivityType = (SeasonActivityType)r.GetValue<int>("activity_type"),
-                         TargetValue  = r.GetValue<long>("target_value"),
-                         BonusPoints  = r.GetValue<int>("bonus_points"),
+                         TargetValue = r.GetValue<long>("target_value"),
+                         BonusPoints = r.GetValue<int>("bonus_points"),
                          DisplayOrder = r.GetValue<int>("display_order"),
                      })
                      .ToList();
@@ -74,12 +71,12 @@ namespace Perpetuum.Services.Seasons
                      .Execute()
                      .Select(r => new SeasonTier
                      {
-                         Id             = r.GetValue<int>("id"),
-                         SeasonId       = r.GetValue<int>("season_id"),
-                         TierNumber     = r.GetValue<int>("tier_number"),
-                         TierName       = r.GetValue<string>("tier_name"),
+                         Id = r.GetValue<int>("id"),
+                         SeasonId = r.GetValue<int>("season_id"),
+                         TierNumber = r.GetValue<int>("tier_number"),
+                         TierName = r.GetValue<string>("tier_name"),
                          PointsRequired = r.GetValue<int>("points_required"),
-                         PackageId      = r.GetValue<int>("package_id"),
+                         PackageId = r.GetValue<int>("package_id"),
                      })
                      .ToList();
         }
@@ -92,10 +89,10 @@ namespace Perpetuum.Services.Seasons
                      .Execute()
                      .Select(r => new SeasonLeaderboardReward
                      {
-                         Id        = r.GetValue<int>("id"),
-                         SeasonId  = r.GetValue<int>("season_id"),
-                         RankMin   = r.GetValue<int>("rank_min"),
-                         RankMax   = r.GetValue<int>("rank_max"),
+                         Id = r.GetValue<int>("id"),
+                         SeasonId = r.GetValue<int>("season_id"),
+                         RankMin = r.GetValue<int>("rank_min"),
+                         RankMax = r.GetValue<int>("rank_max"),
                          PackageId = r.GetValue<int>("package_id"),
                      })
                      .ToList();
@@ -104,7 +101,7 @@ namespace Perpetuum.Services.Seasons
         // ── Point tracking ───────────────────────────────────────────────────
 
         /// <summary>Atomically upserts points and returns the new running total.</summary>
-        public long AddPoints(int characterId, int seasonId, long points)
+        public double AddPoints(int characterId, int seasonId, double points)
         {
             Db.Query(@"
                 MERGE season_character_points WITH (HOLDLOCK) AS t
@@ -126,7 +123,7 @@ namespace Perpetuum.Services.Seasons
                             "WHERE character_id = @characterId AND season_id = @seasonId")
                      .SetParameter("@characterId", characterId)
                      .SetParameter("@seasonId", seasonId)
-                     .ExecuteScalar<long>();
+                     .ExecuteScalar<double>();
         }
 
         // ── Objective progress ───────────────────────────────────────────────
@@ -135,8 +132,8 @@ namespace Perpetuum.Services.Seasons
         /// Increments objective progress if not yet completed.
         /// Returns (currentValue, bonusAwarded).
         /// </summary>
-        public (long currentValue, bool bonusAwarded) IncrementObjectiveProgress(
-            int characterId, int seasonId, int objectiveId, long amount)
+        public (double currentValue, bool bonusAwarded) IncrementObjectiveProgress(
+            int characterId, int seasonId, int objectiveId, double amount)
         {
             Db.Query(@"
                 MERGE season_objective_progress WITH (HOLDLOCK) AS t
@@ -167,7 +164,7 @@ namespace Perpetuum.Services.Seasons
                            .SetParameter("@objectiveId", objectiveId)
                            .ExecuteSingleRow();
 
-            return (record.GetValue<long>("current_value"),
+            return (record.GetValue<double>("current_value"),
                     record.GetValue<bool>("bonus_awarded"));
         }
 
@@ -232,7 +229,7 @@ namespace Perpetuum.Services.Seasons
                      .Select(r => new SeasonPackageItem
                      {
                          Definition = r.GetValue<int>("definition"),
-                         Quantity   = r.GetValue<int>("quantity"),
+                         Quantity = r.GetValue<int>("quantity"),
                      })
                      .ToList();
         }
@@ -264,10 +261,10 @@ namespace Perpetuum.Services.Seasons
                      .Execute()
                      .Select(r => new SeasonCharacterPoints
                      {
-                         CharacterId                = r.GetValue<int>("character_id"),
-                         SeasonId                   = r.GetValue<int>("season_id"),
-                         TotalPoints                = r.GetValue<long>("total_points"),
-                         IntroMailSent              = r.GetValue<bool>("intro_mail_sent"),
+                         CharacterId = r.GetValue<int>("character_id"),
+                         SeasonId = r.GetValue<int>("season_id"),
+                         TotalPoints = r.GetValue<double>("total_points"),
+                         IntroMailSent = r.GetValue<bool>("intro_mail_sent"),
                          LeaderboardRewardDelivered = r.GetValue<bool>("leaderboard_reward_delivered"),
                      })
                      .ToList();
@@ -424,12 +421,12 @@ namespace Perpetuum.Services.Seasons
 
             return new Season
             {
-                Id          = record.GetValue<int>("id"),
-                Name        = record.GetValue<string>("name"),
+                Id = record.GetValue<int>("id"),
+                Name = record.GetValue<string>("name"),
                 Description = record.GetValue<string>("description"),
-                StartTime   = DateTime.SpecifyKind(record.GetValue<DateTime>("start_time"), DateTimeKind.Utc),
-                EndTime     = DateTime.SpecifyKind(record.GetValue<DateTime>("end_time"),   DateTimeKind.Utc),
-                IsActive    = record.GetValue<bool>("is_active"),
+                StartTime = DateTime.SpecifyKind(record.GetValue<DateTime>("start_time"), DateTimeKind.Utc),
+                EndTime = DateTime.SpecifyKind(record.GetValue<DateTime>("end_time"), DateTimeKind.Utc),
+                IsActive = record.GetValue<bool>("is_active"),
             };
         }
     }

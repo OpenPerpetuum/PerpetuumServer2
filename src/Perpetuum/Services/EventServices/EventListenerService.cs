@@ -138,20 +138,10 @@ namespace Perpetuum.Services.EventServices
 
         private Task OnMessageReceived(SocketMessage message)
         {
-            ulong.TryParse(_globalConfiguration.OpHelpChannelId, out ulong channelId);
 
-            if (!message.Author.IsBot && /*message.Channel.Id == channelId &&*/ !string.IsNullOrEmpty(message.CleanContent))
+            if (!message.Author.IsBot && !string.IsNullOrEmpty(message.CleanContent))
             {
                 string nick = message.Author.GlobalName;
-
-                // No more imposting until we find a better approach
-                /*
-                if (message.Author is SocketGuildUser guildUser &&
-                    !string.IsNullOrEmpty(guildUser.DisplayName))
-                {
-                    nick = guildUser.DisplayName;
-                }
-                */
 
                 PublishMessage(new DiscordIntegrationMessage(EventType.DiscordToPerpetuum, message.Channel.Id, nick, message.CleanContent));
             }
