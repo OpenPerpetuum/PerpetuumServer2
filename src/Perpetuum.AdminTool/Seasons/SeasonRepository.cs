@@ -30,8 +30,8 @@ namespace Perpetuum.AdminTool.Seasons
                     Id = reader.GetInt32(0),
                     Name = reader.IsDBNull(1) ? "" : reader.GetString(1),
                     Description = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                    StartTime = reader.GetDateTime(3),
-                    EndTime = reader.GetDateTime(4),
+                    StartTime = DateTime.SpecifyKind(reader.GetDateTime(3), DateTimeKind.Utc),
+                    EndTime = DateTime.SpecifyKind(reader.GetDateTime(4), DateTimeKind.Utc),
                     IsActive = !reader.IsDBNull(5) && reader.GetBoolean(5)
                 };
                 result.Add(new SeasonRow(snap));

@@ -1,6 +1,6 @@
 ## ISSUE-001 - Enforce UTC for seasons.date_start and seasons.date_end
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Seasons / Database
 

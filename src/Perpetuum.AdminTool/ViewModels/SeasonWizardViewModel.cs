@@ -183,8 +183,8 @@ namespace Perpetuum.AdminTool.ViewModels
         {
             if (TryParseHHmm(text, out var ts))
             {
-                if (isStart) StartTime = StartTime.Date + ts;
-                else         EndTime   = EndTime.Date   + ts;
+                if (isStart) StartTime = DateTime.SpecifyKind(StartTime.Date + ts, DateTimeKind.Utc);
+                else         EndTime   = DateTime.SpecifyKind(EndTime.Date   + ts, DateTimeKind.Utc);
             }
             ValidateStep1();
         }
@@ -312,7 +312,7 @@ namespace Perpetuum.AdminTool.ViewModels
             sb.AppendLine("DECLARE @seasonId INT;");
             sb.AppendLine($"INSERT INTO seasons (name, description, start_time, end_time, is_active)");
             sb.AppendLine($"VALUES ({SqlLiteral.Of(Name)}, {SqlLiteral.Of(Description)},");
-            sb.AppendLine($"  '{StartTime:yyyy-MM-dd HH:mm:ss}', '{EndTime:yyyy-MM-dd HH:mm:ss}', 0);");
+            sb.AppendLine($"  '{DateTime.SpecifyKind(StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', '{DateTime.SpecifyKind(EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0);");
             sb.AppendLine("SET @seasonId = SCOPE_IDENTITY();");
 
             foreach (var rate in ActivityRates.Where(r => r.PointsPerUnit > 0))

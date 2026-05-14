@@ -11,12 +11,14 @@ namespace Perpetuum.AdminTool.Seasons
                 $"seasons: insert '{row.Name}'",
                 $"INSERT INTO seasons (name, description, start_time, end_time, is_active) VALUES (" +
                 $"{SqlLiteral.Of(row.Name)}, {SqlLiteral.Of(row.Description)}, " +
-                $"'{row.StartTime:yyyy-MM-dd HH:mm:ss}', '{row.EndTime:yyyy-MM-dd HH:mm:ss}', 0)");
+                $"'{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
+                $"'{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0)");
 
         public static IPendingChange BuildUpdate(SeasonRow row)
         {
             var sets = $"name = {SqlLiteral.Of(row.Name)}, description = {SqlLiteral.Of(row.Description)}, " +
-                       $"start_time = '{row.StartTime:yyyy-MM-dd HH:mm:ss}', end_time = '{row.EndTime:yyyy-MM-dd HH:mm:ss}'";
+                       $"start_time = '{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
+                       $"end_time = '{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}'";
             return new RawSqlChange(
                 $"seasons: update id {row.Id} ('{row.Name}')",
                 $"UPDATE seasons SET {sets} WHERE id = {row.Id}");

@@ -13,8 +13,8 @@ namespace Perpetuum.Services.Channels.ChatCommands
         {
             if (data.Command.Args.Length < 3) { SendMessageToAll(data, "Usage: #SeasonCreate,<name>,<YYYY-MM-DD>,<YYYY-MM-DD>"); return; }
             string name = data.Command.Args[0];
-            if (!DateTime.TryParseExact(data.Command.Args[1], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime start) ||
-                !DateTime.TryParseExact(data.Command.Args[2], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime end))
+            if (!DateTime.TryParseExact(data.Command.Args[1], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime start) ||
+                !DateTime.TryParseExact(data.Command.Args[2], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime end))
             { SendMessageToAll(data, "Date format must be YYYY-MM-DD"); return; }
 
             int id = new SeasonRepository().CreateSeason(name, "", start, end);
