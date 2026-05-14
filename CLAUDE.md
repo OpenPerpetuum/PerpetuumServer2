@@ -300,3 +300,85 @@ Avoid parallel abstractions unless justified.
 | Main AI instructions | `CLAUDE.md` |
 | Architecture deep-dive | `.claude/knowledge/architecture.md` |
 | Specialist agents | `.claude/agents/<name>.md` |
+
+
+---
+
+# Backlog Management
+
+Persistent project backlog files are authoritative project memory.
+
+## Backlog Files
+
+Primary:
+- `docs/backlog/issues.md`
+- `docs/backlog/improvements.md`
+
+Optional:
+- `docs/backlog/active-sprint.md`
+- `docs/backlog/completed.md`
+
+## Backlog Rules
+
+Claude MUST:
+- review backlog files before major implementation work
+- avoid duplicate backlog entries
+- update related backlog items after implementation
+- preserve backlog structure and identifiers
+- prefer updating existing items over creating duplicates
+- keep backlog entries concise and structured
+- move completed items to `completed.md` when appropriate
+
+When asked to:
+- "work on backlog"
+- "pick a task"
+- "continue work"
+- "fix issues"
+- "implement improvements"
+
+Claude should:
+1. review backlog files
+2. prioritize unfinished HIGH priority items
+3. prefer low-risk/high-impact work unless instructed otherwise
+4. produce a short implementation plan
+5. update backlog status after work completes
+
+## Backlog Statuses
+
+Use:
+- TODO
+- IN_PROGRESS
+- BLOCKED
+- DONE
+- DEFERRED
+
+## Backlog Priorities
+
+Use:
+- CRITICAL
+- HIGH
+- MEDIUM
+- LOW
+
+## Recommended Backlog Entry Format
+
+```md
+## ISSUE-001 - Short title
+
+Status: TODO
+Priority: HIGH
+Area: Networking
+
+### Problem
+Concise issue description.
+
+### Impact
+Runtime/gameplay/maintenance impact.
+
+### Proposed Fix
+Short implementation direction.
+
+### Notes
+Optional additional context.
+```
+
