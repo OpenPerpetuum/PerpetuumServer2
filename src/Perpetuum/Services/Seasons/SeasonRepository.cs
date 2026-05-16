@@ -441,5 +441,102 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
             };
         }
+
+        public Season? GetPendingRecurringSeason()
+        {
+            var record = Db.Query(
+                "SELECT TOP 1 id, name, description, start_time, end_time, is_active, " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name " +
+                "FROM seasons " +
+                "WHERE is_active = 0 AND is_recurring = 1 AND start_time <= GETUTCDATE() " +
+                "ORDER BY start_time ASC")
+                .ExecuteSingleRow();
+
+            if (record == null) return null;
+
+            return new Season
+            {
+                Id = record.GetValue<int>("id"),
+                Name = record.GetValue<string>("name"),
+                Description = record.GetValue<string>("description"),
+                StartTime = DateTime.SpecifyKind(record.GetValue<DateTime>("start_time"), DateTimeKind.Utc),
+                EndTime = DateTime.SpecifyKind(record.GetValue<DateTime>("end_time"), DateTimeKind.Utc),
+                IsActive = record.GetValue<bool>("is_active"),
+                IsRecurring = record.GetValue<bool>("is_recurring"),
+                RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
+                RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
+                RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
+            };
+        }
+
+        public Season CloneSeasonForNextIteration(Season previous)
+        {
+            int nextIteration = previous.RecurrenceIteration + 1;
+            DateTime nextStart = previous.EndTime.AddDays(previous.RecurrenceGapDays!.Value);
+            DateTime nextEnd = nextStart + (previous.EndTime - previous.StartTime);
+            string baseName = previous.RecurrenceBaseName ?? previous.Name;
+            string nextName = $"{baseName}, Run #{nextIteration}";
+
+            int newId = Db.Query(
+                "INSERT INTO seasons (name, description, start_time, end_time, is_active, " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name) " +
+                "VALUES (@name, @description, @start, @end, 0, 1, @gapDays, @iteration, @baseName); " +
+                "SELECT CAST(SCOPE_IDENTITY() AS INT)")
+                .SetParameter("@name", nextName)
+                .SetParameter("@description", previous.Description)
+                .SetParameter("@start", nextStart)
+                .SetParameter("@end", nextEnd)
+                .SetParameter("@gapDays", previous.RecurrenceGapDays!.Value)
+                .SetParameter("@iteration", nextIteration)
+                .SetParameter("@baseName", baseName)
+                .ExecuteScalar<int>();
+
+            Db.Query(
+                "INSERT INTO season_activity_rates (season_id, activity_type, points_per_unit, unit_scale) " +
+                "SELECT @newId, activity_type, points_per_unit, unit_scale " +
+                "FROM season_activity_rates WHERE season_id = @prevId")
+                .SetParameter("@newId", newId)
+                .SetParameter("@prevId", previous.Id)
+                .ExecuteNonQuery();
+
+            Db.Query(
+                "INSERT INTO season_objectives (season_id, name, description, activity_type, " +
+                "target_value, bonus_points, display_order) " +
+                "SELECT @newId, name, description, activity_type, target_value, bonus_points, display_order " +
+                "FROM season_objectives WHERE season_id = @prevId")
+                .SetParameter("@newId", newId)
+                .SetParameter("@prevId", previous.Id)
+                .ExecuteNonQuery();
+
+            Db.Query(
+                "INSERT INTO season_tiers (season_id, tier_number, tier_name, points_required, package_id) " +
+                "SELECT @newId, tier_number, tier_name, points_required, package_id " +
+                "FROM season_tiers WHERE season_id = @prevId")
+                .SetParameter("@newId", newId)
+                .SetParameter("@prevId", previous.Id)
+                .ExecuteNonQuery();
+
+            Db.Query(
+                "INSERT INTO season_leaderboard_rewards (season_id, rank_min, rank_max, package_id) " +
+                "SELECT @newId, rank_min, rank_max, package_id " +
+                "FROM season_leaderboard_rewards WHERE season_id = @prevId")
+                .SetParameter("@newId", newId)
+                .SetParameter("@prevId", previous.Id)
+                .ExecuteNonQuery();
+
+            return new Season
+            {
+                Id = newId,
+                Name = nextName,
+                Description = previous.Description,
+                StartTime = nextStart,
+                EndTime = nextEnd,
+                IsActive = false,
+                IsRecurring = true,
+                RecurrenceGapDays = previous.RecurrenceGapDays,
+                RecurrenceIteration = nextIteration,
+                RecurrenceBaseName = baseName,
+            };
+        }
     }
 }
