@@ -97,7 +97,7 @@
                             <TextBlock Text="{Binding BasicPanel.DefinitionNameError}" Foreground="Red" FontSize="11">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Visibility" Value="Visible"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding BasicPanel.DefinitionNameError}" Value="{x:Null}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -255,7 +255,7 @@
                             <TextBlock Text="{Binding CalibrationPanel.DefinitionNameError}" Foreground="Red" FontSize="11">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Visibility" Value="Visible"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding CalibrationPanel.DefinitionNameError}" Value="{x:Null}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -417,7 +417,7 @@
                             <TextBlock Text="{Binding PrototypePanel.DefinitionNameError}" Foreground="Red" FontSize="11">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Visibility" Value="Visible"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding PrototypePanel.DefinitionNameError}" Value="{x:Null}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
