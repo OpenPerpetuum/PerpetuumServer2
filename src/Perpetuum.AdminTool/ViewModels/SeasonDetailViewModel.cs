@@ -359,9 +359,8 @@ namespace Perpetuum.AdminTool.ViewModels
             };
             row.SelectedPackage = Packages[0];
             Tiers.Add(row);
-            _queue.Add(SeasonChanges.BuildInsertTier(row));
             StatusIsError = false;
-            StatusMessage = "Queued INSERT for tier.";
+            StatusMessage = "Added tier row. Edit fields, then click 'Queue Save' on the row.";
         }
 
         [RelayCommand]
@@ -378,6 +377,30 @@ namespace Perpetuum.AdminTool.ViewModels
             StatusMessage = row.Id > 0
                 ? $"Queued DELETE for tier id {row.Id}."
                 : "Removed unsaved tier.";
+        }
+
+        [RelayCommand]
+        private void QueueSaveTier(SeasonTierRow? row)
+        {
+            if (row == null) return;
+            if (Season.Id <= 0)
+            {
+                MessageBox.Show("Save the season (General tab) first.", "Season unsaved",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            row.SeasonId = Season.Id;
+            if (row.Id == 0)
+            {
+                _queue.Add(SeasonChanges.BuildInsertTier(row));
+                StatusMessage = $"Queued INSERT for tier '{row.TierName}'.";
+            }
+            else
+            {
+                _queue.Add(SeasonChanges.BuildUpdateTier(row));
+                StatusMessage = $"Queued UPDATE for tier '{row.TierName}'.";
+            }
+            StatusIsError = false;
         }
 
         [RelayCommand]
