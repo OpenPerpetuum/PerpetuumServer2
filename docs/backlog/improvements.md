@@ -232,7 +232,7 @@ Keep the filter evaluation path lightweight — it runs on every matching game e
 
 ## IMPROVEMENT-012 - Seasons Tiers tab: on-the-fly save generating a single change script
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Seasons / Admin Tool
 Spec: `docs/superpowers/specs/2026-05-16-improvement-012-tiers-tab-queue-save-design.md`
