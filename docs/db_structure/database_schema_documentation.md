@@ -6070,6 +6070,7 @@ Generated from DBML structure.
 | `character_id` | `int [not null]` |
 | `season_id` | `int [not null]` |
 | `objective_id` | `int [not null]` |
+| `day_window` | `date [not null, default: '1900-01-01']` |
 | `current_value` | `float [not null, default: 0]` |
 | `completed` | `bit [not null, default: 0]` |
 | `completed_time` | `datetime` |
@@ -6077,7 +6078,7 @@ Generated from DBML structure.
 
 ### Indexes
 
-- `character_id, season_id, objective_id [pk, name: "PK_season_objective_progress"]`
+- `character_id, season_id, objective_id, day_window [pk, name: "PK_season_objective_progress"]`
 - `character_id, season_id [name: "IX_season_objective_progress_char"]`
 
 ### Relations
@@ -6103,6 +6104,8 @@ Generated from DBML structure.
 | `target_value` | `bigint [not null]` |
 | `bonus_points` | `int [not null]` |
 | `display_order` | `int [not null, default: 0]` |
+| `is_daily` | `bit [not null, default: 0]` |
+| `package_id` | `int [null]` |
 
 ### Indexes
 

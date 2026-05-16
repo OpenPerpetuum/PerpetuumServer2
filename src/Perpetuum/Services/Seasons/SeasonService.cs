@@ -165,10 +165,11 @@ namespace Perpetuum.Services.Seasons
             double newTotal = _repository.AddPoints(characterId, season.Id, basePoints);
 
             // Objective progress
+            DateTime dailyWindow = DateTime.UtcNow.Date;
             foreach (var obj in _activeObjectives.Where(o => o.ActivityType == activityType))
             {
                 DateTime dayWindow = obj.IsDaily
-                    ? DateTime.UtcNow.Date
+                    ? dailyWindow
                     : new DateTime(1900, 1, 1);
 
                 var (currentValue, bonusAwarded) =

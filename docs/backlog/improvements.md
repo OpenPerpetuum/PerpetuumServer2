@@ -133,7 +133,7 @@ Confirm NPCs do not have character IDs that would cause accidental season point 
 
 ## IMPROVEMENT-006 - Daily Objectives
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Seasons / Objectives
 
@@ -143,19 +143,14 @@ Introduce daily objectives: a set of objectives that reset and re-issue automati
 ### Impact
 Daily objectives provide a regular engagement loop that encourages players to log in consistently, broadening the appeal of the seasons system beyond one-time or long-horizon goals.
 
-### Proposed Implementation
-- Audit existing objective types, completion tracking, and reward pipeline — identify what can be reused verbatim vs. what needs extension.
-- Add a `recurrence` flag (or subtype) to the objective definition that marks an objective as daily-recurring.
-- Implement a daily reset scheduler: at UTC midnight (or a configurable daily reset time), mark all completed daily objectives as eligible for re-issue and create new completion records for the new day.
-- Per-character completion state must be scoped to the current day's window so prior-day completions do not block re-issuance.
-- Daily objectives should be configurable per season: which objective types appear, their targets, and their point/reward values.
-- Ensure the reset scheduler is idempotent — a server restart mid-day must not re-issue objectives already issued for that day.
+### Implementation
+Extended `season_objectives` with `is_daily` (bit) and `package_id` (int, nullable). Added `day_window` (date, sentinel `1900-01-01` for regular, `UtcNow.Date` for daily) to `season_objective_progress` and rebuilt its PK to `(character_id, season_id, objective_id, day_window)`. No reset scheduler needed — fresh row per day via existing MERGE. Optional reward package delivered on daily completion via `InsertRedeemableItems`. Admin Tool gains Is Daily checkbox column, Reward Package combobox column, and All/One-time/Daily filter. Branch: `p36.1`.
 
 ### Notes
 Depends on [[ISSUE-001]] — daily reset boundary must use UTC to be consistent across deployments.
 See [[IMPROVEMENT-005]] for new activity types that could back daily objective targets.
 See [[IMPROVEMENT-001]] for recurring season design — daily objectives are a finer-grained recurrence within a season.
-Reset time should be operator-configurable (default UTC midnight) rather than hardcoded.
+Reset time is hardcoded UTC midnight (configurable reset time deferred).
 
 ## IMPROVEMENT-007 - NPC Rank System
 
