@@ -3,6 +3,8 @@ using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
 using Perpetuum.Modules.ModuleProperties;
+using Perpetuum.Players;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Units;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Locking.Locks;
@@ -44,7 +46,7 @@ namespace Perpetuum.Modules
 
             ModifyValueByReactorRadiation(unitLock.Target,ref coreNeutralized);
             coreNeutralized = ModifyValueByOptimalRange(unitLock.Target,coreNeutralized);
-            
+
             if ( coreNeutralized > 0.0 )
             {
                 var core = unitLock.Target.Core;
@@ -56,6 +58,15 @@ namespace Perpetuum.Modules
                 var threatValue = (coreNeutralizedDone / 2) + 1;
 
                 unitLock.Target.AddThreat(ParentRobot, new Threat(ThreatType.EnWar, threatValue));
+
+                var drainAmount = (long)coreNeutralizedDone;
+                if (drainAmount > 0)
+                {
+                    if (ParentRobot is Player attacker)
+                        SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.EnergyDrainDealt, drainAmount);
+                    if (unitLock.Target is Player victim)
+                        SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.EnergyDrainReceived, drainAmount);
+                }
             }
 
             var packet = new CombatLogPacket(CombatLogType.EnergyNeutralize, unitLock.Target, ParentRobot, this);

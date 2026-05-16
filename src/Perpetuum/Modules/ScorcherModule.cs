@@ -3,7 +3,9 @@ using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
 using Perpetuum.Modules.ModuleProperties;
 using Perpetuum.Modules.Weapons;
+using Perpetuum.Players;
 using Perpetuum.Robots;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Units;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Beams;
@@ -87,6 +89,15 @@ namespace Perpetuum.Modules
                         double threatValue = (coreNeutralizedDone / 2) + 1;
 
                         target.AddThreat(ParentRobot, new Threat(ThreatType.EnWar, threatValue));
+
+                        var drainAmount = (long)coreNeutralizedDone;
+                        if (drainAmount > 0)
+                        {
+                            if (ParentRobot is Player attacker)
+                                SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.EnergyDrainDealt, drainAmount);
+                            if (target is Player victim)
+                                SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.EnergyDrainReceived, drainAmount);
+                        }
                     }
 
                     IDamageBuilder builder = GetDamageBuilder(coreNeutralizedDone);

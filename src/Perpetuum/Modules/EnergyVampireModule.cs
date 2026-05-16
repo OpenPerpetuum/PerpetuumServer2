@@ -3,6 +3,8 @@ using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
 using Perpetuum.Modules.ModuleProperties;
+using Perpetuum.Players;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Units;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Locking.Locks;
@@ -63,6 +65,15 @@ namespace Perpetuum.Modules
                 ParentRobot.Core += coreNeutralized;
                 coreTransfered = Math.Abs(core - ParentRobot.Core);
                 unitLock.Target.AddThreat(ParentRobot, new Threat(ThreatType.EnWar, coreTransfered + 1));
+
+                var drainAmount = (long)coreNeutralized;
+                if (drainAmount > 0)
+                {
+                    if (ParentRobot is Player attacker)
+                        SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.EnergyDrainDealt, drainAmount);
+                    if (unitLock.Target is Player victim)
+                        SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.EnergyDrainReceived, drainAmount);
+                }
             }
 
             var packet = new CombatLogPacket(CombatLogType.EnergyVampire, unitLock.Target, ParentRobot, this);
