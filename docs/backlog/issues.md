@@ -136,3 +136,24 @@ Resolve the RCC owner player via the zone (similar to how the NPC kill path uses
 ### Notes
 The NPC kill path in `Npc.cs` handles this via `Zone.ToPlayerOrGetOwnerPlayer` — use that as a reference for the resolution approach.
 Do not fix until the design decision is made: should RCC damage count toward `DamageDone`?
+
+---
+
+## ISSUE-007 - Recurring season detail view allows saving invalid RecurrenceGapDays
+
+Status: TODO
+Priority: LOW
+Area: Seasons / Admin Tool
+
+### Problem
+The Season Detail View does not validate `RecurrenceGapDays` before saving. An admin can set `RecurrenceGapDays` to 0, null, or negative while `IsRecurring = true` and commit the change. This produces a `recurrence_gap_days` value in the DB that would cause `CloneSeasonForNextIteration` to throw (or create a zero-gap clone, spawning the next iteration with the same start/end time).
+
+### Impact
+Low — requires a deliberate bad edit via the Admin Tool. A guard added in IMPROVEMENT-001 ensures `CloneSeasonForNextIteration` throws an `InvalidOperationException` rather than silently corrupting data, but the UX would be poor.
+
+### Proposed Fix
+Add a `SaveGeneral` guard in `SeasonDetailViewModel`: if `Season.IsRecurring && (Season.RecurrenceGapDays == null || Season.RecurrenceGapDays < 1)`, show a validation message and block the save. Alternatively, enforce in `SeasonChanges.BuildUpdate` by refusing to write the change if the constraint is violated.
+
+### Notes
+Introduced by IMPROVEMENT-001 (Recurring Seasons). The wizard already validates this (gap must be ≥ 1 day), but the detail view has no equivalent guard.
+See `SeasonDetailViewModel.cs` `SaveGeneral` command for the save entry point.
