@@ -116,7 +116,7 @@ public partial class NewItemDialogViewModel : ObservableObject
 
     partial void OnCloneSourceChanged(PackageItemPickItem? value)
     {
-        if (value == null) return;
+        if (value == null || IsLoading) return;
         _ = LoadCloneAsync(value.Definition);
     }
 
@@ -137,6 +137,10 @@ public partial class NewItemDialogViewModel : ObservableObject
             ProductionPanel.LoadFromClone(extended.Components);
             ResearchPanel.LoadFromClone(extended);
             OptionsVisualPanel.LoadFromClone(row.Options, extended.DefinitionConfig);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to load clone data: {ex.Message}";
         }
         finally
         {
