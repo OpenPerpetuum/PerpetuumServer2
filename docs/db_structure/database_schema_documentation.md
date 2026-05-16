@@ -6180,6 +6180,10 @@ Generated from DBML structure.
 | `start_time` | `datetime [not null]` |
 | `end_time` | `datetime [not null]` |
 | `is_active` | `bit [not null, default: 0]` |
+| `is_recurring` | `bit [not null, default: 0]` — enables auto-recurrence |
+| `recurrence_gap_days` | `int [null]` — days between end of one run and start of next |
+| `recurrence_iteration` | `int [not null, default: 1]` — which run this row represents |
+| `recurrence_base_name` | `nvarchar(255) [null]` — operator-entered name; server appends `, Run #N` |
 
 ### Indexes
 
