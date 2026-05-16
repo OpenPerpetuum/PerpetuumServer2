@@ -110,6 +110,20 @@
                                             CommandParameter="{Binding}"/>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Margin="0,2,0,0" FontSize="11" Foreground="#1E88E5">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsRecurring}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                            <Run Text="&#x21BB; Run #"/>
+                                            <Run Text="{Binding RecurrenceIteration}"/>
+                                        </TextBlock>
                                         <TextBlock Margin="0,4,0,0" Foreground="DimGray" FontSize="11">
                                             <Run Text="{Binding StartTime, StringFormat=yyyy-MM-dd}"/>
                                             <Run Text="-"/>
