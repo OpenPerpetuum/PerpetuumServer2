@@ -235,6 +235,7 @@ Keep the filter evaluation path lightweight — it runs on every matching game e
 Status: TODO
 Priority: HIGH
 Area: Seasons / Admin Tool
+Spec: `docs/superpowers/specs/2026-05-16-improvement-012-tiers-tab-queue-save-design.md`
 
 ### Description
 The Tiers tab in the Seasons Admin Tool currently uses a different save mechanic from the Activity Rates and Objectives tabs. Activity Rates and Objectives already support on-the-fly editing that produces a single consolidated change script per save. The Tiers tab should adopt the same pattern so all three tabs behave consistently.
@@ -384,3 +385,28 @@ Without this type, season designers cannot reward exploration or movement-intens
 Accumulation interval should be configurable to avoid excessive DB writes in high-population zones.
 Must not introduce blocking or allocation in the hot movement path — accumulate, don't write inline.
 Consult `docs/CONCERNS.md` zone update loop constraints before implementation.
+
+---
+
+## IMPROVEMENT-016 - Admin Tool: ChangeQueue deduplication
+
+Status: TODO
+Priority: LOW
+Area: Admin Tool / Editing
+
+### Description
+The `ChangeQueue` does not deduplicate queued changes. If the user clicks "Queue Save" on the same row multiple times, multiple SQL statements for the same entity accumulate in the script. The last write wins at commit time, so correctness is preserved, but the script is noisier than necessary and harder to audit.
+
+### Impact
+Low. The issue only manifests if a user repeatedly clicks "Queue Save" on the same row within a session. Scripts remain correct; they are just verbose. Affects all tabs that use "Queue Save": Activity Rates, Objectives, Tiers (after IMPROVEMENT-012).
+
+### Proposed Fix
+- Give each queued change a stable key composed of table + primary key (e.g. `"season_tiers:{seasonId}:{tierId}"`).
+- When a change with the same key is added, replace the existing entry rather than appending.
+- Keep the existing `ObservableCollection<IPendingChange>` as the backing store; deduplicate on `Add`.
+- Update `IPendingChange` with an optional `Key` property; `RawSqlChange` exposes it; `ChangeQueue.Add` checks for collision.
+
+### Notes
+Depends on [[IMPROVEMENT-012]] being complete — Tiers tab must use the queue before deduplication applies to it.
+Key must be stable across multiple `Queue Save` clicks on the same row, not a generated GUID.
+Destructive changes (DELETE) should also replace any prior non-destructive change for the same key.
