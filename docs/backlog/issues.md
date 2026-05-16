@@ -191,6 +191,46 @@ Affects Tab 1 (BasicPanel), Tab 2 (CalibrationPanel), and Tab 3 (PrototypePanel)
 
 ---
 
+## ISSUE-010 - Entities tab: Stats section new-stat value input rejects negative and decimal values
+
+Status: TODO
+Priority: MEDIUM
+Area: Admin Tool / Entities / Stats
+
+### Problem
+The "Add stat" value `TextBox` in `EntityDetailView.xaml` (line 137) is bound to
+`EntityDetailViewModel.NewStatValue` (`double`) with `UpdateSourceTrigger=PropertyChanged`.
+Because the binding tries to parse on every keystroke, intermediate input states such as `-`
+(start of a negative number) or `1.` (start of a decimal) fail to convert and cause WPF to revert
+the field to the last successfully parsed value (typically `0`). In practice this means only
+positive integers can be reliably entered; negative values and fractional values reset to zero
+mid-entry or on focus loss.
+
+### Impact
+Operators cannot set stats with negative values (e.g. resistances, offsets) or sub-integer values
+(e.g. 0.5 repair bonus) without the field snapping back to zero. The underlying
+`EntityDetailViewModel.NewStatValue` property is correctly typed as `double`, so the constraint is
+purely a UI binding issue.
+
+### Proposed Fix
+Change `UpdateSourceTrigger=PropertyChanged` to `UpdateSourceTrigger=LostFocus` on the stat value
+`TextBox` in `src/Perpetuum.AdminTool/Views/EntityDetailView.xaml` (line 137):
+
+```xml
+<TextBox Grid.Column="1" Margin="6,0"
+         Text="{Binding NewStatValue, UpdateSourceTrigger=LostFocus}"/>
+```
+
+This lets the user complete the full value (including leading `-` or a decimal point) before WPF
+attempts to parse. Optionally add `StringFormat={}{0:G}` and `ConverterCulture=en-US` to ensure
+consistent decimal-point parsing regardless of the operator's Windows locale.
+
+### Notes
+The stat `DataGrid` in the same view allows inline editing of existing stat values — verify that
+column also accepts negative/decimal input correctly after the fix.
+
+---
+
 ## ISSUE-009 - New Item dialog ignores Apply mode, always writes directly to DB
 
 Status: TODO
