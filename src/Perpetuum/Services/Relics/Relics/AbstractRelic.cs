@@ -2,6 +2,7 @@
 using Perpetuum.ExportedTypes;
 using Perpetuum.Players;
 using Perpetuum.Services.Looting;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Threading;
 using Perpetuum.Units;
 using Perpetuum.Zones;
@@ -148,6 +149,7 @@ namespace Perpetuum.Services.Relics
                 {
                     LootContainer.Create().SetOwner(player).SetEnterBeamType(BeamType.loot_bolt).AddLoot(_loots.LootItems).BuildAndAddToZone(_zone, CurrentPosition);
                     if (ep > 0) player.Character.AddExtensionPointsBoostAndLog(EpForActivityType.Artifact, ep);
+                    SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.ArtifactFound, 1);
                     scope.Complete();
                 }
             });
