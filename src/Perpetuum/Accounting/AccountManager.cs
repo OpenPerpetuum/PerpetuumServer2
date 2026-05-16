@@ -380,6 +380,7 @@ namespace Perpetuum.Accounting
             });
 
             AddExtensionPoints(account, boostedPoints);
+            SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.EpEarned, boostedPoints);
             return boostedPoints;
         }
 
