@@ -51,20 +51,22 @@ namespace Perpetuum.Services.Seasons
         public List<SeasonObjective> GetObjectives(int seasonId)
         {
             return Db.Query("SELECT id, season_id, name, description, activity_type, " +
-                            "target_value, bonus_points, display_order " +
+                            "target_value, bonus_points, display_order, is_daily, package_id " +
                             "FROM season_objectives WHERE season_id = @seasonId")
                      .SetParameter("@seasonId", seasonId)
                      .Execute()
                      .Select(r => new SeasonObjective
                      {
-                         Id = r.GetValue<int>("id"),
-                         SeasonId = r.GetValue<int>("season_id"),
-                         Name = r.GetValue<string>("name"),
-                         Description = r.GetValue<string>("description"),
+                         Id           = r.GetValue<int>("id"),
+                         SeasonId     = r.GetValue<int>("season_id"),
+                         Name         = r.GetValue<string>("name"),
+                         Description  = r.GetValue<string>("description"),
                          ActivityType = (SeasonActivityType)r.GetValue<int>("activity_type"),
-                         TargetValue = r.GetValue<long>("target_value"),
-                         BonusPoints = r.GetValue<int>("bonus_points"),
+                         TargetValue  = r.GetValue<long>("target_value"),
+                         BonusPoints  = r.GetValue<int>("bonus_points"),
                          DisplayOrder = r.GetValue<int>("display_order"),
+                         IsDaily      = r.GetValue<bool>("is_daily"),
+                         PackageId    = r.GetValue<int?>("package_id"),
                      })
                      .ToList();
         }
@@ -139,24 +141,27 @@ namespace Perpetuum.Services.Seasons
         /// Returns (currentValue, bonusAwarded).
         /// </summary>
         public (double currentValue, bool bonusAwarded) IncrementObjectiveProgress(
-            int characterId, int seasonId, int objectiveId, double amount)
+            int characterId, int seasonId, int objectiveId, double amount, DateTime dayWindow)
         {
             Db.Query(@"
-                MERGE season_objective_progress WITH (HOLDLOCK) AS t
-                USING (SELECT @characterId AS character_id, @seasonId AS season_id,
-                              @objectiveId AS objective_id) AS s
-                   ON t.character_id = s.character_id
-                  AND t.season_id    = s.season_id
-                  AND t.objective_id = s.objective_id
-                WHEN MATCHED AND t.completed = 0 THEN
-                    UPDATE SET current_value = current_value + @amount
-                WHEN NOT MATCHED THEN
-                    INSERT (character_id, season_id, objective_id, current_value,
-                            completed, bonus_awarded)
-                    VALUES (@characterId, @seasonId, @objectiveId, @amount, 0, 0);")
+        MERGE season_objective_progress WITH (HOLDLOCK) AS t
+        USING (SELECT @characterId AS character_id, @seasonId AS season_id,
+                      @objectiveId AS objective_id, @dayWindow AS day_window) AS s
+           ON t.character_id = s.character_id
+          AND t.season_id    = s.season_id
+          AND t.objective_id = s.objective_id
+          AND t.day_window   = s.day_window
+        WHEN MATCHED AND t.completed = 0 THEN
+            UPDATE SET current_value = current_value + @amount
+        WHEN NOT MATCHED THEN
+            INSERT (character_id, season_id, objective_id, day_window,
+                    current_value, completed, bonus_awarded)
+            VALUES (@characterId, @seasonId, @objectiveId, @dayWindow,
+                    @amount, 0, 0);")
                 .SetParameter("@characterId", characterId)
                 .SetParameter("@seasonId", seasonId)
                 .SetParameter("@objectiveId", objectiveId)
+                .SetParameter("@dayWindow", dayWindow)
                 .SetParameter("@amount", amount)
                 .ExecuteNonQuery();
 
@@ -164,10 +169,12 @@ namespace Perpetuum.Services.Seasons
                                   "FROM season_objective_progress " +
                                   "WHERE character_id = @characterId " +
                                   "  AND season_id    = @seasonId " +
-                                  "  AND objective_id = @objectiveId")
+                                  "  AND objective_id = @objectiveId " +
+                                  "  AND day_window   = @dayWindow")
                            .SetParameter("@characterId", characterId)
                            .SetParameter("@seasonId", seasonId)
                            .SetParameter("@objectiveId", objectiveId)
+                           .SetParameter("@dayWindow", dayWindow)
                            .ExecuteSingleRow();
 
             return (record.GetValue<double>("current_value"),
@@ -177,17 +184,19 @@ namespace Perpetuum.Services.Seasons
         /// <summary>
         /// Marks objective bonus as awarded. Returns true if this call was first.
         /// </summary>
-        public bool MarkObjectiveBonusAwarded(int characterId, int seasonId, int objectiveId)
+        public bool MarkObjectiveBonusAwarded(int characterId, int seasonId, int objectiveId, DateTime dayWindow)
         {
             int rows = Db.Query("UPDATE season_objective_progress " +
                                 "SET bonus_awarded = 1, completed = 1, completed_time = GETUTCDATE() " +
                                 "WHERE character_id = @characterId " +
                                 "  AND season_id    = @seasonId " +
                                 "  AND objective_id = @objectiveId " +
+                                "  AND day_window   = @dayWindow " +
                                 "  AND bonus_awarded = 0")
                          .SetParameter("@characterId", characterId)
                          .SetParameter("@seasonId", seasonId)
                          .SetParameter("@objectiveId", objectiveId)
+                         .SetParameter("@dayWindow", dayWindow)
                          .ExecuteNonQuery();
 
             return rows > 0;
@@ -361,17 +370,19 @@ namespace Perpetuum.Services.Seasons
         }
 
         public void AddObjective(int seasonId, SeasonActivityType type, long target,
-            int bonusPts, string name, string description)
+            int bonusPts, string name, string description, bool isDaily = false, int? packageId = null)
         {
+            string pkgSql = packageId.HasValue ? packageId.Value.ToString() : "NULL";
             Db.Query("INSERT INTO season_objectives " +
-                     "(season_id, activity_type, target_value, bonus_points, name, description) " +
-                     "VALUES (@seasonId, @type, @target, @bonus, @name, @desc)")
+                     "(season_id, activity_type, target_value, bonus_points, name, description, is_daily, package_id) " +
+                     $"VALUES (@seasonId, @type, @target, @bonus, @name, @desc, @isDaily, {pkgSql})")
               .SetParameter("@seasonId", seasonId)
               .SetParameter("@type", (int)type)
               .SetParameter("@target", target)
               .SetParameter("@bonus", bonusPts)
               .SetParameter("@name", name)
               .SetParameter("@desc", description)
+              .SetParameter("@isDaily", isDaily ? 1 : 0)
               .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLInsertError);
         }
 
@@ -503,9 +514,11 @@ namespace Perpetuum.Services.Seasons
                 .ExecuteNonQuery();
 
             Db.Query(
-                "INSERT INTO season_objectives (season_id, name, description, activity_type, " +
-                "target_value, bonus_points, display_order) " +
-                "SELECT @newId, name, description, activity_type, target_value, bonus_points, display_order " +
+                "INSERT INTO season_objectives " +
+                "(season_id, name, description, activity_type, target_value, " +
+                "bonus_points, display_order, is_daily, package_id) " +
+                "SELECT @newId, name, description, activity_type, target_value, " +
+                "bonus_points, display_order, is_daily, package_id " +
                 "FROM season_objectives WHERE season_id = @prevId")
                 .SetParameter("@newId", newId)
                 .SetParameter("@prevId", previous.Id)

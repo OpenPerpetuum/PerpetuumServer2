@@ -167,15 +167,22 @@ namespace Perpetuum.Services.Seasons
             // Objective progress
             foreach (var obj in _activeObjectives.Where(o => o.ActivityType == activityType))
             {
+                DateTime dayWindow = obj.IsDaily
+                    ? DateTime.UtcNow.Date
+                    : new DateTime(1900, 1, 1);
+
                 var (currentValue, bonusAwarded) =
-                    _repository.IncrementObjectiveProgress(characterId, season.Id, obj.Id, basePoints);
+                    _repository.IncrementObjectiveProgress(characterId, season.Id, obj.Id, basePoints, dayWindow);
 
                 if (!bonusAwarded && currentValue >= obj.TargetValue)
                 {
-                    if (_repository.MarkObjectiveBonusAwarded(characterId, season.Id, obj.Id))
+                    if (_repository.MarkObjectiveBonusAwarded(characterId, season.Id, obj.Id, dayWindow))
                     {
                         newTotal = _repository.AddPoints(characterId, season.Id, obj.BonusPoints);
                         SendObjectiveCompleteMail(characterId, obj, newTotal);
+
+                        if (obj.IsDaily && obj.PackageId.HasValue)
+                            DeliverObjectivePackage(characterId, obj.PackageId.Value);
                     }
                 }
             }
@@ -217,6 +224,16 @@ namespace Perpetuum.Services.Seasons
             var character = Character.Get(characterId);
             _repository.InsertRedeemableItems(character.AccountId, tier.PackageId, items);
             SendTierUnlockMail(characterId, tier, currentPoints);
+        }
+
+        private void DeliverObjectivePackage(int characterId, int packageId)
+        {
+            var items = _repository.GetPackageItems(packageId);
+            if (items.Count == 0)
+                return;
+
+            var character = Character.Get(characterId);
+            _repository.InsertRedeemableItems(character.AccountId, packageId, items);
         }
 
         private void DeliverLeaderboardReward(int characterId, SeasonLeaderboardReward reward)

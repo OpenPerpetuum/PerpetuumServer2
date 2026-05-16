@@ -33,6 +33,8 @@ namespace Perpetuum.Services.Seasons
         public long TargetValue { get; set; }
         public int BonusPoints { get; set; }
         public int DisplayOrder { get; set; }
+        public bool IsDaily { get; set; }
+        public int? PackageId { get; set; }
     }
 
     public class SeasonTier
