@@ -1,6 +1,6 @@
 ## IMPROVEMENT-001 - Recurring Seasons with Selectable Periodicity
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Seasons
 
