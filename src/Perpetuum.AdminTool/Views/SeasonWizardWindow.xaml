@@ -132,6 +132,8 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Name:" Margin="0,4"/>
                         <TextBox  Grid.Row="0" Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,4"/>
@@ -151,6 +153,43 @@
                             <TextBlock Text="Time:" VerticalAlignment="Center" Margin="8,0,4,0"/>
                             <TextBox Width="60" Text="{Binding EndTimeText, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="HH:mm (UTC)" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Row 4: Recurring toggle -->
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Recurring:" Margin="0,4" VerticalAlignment="Center"/>
+                        <CheckBox Grid.Row="4" Grid.Column="1"
+                                  IsChecked="{Binding IsRecurring}"
+                                  Content="Auto-restart after each run" Margin="0,6"
+                                  VerticalAlignment="Center"/>
+
+                        <!-- Row 5: Gap field (visible only when recurring) -->
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Gap between runs:" Margin="0,4" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRecurring}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,4">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRecurring}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBox Width="80"
+                                     Text="{Binding RecurrenceGapDays, UpdateSourceTrigger=PropertyChanged}"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,0,0"/>
                         </StackPanel>
                     </Grid>
                     <TextBlock Margin="0,8,0,0" Foreground="DarkRed" Text="{Binding Step1Validation}"/>
