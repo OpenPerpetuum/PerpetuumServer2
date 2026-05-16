@@ -471,15 +471,20 @@ namespace Perpetuum.Services.Seasons
 
         private static string ActivityTypeName(SeasonActivityType type) => type switch
         {
-            SeasonActivityType.NpcKill => "NPC Kill",
-            SeasonActivityType.PvpKill => "PvP Kill",
-            SeasonActivityType.MissionComplete => "Mission Completed",
-            SeasonActivityType.MineralMined => "Mineral Mined",
-            SeasonActivityType.EpSpent => "EP Spent",
-            SeasonActivityType.NicEarned => "NIC Earned",
-            SeasonActivityType.NicSpent => "NIC Spent",
-            SeasonActivityType.IntrusionPoint => "Intrusion SAP",
-            _ => type.ToString(),
+            SeasonActivityType.NpcKill            => "NPC Kill",
+            SeasonActivityType.PvpKill            => "PvP Kill",
+            SeasonActivityType.MissionComplete    => "Mission Completed",
+            SeasonActivityType.MineralMined       => "Mineral Mined",
+            SeasonActivityType.EpSpent            => "EP Spent",
+            SeasonActivityType.NicEarned          => "NIC Earned",
+            SeasonActivityType.NicSpent           => "NIC Spent",
+            SeasonActivityType.IntrusionPoint     => "Intrusion SAP",
+            SeasonActivityType.Prototyping        => "Prototyping",
+            SeasonActivityType.ReverseEngineering => "Reverse Engineering",
+            SeasonActivityType.Production         => "Production",
+            SeasonActivityType.ArtifactFound      => "Artifact Found",
+            SeasonActivityType.EpEarned           => "EP Earned",
+            _                                     => type.ToString(),
         };
     }
 }
