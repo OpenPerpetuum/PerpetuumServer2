@@ -337,7 +337,7 @@ When asked to:
 - "implement improvements"
 
 Claude should:
-1. review backlog files
+1. review backlog files, only check what you've been asked to, (e.g. issues or improvements)
 2. prioritize unfinished HIGH priority items
 3. prefer low-risk/high-impact work unless instructed otherwise
 4. produce a short implementation plan

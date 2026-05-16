@@ -139,6 +139,9 @@ namespace Perpetuum.Services.Seasons
             if (season == null || DateTime.UtcNow > season.EndTime)
                 return;
 
+            if (Character.Get(characterId).IsInTraining())
+                return;
+
             var rates = _activeRates.Where(r => r.ActivityType == activityType).ToList();
             if (rates.Count == 0)
                 return;
@@ -235,7 +238,9 @@ namespace Perpetuum.Services.Seasons
             _lastNotifiedSeasonId = 0;
             _repository.DeactivateSeason(season.Id);
 
-            var rankings = _repository.GetParticipantRankings(season.Id);
+            var rankings = _repository.GetParticipantRankings(season.Id)
+                .Where(r => !Character.Get(r.CharacterId).IsInTraining())
+                .ToList();
             var leaderboard = _activeLeaderboard;
 
             for (int rank = 1; rank <= rankings.Count; rank++)
@@ -280,15 +285,18 @@ namespace Perpetuum.Services.Seasons
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
         }
 
-        internal void AnnounceLeaderboard(Season season)
+        internal void AnnounceLeaderboard(Season? season)
         {
-            if (_activeSeason == null || _activeSeason.IsActive == false)
-            {
+            if (season == null || _activeSeason == null || DateTime.UtcNow > season.EndTime)
                 return;
-            }
 
-            var rankings = _repository.GetParticipantRankings(season.Id);
+            var rankings = _repository.GetParticipantRankings(season.Id)
+                .Where(r => !Character.Get(r.CharacterId).IsInTraining())
+                .ToList();
             int displayCount = Math.Min(10, rankings.Count);
+
+            if (displayCount == 0)
+                return;
             var chatMessage = new StringBuilder();
             chatMessage.AppendLine();
             chatMessage.AppendLine($"Top {displayCount} of this season:");

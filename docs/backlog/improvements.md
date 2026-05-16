@@ -228,6 +228,57 @@ Depends on [[IMPROVEMENT-007]] and [[IMPROVEMENT-008]] for NPC rank/role filteri
 Target filter should be stored as structured data (e.g. JSON column or normalised filter table) rather than freeform strings to allow reliable matching and Admin Tool rendering.
 Keep the filter evaluation path lightweight — it runs on every matching game event and must not introduce blocking or excessive allocation in hot paths.
 
+## IMPROVEMENT-012 - Seasons Tiers tab: on-the-fly save generating a single change script
+
+Status: TODO
+Priority: HIGH
+Area: Seasons / Admin Tool
+
+### Description
+The Tiers tab in the Seasons Admin Tool currently uses a different save mechanic from the Activity Rates and Objectives tabs. Activity Rates and Objectives already support on-the-fly editing that produces a single consolidated change script per save. The Tiers tab should adopt the same pattern so all three tabs behave consistently.
+
+### Impact
+Inconsistent save mechanics increase operator confusion and risk: a different save flow for Tiers may require multiple manual steps or produce partial scripts, making season adjustments error-prone and harder to audit compared to the Activity Rates / Objectives workflow.
+
+### Proposed Implementation
+- Audit how Activity Rates and Objectives generate their single change script on save — identify the shared pattern (diff computation, script generation, transaction wrapper).
+- Refactor or extend that pattern to cover tier definitions (name, point threshold, reward).
+- Tiers tab save flow: compute a diff between the current persisted tier state and the edited in-memory state, then emit a single SQL/migration script covering all inserts, updates, and deletes in one transaction.
+- The generated script should follow the same format and conventions as those produced by Activity Rates and Objectives saves, so all three can be reviewed and applied uniformly.
+- Ensure that editing tiers, activity rates, and objectives in the same session and saving each produces independently coherent scripts — no cross-tab state leakage.
+
+### Notes
+See [[IMPROVEMENT-010]] — the Scoring Balancing tab depends on tiers being editable inline; consistent save mechanics here unblock a clean implementation of that tab.
+Preserve existing tier DB schema — this improvement changes the save UI mechanic only, not the underlying data model.
+
+---
+
+## IMPROVEMENT-011 - NPC fleeing state reduces max speed by 25%
+
+Status: DONE
+Priority: CRITICAL
+Area: NPCs / AI
+
+### Description
+When an NPC enters the fleeing state its maximum speed should be capped at 75% of its normal maximum speed. The cap must be lifted and the original max speed fully restored as soon as the NPC exits the fleeing state.
+
+### Impact
+Without this penalty a fleeing NPC moves at full speed, making it trivially easy to escape combat. Applying a speed reduction creates a meaningful tactical consequence for the fleeing state and improves gameplay authenticity.
+
+### Proposed Implementation
+- Locate the code path that transitions an NPC into the fleeing state (likely in the AI state machine or NPC behaviour handler).
+- On entering fleeing: record the NPC's current max speed, then apply a multiplier of `0.75` to the effective max speed.
+- On exiting fleeing: restore the recorded original max speed, regardless of the exit reason (combat re-engagement, death, target lost, etc.).
+- Prefer a modifier/buff approach consistent with how other temporary stat changes are applied to NPCs — avoid overwriting the base definition value directly.
+- Ensure the speed is recalculated immediately on state transition so the change takes effect within the same update tick.
+
+### Notes
+Verify how max speed is stored and applied for NPCs — consult NPC AI and movement subsystems before implementing.
+The 75% cap applies to max speed only; acceleration and other movement parameters are unaffected unless a future improvement specifies otherwise.
+Edge case: if the NPC is already speed-debuffed by a player effect, the fleeing cap should compose correctly with existing modifiers rather than overriding them.
+
+---
+
 ## IMPROVEMENT-010 - Seasons Scoring Balancing Tab
 
 Status: TODO
@@ -253,3 +304,56 @@ The activities-to-objective computation is a display convenience; the authoritat
 Depends on [[IMPROVEMENT-005]] for the full set of activity types surfaced in the rates panel.
 Depends on [[IMPROVEMENT-009]] for targeted objectives appearing in the objectives panel with their filter displayed.
 Edits made here must write through the same save paths used by the individual objective and activity rate editors — no parallel write logic.
+
+---
+
+## IMPROVEMENT-013 - Daily objectives grant their own reward packages on completion
+
+Status: TODO
+Priority: MEDIUM
+Area: Seasons / Objectives
+
+### Description
+When a player completes a daily objective they should receive a dedicated reward package, separate from and in addition to any season point accumulation. Each daily objective should have a configurable reward package (items, NIC, or other reward types) that is granted immediately on completion.
+
+### Impact
+Without per-completion rewards, daily objectives only contribute points toward season tiers — offering no immediate gratification. Instant reward packages make daily objectives more compelling, encourage consistent daily engagement, and allow designers to tune short-term incentives independently of long-term tier progression.
+
+### Proposed Implementation
+- Extend the daily objective definition to include an optional `reward_package_id` (or equivalent structured reward payload) specifying what is granted on completion.
+- On objective completion, trigger the reward grant pipeline with the associated package — reuse the existing reward distribution mechanism (used for season tier rewards or similar) rather than introducing a new path.
+- Reward packages should be configurable per objective and per season; different daily objectives within the same season may grant different packages.
+- If an objective has no reward package configured, completion behaves as today (points only) — no breaking change to existing objectives.
+- Admin Tool: surface the reward package field in the daily objective editor.
+
+### Notes
+Depends on [[IMPROVEMENT-006]] — daily objectives infrastructure must exist before per-completion rewards can be wired in.
+Reward packages must be granted exactly once per completion per character per day — idempotency is critical given the daily reset cycle.
+Consult the existing tier reward grant path for the reward package schema and delivery mechanism before designing the new hook.
+
+---
+
+## IMPROVEMENT-014 - Standalone daily objectives/missions outside of Seasons
+
+Status: TODO
+Priority: LOW
+Area: Objectives / Missions
+
+### Description
+Introduce a daily objective (or daily mission) system that operates independently of the Seasons system. These objectives generate no season points and have no season dependency — they simply reset daily and grant reward packages on completion, available to all players at all times regardless of whether a season is active.
+
+### Impact
+Season-tied daily objectives are only meaningful during an active season, leaving a gap in daily engagement loops during off-season periods. A standalone daily objective system provides consistent daily incentives year-round, retains player engagement between seasons, and caters to players who are not focused on competitive season rankings.
+
+### Proposed Implementation
+- Design the standalone daily objective system as a distinct subsystem from Seasons — it should not depend on a season being active, should not write to season activity or point tables, and should have its own objective definitions, completion tracking, and daily reset scheduling.
+- Reuse the daily reset scheduler and objective completion/reward grant mechanisms from [[IMPROVEMENT-006]] and [[IMPROVEMENT-013]] where possible — extract shared infrastructure rather than duplicating it.
+- Objective definitions: activity type, target filter (optional, see [[IMPROVEMENT-009]] patterns), completion threshold, reward package.
+- Completion tracking: per-character, scoped to the current day's reset window; idempotent reset at UTC midnight (or configurable reset time).
+- Reward grant: on completion, deliver the configured reward package via the existing reward distribution path — no points emitted.
+- Admin Tool: a dedicated section for managing standalone daily objective templates (create, edit, enable/disable, assign reward packages); separate from the Seasons objective editor.
+
+### Notes
+The absence of point generation is intentional and must be enforced — these objectives must not accidentally write to any season scoring table.
+If the daily reset infrastructure from [[IMPROVEMENT-006]] is not yet built, this system should share that implementation rather than introducing a parallel reset scheduler.
+Consider whether standalone daily objectives should be visible in the same in-game UI as season daily objectives, or in a separate panel — a clear UX distinction prevents player confusion about what generates season points.
