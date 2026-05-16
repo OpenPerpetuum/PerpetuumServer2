@@ -139,11 +139,13 @@ namespace Perpetuum.Services.Seasons
             if (season == null || DateTime.UtcNow > season.EndTime)
                 return;
 
-            if (Character.Get(characterId).IsInTraining())
-                return;
-
             var rates = _activeRates.Where(r => r.ActivityType == activityType).ToList();
             if (rates.Count == 0)
+                return;
+
+            // DB lookup deferred until a rate match is confirmed — avoids 2 synchronous
+            // ExecuteScalar round-trips on every high-frequency call (e.g. each weapon cycle).
+            if (Character.Get(characterId).IsInTraining())
                 return;
 
             double basePoints = 0;

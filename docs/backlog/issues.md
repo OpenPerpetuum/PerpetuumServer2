@@ -99,7 +99,7 @@ If the underlying data (total points) can itself be negative due to a separate b
 
 ## ISSUE-005 - RecordActivity IsInTraining() causes synchronous DB queries in combat hot path
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Seasons / Performance
 
