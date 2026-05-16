@@ -188,3 +188,39 @@ Also update the `_desc` doubling guard in the design spec (section 9) to match: 
 
 ### Notes
 Affects Tab 1 (BasicPanel), Tab 2 (CalibrationPanel), and Tab 3 (PrototypePanel) since all three use the same `BasicPanelViewModel.SuggestDescriptionToken` method.
+
+---
+
+## ISSUE-009 - New Item dialog ignores Apply mode, always writes directly to DB
+
+Status: TODO
+Priority: CRITICAL
+Area: Admin Tool / New Item Dialog
+
+### Problem
+`NewItemDialogViewModel.SaveAsync` always calls `_changeApplier.ExecuteAsync([change])`, which
+writes the generated SQL directly to the database. The current `ApplyMode` (`AppSession.CurrentMode`)
+is never consulted. When the operator has selected `SqlScript` mode, the save still hits the DB
+directly instead of producing a script file.
+
+### Impact
+Any operator using `SqlScript` mode (the safer, review-before-apply workflow) is silently bypassed
+every time they create a new item. Changes go live in the database immediately with no script
+artifact, defeating the purpose of the apply-mode setting and removing the audit trail.
+
+### Proposed Fix
+Pass `AppSession` (or at least a `Func<ApplyMode>` / the mode value at open-time) into
+`NewItemDialogViewModel`. In `SaveAsync`, branch on the mode:
+
+- `DirectDb`: keep the existing `_changeApplier.ExecuteAsync([change])` call.
+- `SqlScript`: call `SqlScriptBuilder.Build([change], authorEmail)` and write the resulting
+  script to `AppSettings.SqlOutputDirectory`, the same way `MainViewModel.SaveAsync` does it.
+  Show the output path in `SaveResultSummary`. Skip the live DB reload since nothing was committed.
+
+`EntitiesViewModel.OpenNewItemDialogAsync` constructs the dialog — it needs access to `AppSession`
+(already injected into `MainViewModel`; wire it through to `EntitiesViewModel` via DI or pass it
+as a constructor parameter).
+
+### Notes
+`MainViewModel.SaveAsync` (lines ~174–200) is the reference implementation for the SqlScript branch.
+`SqlScriptBuilder.Build` signature: `Build(IEnumerable<IPendingChange> changes, string? authorEmail)`.
