@@ -1,0 +1,75 @@
+<h2>Design Section 1 — Seasons Tab Overview</h2>
+<p class="subtitle">The Seasons tab has two top-level views. A segmented header switches between them.</p>
+
+<div class="mockup">
+  <div class="mockup-header">MainWindow → Seasons Tab</div>
+  <div class="mockup-body" style="padding:0;min-height:360px;font-size:12px">
+
+    <!-- Tab-level header with view switcher -->
+    <div style="display:flex;align-items:center;gap:0;padding:8px 14px;border-bottom:1px solid #333;background:#1a1a1a">
+      <div style="display:flex;border:1px solid #444;border-radius:4px;overflow:hidden;margin-right:auto">
+        <div style="padding:4px 18px;background:#2a6496;color:#fff;font-size:12px;cursor:pointer">Seasons</div>
+        <div style="padding:4px 18px;background:#222;color:#888;font-size:12px;cursor:pointer">Packages</div>
+      </div>
+      <div class="mock-button" style="font-size:11px;padding:4px 14px">+ New Season</div>
+    </div>
+
+    <!-- Seasons view: cards -->
+    <div style="padding:14px;display:flex;flex-wrap:wrap;gap:12px">
+
+      <!-- Active season card -->
+      <div style="border:2px solid #2a6496;border-radius:6px;padding:14px;width:200px;background:#1a2a3a;position:relative">
+        <div style="font-size:10px;color:#5bc0de;margin-bottom:4px;font-weight:bold;letter-spacing:1px">● ACTIVE</div>
+        <div style="font-size:14px;font-weight:bold;margin-bottom:4px">Season 3</div>
+        <div style="font-size:11px;color:#888;margin-bottom:2px">2026-03-01 → 2026-05-31</div>
+        <div style="font-size:11px;color:#87ceeb;margin-bottom:8px">18d 4h remaining</div>
+        <div style="display:flex;gap:6px;font-size:11px;margin-bottom:10px">
+          <div style="background:#1e2a1e;border:1px solid #3a5a3a;border-radius:3px;padding:3px 8px;color:#aed6a0">1,247 players</div>
+          <div style="background:#1e2a1e;border:1px solid #3a5a3a;border-radius:3px;padding:3px 8px;color:#aed6a0">4 tiers</div>
+        </div>
+        <div class="mock-button" style="font-size:11px;padding:4px 12px;width:100%;text-align:center;box-sizing:border-box">Manage →</div>
+      </div>
+
+      <!-- Ended season card -->
+      <div style="border:1px solid #444;border-radius:6px;padding:14px;width:200px;background:#222">
+        <div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:bold;letter-spacing:1px">ENDED</div>
+        <div style="font-size:14px;font-weight:bold;margin-bottom:4px">Season 2</div>
+        <div style="font-size:11px;color:#888;margin-bottom:2px">2026-01-01 → 2026-02-28</div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px">Ended 71 days ago</div>
+        <div style="display:flex;gap:6px;font-size:11px;margin-bottom:10px">
+          <div style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:3px 8px;color:#888">892 players</div>
+          <div style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:3px 8px;color:#888">3 tiers</div>
+        </div>
+        <div class="mock-button" style="font-size:11px;padding:4px 12px;width:100%;text-align:center;box-sizing:border-box;background:#333;border-color:#555;color:#aaa">View →</div>
+      </div>
+
+      <!-- Draft season card -->
+      <div style="border:1px solid #666;border-radius:6px;padding:14px;width:200px;background:#222;border-style:dashed">
+        <div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:bold;letter-spacing:1px">DRAFT</div>
+        <div style="font-size:14px;font-weight:bold;margin-bottom:4px">Season 4</div>
+        <div style="font-size:11px;color:#888;margin-bottom:2px">2026-06-01 → 2026-08-31</div>
+        <div style="font-size:11px;color:#f0ad4e;margin-bottom:8px">Not yet activated</div>
+        <div style="display:flex;gap:6px;font-size:11px;margin-bottom:10px">
+          <div style="background:#2a2a2a;border:1px solid #555;border-radius:3px;padding:3px 8px;color:#888">2 tiers set up</div>
+        </div>
+        <div class="mock-button" style="font-size:11px;padding:4px 12px;width:100%;text-align:center;box-sizing:border-box">Edit →</div>
+      </div>
+
+      <!-- New Season card -->
+      <div style="border:2px dashed #444;border-radius:6px;padding:14px;width:200px;background:#1a1a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;cursor:pointer;color:#666">
+        <div style="font-size:28px;margin-bottom:6px">+</div>
+        <div style="font-size:12px">New Season</div>
+        <div style="font-size:10px;color:#555;margin-top:4px">Opens setup wizard</div>
+      </div>
+
+    </div>
+
+    <!-- Subtle note at bottom -->
+    <div style="padding:0 14px 10px;font-size:10px;color:#555">
+      Switch to <strong style="color:#666">Packages</strong> view to create and manage reward packages before wiring them to tiers.
+    </div>
+
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:14px">Seasons view shows cards: <strong>Active</strong> (highlighted blue), <strong>Draft</strong> (dashed, not yet activated), <strong>Ended</strong> (dimmed). The Packages view switcher lives in the top-left. Does this structure look right?</p>

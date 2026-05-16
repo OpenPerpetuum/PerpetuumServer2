@@ -12,7 +12,9 @@ namespace Perpetuum.Services.Channels.ChatCommands
 
         private readonly GlobalConfiguration _config = configuration;
         private readonly ISessionManager _sessionManager = sessionManager;
-        private readonly Dictionary<string, CommandDelegate> _commands = typeof(AdminCommandHandlers).GetMethods()
+        private readonly Dictionary<string, CommandDelegate> _commands =
+                new[] { typeof(AdminCommandHandlers), typeof(SeasonAdminCommandHandlers) }
+                .SelectMany(t => t.GetMethods())
                 .Where(m => m.GetCustomAttributes(typeof(ChatCommand), false).Length > 0)
                 .Select(m => new KeyValuePair<string, CommandDelegate>(
                     ((ChatCommand)m.GetCustomAttribute(typeof(ChatCommand))).Command,

@@ -1,5 +1,6 @@
 using Perpetuum.Data;
 using Perpetuum.EntityFramework;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Log;
 using Perpetuum.Players;
 using Perpetuum.Services.Looting;
@@ -254,6 +255,9 @@ namespace Perpetuum.Zones.NpcSystem
                 }
 
                 Player killerPlayer = zone.ToPlayerOrGetOwnerPlayer(killer);
+
+                if (killerPlayer != null)
+                    SeasonServiceLocator.Instance?.RecordActivity(killerPlayer.Character.Id, SeasonActivityType.NpcKill, 1);
 
                 if (GetMissionGuid() != Guid.Empty)
                 {

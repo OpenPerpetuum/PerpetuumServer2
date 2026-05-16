@@ -6,6 +6,7 @@ using Perpetuum.Log;
 using Perpetuum.Modules.ModuleProperties;
 using Perpetuum.Players;
 using Perpetuum.Services.MissionEngine.MissionTargets;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Beams;
 using Perpetuum.Zones.Locking.Locks;
@@ -141,6 +142,7 @@ namespace Perpetuum.Modules
                         player.Zone?.HarvestLogHandler.EnqueueHarvestLog(extractedHarvestDefinition, extractedQuantity);
 
                         resourceStats.Add((extractedMaterial.EntityDefault.Name, extractedMaterial.Quantity));
+                        SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.MineralMined, extractedMaterial.Quantity);
                     }
 
                     container.Save();

@@ -63,6 +63,9 @@
             <TabItem Header="NPC flocks">
                 <views:FlocksView DataContext="{Binding Flocks}"/>
             </TabItem>
+            <TabItem Header="Seasons">
+                <views:SeasonsView DataContext="{Binding Seasons}"/>
+            </TabItem>
             <TabItem Header="Translations">
                 <views:TranslationsView DataContext="{Binding Translations}"/>
             </TabItem>

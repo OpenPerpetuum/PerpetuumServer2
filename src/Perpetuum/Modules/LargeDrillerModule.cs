@@ -1,4 +1,5 @@
 ﻿using Perpetuum.Data;
+using Perpetuum.Services.Seasons;
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
@@ -110,6 +111,7 @@ namespace Perpetuum.Modules
                         drilledQuantity,
                                     position));
                         player.Zone?.MiningLogHandler.EnqueueMiningLog(drilledMineralDefinition, drilledQuantity);
+                        SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.MineralMined, drilledQuantity);
 
                         resourceStats.Add((material.EntityDefault.Name, material.Quantity));
                     }

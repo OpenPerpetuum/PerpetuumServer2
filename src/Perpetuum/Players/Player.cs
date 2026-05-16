@@ -18,6 +18,7 @@ using Perpetuum.Services.Looting;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionTargets;
 using Perpetuum.Services.MissionEngine.TransportAssignments;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Units.DockingBases;
@@ -1086,6 +1087,23 @@ namespace Perpetuum.Players
                     killer = zone.ToPlayerOrGetOwnerPlayer(killer) ?? killer;
 
                     SaveCombatLog(zone, killer);
+
+                    if (killer is Player killerPlayer && killerPlayer != this && !this.IsBlessed)
+                    {
+                        var victimIp = Db.Query()
+                            .CommandText("select ip from accountonlinetime where accountid = @accountId")
+                            .SetParameter("@accountId", this.Character.AccountId)
+                            .ExecuteScalar<string>();
+                        var killerIp = Db.Query()
+                            .CommandText("select ip from accountonlinetime where accountid = @accountId")
+                            .SetParameter("@accountId", killerPlayer.Character.AccountId)
+                            .ExecuteScalar<string>();
+
+                        if (!victimIp.Equals(killerIp, StringComparison.OrdinalIgnoreCase))
+                        {
+                            SeasonServiceLocator.Instance?.RecordActivity(killerPlayer.Character.Id, SeasonActivityType.PvpKill, 1);
+                        }
+                    }
 
                     Character character = Character;
                     DockingBase dockingBase = character.GetHomeBaseOrCurrentBase();

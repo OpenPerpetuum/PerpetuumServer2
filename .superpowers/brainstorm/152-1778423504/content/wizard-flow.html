@@ -1,0 +1,149 @@
+<h2>Design Section 2 — Creation Wizard</h2>
+<p class="subtitle">A 6-step wizard opened by clicking "+ New Season". Steps are shown as a progress bar at the top. You can go Back freely; Next validates the current step before advancing.</p>
+
+<div class="mockup">
+  <div class="mockup-header">New Season Wizard — Step 2 of 6: Activity Rates</div>
+  <div class="mockup-body" style="padding:0;min-height:420px;font-size:12px">
+
+    <!-- Progress bar -->
+    <div style="padding:12px 16px;border-bottom:1px solid #333;background:#1a1a1a">
+      <div style="display:flex;gap:0;align-items:center">
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#2a6496;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold">✓</div>
+          <div style="font-size:10px;color:#2a6496;margin-top:3px;text-align:center">Season Info</div>
+        </div>
+        <div style="flex:1;height:2px;background:#2a6496;margin-bottom:14px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#2a6496;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold">2</div>
+          <div style="font-size:10px;color:#fff;margin-top:3px;text-align:center">Activity Rates</div>
+        </div>
+        <div style="flex:1;height:2px;background:#444;margin-bottom:14px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#333;color:#888;display:flex;align-items:center;justify-content:center;font-size:11px">3</div>
+          <div style="font-size:10px;color:#666;margin-top:3px;text-align:center">Objectives</div>
+        </div>
+        <div style="flex:1;height:2px;background:#444;margin-bottom:14px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#333;color:#888;display:flex;align-items:center;justify-content:center;font-size:11px">4</div>
+          <div style="font-size:10px;color:#666;margin-top:3px;text-align:center">Tiers</div>
+        </div>
+        <div style="flex:1;height:2px;background:#444;margin-bottom:14px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#333;color:#888;display:flex;align-items:center;justify-content:center;font-size:11px">5</div>
+          <div style="font-size:10px;color:#666;margin-top:3px;text-align:center">Leaderboard</div>
+        </div>
+        <div style="flex:1;height:2px;background:#444;margin-bottom:14px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#333;color:#888;display:flex;align-items:center;justify-content:center;font-size:11px">6</div>
+          <div style="font-size:10px;color:#666;margin-top:3px;text-align:center">Review</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step content -->
+    <div style="padding:16px">
+
+      <!-- Step header with description -->
+      <div style="margin-bottom:14px;padding:10px 14px;background:#1e2a3a;border-left:3px solid #2a6496;border-radius:0 4px 4px 0">
+        <div style="font-weight:bold;margin-bottom:4px">Activity Rates</div>
+        <div style="color:#aaa;font-size:11px;line-height:1.5">
+          Set how many season points players earn for each in-game activity. <strong style="color:#ccc">Points per Unit</strong> is the reward per one unit of activity. <strong style="color:#ccc">Scale</strong> groups raw amounts before multiplying — e.g., Scale 1000 means "per 1000 NIC earned" rather than per 1 NIC. Leave a rate at 0 to disable that activity type for this season.
+        </div>
+      </div>
+
+      <!-- Rate grid -->
+      <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;overflow:hidden;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;color:#888;padding:6px 10px;border-bottom:1px solid #333;background:#252525">
+          <span>Activity Type</span><span style="text-align:right">Pts / Unit</span><span style="text-align:right">Scale</span><span style="padding-left:12px;color:#555">Effective rate (example)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span>NPC Kill</span>
+          <div style="text-align:right"><input style="width:60px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="10"></div>
+          <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+          <span style="padding-left:12px;color:#666">10 pts per kill</span>
+        </div>
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span>PvP Kill</span>
+          <div style="text-align:right"><input style="width:60px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="50"></div>
+          <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+          <span style="padding-left:12px;color:#666">50 pts per kill</span>
+        </div>
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span>Mission Complete</span>
+          <div style="text-align:right"><input style="width:60px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="25"></div>
+          <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+          <span style="padding-left:12px;color:#666">25 pts per mission</span>
+        </div>
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span>Mineral Mined</span>
+          <div style="text-align:right"><input style="width:60px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+          <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1000"></div>
+          <span style="padding-left:12px;color:#666">1 pt per 1,000 units mined</span>
+        </div>
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span>EP Spent</span>
+          <div style="text-align:right"><input style="width:60px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="5"></div>
+          <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="100"></div>
+          <span style="padding-left:12px;color:#666">5 pts per 100 EP spent</span>
+        </div>
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span>NIC Earned</span>
+          <div style="text-align:right"><input style="width:60px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+          <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="10000"></div>
+          <span style="padding-left:12px;color:#666">1 pt per 10,000 NIC earned</span>
+        </div>
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;padding:5px 10px;border-bottom:1px solid #2a2a2a;align-items:center">
+          <span>NIC Spent</span>
+          <div style="text-align:right"><input style="width:60px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="0"></div>
+          <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+          <span style="padding-left:12px;color:#666;font-style:italic">Disabled (0 pts)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:180px 100px 80px 1fr;gap:0;font-size:11px;padding:5px 10px;align-items:center">
+          <span>Intrusion Point</span>
+          <div style="text-align:right"><input style="width:60px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="100"></div>
+          <div style="text-align:right"><input style="width:50px;text-align:right;background:#2a2a2a;border:1px solid #444;color:#fff;padding:2px 5px;font-size:11px" value="1"></div>
+          <span style="padding-left:12px;color:#666">100 pts per intrusion point</span>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="mock-button" style="font-size:11px;padding:5px 16px;background:#333;border-color:#555;color:#aaa">← Back</div>
+        <div style="font-size:10px;color:#555">Step 2 of 6 · Objectives and Tiers are optional but recommended</div>
+        <div class="mock-button" style="font-size:11px;padding:5px 16px">Next: Objectives →</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px">
+  <h3>Wizard Steps Summary</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;font-size:12px">
+    <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+      <div style="font-weight:bold;color:#5bc0de;margin-bottom:4px">Step 1 · Season Info</div>
+      <div style="color:#aaa">Name, description, start date, end date. Validates that end &gt; start.</div>
+    </div>
+    <div style="background:#1e2a3a;border:1px solid #2a6496;border-radius:4px;padding:10px">
+      <div style="font-weight:bold;color:#fff;margin-bottom:4px">Step 2 · Activity Rates</div>
+      <div style="color:#aaa">All 8 activity types pre-listed. Pts/unit + scale per row. Live "effective rate" label. Set to 0 to disable.</div>
+    </div>
+    <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+      <div style="font-weight:bold;color:#888;margin-bottom:4px">Step 3 · Objectives <span style="color:#555;font-size:10px">(optional)</span></div>
+      <div style="color:#aaa">Add milestone objectives. Each has name, activity type, target count, bonus points. Can skip.</div>
+    </div>
+    <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+      <div style="font-weight:bold;color:#888;margin-bottom:4px">Step 4 · Tiers <span style="color:#555;font-size:10px">(optional)</span></div>
+      <div style="color:#aaa">Tier name, point threshold, package picker (dropdown from existing packages). Warning shown if no packages exist yet.</div>
+    </div>
+    <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+      <div style="font-weight:bold;color:#888;margin-bottom:4px">Step 5 · Leaderboard <span style="color:#555;font-size:10px">(optional)</span></div>
+      <div style="color:#aaa">Rank brackets (min–max) each linked to a package. Can skip if no competitive rewards planned.</div>
+    </div>
+    <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:10px">
+      <div style="font-weight:bold;color:#888;margin-bottom:4px">Step 6 · Review &amp; Queue</div>
+      <div style="color:#aaa">Read-only summary of all config. "Add to Change Queue" button. Season is created as a Draft — admin activates it separately.</div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px">Does the wizard flow make sense? Any steps to add, merge, or reorder?</p>

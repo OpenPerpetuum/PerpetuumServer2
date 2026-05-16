@@ -47,20 +47,28 @@ namespace Perpetuum.AdminTool.Common
             var fresh = new List<EntityPickItem>();
             var names = new Dictionary<int, string>();
             await using var cmd = cn.CreateCommand();
-            cmd.CommandText = "select definition, definitionname, categoryflags, enabled from entitydefaults order by definitionname";
+            cmd.CommandText = "select definition, definitionname, categoryflags, enabled, hidden, " +
+                              "ISNULL(tiertype,0), ISNULL(tierlevel,0) " +
+                              "from entitydefaults order by definitionname";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                var def = reader.GetInt32(0);
-                var name = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                var def           = reader.GetInt32(0);
+                var name          = reader.IsDBNull(1) ? "" : reader.GetString(1);
                 var categoryFlags = reader.IsDBNull(2) ? 0L : reader.GetInt64(2);
-                var enabled = !reader.IsDBNull(3) && reader.GetBoolean(3);
+                var enabled       = !reader.IsDBNull(3) && reader.GetBoolean(3);
+                var hidden        = !reader.IsDBNull(4) && reader.GetBoolean(4);
+                var tierType      = reader.GetInt32(5);
+                var tierLevel     = reader.GetInt32(6);
                 fresh.Add(new EntityPickItem
                 {
-                    Definition = def,
-                    Name = name,
+                    Definition    = def,
+                    Name          = name,
                     CategoryFlags = categoryFlags,
-                    Enabled = enabled
+                    Enabled       = enabled,
+                    Hidden        = hidden,
+                    TierType      = tierType,
+                    TierLevel     = tierLevel,
                 });
                 names[def] = name;
             }

@@ -7,6 +7,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
+using Perpetuum.AdminTool.Packages;
+using Perpetuum.AdminTool.Seasons;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Views;
 
@@ -33,6 +35,7 @@ namespace Perpetuum.AdminTool.ViewModels
         public NpcLootViewModel NpcLoot { get; }
         public PresencesViewModel Presences { get; }
         public FlocksViewModel Flocks { get; }
+        public SeasonsViewModel Seasons { get; }
 
         public MainViewModel(AppSettingsStore store, AppSession session)
         {
@@ -47,6 +50,13 @@ namespace Perpetuum.AdminTool.ViewModels
             NpcLoot = new NpcLootViewModel(store, session.Changes, session.Lookups);
             Presences = new PresencesViewModel(store, session.Changes);
             Flocks = new FlocksViewModel(store, session.Changes, session.Lookups);
+            Seasons = new SeasonsViewModel(
+                new SeasonRepository(store.Settings.Connection),
+                new PackageRepository(store.Settings.Connection),
+                session.Changes,
+                session.Lookups,
+                store.Settings.Connection,
+                Translations);
             UpdateStatus();
 
             _ = InitializeLookupsAsync();

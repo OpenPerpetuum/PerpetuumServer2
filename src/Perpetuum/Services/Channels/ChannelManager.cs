@@ -334,6 +334,17 @@ namespace Perpetuum.Services.Channels
             if (recipient is null)
             {
                 channel.SendMessageToAll(_sessionManager, sender, message);
+                // TODO: Terrible hardcode, needs to be redesigned
+                if (channel.DiscordId != null && sender.Nick != "Discord")
+                {
+                    _eventChannel.PublishMessage(
+                        new DiscordIntegrationMessage(
+                            EventType.PerpetuumToDiscord,
+                            channel.DiscordId.Value,
+                            sender.Nick,
+                            message));
+                }
+
                 return;
             }
 
