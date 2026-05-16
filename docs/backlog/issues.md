@@ -157,3 +157,34 @@ Add a `SaveGeneral` guard in `SeasonDetailViewModel`: if `Season.IsRecurring && 
 ### Notes
 Introduced by IMPROVEMENT-001 (Recurring Seasons). The wizard already validates this (gap must be ≥ 1 day), but the detail view has no equivalent guard.
 See `SeasonDetailViewModel.cs` `SaveGeneral` command for the save entry point.
+
+---
+
+## ISSUE-008 - New Item: descriptiontoken incorrectly strips def_ prefix
+
+Status: TODO
+Priority: HIGH
+Area: Admin Tool / New Item Dialog
+
+### Problem
+`BasicPanelViewModel.SuggestDescriptionToken` strips the `def_` prefix from `definitionname` before appending `_desc`. When `definitionname` is `def_my_item`, the suggested `descriptiontoken` becomes `my_item_desc` instead of the correct `def_my_item_desc`.
+
+### Impact
+The auto-suggested description token will not match the actual game translation key convention, requiring the operator to manually correct it on every new item creation.
+
+### Proposed Fix
+In `src/Perpetuum.AdminTool/NewItem/BasicPanelViewModel.cs`, change `SuggestDescriptionToken` to keep the `def_` prefix if present:
+
+```csharp
+private string SuggestDescriptionToken(string defName)
+{
+    if (defName.EndsWith("_desc", StringComparison.OrdinalIgnoreCase))
+        return defName;
+    return defName + "_desc";
+}
+```
+
+Also update the `_desc` doubling guard in the design spec (section 9) to match: the suffix check should apply to the full name, not the stripped name.
+
+### Notes
+Affects Tab 1 (BasicPanel), Tab 2 (CalibrationPanel), and Tab 3 (PrototypePanel) since all three use the same `BasicPanelViewModel.SuggestDescriptionToken` method.
