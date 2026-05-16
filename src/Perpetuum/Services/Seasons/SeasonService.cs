@@ -103,6 +103,10 @@ namespace Perpetuum.Services.Seasons
                     _activeObjectives = ImmutableList<SeasonObjective>.Empty;
                     _activeTiers = ImmutableList<SeasonTier>.Empty;
                     _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+
+                    var pending = _repository.GetPendingRecurringSeason();
+                    if (pending != null)
+                        _repository.SetSeasonActive(pending.Id, true);
                 }
                 // No active season — discard any pending login chars
                 while (_pendingIntroChars.TryDequeue(out _)) { }
@@ -285,6 +289,9 @@ namespace Perpetuum.Services.Seasons
             chatMessage.AppendLine("Thanks for participating! Stay tuned for the next season.");
 
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
+
+            if (season.IsRecurring)
+                _repository.CloneSeasonForNextIteration(season);
         }
 
         internal void AnnounceLeaderboard(Season? season)
