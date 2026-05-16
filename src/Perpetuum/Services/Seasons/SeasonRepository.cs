@@ -471,6 +471,9 @@ namespace Perpetuum.Services.Seasons
 
         public Season CloneSeasonForNextIteration(Season previous)
         {
+            if (previous.RecurrenceGapDays == null)
+                throw new InvalidOperationException($"Cannot clone season {previous.Id}: recurrence_gap_days is null on a recurring season.");
+
             int nextIteration = previous.RecurrenceIteration + 1;
             DateTime nextStart = previous.EndTime.AddDays(previous.RecurrenceGapDays!.Value);
             DateTime nextEnd = nextStart + (previous.EndTime - previous.StartTime);
