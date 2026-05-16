@@ -6,9 +6,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
+using Perpetuum.AdminTool.NewItem;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Translations;
 
@@ -151,6 +153,48 @@ namespace Perpetuum.AdminTool.ViewModels
             if (row == null) return;
             if (ReferenceEquals(SelectedRow, row)) SelectedRow = null;
             AllRows.Remove(row);
+        }
+
+        [RelayCommand]
+        private async Task OpenNewItemDialogAsync()
+        {
+            var connSettings = _settings.Settings.Connection;
+            var store = _translations.Store;
+            if (store == null)
+            {
+                StatusIsError = true;
+                StatusMessage = "Load translations first before creating a new item (needed for translation key seeding).";
+                return;
+            }
+
+            var repo = new NewItemRepository(connSettings);
+            var applier = new ChangeApplier(connSettings);
+
+            var aggregateFields = Fields.Values.ToList();
+            var englishNames = _translations.Store.Rows
+                .GroupBy(r => r.Key)
+                .ToDictionary(g => g.Key, g => g.First()[EnglishLangId]);
+
+            var vm = new NewItemDialogViewModel(
+                connSettings,
+                applier,
+                store,
+                repo,
+                _lookups,
+                AllRows.ToList());
+
+            await vm.InitializeAsync(aggregateFields, englishNames);
+
+            var dialog = new Views.NewItemDialog(vm)
+            {
+                Owner = System.Windows.Application.Current.MainWindow
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                StatusMessage = vm.SaveResultSummary;
+                await ReloadAsync();
+            }
         }
 
         public async Task ReloadAsync()
