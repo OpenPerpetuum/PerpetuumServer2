@@ -100,29 +100,36 @@ See [[IMPROVEMENT-003]] for the related Item Designer — shared UI patterns (st
 
 ## IMPROVEMENT-005 - Seasons: Additional Activity Types
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Seasons / Activities
 
 ### Description
-Expand the Seasons activity tracking system with new activity types beyond the current set. Candidate types include: production runs, artifacting, module or deployable usage, and island visitation. Each new type should integrate with the existing scoring and point-accumulation pipeline.
+Expand the Seasons activity tracking system with 12 new activity types implemented in two phases. All types integrate with the existing `RecordActivity` pipeline with no DB schema changes.
 
-### Impact
-A broader set of tracked activities makes seasons more engaging for a wider range of playstyles (industrialists, explorers, etc.), not just combat-focused players. It also provides more levers for season designers to tune the competitive balance of each season's objectives.
+### Phase 1 — Non-combat types (enum values 9–13)
+- `Prototyping` (9) — hook in ProductionProcessor.cs at job completion, branch on job type
+- `ReverseEngineering` (10) — same hook, different job type branch
+- `Production` (11) — same hook, combined items + robots
+- `ArtifactFound` (12) — hook in ArtifactScanner.cs after EP boost call; amount = 1
+- `EpEarned` (13) — hook all `AddExtensionPointsBoostAndLog` call sites + passive EP accumulation path
 
-### Proposed Implementation
-- **Production** — award points when a production job completes; parameterisable by item category, tier, or quantity produced.
-- **Artifacting** — award points on successful artifact scan/loot events; parameterisable by artifact tier or island type.
-- **Module / Deployable Usage** — award points when a specific module type or deployable is activated/deployed; parameterisable by module category or deployable type.
-- **Island Visitation** — award points the first time (or each time, configurable) a character enters a specific island or island category (alpha/beta/gamma) within a season.
-- Each new activity type should follow the existing activity handler pattern: a discrete handler class, registration in the activity type registry, and a corresponding `season_activity_types` DB record.
-- Point values and activity parameters should remain data-driven (DB/config) rather than hardcoded, consistent with existing activity types.
-- Ensure anti-farming guards (cooldowns, per-session caps) can be configured per activity type, consistent with [[IMPROVEMENT-001]] recurring season design.
+### Phase 2 — Combat types (enum values 14–20)
+- `DamageDone` (14) / `DamageReceived` (15) — hook in TakeDamage/ApplyDamageResult; amount = HP dealt
+- `ArmorRestored` (16) — hook repair module application; character = repairer; amount = HP restored
+- `EnergyDrainDealt` (17) / `EnergyDrainReceived` (18) — neutralizer + drainer modules; amount = energy removed
+- `EnergyTransferDealt` (19) / `EnergyTransferReceived` (20) — transfer module; amount = energy transferred
+
+### Anti-farming
+Handled via `unit_scale` in rates (set high for high-frequency types). Training character filter applies automatically. No new cap infrastructure needed.
+
+### Spec
+`docs/superpowers/specs/2026-05-16-improvement-005-additional-activity-types-design.md`
 
 ### Notes
-Audit existing activity tracking hooks in the production, scanning, module, and zone subsystems before wiring new event sources — prefer tapping existing domain events over introducing new ones.
-Island visitation tracking must be zone-thread-safe; consult zone update loop constraints in `docs/CONCERNS.md`.
-Anti-farming considerations are especially important for high-frequency events (module usage, production) — caps must be configurable at the season level.
+Distance Travelled was deferred — see [[IMPROVEMENT-015]].
+Verify passive EP accumulation call site (AccountManager.cs or dedicated scheduler) before wiring EpEarned.
+Confirm NPCs do not have character IDs that would cause accidental season point accumulation on DamageReceived.
 
 ## IMPROVEMENT-006 - Daily Objectives
 
@@ -357,3 +364,28 @@ Season-tied daily objectives are only meaningful during an active season, leavin
 The absence of point generation is intentional and must be enforced — these objectives must not accidentally write to any season scoring table.
 If the daily reset infrastructure from [[IMPROVEMENT-006]] is not yet built, this system should share that implementation rather than introducing a parallel reset scheduler.
 Consider whether standalone daily objectives should be visible in the same in-game UI as season daily objectives, or in a separate panel — a clear UX distinction prevents player confusion about what generates season points.
+
+---
+
+## IMPROVEMENT-015 - Seasons: Distance Travelled Activity Type
+
+Status: TODO
+Priority: LOW
+Area: Seasons / Activities
+
+### Problem
+Distance travelled was scoped out of [[IMPROVEMENT-005]] due to zone-thread-safety concerns. There is no existing hook point for movement/distance metrics in the zone update loop, and per-movement-event `RecordActivity` calls would be too frequent.
+
+### Impact
+Without this type, season designers cannot reward exploration or movement-intensive playstyles. It is a lower-priority gap since the 12 types from IMPROVEMENT-005 already cover most playstyle categories.
+
+### Proposed Fix
+- Instrument the zone movement system to accumulate distance per character over a configurable tick interval (e.g. every 5 seconds)
+- At the end of each interval, emit a single `RecordActivity(characterId, DistanceTravelled, accumulatedDistance)` call
+- The accumulator must be zone-thread-safe — stored per-unit alongside other movement state, written only from the zone update loop
+- Amount unit: metres (or internal distance units); `unit_scale` in rates handles point conversion
+
+### Notes
+Accumulation interval should be configurable to avoid excessive DB writes in high-population zones.
+Must not introduce blocking or allocation in the hot movement path — accumulate, don't write inline.
+Consult `docs/CONCERNS.md` zone update loop constraints before implementation.

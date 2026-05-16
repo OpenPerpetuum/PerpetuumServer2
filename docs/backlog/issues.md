@@ -94,3 +94,45 @@ Negative values are confusing to operators and indicate a calculation or data bu
 ### Notes
 Check whether the issue occurs only before/at season start or also mid-season.
 If the underlying data (total points) can itself be negative due to a separate bug, that should be treated as a distinct issue and not masked by clamping here.
+
+---
+
+## ISSUE-005 - RecordActivity IsInTraining() causes synchronous DB queries in combat hot path
+
+Status: TODO
+Priority: MEDIUM
+Area: Seasons / Performance
+
+### Problem
+`RecordActivity` calls `Character.Get(characterId).IsInTraining()` which issues two synchronous `ExecuteScalar` DB queries per call with no caching. For low-frequency events (NPC kills, artifact finds, mission completes) this is acceptable. However, `DamageDone` and `DamageReceived` (added in IMPROVEMENT-005 Phase 2) wire `RecordActivity` into `Unit.OnDamageTaken`, which fires every weapon cycle in the zone update loop — potentially tens of times per second per engagement when a season is active and damage rates are configured.
+
+### Impact
+When a season is active with DamageDone/DamageReceived rates configured, each combat hit incurs 2 synchronous DB round trips for training-character filtering. Under load this could degrade zone update performance. If no season is active, the early-exit at `_activeSeason == null` prevents DB access entirely.
+
+### Proposed Fix
+Move the `IsInTraining()` check to after the rate lookup in `RecordActivity`, so it only runs when a matching rate exists for the activity type — this eliminates the DB cost entirely for activity types with no configured rate. Longer term, cache the `IsInTraining` result per character (it is immutable once a character graduates from training).
+
+### Notes
+Introduced by IMPROVEMENT-005 (DamageDone/DamageReceived hooks). Other high-frequency hooks (ArmorRestored, EnergyDrain*, EnergyTransfer*) have the same exposure once rates are configured.
+See `SeasonService.cs` `RecordActivity` method for the current check order.
+
+---
+
+## ISSUE-006 - DamageDone not credited to player when attacking via RCC
+
+Status: TODO
+Priority: LOW
+Area: Seasons / Activities
+
+### Problem
+When a player controls a Remote Controlled Creature (RCC), damage attributed to the RCC arrives in `Unit.OnDamageTaken` with `source` set to the `RemoteControlledCreature` instance, not the controlling `Player`. The `source is Player` check does not match, so the controlling player receives no `DamageDone` season credit for RCC damage.
+
+### Impact
+Players using RCCs in combat cannot accumulate `DamageDone` season points. This is a known limitation of the current implementation — a low-impact gap since RCC usage is a niche playstyle.
+
+### Proposed Fix
+Resolve the RCC owner player via the zone (similar to how the NPC kill path uses `Zone.ToPlayerOrGetOwnerPlayer`). This requires zone context at the damage attribution point, which is not available in `Unit.OnDamageTaken`. Options: override `OnDamageTaken` in `RemoteControlledCreature` to resolve owner, or add owner resolution to the `Unit` base class using a virtual property.
+
+### Notes
+The NPC kill path in `Npc.cs` handles this via `Zone.ToPlayerOrGetOwnerPlayer` — use that as a reference for the resolution approach.
+Do not fix until the design decision is made: should RCC damage count toward `DamageDone`?
