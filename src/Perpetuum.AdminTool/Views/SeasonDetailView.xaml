@@ -66,6 +66,8 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Season ID:" Margin="0,4"/>
@@ -84,7 +86,44 @@
                         <TextBlock Grid.Row="4" Grid.Column="0" Text="End time (UTC):" Margin="0,4"/>
                         <DatePicker Grid.Row="4" Grid.Column="1" SelectedDate="{Binding Season.EndTime}" Margin="0,4"/>
 
-                        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                        <!-- Row 5: Recurring toggle -->
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Recurring:" Margin="0,4" VerticalAlignment="Center"/>
+                        <CheckBox Grid.Row="5" Grid.Column="1"
+                                  IsChecked="{Binding Season.IsRecurring}"
+                                  Content="Auto-restart after each run" Margin="0,6"
+                                  VerticalAlignment="Center"/>
+
+                        <!-- Row 6: Gap field (visible only when recurring) -->
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Gap between runs:" Margin="0,4" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Season.IsRecurring}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Margin="0,4">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Season.IsRecurring}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBox Width="80"
+                                     Text="{Binding Season.RecurrenceGapDays, UpdateSourceTrigger=PropertyChanged}"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
                             <Button Content="Save General" Padding="14,2" FontWeight="Bold"
                                     Command="{Binding SaveGeneralCommand}"/>
                         </StackPanel>
