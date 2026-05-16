@@ -47,7 +47,7 @@ Keep backward compatibility with existing DB channel records — constants shoul
 
 ## IMPROVEMENT-003 - Admin Tool: Item Designer
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Admin Tool / Items
 
