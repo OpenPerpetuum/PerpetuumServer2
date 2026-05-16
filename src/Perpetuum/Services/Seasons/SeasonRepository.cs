@@ -161,6 +161,7 @@ namespace Perpetuum.Services.Seasons
                 .SetParameter("@characterId", characterId)
                 .SetParameter("@seasonId", seasonId)
                 .SetParameter("@objectiveId", objectiveId)
+                // SQL Server implicitly casts datetime→date; callers always pass .Date (time stripped)
                 .SetParameter("@dayWindow", dayWindow)
                 .SetParameter("@amount", amount)
                 .ExecuteNonQuery();
@@ -372,10 +373,9 @@ namespace Perpetuum.Services.Seasons
         public void AddObjective(int seasonId, SeasonActivityType type, long target,
             int bonusPts, string name, string description, bool isDaily = false, int? packageId = null)
         {
-            string pkgSql = packageId.HasValue ? packageId.Value.ToString() : "NULL";
             Db.Query("INSERT INTO season_objectives " +
                      "(season_id, activity_type, target_value, bonus_points, name, description, is_daily, package_id) " +
-                     $"VALUES (@seasonId, @type, @target, @bonus, @name, @desc, @isDaily, {pkgSql})")
+                     "VALUES (@seasonId, @type, @target, @bonus, @name, @desc, @isDaily, @packageId)")
               .SetParameter("@seasonId", seasonId)
               .SetParameter("@type", (int)type)
               .SetParameter("@target", target)
@@ -383,6 +383,7 @@ namespace Perpetuum.Services.Seasons
               .SetParameter("@name", name)
               .SetParameter("@desc", description)
               .SetParameter("@isDaily", isDaily ? 1 : 0)
+              .SetParameter("@packageId", (object?)packageId ?? DBNull.Value)
               .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLInsertError);
         }
 
