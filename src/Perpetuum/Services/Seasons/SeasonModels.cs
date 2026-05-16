@@ -8,6 +8,10 @@ namespace Perpetuum.Services.Seasons
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public bool IsActive { get; set; }
+        public bool IsRecurring { get; set; }
+        public int? RecurrenceGapDays { get; set; }
+        public int RecurrenceIteration { get; set; } = 1;
+        public string? RecurrenceBaseName { get; set; }
     }
 
     public class SeasonActivityRate

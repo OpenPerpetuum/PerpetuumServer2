@@ -8,9 +8,11 @@ namespace Perpetuum.Services.Seasons
 
         public Season? GetActiveSeason()
         {
-            var record = Db.Query("SELECT id, name, description, start_time, end_time, is_active " +
-                                  "FROM seasons WHERE is_active = 1")
-                           .ExecuteSingleRow();
+            var record = Db.Query(
+                "SELECT id, name, description, start_time, end_time, is_active, " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name " +
+                "FROM seasons WHERE is_active = 1")
+                .ExecuteSingleRow();
 
             if (record == null) return null;
 
@@ -22,6 +24,10 @@ namespace Perpetuum.Services.Seasons
                 StartTime = DateTime.SpecifyKind(record.GetValue<DateTime>("start_time"), DateTimeKind.Utc),
                 EndTime = DateTime.SpecifyKind(record.GetValue<DateTime>("end_time"), DateTimeKind.Utc),
                 IsActive = record.GetValue<bool>("is_active"),
+                IsRecurring = record.GetValue<bool>("is_recurring"),
+                RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
+                RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
+                RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
             };
         }
 
@@ -412,10 +418,12 @@ namespace Perpetuum.Services.Seasons
 
         public Season? GetSeasonById(int seasonId)
         {
-            var record = Db.Query("SELECT id, name, description, start_time, end_time, is_active " +
-                                  "FROM seasons WHERE id = @id")
-                           .SetParameter("@id", seasonId)
-                           .ExecuteSingleRow();
+            var record = Db.Query(
+                "SELECT id, name, description, start_time, end_time, is_active, " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name " +
+                "FROM seasons WHERE id = @id")
+                .SetParameter("@id", seasonId)
+                .ExecuteSingleRow();
 
             if (record == null) return null;
 
@@ -427,6 +435,10 @@ namespace Perpetuum.Services.Seasons
                 StartTime = DateTime.SpecifyKind(record.GetValue<DateTime>("start_time"), DateTimeKind.Utc),
                 EndTime = DateTime.SpecifyKind(record.GetValue<DateTime>("end_time"), DateTimeKind.Utc),
                 IsActive = record.GetValue<bool>("is_active"),
+                IsRecurring = record.GetValue<bool>("is_recurring"),
+                RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
+                RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
+                RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
             };
         }
     }
