@@ -165,8 +165,14 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8">
                         <Button Content="+ Add Objective" Padding="8,2" Command="{Binding AddObjectiveCommand}"/>
+                        <TextBlock Text="Show:" VerticalAlignment="Center" Margin="16,0,6,0" Foreground="DimGray"/>
+                        <ComboBox Width="140"
+                                  ItemsSource="{Binding ObjectiveFilterOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding ObjectiveFilter}"/>
                     </StackPanel>
-                    <DataGrid ItemsSource="{Binding Objectives}"
+                    <DataGrid ItemsSource="{Binding FilteredObjectives}"
                               AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                               HeadersVisibility="Column" GridLinesVisibility="All"
                               SelectionMode="Single" SelectionUnit="FullRow" Margin="8">
@@ -192,6 +198,27 @@
                             <DataGridTextColumn Header="Target" Binding="{Binding TargetValue, UpdateSourceTrigger=LostFocus}" Width="100"/>
                             <DataGridTextColumn Header="Bonus Pts" Binding="{Binding BonusPoints, UpdateSourceTrigger=LostFocus}" Width="100"/>
                             <DataGridTextColumn Header="Order" Binding="{Binding DisplayOrder, UpdateSourceTrigger=LostFocus}" Width="80"/>
+                            <DataGridCheckBoxColumn Header="Is Daily"
+                                                    Binding="{Binding IsDaily}"
+                                                    Width="80"/>
+                            <DataGridTemplateColumn Header="Reward Package" Width="160">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="4,0" VerticalAlignment="Center"
+                                                   Text="{Binding SelectedPackage.Name, FallbackValue='(none)'}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Source={StaticResource VmProxy}, Path=Data.Packages}"
+                                                  DisplayMemberPath="Name"
+                                                  IsEditable="True"
+                                                  IsTextSearchEnabled="True"
+                                                  TextSearch.TextPath="Name"
+                                                  SelectedItem="{Binding SelectedPackage, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="" Width="80">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>

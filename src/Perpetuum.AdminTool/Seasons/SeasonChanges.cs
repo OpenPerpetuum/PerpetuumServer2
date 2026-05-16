@@ -61,19 +61,28 @@ namespace Perpetuum.AdminTool.Seasons
                 $"WHEN NOT MATCHED THEN INSERT (season_id, activity_type, points_per_unit, unit_scale) " +
                 $"VALUES ({row.SeasonId}, {(int)row.ActivityType}, {SqlLiteral.Of(row.PointsPerUnit)}, {row.UnitScale});");
 
-        public static IPendingChange BuildInsertObjective(SeasonObjectiveRow row) =>
-            new RawSqlChange(
+        public static IPendingChange BuildInsertObjective(SeasonObjectiveRow row)
+        {
+            return new RawSqlChange(
                 $"season_objectives: insert '{row.Name}' in season {row.SeasonId}",
-                $"INSERT INTO season_objectives (season_id, name, description, activity_type, target_value, bonus_points, display_order) VALUES (" +
-                $"{row.SeasonId}, {SqlLiteral.Of(row.Name)}, {SqlLiteral.Of(row.Description)}, {(int)row.ActivityType}, " +
-                $"{row.TargetValue}, {row.BonusPoints}, {row.DisplayOrder})");
+                $"INSERT INTO season_objectives (season_id, name, description, activity_type, " +
+                $"target_value, bonus_points, display_order, is_daily, package_id) VALUES (" +
+                $"{row.SeasonId}, {SqlLiteral.Of(row.Name)}, {SqlLiteral.Of(row.Description)}, " +
+                $"{(int)row.ActivityType}, {row.TargetValue}, {row.BonusPoints}, {row.DisplayOrder}, " +
+                $"{(row.IsDaily ? 1 : 0)}, {SqlLiteral.OfNullableInt(row.PackageId)})");
+        }
 
-        public static IPendingChange BuildUpdateObjective(SeasonObjectiveRow row) =>
-            new RawSqlChange(
+        public static IPendingChange BuildUpdateObjective(SeasonObjectiveRow row)
+        {
+            return new RawSqlChange(
                 $"season_objectives: update id {row.Id}",
-                $"UPDATE season_objectives SET name = {SqlLiteral.Of(row.Name)}, description = {SqlLiteral.Of(row.Description)}, " +
+                $"UPDATE season_objectives SET name = {SqlLiteral.Of(row.Name)}, " +
+                $"description = {SqlLiteral.Of(row.Description)}, " +
                 $"activity_type = {(int)row.ActivityType}, target_value = {row.TargetValue}, " +
-                $"bonus_points = {row.BonusPoints}, display_order = {row.DisplayOrder} WHERE id = {row.Id}");
+                $"bonus_points = {row.BonusPoints}, display_order = {row.DisplayOrder}, " +
+                $"is_daily = {(row.IsDaily ? 1 : 0)}, package_id = {SqlLiteral.OfNullableInt(row.PackageId)} " +
+                $"WHERE id = {row.Id}");
+        }
 
         public static IPendingChange BuildDeleteObjective(SeasonObjectiveRow row) =>
             new RawSqlChange($"season_objectives: delete id {row.Id}",

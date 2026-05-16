@@ -77,7 +77,7 @@ namespace Perpetuum.AdminTool.Seasons
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
                 "SELECT id, season_id, name, description, activity_type, " +
-                "target_value, bonus_points, display_order " +
+                "target_value, bonus_points, display_order, is_daily, package_id " +
                 "FROM season_objectives WHERE season_id = @seasonId ORDER BY display_order";
             cmd.Parameters.AddWithValue("@seasonId", seasonId);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -85,14 +85,16 @@ namespace Perpetuum.AdminTool.Seasons
             {
                 result.Add(new SeasonObjectiveRow
                 {
-                    Id = reader.GetInt32(0),
-                    SeasonId = reader.GetInt32(1),
-                    Name = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                    Description = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    Id           = reader.GetInt32(0),
+                    SeasonId     = reader.GetInt32(1),
+                    Name         = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    Description  = reader.IsDBNull(3) ? "" : reader.GetString(3),
                     ActivityType = (SeasonActivityType)reader.GetInt32(4),
-                    TargetValue = reader.GetInt64(5),
-                    BonusPoints = reader.GetInt32(6),
-                    DisplayOrder = reader.GetInt32(7)
+                    TargetValue  = reader.GetInt64(5),
+                    BonusPoints  = reader.GetInt32(6),
+                    DisplayOrder = reader.GetInt32(7),
+                    IsDaily      = !reader.IsDBNull(8) && reader.GetBoolean(8),
+                    PackageId    = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9),
                 });
             }
             return result;
@@ -228,7 +230,7 @@ namespace Perpetuum.AdminTool.Seasons
             await cn.OpenAsync();
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
-                "SELECT o.id, o.name, COUNT(p.character_id) AS completed_count " +
+                "SELECT o.id, o.name, COUNT(DISTINCT p.character_id) AS completed_count " +
                 "FROM season_objectives o " +
                 "LEFT JOIN season_objective_progress p ON p.objective_id = o.id " +
                 "    AND p.season_id = @seasonId AND p.completed = 1 " +

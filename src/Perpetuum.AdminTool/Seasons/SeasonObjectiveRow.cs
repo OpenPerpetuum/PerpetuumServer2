@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Perpetuum.AdminTool.Packages;
 using Perpetuum.Services.Seasons;
 
 namespace Perpetuum.AdminTool.Seasons
@@ -15,5 +16,13 @@ namespace Perpetuum.AdminTool.Seasons
         [ObservableProperty] private long _targetValue;
         [ObservableProperty] private int _bonusPoints;
         [ObservableProperty] private int _displayOrder;
+        [ObservableProperty] private bool _isDaily;
+        [ObservableProperty] private int? _packageId;
+        [ObservableProperty] private PackageRow? _selectedPackage;
+
+        partial void OnSelectedPackageChanged(PackageRow? value)
+        {
+            PackageId = value?.Id;
+        }
     }
 }

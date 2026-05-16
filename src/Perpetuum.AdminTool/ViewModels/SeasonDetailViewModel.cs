@@ -51,6 +51,26 @@ namespace Perpetuum.AdminTool.ViewModels
                 new ActivityTypeOption(SeasonActivityType.IntrusionPoint,  "Intrusion Point"),
             };
 
+        public IReadOnlyList<ObjectiveFilterOption> ObjectiveFilterOptions { get; } = new[]
+        {
+            new ObjectiveFilterOption(ObjectiveFilterMode.All,     "All"),
+            new ObjectiveFilterOption(ObjectiveFilterMode.OneTime, "One-time only"),
+            new ObjectiveFilterOption(ObjectiveFilterMode.Daily,   "Daily only"),
+        };
+
+        [ObservableProperty]
+        private ObjectiveFilterMode _objectiveFilter = ObjectiveFilterMode.All;
+
+        partial void OnObjectiveFilterChanged(ObjectiveFilterMode value) =>
+            OnPropertyChanged(nameof(FilteredObjectives));
+
+        public IEnumerable<SeasonObjectiveRow> FilteredObjectives => ObjectiveFilter switch
+        {
+            ObjectiveFilterMode.OneTime => Objectives.Where(o => !o.IsDaily),
+            ObjectiveFilterMode.Daily   => Objectives.Where(o => o.IsDaily),
+            _                           => Objectives,
+        };
+
         public bool CanActivate => !Season.IsActive;
         public bool CanDeactivate => Season.IsActive;
         public string StatusBadge => Season.CardState switch
@@ -81,6 +101,22 @@ namespace Perpetuum.AdminTool.ViewModels
             PackagesVm = packagesVm;
             StatisticsVm = statsVm;
             Packages = packages;
+            Objectives.CollectionChanged += (_, e) =>
+            {
+                if (e.NewItems != null)
+                    foreach (SeasonObjectiveRow r in e.NewItems)
+                        r.PropertyChanged += OnObjectivePropertyChanged;
+                if (e.OldItems != null)
+                    foreach (SeasonObjectiveRow r in e.OldItems)
+                        r.PropertyChanged -= OnObjectivePropertyChanged;
+                OnPropertyChanged(nameof(FilteredObjectives));
+            };
+        }
+
+        private void OnObjectivePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SeasonObjectiveRow.IsDaily))
+                OnPropertyChanged(nameof(FilteredObjectives));
         }
 
         public async Task LoadAsync()
@@ -118,7 +154,11 @@ namespace Perpetuum.AdminTool.ViewModels
                 Objectives.Clear();
                 if (Season.Id > 0)
                     foreach (var o in await _repo.LoadObjectivesAsync(Season.Id))
+                    {
+                        if (o.PackageId.HasValue)
+                            o.SelectedPackage = Packages.FirstOrDefault(p => p.Id == o.PackageId);
                         Objectives.Add(o);
+                    }
 
                 Tiers.Clear();
                 if (Season.Id > 0)
@@ -238,14 +278,15 @@ namespace Perpetuum.AdminTool.ViewModels
             }
             var row = new SeasonObjectiveRow
             {
-                SeasonId = Season.Id,
-                Name = "New Objective",
-                Description = "",
+                SeasonId     = Season.Id,
+                Name         = "New Objective",
+                Description  = "",
                 ActivityType = SeasonActivityType.NpcKill,
-                TargetValue = 1,
-                BonusPoints = 0,
+                TargetValue  = 1,
+                BonusPoints  = 0,
                 DisplayOrder = Objectives.Count,
-                IsNew = true
+                IsNew        = true,
+                IsDaily      = ObjectiveFilter == ObjectiveFilterMode.Daily,
             };
             Objectives.Add(row);
             StatusIsError = false;
@@ -387,4 +428,6 @@ namespace Perpetuum.AdminTool.ViewModels
     }
 
     public record ActivityTypeOption(SeasonActivityType Value, string Label);
+    public enum ObjectiveFilterMode { All, OneTime, Daily }
+    public record ObjectiveFilterOption(ObjectiveFilterMode Value, string Label);
 }
