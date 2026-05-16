@@ -1,6 +1,8 @@
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Modules.ModuleProperties;
+using Perpetuum.Players;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Units;
 using Perpetuum.Zones;
 using Perpetuum.Zones.NpcSystem.ThreatManaging;
@@ -62,6 +64,10 @@ namespace Perpetuum.Modules
             packet.AppendDouble(amount);
             packet.AppendDouble(total);
             packet.Send(target, ParentRobot);
+
+            var repaired = (long)total;
+            if (repaired > 0 && ParentRobot is Player repairer)
+                SeasonServiceLocator.Instance?.RecordActivity(repairer.Character.Id, SeasonActivityType.ArmorRestored, repaired);
         }
     }
 
