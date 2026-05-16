@@ -2,6 +2,8 @@ using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
 using Perpetuum.Modules.ModuleProperties;
+using Perpetuum.Players;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Units;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Locking.Locks;
@@ -53,6 +55,11 @@ namespace Perpetuum.Modules
                 unitLock.Target.Core += coreNeutralized;
                 coreTransfered = Math.Abs(targetCore - unitLock.Target.Core);
                 unitLock.Target.SpreadAssistThreatToNpcs(ParentRobot, new Threat(ThreatType.Support, coreAmount * 2));
+
+                if (ParentRobot is Player giver && coreNeutralized > 0.0)
+                    SeasonServiceLocator.Instance?.RecordActivity(giver.Character.Id, SeasonActivityType.EnergyTransferDealt, (long)coreNeutralized);
+                if (unitLock.Target is Player receiver && coreTransfered > 0.0)
+                    SeasonServiceLocator.Instance?.RecordActivity(receiver.Character.Id, SeasonActivityType.EnergyTransferReceived, (long)coreTransfered);
             }
 
             CombatLogPacket packet = new CombatLogPacket(CombatLogType.EnergyTransfer, unitLock.Target, ParentRobot, this);
