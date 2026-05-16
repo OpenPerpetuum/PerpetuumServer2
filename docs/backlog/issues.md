@@ -231,6 +231,49 @@ column also accepts negative/decimal input correctly after the fix.
 
 ---
 
+## ISSUE-011 - New Item dialog broken when Entities tab has never been reloaded
+
+Status: TODO
+Priority: HIGH
+Area: Admin Tool / New Item Dialog / Entities
+
+### Problem
+`NewItemDialogViewModel` depends on two data sources that are only populated when the user
+explicitly clicks "Reload" on the Entities tab:
+
+- **`EntitiesViewModel.AllRows`** — passed as `existingRows` to `NewItemDialogViewModel`,
+  used to build `_existingRowsById`. When empty, selecting a clone source silently does nothing:
+  `LoadCloneAsync` calls `_existingRowsById.TryGetValue(definition, out var row)` and returns
+  immediately without populating any fields.
+- **`EntitiesViewModel.Fields`** — passed as `aggregateFields` to `InitializeAsync`. When empty,
+  the Stats tab has no field pickers and the Property Modifiers tab has no options.
+
+The clone source *dropdown* appears populated (it draws from `LookupCache.Entities`, which IS
+loaded on login via `MainViewModel.InitializeLookupsAsync`), so the operator sees a list of
+entities to copy from but receives no feedback and no data when selecting one.
+
+### Impact
+Opening "New Item..." before ever visiting the Entities tab produces a broken dialog: cloning
+an existing entity does nothing, and the Stats and Property Modifiers tabs are completely empty.
+An operator unaware of the required tab-visit order will assume the feature is broken.
+
+### Proposed Fix
+In `MainViewModel.InitializeLookupsAsync` (or immediately after), also trigger
+`Entities.ReloadAsync()` so that `AllRows` and `Fields` are populated at startup alongside the
+`LookupCache`. This requires no new DB queries beyond what "Reload" already does.
+
+Alternatively, in `EntitiesViewModel.OpenNewItemDialogAsync`, guard with an early
+`if (AllRows.Count == 0 || Fields.Count == 0) await ReloadAsync();` before opening the dialog,
+so the required data is fetched on demand if missing.
+
+### Notes
+`MainViewModel` constructor: `_ = InitializeLookupsAsync()` (line ~62) — the startup
+refresh already calls `LookupCache.RefreshAllAsync` but does not call `Entities.ReloadAsync`.
+`EntitiesViewModel.ReloadAsync` (line ~200) is the existing load path for both `AllRows` and
+`Fields`; reuse it rather than introducing a separate aggregate-fields load.
+
+---
+
 ## ISSUE-009 - New Item dialog ignores Apply mode, always writes directly to DB
 
 Status: TODO
