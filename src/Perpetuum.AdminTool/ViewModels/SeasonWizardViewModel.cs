@@ -47,6 +47,8 @@ namespace Perpetuum.AdminTool.ViewModels
         [ObservableProperty] private DateTime _endTime = DateTime.UtcNow.Date.AddDays(30);
         [ObservableProperty] private string _startTimeText = "00:00";
         [ObservableProperty] private string _endTimeText = "00:00";
+        [ObservableProperty] private bool _isRecurring;
+        [ObservableProperty] private int _recurrenceGapDays = 7;
 
         public ObservableCollection<SeasonActivityRateRow> ActivityRates { get; } = new();
         public ObservableCollection<SeasonObjectiveRow> Objectives { get; } = new();
@@ -178,6 +180,8 @@ namespace Perpetuum.AdminTool.ViewModels
         partial void OnEndTimeChanged(DateTime value) => ValidateStep1();
         partial void OnStartTimeTextChanged(string value) => ApplyTimeText(value, isStart: true);
         partial void OnEndTimeTextChanged(string value)   => ApplyTimeText(value, isStart: false);
+        partial void OnIsRecurringChanged(bool value) => ValidateStep1();
+        partial void OnRecurrenceGapDaysChanged(int value) => ValidateStep1();
 
         private void ApplyTimeText(string text, bool isStart)
         {
@@ -211,6 +215,8 @@ namespace Perpetuum.AdminTool.ViewModels
                 Step1Validation = "End time must be in HH:mm format (UTC).";
             else if (EndTime <= StartTime)
                 Step1Validation = "End time must be after start time.";
+            else if (IsRecurring && RecurrenceGapDays < 1)
+                Step1Validation = "Gap between runs must be at least 1 day.";
             else
                 Step1Validation = "";
             OnPropertyChanged(nameof(Step1Validation));
@@ -310,9 +316,15 @@ namespace Perpetuum.AdminTool.ViewModels
         {
             var sb = new StringBuilder();
             sb.AppendLine("DECLARE @seasonId INT;");
-            sb.AppendLine($"INSERT INTO seasons (name, description, start_time, end_time, is_active)");
-            sb.AppendLine($"VALUES ({SqlLiteral.Of(Name)}, {SqlLiteral.Of(Description)},");
-            sb.AppendLine($"  '{DateTime.SpecifyKind(StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', '{DateTime.SpecifyKind(EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0);");
+            string displayName = IsRecurring ? $"{Name}, Run #1" : Name;
+            string gapSql = IsRecurring ? RecurrenceGapDays.ToString() : "NULL";
+            string baseNameSql = IsRecurring ? SqlLiteral.Of(Name) : "NULL";
+            sb.AppendLine("INSERT INTO seasons (name, description, start_time, end_time, is_active, " +
+                          "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name)");
+            sb.AppendLine($"VALUES ({SqlLiteral.Of(displayName)}, {SqlLiteral.Of(Description)},");
+            sb.AppendLine($"  '{DateTime.SpecifyKind(StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
+                          $"'{DateTime.SpecifyKind(EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0, " +
+                          $"{(IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql});");
             sb.AppendLine("SET @seasonId = SCOPE_IDENTITY();");
 
             foreach (var rate in ActivityRates.Where(r => r.PointsPerUnit > 0))
