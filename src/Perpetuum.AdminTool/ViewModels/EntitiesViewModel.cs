@@ -160,6 +160,12 @@ namespace Perpetuum.AdminTool.ViewModels
         [RelayCommand]
         private async Task OpenNewItemDialogAsync()
         {
+            if (AllRows.Count == 0 || Fields.Count == 0)
+                await ReloadAsync();
+
+            if (StatusIsError)
+                return;
+
             var connSettings = _settings.Settings.Connection;
             var store = _translations.Store;
             if (store == null)

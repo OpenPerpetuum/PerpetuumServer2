@@ -233,7 +233,7 @@ column also accepts negative/decimal input correctly after the fix.
 
 ## ISSUE-011 - New Item dialog broken when Entities tab has never been reloaded
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Admin Tool / New Item Dialog / Entities
 
