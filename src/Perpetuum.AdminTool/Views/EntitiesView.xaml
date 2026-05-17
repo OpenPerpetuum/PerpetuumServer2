@@ -16,6 +16,9 @@
                 <Button Content="New Item..." Padding="10,2" Margin="0,0,8,0"
                         Command="{Binding OpenNewItemDialogCommand}"
                         IsEnabled="{Binding IsLoading, Converter={x:Static common:InverseBoolConverter.Instance}}"/>
+                <Button Content="New Robot..." Padding="10,2" Margin="0,0,8,0"
+                        Command="{Binding OpenNewRobotDialogCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={x:Static common:InverseBoolConverter.Instance}}"/>
                 <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,4,0"/>
                 <TextBox Width="240"
                          Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged, Delay=200}"

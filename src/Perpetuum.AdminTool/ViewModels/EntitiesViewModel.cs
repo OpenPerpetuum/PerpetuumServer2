@@ -11,6 +11,7 @@ using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.NewItem;
+using Perpetuum.AdminTool.NewRobot;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Translations;
 
@@ -196,6 +197,58 @@ namespace Perpetuum.AdminTool.ViewModels
             await vm.InitializeAsync(aggregateFields, englishNames);
 
             var dialog = new Views.NewItemDialog(vm)
+            {
+                Owner = System.Windows.Application.Current.MainWindow
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                StatusMessage = vm.SaveResultSummary;
+                await ReloadAsync();
+            }
+        }
+
+        [RelayCommand]
+        private async Task OpenNewRobotDialogAsync()
+        {
+            if (AllRows.Count == 0 || Fields.Count == 0)
+                await ReloadAsync();
+
+            if (StatusIsError)
+                return;
+
+            var connSettings = _settings.Settings.Connection;
+            var store = _translations.Store;
+            if (store == null)
+            {
+                StatusIsError = true;
+                StatusMessage = "Load translations first before creating a new robot (needed for translation key seeding).";
+                return;
+            }
+
+            var repo = new NewItemRepository(connSettings);
+            var robotRepo = new NewRobotRepository(connSettings);
+            var applier = new ChangeApplier(connSettings);
+
+            var aggregateFields = Fields.Values.ToList();
+            var englishNames = _translations.Store.Rows
+                .GroupBy(r => r.Key)
+                .ToDictionary(g => g.Key, g => g.First()[EnglishLangId]);
+
+            var vm = new NewRobotDialogViewModel(
+                connSettings,
+                applier,
+                store,
+                repo,
+                robotRepo,
+                _lookups,
+                AllRows.ToList(),
+                _session,
+                _settings);
+
+            await vm.InitializeAsync(aggregateFields, englishNames);
+
+            var dialog = new Views.NewRobotDialog(vm)
             {
                 Owner = System.Windows.Application.Current.MainWindow
             };

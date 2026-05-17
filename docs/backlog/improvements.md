@@ -72,7 +72,7 @@ The comparison/reference view is a UX aid only; it must not overwrite the new it
 
 ## IMPROVEMENT-004 - Admin Tool: Robot Designer
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Admin Tool / Robots
 
@@ -461,3 +461,48 @@ the existing `BasicPanel` property; no new fields are needed.
 The `MainViewModel.CommitAsync` SqlScript path uses the same
 `admintool_<date>_<time>.sql` template for multi-change commits — that
 path is out of scope since it covers multiple changes, not a single item.
+
+
+## IMPROVEMENT-018 - New Robot dialog UX improvements
+
+Status: TODO
+Priority: HIGH
+Area: Admin Tool / Robots
+
+### Description
+
+Three UX improvements to the New Robot dialog (IMPROVEMENT-004):
+
+1. **IsRobot default true** — The `IsRobot` checkbox on the Basic tab should be checked by default when the New Robot dialog opens, since the dialog is purpose-built for robots.
+
+2. **Per-part Clone from pickers** — Head, Chassis, Leg, and Inventory tabs each need a "Clone from" ComboBox (same pattern as the main entity clone picker on the dialog header). Selecting an existing part entity pre-fills that tab's stats rows with the source entity's `aggregatevalues`, with an inline "Original" column in the stats DataGrid showing the cloned values for comparison (same pattern as `StatsPanelViewModel.LoadFromClone`).
+
+3. **Category-filtered part pickers** — Each part's clone picker only lists entities whose `CategoryFlags` matches the relevant flag (and its descendants) using the existing `CategoryFlagsNode.ContainsOrEquals` logic:
+   - Main robot picker → `cf_robots` (`0x0000000000000001`)
+   - Head picker → `cf_robot_head` (`0x0000000000000150`)
+   - Chassis picker → `cf_robot_chassis` (`0x0000000000000250`)
+   - Leg picker → `cf_robot_leg` (`0x0000000000000350`)
+   - Inventory picker → `cf_robot_inventory` (`0x0000000000030915`)
+
+### Impact
+
+Without `IsRobot` defaulting to true, operators must manually check it every time — the dialog name implies it. Without per-part cloning, operators must manually enter all stats for each part from scratch, which is error-prone and slow for robots that share a part family. The category filter ensures the picker only surfaces relevant entities rather than the full 1000+ entity list.
+
+### Proposed Fix
+
+**IsRobot default:**
+- In `NewRobotDialogViewModel` constructor, set `BasicPanel.IsRobot = true` after constructing `BasicPanel`.
+
+**Per-part clone pickers:**
+- Add `IReadOnlyList<PackageItemPickItem>` observable properties to `NewRobotDialogViewModel` for each part: `HeadItems`, `ChassisItems`, `LegItems`, `InventoryItems`. Populate them in `InitializeAsync` by filtering `AllRows` (or `_lookupCache.Entities`) by the matching `CategoryFlags` using `CategoryFlagsNode.ContainsOrEquals`.
+- Add `[ObservableProperty] PackageItemPickItem? _cloneHead`, `_cloneChassis`, `_cloneLeg`, `_cloneInventory` on the dialog VM.
+- Wire `partial void OnCloneXxxChanged` → load that part's `aggregatevalues` from DB (via `NewRobotRepository` — add a `LoadStatsAsync(int definition)` method that queries `aggregatevalues`) → call `XxxStatsPanel.LoadFromClone(stats)`.
+- Add a ComboBox on each part tab in `NewRobotDialog.xaml` (same layout as the main clone picker header bar), bound to `CloneHead` / `HeadItems` etc.
+
+**Category filtering implementation:**
+- Use `CategoryFlagsHierarchy.BuildRoots()` (already available on `EntitiesViewModel`) or construct a single `CategoryFlagsNode` from the known flag value and call `ContainsOrEquals(row.CategoryFlags)` inline. `PackageItemPickItem` construction already exists in `NewItemRepository` — the same factory or a local LINQ filter over `AllRows` is sufficient.
+
+### Notes
+- `CategoryFlagsNode.ContainsOrEquals` handles both exact match and descendant matching, so sub-types within each category are included automatically.
+- `StatsPanelViewModel.LoadFromClone` already supports the "Original" column display — no changes needed to that class.
+- The main entity clone picker (existing) is not affected; it should remain unfiltered or continue with its current filter.
