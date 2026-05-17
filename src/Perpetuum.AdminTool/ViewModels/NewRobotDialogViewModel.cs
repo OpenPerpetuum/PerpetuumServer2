@@ -89,6 +89,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
                                         .ToHashSet(StringComparer.Ordinal);
 
         BasicPanel = new BasicPanelViewModel(BasicPanelMode.Main, existingNames);
+        BasicPanel.IsRobot = true;
         CalibrationPanel = new BasicPanelViewModel(BasicPanelMode.CalibrationTemplate, existingNames);
         PrototypePanel = new BasicPanelViewModel(BasicPanelMode.Prototype, existingNames);
         StatsPanel = new StatsPanelViewModel();
