@@ -276,7 +276,7 @@ refresh already calls `LookupCache.RefreshAllAsync` but does not call `Entities.
 
 ## ISSUE-009 - New Item dialog ignores Apply mode, always writes directly to DB
 
-Status: TODO
+Status: DONE
 Priority: CRITICAL
 Area: Admin Tool / New Item Dialog
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,6 +24,8 @@ public partial class NewItemDialogViewModel : ObservableObject
     private readonly NewItemRepository _repository;
     private readonly LookupCache _lookupCache;
     private readonly Dictionary<int, EntityDefaultRow> _existingRowsById;
+    private readonly AppSession _session;
+    private readonly AppSettingsStore _store;
 
     [ObservableProperty] private PackageItemPickItem? _cloneSource;
     [ObservableProperty] private bool _isLoading;
@@ -50,7 +53,9 @@ public partial class NewItemDialogViewModel : ObservableObject
         TranslationStore translationStore,
         NewItemRepository repository,
         LookupCache lookupCache,
-        IReadOnlyList<EntityDefaultRow> existingRows)
+        IReadOnlyList<EntityDefaultRow> existingRows,
+        AppSession session,
+        AppSettingsStore store)
     {
         _connection = connection;
         _changeApplier = changeApplier;
@@ -58,6 +63,8 @@ public partial class NewItemDialogViewModel : ObservableObject
         _repository = repository;
         _lookupCache = lookupCache;
         _existingRowsById = existingRows.ToDictionary(r => r.Definition);
+        _session = session;
+        _store = store;
 
         var existingNames = existingRows.Select(r => r.DefinitionName)
                                         .ToHashSet(StringComparer.Ordinal);
@@ -163,13 +170,34 @@ public partial class NewItemDialogViewModel : ObservableObject
         try
         {
             var change = ItemSqlBuilder.Build(this);
-            await _changeApplier.ExecuteAsync([change]);
 
-            var seededKeys = SeedTranslations();
-            await _lookupCache.RefreshAllAsync(_connection);
+            if (_session.CurrentMode == ApplyMode.SqlScript)
+            {
+                var dir = _store.Settings.SqlOutputDirectory;
+                if (string.IsNullOrWhiteSpace(dir))
+                {
+                    StatusMessage = "SQL output directory is not configured. Open Connection settings to set one.";
+                    return;
+                }
 
-            SaveResultSummary = BuildSummary(seededKeys);
-            CloseRequested?.Invoke(this, true);
+                var script = SqlScriptBuilder.Build([change], _session.Email);
+                Directory.CreateDirectory(dir);
+                var fileName = $"admintool_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
+                var path = Path.Combine(dir, fileName);
+                await File.WriteAllTextAsync(path, script);
+
+                var seededKeys = SeedTranslations();
+                SaveResultSummary = BuildSummary(seededKeys, path);
+                CloseRequested?.Invoke(this, true);
+            }
+            else
+            {
+                await _changeApplier.ExecuteAsync([change]);
+                var seededKeys = SeedTranslations();
+                await _lookupCache.RefreshAllAsync(_connection);
+                SaveResultSummary = BuildSummary(seededKeys, null);
+                CloseRequested?.Invoke(this, true);
+            }
         }
         catch (Exception ex)
         {
@@ -227,10 +255,13 @@ public partial class NewItemDialogViewModel : ObservableObject
         return seeded;
     }
 
-    private string BuildSummary(List<string> seededKeys)
+    private string BuildSummary(List<string> seededKeys, string? scriptPath)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Item '{BasicPanel.DefinitionName}' created.");
+        if (scriptPath != null)
+            sb.AppendLine($"Item '{BasicPanel.DefinitionName}' written to script: {scriptPath}");
+        else
+            sb.AppendLine($"Item '{BasicPanel.DefinitionName}' created.");
         if (!_translationStore.DirectoryExists)
             sb.AppendLine("Warning: GameRoot not configured — translation keys were NOT seeded.");
         else if (seededKeys.Count > 0)

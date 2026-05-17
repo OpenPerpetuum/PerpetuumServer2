@@ -19,6 +19,7 @@ namespace Perpetuum.AdminTool.ViewModels
     public partial class EntitiesViewModel : ObservableObject
     {
         private readonly AppSettingsStore _settings;
+        private readonly AppSession _session;
         private readonly ChangeQueue _queue;
         private readonly TranslationsViewModel _translations;
         private readonly LookupCache _lookups;
@@ -44,9 +45,10 @@ namespace Perpetuum.AdminTool.ViewModels
         // this node's value or any descendant.
         [ObservableProperty] private CategoryFlagsNode? _selectedCategoryNode;
 
-        public EntitiesViewModel(AppSettingsStore settings, ChangeQueue queue, TranslationsViewModel translations, LookupCache lookups)
+        public EntitiesViewModel(AppSettingsStore settings, AppSession session, ChangeQueue queue, TranslationsViewModel translations, LookupCache lookups)
         {
             _settings = settings;
+            _session = session;
             _queue = queue;
             _translations = translations;
             _lookups = lookups;
@@ -181,7 +183,9 @@ namespace Perpetuum.AdminTool.ViewModels
                 store,
                 repo,
                 _lookups,
-                AllRows.ToList());
+                AllRows.ToList(),
+                _session,
+                _settings);
 
             await vm.InitializeAsync(aggregateFields, englishNames);
 
