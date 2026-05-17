@@ -275,7 +275,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
             if (ChassisStatsPanel.HasDuplicateFields()) return "Chassis Stats: duplicate aggregate field.";
             if (LegStatsPanel.HasDuplicateFields()) return "Leg Stats: duplicate aggregate field.";
             if (InventoryStatsPanel.HasDuplicateFields()) return "Inventory Stats: duplicate aggregate field.";
-            if (string.IsNullOrWhiteSpace(TemplatePanelViewModel.Name)) return "Robot Template tab: name is required.";
+            if (TemplatePanelViewModel.HasErrors) return "Robot Template tab: name is required.";
         }
         if (IsCraftable && ProductionPanel.HasDuplicateIngredients()) return "Production tab: duplicate ingredient.";
         if (IsCraftable && ResearchPanel.HasDuplicatePointTypes()) return "Research tab: duplicate point type.";
