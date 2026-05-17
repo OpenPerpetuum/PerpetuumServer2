@@ -410,3 +410,54 @@ Low. The issue only manifests if a user repeatedly clicks "Queue Save" on the sa
 Depends on [[IMPROVEMENT-012]] being complete — Tiers tab must use the queue before deduplication applies to it.
 Key must be stable across multiple `Queue Save` clicks on the same row, not a generated GUID.
 Destructive changes (DELETE) should also replace any prior non-destructive change for the same key.
+
+## IMPROVEMENT-017 - New Item script filename includes definition name
+
+Status: TODO
+Priority: LOW
+Area: Admin Tool / New Item Dialog
+
+### Description
+When saving a new item in SqlScript mode, the output `.sql` file is named
+`admintool_<date>_<time>.sql`. Include the item's `definitionname` in the
+filename so the file is immediately identifiable without opening it:
+
+```
+<definitionname>_<date>_<time>.sql
+```
+
+Example: `def_plasma_launcher_20260517_084326.sql`
+
+### Impact
+Low. In SqlScript mode operators save one item per dialog invocation, so
+name collisions are unlikely regardless. The improvement is purely for
+operator ergonomics — easier to locate a specific item's script in the
+output directory without inspecting file contents.
+
+### Proposed Fix
+In `NewItemDialogViewModel.SaveAsync` (SqlScript branch), replace the
+filename construction:
+
+```csharp
+// current
+var fileName = $"admintool_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
+
+// proposed
+var safeName = string.Concat(BasicPanel.DefinitionName
+    .Select(c => char.IsLetterOrDigit(c) || c == '_' ? c : '_'));
+var fileName = $"{safeName}_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
+```
+
+The sanitisation step replaces any character that is not a letter, digit,
+or underscore with `_` to ensure the name is valid on all filesystems.
+Since definition names are validated to start with `def_` and contain only
+safe characters, the sanitisation is a defensive no-op in practice.
+
+### Notes
+`BasicPanel.DefinitionName` is available on `NewItemDialogViewModel` via
+the existing `BasicPanel` property; no new fields are needed.
+`NewItemDialogViewModel.SaveAsync` is the only call site (line ~185 of
+`NewItemDialogViewModel.cs`).
+The `MainViewModel.CommitAsync` SqlScript path uses the same
+`admintool_<date>_<time>.sql` template for multi-change commits — that
+path is out of scope since it covers multiple changes, not a single item.
