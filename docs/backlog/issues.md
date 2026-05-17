@@ -193,7 +193,7 @@ Affects Tab 1 (BasicPanel), Tab 2 (CalibrationPanel), and Tab 3 (PrototypePanel)
 
 ## ISSUE-010 - Entities tab: Stats section new-stat value input rejects negative and decimal values
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Admin Tool / Entities / Stats
 
