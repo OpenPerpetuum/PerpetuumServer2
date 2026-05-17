@@ -169,6 +169,11 @@ public partial class NewRobotDialogViewModel : ObservableObject
             ProductionPanel.Initialize(lookups);
             ResearchPanel.Initialize(lookups);
             OptionsVisualPanel.Initialize(lookups);
+
+            HeadItems      = BuildPartItems((long)CategoryFlags.cf_robot_head);
+            ChassisItems   = BuildPartItems((long)CategoryFlags.cf_robot_chassis);
+            LegItems       = BuildPartItems((long)CategoryFlags.cf_robot_leg);
+            InventoryItems = BuildPartItems((long)CategoryFlags.cf_robot_inventory);
         }
         finally
         {
@@ -180,6 +185,42 @@ public partial class NewRobotDialogViewModel : ObservableObject
     {
         if (value == null || IsLoading) return;
         _ = LoadCloneAsync(value.Definition);
+    }
+
+    partial void OnCloneHeadChanged(PackageItemPickItem? value)
+    {
+        if (value == null || IsLoading) return;
+        if (!_existingRowsById.TryGetValue(value.Definition, out var row)) return;
+        HeadPanel.LoadFromClone(row);
+        HeadPanel.SuggestName(BasicPanel.DefinitionName, "_head");
+        HeadStatsPanel.LoadFromClone(row.Stats);
+    }
+
+    partial void OnCloneChassisChanged(PackageItemPickItem? value)
+    {
+        if (value == null || IsLoading) return;
+        if (!_existingRowsById.TryGetValue(value.Definition, out var row)) return;
+        ChassisPanel.LoadFromClone(row);
+        ChassisPanel.SuggestName(BasicPanel.DefinitionName, "_chassis");
+        ChassisStatsPanel.LoadFromClone(row.Stats);
+    }
+
+    partial void OnCloneLegChanged(PackageItemPickItem? value)
+    {
+        if (value == null || IsLoading) return;
+        if (!_existingRowsById.TryGetValue(value.Definition, out var row)) return;
+        LegPanel.LoadFromClone(row);
+        LegPanel.SuggestName(BasicPanel.DefinitionName, "_leg");
+        LegStatsPanel.LoadFromClone(row.Stats);
+    }
+
+    partial void OnCloneInventoryChanged(PackageItemPickItem? value)
+    {
+        if (value == null || IsLoading) return;
+        if (!_existingRowsById.TryGetValue(value.Definition, out var row)) return;
+        InventoryPanel.LoadFromClone(row);
+        InventoryPanel.SuggestName(BasicPanel.DefinitionName, "_inventory");
+        InventoryStatsPanel.LoadFromClone(row.Stats);
     }
 
     private IReadOnlyList<PackageItemPickItem> BuildPartItems(long rootFlag)
