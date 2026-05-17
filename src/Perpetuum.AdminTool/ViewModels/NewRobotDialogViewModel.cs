@@ -14,6 +14,7 @@ using Perpetuum.AdminTool.NewRobot;
 using Perpetuum.AdminTool.Packages;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Translations;
+using Perpetuum.ExportedTypes;
 
 namespace Perpetuum.AdminTool.ViewModels;
 
@@ -34,6 +35,18 @@ public partial class NewRobotDialogViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private string _saveResultSummary = "";
     [ObservableProperty] private IReadOnlyList<PackageItemPickItem> _enabledItems = [];
+
+    // Per-part clone source selections
+    [ObservableProperty] private PackageItemPickItem? _cloneHead;
+    [ObservableProperty] private PackageItemPickItem? _cloneChassis;
+    [ObservableProperty] private PackageItemPickItem? _cloneLeg;
+    [ObservableProperty] private PackageItemPickItem? _cloneInventory;
+
+    // Per-part filtered entity lists (populated in InitializeAsync)
+    [ObservableProperty] private IReadOnlyList<PackageItemPickItem> _headItems = [];
+    [ObservableProperty] private IReadOnlyList<PackageItemPickItem> _chassisItems = [];
+    [ObservableProperty] private IReadOnlyList<PackageItemPickItem> _legItems = [];
+    [ObservableProperty] private IReadOnlyList<PackageItemPickItem> _inventoryItems = [];
 
     // Shared panels (same names as NewItemDialogViewModel — XAML tabs 1–8)
     public BasicPanelViewModel BasicPanel { get; }
@@ -167,6 +180,19 @@ public partial class NewRobotDialogViewModel : ObservableObject
     {
         if (value == null || IsLoading) return;
         _ = LoadCloneAsync(value.Definition);
+    }
+
+    private IReadOnlyList<PackageItemPickItem> BuildPartItems(long rootFlag)
+    {
+        var node = new CategoryFlagsNode { Value = rootFlag };
+        var result = new List<PackageItemPickItem>();
+        foreach (var e in _lookupCache.Entities)
+        {
+            if (!e.Enabled || e.Hidden || e.CategoryFlags == 0) continue;
+            if (!node.ContainsOrEquals(e.CategoryFlags)) continue;
+            result.Add(new PackageItemPickItem(e.Definition, e.Name));
+        }
+        return result.OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private async Task LoadCloneAsync(int definition)
