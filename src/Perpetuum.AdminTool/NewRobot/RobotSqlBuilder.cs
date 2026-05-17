@@ -125,11 +125,11 @@ public static class RobotSqlBuilder
             sql.AppendLine(
                 $"INSERT INTO robottemplates (name, description, note)" +
                 $" VALUES ({SqlLiteral.Of(vm.TemplatePanelViewModel.Name)}," +
-                " '#robot=i' + FORMAT(@robotDef, 'X')" +
-                " + '#head=i' + FORMAT(@headDef, 'X')" +
-                " + '#chassis=i' + FORMAT(@chassisDef, 'X')" +
-                " + '#leg=i' + FORMAT(@legDef, 'X')" +
-                $" + '#container=i' + FORMAT(@inventoryDef, 'X')," +
+                " '#robot=i' + FORMAT(@robotDef, 'x')" +
+                " + '#head=i' + FORMAT(@headDef, 'x')" +
+                " + '#chassis=i' + FORMAT(@chassisDef, 'x')" +
+                " + '#leg=i' + FORMAT(@legDef, 'x')" +
+                $" + '#container=i' + FORMAT(@inventoryDef, 'x')," +
                 $" {SqlLiteral.Of(vm.TemplatePanelViewModel.Note)});");
             sql.AppendLine("SET @templateId = SCOPE_IDENTITY();");
 
