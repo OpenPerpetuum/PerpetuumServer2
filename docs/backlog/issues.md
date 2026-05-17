@@ -162,7 +162,7 @@ See `SeasonDetailViewModel.cs` `SaveGeneral` command for the save entry point.
 
 ## ISSUE-008 - New Item: descriptiontoken incorrectly strips def_ prefix
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Admin Tool / New Item Dialog
 

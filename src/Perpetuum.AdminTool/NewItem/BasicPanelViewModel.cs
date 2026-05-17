@@ -110,10 +110,8 @@ public partial class BasicPanelViewModel : ObservableObject
 
     private string SuggestDescriptionToken(string defName)
     {
-        var stripped = defName.StartsWith("def_", StringComparison.OrdinalIgnoreCase)
-            ? defName[4..] : defName;
-        if (stripped.EndsWith("_desc", StringComparison.OrdinalIgnoreCase))
-            return stripped;
-        return stripped + "_desc";
+        if (defName.EndsWith("_desc", StringComparison.OrdinalIgnoreCase))
+            return defName;
+        return defName + "_desc";
     }
 }
