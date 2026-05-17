@@ -170,9 +170,9 @@ public partial class NewRobotDialogViewModel : ObservableObject
             ResearchPanel.Initialize(lookups);
             OptionsVisualPanel.Initialize(lookups);
 
-            HeadItems      = BuildPartItems((long)CategoryFlags.cf_robot_head);
-            ChassisItems   = BuildPartItems((long)CategoryFlags.cf_robot_chassis);
-            LegItems       = BuildPartItems((long)CategoryFlags.cf_robot_leg);
+            HeadItems = BuildPartItems((long)CategoryFlags.cf_robot_head);
+            ChassisItems = BuildPartItems((long)CategoryFlags.cf_robot_chassis);
+            LegItems = BuildPartItems((long)CategoryFlags.cf_robot_leg);
             InventoryItems = BuildPartItems((long)CategoryFlags.cf_robot_inventory);
         }
         finally
