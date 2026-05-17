@@ -4,5 +4,6 @@ public enum BasicPanelMode
 {
     Main,
     CalibrationTemplate,
-    Prototype
+    Prototype,
+    RobotPart
 }

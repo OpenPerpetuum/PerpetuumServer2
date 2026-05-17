@@ -97,7 +97,7 @@ public static class ItemSqlBuilder
         return new RawSqlChange($"Create new item: {basic.DefinitionName}", sql.ToString());
     }
 
-    private static void AppendEntityInsert(StringBuilder sql, BasicPanelViewModel panel, string? options)
+    internal static void AppendEntityInsert(StringBuilder sql, BasicPanelViewModel panel, string? options)
     {
         var tierType = panel.TierType.HasValue ? SqlLiteral.Of((object)panel.TierType.Value) : "NULL";
         var tierLevel = SqlLiteral.OfNullableInt(panel.TierLevel);
@@ -108,7 +108,7 @@ public static class ItemSqlBuilder
             $" VALUES ({SqlLiteral.Of(panel.DefinitionName)}, {panel.Quantity}, {panel.AttributeFlags}, {panel.CategoryFlags}, {optSql}, {SqlLiteral.Of(panel.Note)}, {SqlLiteral.Of(panel.Enabled)}, {SqlLiteral.Of(panel.Volume)}, {SqlLiteral.Of(panel.Mass)}, {SqlLiteral.Of(panel.Hidden)}, {SqlLiteral.Of(panel.Health)}, {SqlLiteral.Of(panel.DescriptionToken)}, {SqlLiteral.Of(panel.Purchasable)}, {tierType}, {tierLevel});");
     }
 
-    private static string FormatConfigValue(string rawValue, DefinitionConfigColumnInfo? colInfo)
+    internal static string FormatConfigValue(string rawValue, DefinitionConfigColumnInfo? colInfo)
     {
         if (colInfo == null) return SqlLiteral.Of(rawValue);
         if (colInfo.IsBit)

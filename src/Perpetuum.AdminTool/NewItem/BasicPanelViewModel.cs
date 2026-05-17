@@ -32,6 +32,9 @@ public partial class BasicPanelViewModel : ObservableObject
     // Only active in Main mode; gates tab 3
     [ObservableProperty] private bool _hasPrototype;
 
+    // Only active in Main mode; gates tabs 9–14
+    [ObservableProperty] private bool _isRobot;
+
     // Clone source original values for display (null if no clone)
     public EntityDefaultRow? CloneSource { get; private set; }
 
