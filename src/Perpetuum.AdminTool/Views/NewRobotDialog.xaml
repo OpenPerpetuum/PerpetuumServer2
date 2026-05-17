@@ -939,11 +939,24 @@
                 </TabItem.Style>
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="220"/>
                     </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="8">
+                    <Border Grid.Row="0" Padding="6,4" BorderBrush="#DDD" BorderThickness="0,0,0,1" Background="#F8F8F8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Clone from:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox Width="360"
+                                      ItemsSource="{Binding HeadItems}"
+                                      SelectedItem="{Binding CloneHead}"
+                                      DisplayMemberPath="Display"/>
+                            <TextBlock Text="(optional — pre-fills this part's basic fields and stats)"
+                                       Foreground="Gray" VerticalAlignment="Center" Margin="8,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>
@@ -1044,7 +1057,7 @@
                         </Grid>
                     </ScrollViewer>
 
-                    <DockPanel Grid.Row="1" Margin="8,4,8,0">
+                    <DockPanel Grid.Row="2" Margin="8,4,8,0">
                         <TextBlock DockPanel.Dock="Top" Text="Stats (aggregatevalues)" FontWeight="Bold" Margin="0,0,0,4"/>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
                             <Button Content="Add Row" Command="{Binding HeadStatsPanel.AddRowCommand}" Width="80"/>
@@ -1088,11 +1101,24 @@
                 </TabItem.Style>
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="220"/>
                     </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="8">
+                    <Border Grid.Row="0" Padding="6,4" BorderBrush="#DDD" BorderThickness="0,0,0,1" Background="#F8F8F8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Clone from:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox Width="360"
+                                      ItemsSource="{Binding ChassisItems}"
+                                      SelectedItem="{Binding CloneChassis}"
+                                      DisplayMemberPath="Display"/>
+                            <TextBlock Text="(optional — pre-fills this part's basic fields and stats)"
+                                       Foreground="Gray" VerticalAlignment="Center" Margin="8,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>
@@ -1193,7 +1219,7 @@
                         </Grid>
                     </ScrollViewer>
 
-                    <DockPanel Grid.Row="1" Margin="8,4,8,0">
+                    <DockPanel Grid.Row="2" Margin="8,4,8,0">
                         <TextBlock DockPanel.Dock="Top" Text="Stats (aggregatevalues)" FontWeight="Bold" Margin="0,0,0,4"/>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
                             <Button Content="Add Row" Command="{Binding ChassisStatsPanel.AddRowCommand}" Width="80"/>
@@ -1237,11 +1263,24 @@
                 </TabItem.Style>
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="220"/>
                     </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="8">
+                    <Border Grid.Row="0" Padding="6,4" BorderBrush="#DDD" BorderThickness="0,0,0,1" Background="#F8F8F8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Clone from:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox Width="360"
+                                      ItemsSource="{Binding LegItems}"
+                                      SelectedItem="{Binding CloneLeg}"
+                                      DisplayMemberPath="Display"/>
+                            <TextBlock Text="(optional — pre-fills this part's basic fields and stats)"
+                                       Foreground="Gray" VerticalAlignment="Center" Margin="8,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>
@@ -1342,7 +1381,7 @@
                         </Grid>
                     </ScrollViewer>
 
-                    <DockPanel Grid.Row="1" Margin="8,4,8,0">
+                    <DockPanel Grid.Row="2" Margin="8,4,8,0">
                         <TextBlock DockPanel.Dock="Top" Text="Stats (aggregatevalues)" FontWeight="Bold" Margin="0,0,0,4"/>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
                             <Button Content="Add Row" Command="{Binding LegStatsPanel.AddRowCommand}" Width="80"/>
@@ -1386,11 +1425,24 @@
                 </TabItem.Style>
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="220"/>
                     </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="8">
+                    <Border Grid.Row="0" Padding="6,4" BorderBrush="#DDD" BorderThickness="0,0,0,1" Background="#F8F8F8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Clone from:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox Width="360"
+                                      ItemsSource="{Binding InventoryItems}"
+                                      SelectedItem="{Binding CloneInventory}"
+                                      DisplayMemberPath="Display"/>
+                            <TextBlock Text="(optional — pre-fills this part's basic fields and stats)"
+                                       Foreground="Gray" VerticalAlignment="Center" Margin="8,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>
@@ -1491,7 +1543,7 @@
                         </Grid>
                     </ScrollViewer>
 
-                    <DockPanel Grid.Row="1" Margin="8,4,8,0">
+                    <DockPanel Grid.Row="2" Margin="8,4,8,0">
                         <TextBlock DockPanel.Dock="Top" Text="Stats (aggregatevalues)" FontWeight="Bold" Margin="0,0,0,4"/>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
                             <Button Content="Add Row" Command="{Binding InventoryStatsPanel.AddRowCommand}" Width="80"/>
