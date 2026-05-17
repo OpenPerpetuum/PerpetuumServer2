@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Perpetuum.AdminTool.NewRobot;
 
 public record RobotTemplateRelationData(
-    double ItemScoreSum,
+    int ItemScoreSum,
     int RaceId,
     int MissionLevel,
     int MissionLevelOverride,
@@ -12,7 +12,7 @@ public record RobotTemplateRelationData(
 
 public partial class RobotTemplateRelationPanelViewModel : ObservableObject
 {
-    [ObservableProperty] private double _itemScoreSum;
+    [ObservableProperty] private int _itemScoreSum;
     [ObservableProperty] private int _raceId;
     [ObservableProperty] private int _missionLevel;
     [ObservableProperty] private int _missionLevelOverride;

@@ -28,11 +28,11 @@ public class NewRobotRepository
         if (!await r.ReadAsync()) return null;
 
         return new RobotTemplateRelationData(
-            ItemScoreSum: r.GetDouble(0),
+            ItemScoreSum: r.GetInt32(0),
             RaceId: r.GetInt32(1),
-            MissionLevel: r.GetInt32(2),
-            MissionLevelOverride: r.GetInt32(3),
-            KillEp: r.GetInt32(4),
+            MissionLevel: r.IsDBNull(2) ? 0 : r.GetInt32(2),
+            MissionLevelOverride: r.IsDBNull(3) ? 0 : r.GetInt32(3),
+            KillEp: r.IsDBNull(4) ? 0 : r.GetInt32(4),
             Note: r.IsDBNull(5) ? null : r.GetString(5));
     }
 }
