@@ -374,3 +374,30 @@ the existing `BasicPanel` property; no new fields are needed.
 The `MainViewModel.CommitAsync` SqlScript path uses the same
 `admintool_<date>_<time>.sql` template for multi-change commits — that
 path is out of scope since it covers multiple changes, not a single item.
+
+---
+
+## IMPROVEMENT-018 - Season Config: Activity Points Scoring Mode
+
+Status: TODO
+Priority: HIGH
+Area: Seasons / Admin Tool
+
+### Description
+When configuring a season, there is currently no way to control how earned activity points are applied to scoring. Add a configurable **scoring mode** option with two values:
+
+- **Objectives only** — activity points are added to matching objective progress but do not contribute to the global season score.
+- **Objectives + Global Score** — activity points are added to objective progress and also accumulate in the global season score (current behaviour).
+
+### Impact
+Operators need per-season control over how competitive the global score is. Some seasons are designed around objective completion only; others use global score as a leaderboard or reward gate. Without this option, the game logic must be patched per-season or objectives must be artificially balanced to avoid unwanted global score inflation.
+
+### Proposed Implementation
+- Add a `scoringMode` (or equivalent) field to the season configuration schema (DB column + server-side model).
+- Update the activity point processing logic to branch on this field: skip global score accumulation when mode is `ObjectivesOnly`.
+- Expose the option in the Admin Tool season configuration UI as a dropdown or radio selector.
+- Default new seasons to `ObjectivesAndGlobalScore` to preserve current behaviour.
+
+### Notes
+Audit the activity point award path in the Seasons subsystem to identify all places where global score is incremented — the mode check belongs there.
+Ensure the Admin Tool change script generation covers the new field.
