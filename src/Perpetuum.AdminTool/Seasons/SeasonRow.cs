@@ -1,5 +1,6 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Perpetuum.Services.Seasons;
 
 namespace Perpetuum.AdminTool.Seasons
 {
@@ -18,6 +19,7 @@ namespace Perpetuum.AdminTool.Seasons
         [ObservableProperty] private int? _recurrenceGapDays;
         [ObservableProperty] private int _recurrenceIteration = 1;
         [ObservableProperty] private string? _recurrenceBaseName;
+        [ObservableProperty] private SeasonScoringMode _scoringMode;
 
         public SeasonRow(SeasonSnapshot snapshot)
         {
@@ -38,6 +40,7 @@ namespace Perpetuum.AdminTool.Seasons
             RecurrenceGapDays = s.RecurrenceGapDays;
             RecurrenceIteration = s.RecurrenceIteration;
             RecurrenceBaseName = s.RecurrenceBaseName;
+            ScoringMode = s.ScoringMode;
         }
 
         public void RefreshOriginalFromCurrent()
@@ -53,7 +56,8 @@ namespace Perpetuum.AdminTool.Seasons
                 IsRecurring = IsRecurring,
                 RecurrenceGapDays = RecurrenceGapDays,
                 RecurrenceIteration = RecurrenceIteration,
-                RecurrenceBaseName = RecurrenceBaseName
+                RecurrenceBaseName = RecurrenceBaseName,
+                ScoringMode = ScoringMode,
             };
         }
 
@@ -81,6 +85,7 @@ namespace Perpetuum.AdminTool.Seasons
         public int? RecurrenceGapDays { get; init; }
         public int RecurrenceIteration { get; init; } = 1;
         public string? RecurrenceBaseName { get; init; }
+        public SeasonScoringMode ScoringMode { get; init; }
     }
 
     public enum SeasonCardState { Active, Draft, Ended }

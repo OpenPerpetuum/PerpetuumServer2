@@ -58,6 +58,12 @@ namespace Perpetuum.AdminTool.ViewModels
             new ObjectiveFilterOption(ObjectiveFilterMode.Daily,   "Daily only"),
         };
 
+        public IReadOnlyList<ScoringModeOption> ScoringModeOptions { get; } = new[]
+        {
+            new ScoringModeOption(SeasonScoringMode.ActivityAndGlobal, "Activity + Global Score"),
+            new ScoringModeOption(SeasonScoringMode.ObjectivesOnly,    "Objectives Only"),
+        };
+
         [ObservableProperty]
         private ObjectiveFilterMode _objectiveFilter = ObjectiveFilterMode.All;
 
@@ -453,4 +459,5 @@ namespace Perpetuum.AdminTool.ViewModels
     public record ActivityTypeOption(SeasonActivityType Value, string Label);
     public enum ObjectiveFilterMode { All, OneTime, Daily }
     public record ObjectiveFilterOption(ObjectiveFilterMode Value, string Label);
+    public record ScoringModeOption(SeasonScoringMode Value, string Label);
 }

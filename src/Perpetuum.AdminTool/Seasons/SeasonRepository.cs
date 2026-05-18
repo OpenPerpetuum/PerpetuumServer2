@@ -21,7 +21,7 @@ namespace Perpetuum.AdminTool.Seasons
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
                 "SELECT id, name, description, start_time, end_time, is_active, " +
-                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode " +
                 "FROM seasons ORDER BY start_time DESC";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -37,7 +37,9 @@ namespace Perpetuum.AdminTool.Seasons
                     IsRecurring = !reader.IsDBNull(6) && reader.GetBoolean(6),
                     RecurrenceGapDays = reader.IsDBNull(7) ? (int?)null : reader.GetInt32(7),
                     RecurrenceIteration = reader.IsDBNull(8) ? 1 : reader.GetInt32(8),
-                    RecurrenceBaseName = reader.IsDBNull(9) ? null : reader.GetString(9)
+                    RecurrenceBaseName = reader.IsDBNull(9) ? null : reader.GetString(9),
+                    ScoringMode = reader.IsDBNull(10) ? SeasonScoringMode.ActivityAndGlobal
+                                                      : (SeasonScoringMode)reader.GetByte(10),
                 };
                 result.Add(new SeasonRow(snap));
             }

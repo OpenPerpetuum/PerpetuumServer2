@@ -49,6 +49,13 @@ namespace Perpetuum.AdminTool.ViewModels
         [ObservableProperty] private string _endTimeText = "00:00";
         [ObservableProperty] private bool _isRecurring;
         [ObservableProperty] private int _recurrenceGapDays = 7;
+        [ObservableProperty] private SeasonScoringMode _scoringMode = SeasonScoringMode.ActivityAndGlobal;
+
+        public IReadOnlyList<ScoringModeOption> ScoringModeOptions { get; } = new[]
+        {
+            new ScoringModeOption(SeasonScoringMode.ActivityAndGlobal, "Activity + Global Score"),
+            new ScoringModeOption(SeasonScoringMode.ObjectivesOnly,    "Objectives Only"),
+        };
 
         public ObservableCollection<SeasonActivityRateRow> ActivityRates { get; } = new();
         public ObservableCollection<SeasonObjectiveRow> Objectives { get; } = new();
@@ -93,6 +100,12 @@ namespace Perpetuum.AdminTool.ViewModels
             : $"Leaderboard Rewards ({LeaderboardRewards.Count}):";
         public IReadOnlyList<string> ReviewLeaderboardLines =>
             LeaderboardRewards.Select(l => $"  • Rank {l.RankMin}–{l.RankMax}: {l.SelectedPackage?.Name ?? $"pkg {l.PackageId}"}").ToList();
+
+        public string ReviewScoringMode => ScoringMode switch
+        {
+            SeasonScoringMode.ObjectivesOnly => "Objectives Only",
+            _                                => "Activity + Global Score",
+        };
 
         public IReadOnlyList<ActivityTypeOption> ObjectiveActivityTypeOptions { get; } =
             new[]
@@ -172,6 +185,7 @@ namespace Perpetuum.AdminTool.ViewModels
                 OnPropertyChanged(nameof(ReviewTierLines));
                 OnPropertyChanged(nameof(ReviewLeaderboardHeader));
                 OnPropertyChanged(nameof(ReviewLeaderboardLines));
+                OnPropertyChanged(nameof(ReviewScoringMode));
             }
         }
 
@@ -320,11 +334,11 @@ namespace Perpetuum.AdminTool.ViewModels
             string gapSql = IsRecurring ? RecurrenceGapDays.ToString() : "NULL";
             string baseNameSql = IsRecurring ? SqlLiteral.Of(Name) : "NULL";
             sb.AppendLine("INSERT INTO seasons (name, description, start_time, end_time, is_active, " +
-                          "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name)");
+                          "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode)");
             sb.AppendLine($"VALUES ({SqlLiteral.Of(displayName)}, {SqlLiteral.Of(Description)},");
             sb.AppendLine($"  '{DateTime.SpecifyKind(StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
                           $"'{DateTime.SpecifyKind(EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0, " +
-                          $"{(IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql});");
+                          $"{(IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql}, {(int)ScoringMode});");
             sb.AppendLine("SET @seasonId = SCOPE_IDENTITY();");
 
             foreach (var rate in ActivityRates.Where(r => r.PointsPerUnit > 0))

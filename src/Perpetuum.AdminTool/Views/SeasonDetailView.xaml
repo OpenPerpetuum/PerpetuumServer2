@@ -67,7 +67,8 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>  <!-- new row 7: scoring mode -->
+                            <RowDefinition Height="Auto"/>  <!-- row 8: save button (was row 7) -->
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Season ID:" Margin="0,4"/>
@@ -123,7 +124,15 @@
                             <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,0,0"/>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                        <!-- Row 7: Scoring Mode -->
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Scoring Mode:" Margin="0,4" VerticalAlignment="Center"/>
+                        <ComboBox  Grid.Row="7" Grid.Column="1" Margin="0,4"
+                                   ItemsSource="{Binding ScoringModeOptions}"
+                                   DisplayMemberPath="Label"
+                                   SelectedValuePath="Value"
+                                   SelectedValue="{Binding Season.ScoringMode, Mode=TwoWay}"/>
+
+                        <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
                             <Button Content="Save General" Padding="14,2" FontWeight="Bold"
                                     Command="{Binding SaveGeneralCommand}"/>
                         </StackPanel>
