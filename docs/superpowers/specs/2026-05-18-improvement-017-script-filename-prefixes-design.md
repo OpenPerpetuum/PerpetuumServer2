@@ -57,7 +57,7 @@ public static string BuildFileName(string prefix, string? name = null)
 
 Normalization applied to `name`:
 1. Lowercase
-2. Replace any non-word character with `_`
+2. Replace any character outside `[a-z0-9_]` with `_` — uses `[^a-z0-9_]` rather than `[^\w]` to keep filenames ASCII-only regardless of .NET's Unicode-aware `\w` behaviour
 3. Collapse consecutive `_` into one; trim leading/trailing `_`
 
 For definition names (already `def_*` lowercase with underscores), steps 1–3 are a defensive no-op. For season names (free-form strings like `"Season 1 - Spring 2026"`), they produce `season_1_spring_2026`.
