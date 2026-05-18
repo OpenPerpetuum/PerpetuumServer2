@@ -325,9 +325,10 @@ Destructive changes (DELETE) should also replace any prior non-destructive chang
 
 ## IMPROVEMENT-017 - New Item script filename includes definition name
 
-Status: TODO
+Status: DONE
 Priority: LOW
 Area: Admin Tool / New Item Dialog
+Spec: `docs/superpowers/specs/2026-05-18-improvement-017-script-filename-prefixes-design.md`
 
 ### Description
 When saving a new item in SqlScript mode, the output `.sql` file is named
