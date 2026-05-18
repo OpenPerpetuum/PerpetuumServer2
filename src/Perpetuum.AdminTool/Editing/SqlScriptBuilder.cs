@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Perpetuum.AdminTool.Editing
 {
@@ -36,6 +37,17 @@ namespace Perpetuum.AdminTool.Editing
 
             sb.AppendLine("COMMIT TRANSACTION;");
             return sb.ToString();
+        }
+
+        public static string BuildFileName(string prefix, string? name = null)
+        {
+            var ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            if (string.IsNullOrWhiteSpace(name))
+                return $"{prefix}_{ts}.sql";
+            var safe = Regex.Replace(
+                Regex.Replace(name.ToLowerInvariant(), @"[^a-z0-9_]", "_"),
+                @"_+", "_").Trim('_');
+            return $"{prefix}_{safe}_{ts}.sql";
         }
     }
 }
