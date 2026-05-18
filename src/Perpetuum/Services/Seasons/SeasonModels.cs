@@ -12,6 +12,7 @@ namespace Perpetuum.Services.Seasons
         public int? RecurrenceGapDays { get; set; }
         public int RecurrenceIteration { get; set; } = 1;
         public string? RecurrenceBaseName { get; set; }
+        public SeasonScoringMode ScoringMode { get; set; }
     }
 
     public class SeasonActivityRate

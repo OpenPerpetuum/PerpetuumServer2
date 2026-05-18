@@ -10,7 +10,7 @@ namespace Perpetuum.Services.Seasons
         {
             var record = Db.Query(
                 "SELECT id, name, description, start_time, end_time, is_active, " +
-                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode " +
                 "FROM seasons WHERE is_active = 1")
                 .ExecuteSingleRow();
 
@@ -28,6 +28,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
+                ScoringMode = (SeasonScoringMode)record.GetValue<int>("scoring_mode"),
             };
         }
 
@@ -132,6 +133,17 @@ namespace Perpetuum.Services.Seasons
                      .SetParameter("@characterId", characterId)
                      .SetParameter("@seasonId", seasonId)
                      .ExecuteScalar<double>();
+        }
+
+        public double GetCurrentPoints(int characterId, int seasonId)
+        {
+            return Db.Query(
+                "SELECT ISNULL(" +
+                "  (SELECT total_points FROM season_character_points " +
+                "   WHERE character_id = @characterId AND season_id = @seasonId), 0)")
+                .SetParameter("@characterId", characterId)
+                .SetParameter("@seasonId", seasonId)
+                .ExecuteScalar<double>();
         }
 
         // ── Objective progress ───────────────────────────────────────────────
@@ -432,7 +444,7 @@ namespace Perpetuum.Services.Seasons
         {
             var record = Db.Query(
                 "SELECT id, name, description, start_time, end_time, is_active, " +
-                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode " +
                 "FROM seasons WHERE id = @id")
                 .SetParameter("@id", seasonId)
                 .ExecuteSingleRow();
@@ -451,6 +463,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
+                ScoringMode = (SeasonScoringMode)record.GetValue<int>("scoring_mode"),
             };
         }
 
@@ -458,7 +471,7 @@ namespace Perpetuum.Services.Seasons
         {
             var record = Db.Query(
                 "SELECT TOP 1 id, name, description, start_time, end_time, is_active, " +
-                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode " +
                 "FROM seasons " +
                 "WHERE is_active = 0 AND is_recurring = 1 AND start_time <= GETUTCDATE() " +
                 "ORDER BY start_time ASC")
@@ -478,6 +491,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
+                ScoringMode = (SeasonScoringMode)record.GetValue<int>("scoring_mode"),
             };
         }
 
@@ -494,8 +508,8 @@ namespace Perpetuum.Services.Seasons
 
             int newId = Db.Query(
                 "INSERT INTO seasons (name, description, start_time, end_time, is_active, " +
-                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name) " +
-                "VALUES (@name, @description, @start, @end, 0, 1, @gapDays, @iteration, @baseName); " +
+                "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode) " +
+                "VALUES (@name, @description, @start, @end, 0, 1, @gapDays, @iteration, @baseName, @scoringMode); " +
                 "SELECT CAST(SCOPE_IDENTITY() AS INT)")
                 .SetParameter("@name", nextName)
                 .SetParameter("@description", previous.Description)
@@ -504,6 +518,7 @@ namespace Perpetuum.Services.Seasons
                 .SetParameter("@gapDays", previous.RecurrenceGapDays!.Value)
                 .SetParameter("@iteration", nextIteration)
                 .SetParameter("@baseName", baseName)
+                .SetParameter("@scoringMode", (int)previous.ScoringMode)
                 .ExecuteScalar<int>();
 
             Db.Query(
@@ -553,6 +568,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceGapDays = previous.RecurrenceGapDays,
                 RecurrenceIteration = nextIteration,
                 RecurrenceBaseName = baseName,
+                ScoringMode = previous.ScoringMode,
             };
         }
     }

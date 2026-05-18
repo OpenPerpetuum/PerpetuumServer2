@@ -162,7 +162,9 @@ namespace Perpetuum.Services.Seasons
             if (basePoints <= 0)
                 return;
 
-            double newTotal = _repository.AddPoints(characterId, season.Id, basePoints);
+            double newTotal = season.ScoringMode == SeasonScoringMode.ActivityAndGlobal
+                ? _repository.AddPoints(characterId, season.Id, basePoints)
+                : _repository.GetCurrentPoints(characterId, season.Id);
 
             // Objective progress
             DateTime dailyWindow = DateTime.UtcNow.Date;
