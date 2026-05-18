@@ -6187,6 +6187,7 @@ Generated from DBML structure.
 | `recurrence_gap_days` | `int [null]` — days between end of one run and start of next |
 | `recurrence_iteration` | `int [not null, default: 1]` — which run this row represents |
 | `recurrence_base_name` | `nvarchar(255) [null]` — operator-entered name; server appends `, Run #N` |
+| `scoring_mode` | `tinyint [not null, default: 0]` — scoring mode (0 = ActivityAndGlobal, 1 = ObjectivesOnly) |
 
 ### Indexes
 
