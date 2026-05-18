@@ -379,7 +379,7 @@ path is out of scope since it covers multiple changes, not a single item.
 
 ## IMPROVEMENT-018 - Season Config: Activity Points Scoring Mode
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Seasons / Admin Tool
 
