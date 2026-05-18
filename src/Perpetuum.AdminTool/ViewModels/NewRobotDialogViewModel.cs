@@ -159,7 +159,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
                 _lookupCache.Entities.ToList(),
                 englishNames);
 
-            EnabledItems = lookups.EnabledItems;
+            EnabledItems = BuildRobotItems(englishNames);
             StatsPanel.Initialize(lookups);
             HeadStatsPanel.Initialize(lookups);
             ChassisStatsPanel.Initialize(lookups);
@@ -223,13 +223,31 @@ public partial class NewRobotDialogViewModel : ObservableObject
         InventoryStatsPanel.LoadFromClone(row.Stats);
     }
 
+    private IReadOnlyList<PackageItemPickItem> BuildRobotItems(Dictionary<string, string>? englishNames)
+    {
+        var node = new CategoryFlagsNode { Value = (long)CategoryFlags.cf_robots };
+        var result = new List<PackageItemPickItem>();
+        foreach (var e in _lookupCache.Entities)
+        {
+            if (!e.Enabled || e.CategoryFlags == 0) continue;
+            if (!node.ContainsOrEquals(e.CategoryFlags)) continue;
+            var baseName = (englishNames != null && englishNames.TryGetValue(e.Name, out var eng) && !string.IsNullOrEmpty(eng))
+                ? eng
+                : e.Name;
+            var tierLabel = PackageItemPickItem.GetTierLabel(e.CategoryFlags, e.TierType, e.TierLevel);
+            var displayName = tierLabel.Length > 0 ? $"{baseName} ({tierLabel})" : baseName;
+            result.Add(new PackageItemPickItem(e.Definition, displayName));
+        }
+        return result.OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
     private IReadOnlyList<PackageItemPickItem> BuildPartItems(long rootFlag)
     {
         var node = new CategoryFlagsNode { Value = rootFlag };
         var result = new List<PackageItemPickItem>();
         foreach (var e in _lookupCache.Entities)
         {
-            if (!e.Enabled || e.Hidden || e.CategoryFlags == 0) continue;
+            if (!e.Enabled || e.CategoryFlags == 0) continue;
             if (!node.ContainsOrEquals(e.CategoryFlags)) continue;
             result.Add(new PackageItemPickItem(e.Definition, e.Name));
         }

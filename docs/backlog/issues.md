@@ -1,6 +1,6 @@
 ## ISSUE-012 - New Robot dialog: incorrect entity filtering in clone pickers
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Admin Tool / Robots
 
