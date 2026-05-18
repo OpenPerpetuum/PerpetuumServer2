@@ -182,7 +182,7 @@ public partial class NewItemDialogViewModel : ObservableObject
 
                 var script = SqlScriptBuilder.Build([change], _session.Email);
                 Directory.CreateDirectory(dir);
-                var fileName = $"admintool_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
+                var fileName = SqlScriptBuilder.BuildFileName("entity", BasicPanel.DefinitionName);
                 var path = Path.Combine(dir, fileName);
                 await File.WriteAllTextAsync(path, script);
 

@@ -313,7 +313,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
 
                 var script = SqlScriptBuilder.Build([change], _session.Email);
                 Directory.CreateDirectory(dir);
-                var fileName = $"{BasicPanel.DefinitionName}_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
+                var fileName = SqlScriptBuilder.BuildFileName("robot", BasicPanel.DefinitionName);
                 var path = Path.Combine(dir, fileName);
                 await File.WriteAllTextAsync(path, script);
 

@@ -187,7 +187,7 @@ namespace Perpetuum.AdminTool.ViewModels
                 try
                 {
                     Directory.CreateDirectory(dir);
-                    var fileName = $"admintool_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
+                    var fileName = SqlScriptBuilder.BuildFileName("season", Seasons.DetailViewModel?.Season.Name);
                     var path = Path.Combine(dir, fileName);
                     await File.WriteAllTextAsync(path, script);
 
