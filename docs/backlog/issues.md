@@ -1,3 +1,27 @@
+## ISSUE-012 - New Robot dialog: incorrect entity filtering in clone pickers
+
+Status: TODO
+Priority: HIGH
+Area: Admin Tool / Robots
+
+### Problem
+The clone pickers in the New Robot dialog filter entities incorrectly:
+
+- **Part pickers (Head, Chassis, Leg, Inventory):** `BuildPartItems` currently excludes `hidden` entities in addition to filtering by `enabled` and category. Hidden entities should be clonable — operators need to reference them when creating variants of non-public parts.
+- **Main robot picker:** `PackageItemPickItem.BuildFilteredList` filters against a broad `AllowedRoots` list that includes many non-robot categories (ammo, equipment, materials, etc.) and also excludes hidden entities. The main picker should be scoped to `cf_robots` + `enabled` only.
+
+### Impact
+Operators cannot clone from hidden robot entities (e.g. prototype or internal variants), and the main picker surfaces non-robot entities as potential clone sources, causing confusion.
+
+### Proposed Fix
+- **Part pickers (`BuildPartItems` in `NewRobotDialogViewModel`):** remove the `e.Hidden` exclusion — filter only by `e.Enabled && e.CategoryFlags != 0 && node.ContainsOrEquals(e.CategoryFlags)`.
+- **Main picker:** replace `PackageItemPickItem.BuildFilteredList` usage in `InitializeAsync` (currently used for `EnabledItems`) with a dedicated filter scoped to `cf_robots` + `e.Enabled` only, no hidden exclusion.
+
+### Notes
+`BuildPartItems` is in `NewRobotDialogViewModel.cs`. `EnabledItems` is populated in `InitializeAsync` via `NewItemRepository.LoadAsync` → `PackageItemPickItem.BuildFilteredList` — the main picker change may require a new filtered list built directly from `_lookupCache.Entities` rather than changing the shared `BuildFilteredList` method.
+
+---
+
 ## ISSUE-001 - Enforce UTC for seasons.date_start and seasons.date_end
 
 Status: DONE
