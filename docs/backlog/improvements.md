@@ -1,26 +1,3 @@
-## IMPROVEMENT-001 - Recurring Seasons with Selectable Periodicity
-
-Status: DONE
-Priority: HIGH
-Area: Seasons
-
-### Description
-Add the ability to mark a Season as recurring, with a configurable periodicity (e.g. weekly, monthly, custom interval). A recurring Season should auto-start at its `date_start` and automatically schedule the next iteration upon completion, without manual admin intervention.
-
-### Impact
-Reduces operational overhead for regular competitive seasons. Enables a predictable cadence for players and removes the need to manually create and activate each season cycle.
-
-### Proposed Implementation
-- Add `is_recurring` (bit) and `recurrence_period_days` (int, nullable) columns to the `seasons` table.
-- On season end, the server-side season scheduler checks `is_recurring`; if true, clones the season with `date_start = previous date_end` and `date_end = date_start + recurrence_period_days`, then activates it.
-- Auto-start logic: the existing season scheduler (or a new timed check) compares `date_start` against `DateTime.UtcNow` and activates eligible recurring seasons automatically.
-- Admin tool should expose `is_recurring` and `recurrence_period_days` fields when creating or editing a season.
-- Ensure the recurrence chain is bounded (e.g. optional `recurrence_end_date` or max iteration count) to prevent unbounded DB growth.
-
-### Notes
-Depends on [[ISSUE-001]] — UTC enforcement on `date_start`/`date_end` must be in place before auto-start timing is reliable.
-Periodicity options to support at minimum: daily, weekly, biweekly, monthly, custom (n days).
-
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
 Status: TODO
@@ -45,58 +22,7 @@ Hardcoded strings are fragile: a rename or new deployment environment requires h
 Audit starting points: seasons announcement code, chat subsystem, any admin tool chat/broadcast helpers.
 Keep backward compatibility with existing DB channel records — constants should match stored names unless a migration is also performed.
 
-## IMPROVEMENT-003 - Admin Tool: Item Designer
-
-Status: DONE
-Priority: MEDIUM
-Area: Admin Tool / Items
-
-### Description
-Add an Item Designer feature to the Admin Tool that allows operators to create new game items from scratch. The designer should cover basic item parameters, configurable item stats, a side-by-side comparison view against an existing item, and translation entry for all supported locales.
-
-### Impact
-Currently creating new items requires direct DB manipulation and knowledge of multiple interrelated tables. A guided UI reduces the risk of malformed items, lowers the barrier for content authors, and speeds up content iteration.
-
-### Proposed Implementation
-- **Basic Parameters panel** — item name (internal key), category, type, volume, mass, tier, icon, flags (marketable, stackable, etc.).
-- **Stats panel** — dynamic list of stat key/value pairs drawn from the known `entitydefaults` / `aggregatevalues` schema; support adding, editing, and removing stat rows with type validation.
-- **Comparison panel** — item picker to load an existing item alongside the new item; display both sets of parameters and stats in a diff-style view so the designer can use an existing item as a reference template.
-- **Translations panel** — entry fields for item display name and description per supported locale; pre-populate from the selected reference item if one is chosen.
-- **Save flow** — validate required fields, then write to the relevant tables (`entitydefaults`, `aggregatevalues`, `translation`, etc.) in a single transaction; report success or validation errors inline.
-- Consider a "Clone from existing" shortcut that pre-fills all panels from a chosen item, reducing the common case of creating a variant.
-
-### Notes
-Requires understanding of the full item definition schema — consult `docs/db_structure/` before implementation.
-Translation keys must follow existing naming conventions to avoid collisions.
-The comparison/reference view is a UX aid only; it must not overwrite the new item's data silently.
-
-## IMPROVEMENT-004 - Admin Tool: Robot Designer
-
-Status: DONE
-Priority: MEDIUM
-Area: Admin Tool / Robots
-
-### Description
-Add a Robot Designer feature to the Admin Tool that allows operators to create new robots from scratch. The designer covers selecting a robot template, configuring basic robot parameters, setting stats for the robot chassis and each robot part (head, leg, chassis, inventory), a side-by-side comparison view against an existing robot, and translation entry for all supported locales.
-
-### Impact
-Creating new robots currently requires direct manipulation of multiple interrelated DB tables (robot definition, parts, slots, stats, translations). A guided UI reduces the risk of malformed robot definitions, lowers the barrier for content authors, and speeds up robot content iteration — especially important given robot complexity relative to generic items.
-
-### Proposed Implementation
-- **Template panel** — select a robot template (chassis archetype) that pre-defines the part layout (number of head/leg/chassis/inventory slots, turret/missile/aux slot counts). Templates should be drawn from existing robot definitions.
-- **Basic Parameters panel** — robot name (internal key), faction, tier, icon, size class, flags (marketable, constructable, etc.).
-- **Robot Stats panel** — stats applied to the robot entity itself (speed, sensor, accumulator, etc.), drawn from the known `aggregatevalues` schema for robot entities.
-- **Parts Stats panel** — per-part (head, leg, chassis, inventory) stat configuration; each part is a separate sub-entity with its own `entitydefaults` / `aggregatevalues` rows. Support adding, editing, and removing stat rows per part with type validation.
-- **Comparison panel** — robot picker to load an existing robot alongside the new definition; display chassis + all parts parameters and stats in a diff-style view for reference. Must not auto-apply reference values to the new robot.
-- **Translations panel** — display name and description per supported locale for the robot and each named part; pre-populate from the selected reference robot if one is chosen.
-- **Save flow** — validate all required fields across robot and parts, then write the full robot definition (robot entity, part entities, slot assignments, stats, translations) in a single transaction; report success or validation errors inline.
-- Consider a "Clone from existing robot" shortcut that pre-fills all panels from a chosen robot, covering the common variant/reskin workflow.
-
-### Notes
-Robot definitions span multiple tables — consult `docs/db_structure/` thoroughly before implementation; pay attention to part ownership and slot assignment relationships.
-Translation keys for robot and parts must follow existing naming conventions.
-The template selection step is critical: slot counts and part types are structurally fixed by the template and must not be violated by subsequent panel edits.
-See [[IMPROVEMENT-003]] for the related Item Designer — shared UI patterns (stats panel, translations panel, comparison panel) should be extracted as reusable components.
+---
 
 ## IMPROVEMENT-005 - Seasons: Additional Activity Types
 
@@ -131,6 +57,8 @@ Distance Travelled was deferred — see [[IMPROVEMENT-015]].
 Verify passive EP accumulation call site (AccountManager.cs or dedicated scheduler) before wiring EpEarned.
 Confirm NPCs do not have character IDs that would cause accidental season point accumulation on DamageReceived.
 
+---
+
 ## IMPROVEMENT-006 - Daily Objectives
 
 Status: DONE
@@ -151,6 +79,8 @@ Depends on [[ISSUE-001]] — daily reset boundary must use UTC to be consistent 
 See [[IMPROVEMENT-005]] for new activity types that could back daily objective targets.
 See [[IMPROVEMENT-001]] for recurring season design — daily objectives are a finer-grained recurrence within a season.
 Reset time is hardcoded UTC midnight (configurable reset time deferred).
+
+---
 
 ## IMPROVEMENT-007 - NPC Rank System
 
@@ -174,6 +104,8 @@ Provides a clear, queryable signal for distinguishing NPC threat levels without 
 ### Notes
 Keep the rank scale small and stable — it will be referenced by season activity configs and potentially loot rules, so changes after rollout are costly.
 If season activity types need to filter by NPC rank (see [[IMPROVEMENT-005]]), the rank value must be accessible at the point where kill events are emitted.
+
+---
 
 ## IMPROVEMENT-008 - NPC Role System
 
@@ -199,6 +131,8 @@ Role classification gives AI subsystems and content systems a stable, queryable 
 Role and rank (see [[IMPROVEMENT-007]]) are complementary attributes — implement consistently (same table, same read path, same Admin Tool panel).
 If season activity types need to filter by NPC role (see [[IMPROVEMENT-005]]), role must be accessible at the point where kill events are emitted.
 Keep the initial role set conservative; adding roles later is cheaper than changing existing ones after downstream systems reference them.
+
+---
 
 ## IMPROVEMENT-009 - Targeted Objectives
 
@@ -230,6 +164,8 @@ Depends on [[IMPROVEMENT-007]] and [[IMPROVEMENT-008]] for NPC rank/role filteri
 Target filter should be stored as structured data (e.g. JSON column or normalised filter table) rather than freeform strings to allow reliable matching and Admin Tool rendering.
 Keep the filter evaluation path lightweight — it runs on every matching game event and must not introduce blocking or excessive allocation in hot paths.
 
+---
+
 ## IMPROVEMENT-012 - Seasons Tiers tab: on-the-fly save generating a single change script
 
 Status: DONE
@@ -253,32 +189,6 @@ Inconsistent save mechanics increase operator confusion and risk: a different sa
 ### Notes
 See [[IMPROVEMENT-010]] — the Scoring Balancing tab depends on tiers being editable inline; consistent save mechanics here unblock a clean implementation of that tab.
 Preserve existing tier DB schema — this improvement changes the save UI mechanic only, not the underlying data model.
-
----
-
-## IMPROVEMENT-011 - NPC fleeing state reduces max speed by 25%
-
-Status: DONE
-Priority: CRITICAL
-Area: NPCs / AI
-
-### Description
-When an NPC enters the fleeing state its maximum speed should be capped at 75% of its normal maximum speed. The cap must be lifted and the original max speed fully restored as soon as the NPC exits the fleeing state.
-
-### Impact
-Without this penalty a fleeing NPC moves at full speed, making it trivially easy to escape combat. Applying a speed reduction creates a meaningful tactical consequence for the fleeing state and improves gameplay authenticity.
-
-### Proposed Implementation
-- Locate the code path that transitions an NPC into the fleeing state (likely in the AI state machine or NPC behaviour handler).
-- On entering fleeing: record the NPC's current max speed, then apply a multiplier of `0.75` to the effective max speed.
-- On exiting fleeing: restore the recorded original max speed, regardless of the exit reason (combat re-engagement, death, target lost, etc.).
-- Prefer a modifier/buff approach consistent with how other temporary stat changes are applied to NPCs — avoid overwriting the base definition value directly.
-- Ensure the speed is recalculated immediately on state transition so the change takes effect within the same update tick.
-
-### Notes
-Verify how max speed is stored and applied for NPCs — consult NPC AI and movement subsystems before implementing.
-The 75% cap applies to max speed only; acceleration and other movement parameters are unaffected unless a future improvement specifies otherwise.
-Edge case: if the NPC is already speed-debuffed by a player effect, the fleeing cap should compose correctly with existing modifiers rather than overriding them.
 
 ---
 
@@ -411,6 +321,8 @@ Depends on [[IMPROVEMENT-012]] being complete — Tiers tab must use the queue b
 Key must be stable across multiple `Queue Save` clicks on the same row, not a generated GUID.
 Destructive changes (DELETE) should also replace any prior non-destructive change for the same key.
 
+---
+
 ## IMPROVEMENT-017 - New Item script filename includes definition name
 
 Status: TODO
@@ -461,48 +373,3 @@ the existing `BasicPanel` property; no new fields are needed.
 The `MainViewModel.CommitAsync` SqlScript path uses the same
 `admintool_<date>_<time>.sql` template for multi-change commits — that
 path is out of scope since it covers multiple changes, not a single item.
-
-
-## IMPROVEMENT-018 - New Robot dialog UX improvements
-
-Status: TODO
-Priority: HIGH
-Area: Admin Tool / Robots
-
-### Description
-
-Three UX improvements to the New Robot dialog (IMPROVEMENT-004):
-
-1. **IsRobot default true** — The `IsRobot` checkbox on the Basic tab should be checked by default when the New Robot dialog opens, since the dialog is purpose-built for robots.
-
-2. **Per-part Clone from pickers** — Head, Chassis, Leg, and Inventory tabs each need a "Clone from" ComboBox (same pattern as the main entity clone picker on the dialog header). Selecting an existing part entity pre-fills that tab's stats rows with the source entity's `aggregatevalues`, with an inline "Original" column in the stats DataGrid showing the cloned values for comparison (same pattern as `StatsPanelViewModel.LoadFromClone`).
-
-3. **Category-filtered part pickers** — Each part's clone picker only lists entities whose `CategoryFlags` matches the relevant flag (and its descendants) using the existing `CategoryFlagsNode.ContainsOrEquals` logic:
-   - Main robot picker → `cf_robots` (`0x0000000000000001`)
-   - Head picker → `cf_robot_head` (`0x0000000000000150`)
-   - Chassis picker → `cf_robot_chassis` (`0x0000000000000250`)
-   - Leg picker → `cf_robot_leg` (`0x0000000000000350`)
-   - Inventory picker → `cf_robot_inventory` (`0x0000000000030915`)
-
-### Impact
-
-Without `IsRobot` defaulting to true, operators must manually check it every time — the dialog name implies it. Without per-part cloning, operators must manually enter all stats for each part from scratch, which is error-prone and slow for robots that share a part family. The category filter ensures the picker only surfaces relevant entities rather than the full 1000+ entity list.
-
-### Proposed Fix
-
-**IsRobot default:**
-- In `NewRobotDialogViewModel` constructor, set `BasicPanel.IsRobot = true` after constructing `BasicPanel`.
-
-**Per-part clone pickers:**
-- Add `IReadOnlyList<PackageItemPickItem>` observable properties to `NewRobotDialogViewModel` for each part: `HeadItems`, `ChassisItems`, `LegItems`, `InventoryItems`. Populate them in `InitializeAsync` by filtering `AllRows` (or `_lookupCache.Entities`) by the matching `CategoryFlags` using `CategoryFlagsNode.ContainsOrEquals`.
-- Add `[ObservableProperty] PackageItemPickItem? _cloneHead`, `_cloneChassis`, `_cloneLeg`, `_cloneInventory` on the dialog VM.
-- Wire `partial void OnCloneXxxChanged` → load that part's `aggregatevalues` from DB (via `NewRobotRepository` — add a `LoadStatsAsync(int definition)` method that queries `aggregatevalues`) → call `XxxStatsPanel.LoadFromClone(stats)`.
-- Add a ComboBox on each part tab in `NewRobotDialog.xaml` (same layout as the main clone picker header bar), bound to `CloneHead` / `HeadItems` etc.
-
-**Category filtering implementation:**
-- Use `CategoryFlagsHierarchy.BuildRoots()` (already available on `EntitiesViewModel`) or construct a single `CategoryFlagsNode` from the known flag value and call `ContainsOrEquals(row.CategoryFlags)` inline. `PackageItemPickItem` construction already exists in `NewItemRepository` — the same factory or a local LINQ filter over `AllRows` is sufficient.
-
-### Notes
-- `CategoryFlagsNode.ContainsOrEquals` handles both exact match and descendant matching, so sub-types within each category are included automatically.
-- `StatsPanelViewModel.LoadFromClone` already supports the "Original" column display — no changes needed to that class.
-- The main entity clone picker (existing) is not affected; it should remain unfiltered or continue with its current filter.
