@@ -14,6 +14,7 @@ namespace Perpetuum.AdminTool.Seasons
             string baseNameSql = row.IsRecurring && row.RecurrenceBaseName != null
                 ? SqlLiteral.Of(row.RecurrenceBaseName)
                 : "NULL";
+            string dailyObjSql = SqlLiteral.OfNullableInt(row.DailyObjectivesPerDay > 0 ? row.DailyObjectivesPerDay : null);
             return new RawSqlChange(
                 $"seasons: insert '{row.Name}'",
                 $"INSERT INTO seasons (name, description, start_time, end_time, is_active, " +
@@ -23,7 +24,7 @@ namespace Perpetuum.AdminTool.Seasons
                 $"'{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
                 $"'{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0, " +
                 $"{(row.IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql}, {(int)row.ScoringMode}, " +
-                $"{SqlLiteral.OfNullableInt(row.DailyObjectivesPerDay)})");
+                $"{dailyObjSql})");
         }
 
         public static IPendingChange BuildUpdate(SeasonRow row)
@@ -34,6 +35,7 @@ namespace Perpetuum.AdminTool.Seasons
             string baseNameSql = row.IsRecurring && row.RecurrenceBaseName != null
                 ? SqlLiteral.Of(row.RecurrenceBaseName)
                 : "NULL";
+            string dailyObjSql = SqlLiteral.OfNullableInt(row.DailyObjectivesPerDay > 0 ? row.DailyObjectivesPerDay : null);
             var sets = $"name = {SqlLiteral.Of(row.Name)}, description = {SqlLiteral.Of(row.Description)}, " +
                        $"start_time = '{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
                        $"end_time = '{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
@@ -41,7 +43,7 @@ namespace Perpetuum.AdminTool.Seasons
                        $"recurrence_gap_days = {gapSql}, " +
                        $"recurrence_base_name = {baseNameSql}, " +
                        $"scoring_mode = {(int)row.ScoringMode}, " +
-                       $"daily_objectives_per_day = {SqlLiteral.OfNullableInt(row.DailyObjectivesPerDay)}";
+                       $"daily_objectives_per_day = {dailyObjSql}";
             return new RawSqlChange(
                 $"seasons: update id {row.Id} ('{row.Name}')",
                 $"UPDATE seasons SET {sets} WHERE id = {row.Id}");
