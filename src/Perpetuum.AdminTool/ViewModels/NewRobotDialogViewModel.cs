@@ -67,6 +67,10 @@ public partial class NewRobotDialogViewModel : ObservableObject
     public StatsPanelViewModel LegStatsPanel { get; }
     public BasicPanelViewModel InventoryPanel { get; }
     public StatsPanelViewModel InventoryStatsPanel { get; }
+    public OptionsVisualPanelViewModel HeadOptionsPanel { get; }
+    public OptionsVisualPanelViewModel ChassisOptionsPanel { get; }
+    public OptionsVisualPanelViewModel LegOptionsPanel { get; }
+    public OptionsVisualPanelViewModel InventoryOptionsPanel { get; }
     public RobotTemplatePanelViewModel TemplatePanelViewModel { get; }
     public RobotTemplateRelationPanelViewModel TemplateRelationPanelViewModel { get; }
 
@@ -120,6 +124,11 @@ public partial class NewRobotDialogViewModel : ObservableObject
         InventoryPanel = new BasicPanelViewModel(BasicPanelMode.RobotPart, existingNames);
         InventoryStatsPanel = new StatsPanelViewModel();
 
+        HeadOptionsPanel = new OptionsVisualPanelViewModel();
+        ChassisOptionsPanel = new OptionsVisualPanelViewModel();
+        LegOptionsPanel = new OptionsVisualPanelViewModel();
+        InventoryOptionsPanel = new OptionsVisualPanelViewModel();
+
         TemplatePanelViewModel = new RobotTemplatePanelViewModel();
         TemplateRelationPanelViewModel = new RobotTemplateRelationPanelViewModel();
 
@@ -169,6 +178,10 @@ public partial class NewRobotDialogViewModel : ObservableObject
             ProductionPanel.Initialize(lookups);
             ResearchPanel.Initialize(lookups);
             OptionsVisualPanel.Initialize(lookups);
+            HeadOptionsPanel.Initialize(lookups);
+            ChassisOptionsPanel.Initialize(lookups);
+            LegOptionsPanel.Initialize(lookups);
+            InventoryOptionsPanel.Initialize(lookups);
 
             HeadItems = BuildPartItems((long)CategoryFlags.cf_robot_head);
             ChassisItems = BuildPartItems((long)CategoryFlags.cf_robot_chassis);
@@ -194,6 +207,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
         HeadPanel.LoadFromClone(row);
         HeadPanel.SuggestName(BasicPanel.DefinitionName, "_head");
         HeadStatsPanel.LoadFromClone(row.Stats);
+        HeadOptionsPanel.LoadFromClone(row.Options, new Dictionary<string, string?>());
     }
 
     partial void OnCloneChassisChanged(PackageItemPickItem? value)
@@ -203,6 +217,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
         ChassisPanel.LoadFromClone(row);
         ChassisPanel.SuggestName(BasicPanel.DefinitionName, "_chassis");
         ChassisStatsPanel.LoadFromClone(row.Stats);
+        ChassisOptionsPanel.LoadFromClone(row.Options, new Dictionary<string, string?>());
     }
 
     partial void OnCloneLegChanged(PackageItemPickItem? value)
@@ -212,6 +227,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
         LegPanel.LoadFromClone(row);
         LegPanel.SuggestName(BasicPanel.DefinitionName, "_leg");
         LegStatsPanel.LoadFromClone(row.Stats);
+        LegOptionsPanel.LoadFromClone(row.Options, new Dictionary<string, string?>());
     }
 
     partial void OnCloneInventoryChanged(PackageItemPickItem? value)
@@ -221,6 +237,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
         InventoryPanel.LoadFromClone(row);
         InventoryPanel.SuggestName(BasicPanel.DefinitionName, "_inventory");
         InventoryStatsPanel.LoadFromClone(row.Stats);
+        InventoryOptionsPanel.LoadFromClone(row.Options, new Dictionary<string, string?>());
     }
 
     private IReadOnlyList<PackageItemPickItem> BuildRobotItems(Dictionary<string, string>? englishNames)

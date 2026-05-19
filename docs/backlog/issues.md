@@ -102,7 +102,7 @@ Follows the `GenXY` naming convention where `n` prefix denotes a definition refe
 
 ## ISSUE-014 - Robot part clone does not copy or expose options field for editing
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Game Content / Robots / Admin Tool
 

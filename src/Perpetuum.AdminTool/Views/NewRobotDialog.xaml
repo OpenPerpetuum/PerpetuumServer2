@@ -961,8 +961,11 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="180"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
@@ -980,7 +983,8 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Field" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="New Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Original (clone)" Foreground="Gray" Margin="8,0,0,6"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Definition Name" VerticalAlignment="Top" Margin="0,4,4,4"/>
                             <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,2,4,4">
@@ -1054,6 +1058,12 @@
                             <TextBlock Grid.Row="14" Grid.Column="0" Text="Note" VerticalAlignment="Top" Margin="0,4,4,4"/>
                             <TextBox Grid.Row="14" Grid.Column="1" Text="{Binding HeadPanel.Note}" AcceptsReturn="True"
                                      Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+
+                            <TextBlock Grid.Row="15" Grid.Column="0" Text="Options (GenXY)" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                            <TextBox Grid.Row="15" Grid.Column="1" Text="{Binding HeadOptionsPanel.OptionsText, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True" Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+                            <TextBlock Grid.Row="15" Grid.Column="2" Text="{Binding HeadOptionsPanel.CloneOptionsText}"
+                                       Foreground="Gray" VerticalAlignment="Top" Margin="8,4,0,4" TextWrapping="Wrap"/>
                         </Grid>
                     </ScrollViewer>
 
@@ -1123,8 +1133,11 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="180"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
@@ -1142,7 +1155,8 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Field" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="New Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Original (clone)" Foreground="Gray" Margin="8,0,0,6"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Definition Name" VerticalAlignment="Top" Margin="0,4,4,4"/>
                             <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,2,4,4">
@@ -1216,6 +1230,12 @@
                             <TextBlock Grid.Row="14" Grid.Column="0" Text="Note" VerticalAlignment="Top" Margin="0,4,4,4"/>
                             <TextBox Grid.Row="14" Grid.Column="1" Text="{Binding ChassisPanel.Note}" AcceptsReturn="True"
                                      Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+
+                            <TextBlock Grid.Row="15" Grid.Column="0" Text="Options (GenXY)" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                            <TextBox Grid.Row="15" Grid.Column="1" Text="{Binding ChassisOptionsPanel.OptionsText, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True" Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+                            <TextBlock Grid.Row="15" Grid.Column="2" Text="{Binding ChassisOptionsPanel.CloneOptionsText}"
+                                       Foreground="Gray" VerticalAlignment="Top" Margin="8,4,0,4" TextWrapping="Wrap"/>
                         </Grid>
                     </ScrollViewer>
 
@@ -1285,8 +1305,11 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="180"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
@@ -1304,7 +1327,8 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Field" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="New Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Original (clone)" Foreground="Gray" Margin="8,0,0,6"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Definition Name" VerticalAlignment="Top" Margin="0,4,4,4"/>
                             <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,2,4,4">
@@ -1378,6 +1402,12 @@
                             <TextBlock Grid.Row="14" Grid.Column="0" Text="Note" VerticalAlignment="Top" Margin="0,4,4,4"/>
                             <TextBox Grid.Row="14" Grid.Column="1" Text="{Binding LegPanel.Note}" AcceptsReturn="True"
                                      Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+
+                            <TextBlock Grid.Row="15" Grid.Column="0" Text="Options (GenXY)" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                            <TextBox Grid.Row="15" Grid.Column="1" Text="{Binding LegOptionsPanel.OptionsText, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True" Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+                            <TextBlock Grid.Row="15" Grid.Column="2" Text="{Binding LegOptionsPanel.CloneOptionsText}"
+                                       Foreground="Gray" VerticalAlignment="Top" Margin="8,4,0,4" TextWrapping="Wrap"/>
                         </Grid>
                     </ScrollViewer>
 
@@ -1447,8 +1477,11 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="180"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
@@ -1466,7 +1499,8 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Field" FontWeight="Bold" Margin="0,0,0,6"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="New Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Original (clone)" Foreground="Gray" Margin="8,0,0,6"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Definition Name" VerticalAlignment="Top" Margin="0,4,4,4"/>
                             <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,2,4,4">
@@ -1540,6 +1574,12 @@
                             <TextBlock Grid.Row="14" Grid.Column="0" Text="Note" VerticalAlignment="Top" Margin="0,4,4,4"/>
                             <TextBox Grid.Row="14" Grid.Column="1" Text="{Binding InventoryPanel.Note}" AcceptsReturn="True"
                                      Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+
+                            <TextBlock Grid.Row="15" Grid.Column="0" Text="Options (GenXY)" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                            <TextBox Grid.Row="15" Grid.Column="1" Text="{Binding InventoryOptionsPanel.OptionsText, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True" Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+                            <TextBlock Grid.Row="15" Grid.Column="2" Text="{Binding InventoryOptionsPanel.CloneOptionsText}"
+                                       Foreground="Gray" VerticalAlignment="Top" Margin="8,4,0,4" TextWrapping="Wrap"/>
                         </Grid>
                     </ScrollViewer>
 

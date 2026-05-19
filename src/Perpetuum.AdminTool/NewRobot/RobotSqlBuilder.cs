@@ -97,22 +97,22 @@ public static class RobotSqlBuilder
         {
             // 15. Head entity
             sql.AppendLine("DECLARE @headDef INT;");
-            ItemSqlBuilder.AppendEntityInsert(sql, vm.HeadPanel, null);
+            ItemSqlBuilder.AppendEntityInsert(sql, vm.HeadPanel, vm.HeadOptionsPanel.OptionsText);
             sql.AppendLine("SET @headDef = SCOPE_IDENTITY();");
 
             // 16. Chassis entity
             sql.AppendLine("DECLARE @chassisDef INT;");
-            ItemSqlBuilder.AppendEntityInsert(sql, vm.ChassisPanel, null);
+            ItemSqlBuilder.AppendEntityInsert(sql, vm.ChassisPanel, vm.ChassisOptionsPanel.OptionsText);
             sql.AppendLine("SET @chassisDef = SCOPE_IDENTITY();");
 
             // 17. Leg entity
             sql.AppendLine("DECLARE @legDef INT;");
-            ItemSqlBuilder.AppendEntityInsert(sql, vm.LegPanel, null);
+            ItemSqlBuilder.AppendEntityInsert(sql, vm.LegPanel, vm.LegOptionsPanel.OptionsText);
             sql.AppendLine("SET @legDef = SCOPE_IDENTITY();");
 
             // 18. Inventory entity
             sql.AppendLine("DECLARE @inventoryDef INT;");
-            ItemSqlBuilder.AppendEntityInsert(sql, vm.InventoryPanel, null);
+            ItemSqlBuilder.AppendEntityInsert(sql, vm.InventoryPanel, vm.InventoryOptionsPanel.OptionsText);
             sql.AppendLine("SET @inventoryDef = SCOPE_IDENTITY();");
 
             // 18a. Back-fill robot entity options with part definition references (GenXY decimal format).
