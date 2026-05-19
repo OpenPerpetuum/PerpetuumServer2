@@ -6188,6 +6188,7 @@ Generated from DBML structure.
 | `recurrence_iteration` | `int [not null, default: 1]` — which run this row represents |
 | `recurrence_base_name` | `nvarchar(255) [null]` — operator-entered name; server appends `, Run #N` |
 | `scoring_mode` | `tinyint [not null, default: 0]` — scoring mode (0 = ActivityAndGlobal, 1 = ObjectivesOnly) |
+| `daily_objectives_per_day` | `smallint [null]` — when set, draw exactly N daily objectives per UTC day using a deterministic seed; NULL = all daily objectives active |
 
 ### Indexes
 
