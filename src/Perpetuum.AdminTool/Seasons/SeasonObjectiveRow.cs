@@ -53,6 +53,8 @@ namespace Perpetuum.AdminTool.Seasons
                 .FirstOrDefault(m => m.Definition == value)?.DisplayName;
         }
 
+        public bool HasTargetMaterials => AvailableMaterials.Count > 0;
+
         private void RefreshAvailableMaterials()
         {
             AvailableMaterials = ActivityType switch
@@ -64,6 +66,7 @@ namespace Perpetuum.AdminTool.Seasons
             if (TargetDefinitionId.HasValue &&
                 !AvailableMaterials.Any(m => m.Definition == TargetDefinitionId))
                 TargetDefinitionId = null;
+            OnPropertyChanged(nameof(HasTargetMaterials));
         }
     }
 }
