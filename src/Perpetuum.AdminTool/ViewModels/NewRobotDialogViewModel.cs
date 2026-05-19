@@ -15,6 +15,7 @@ using Perpetuum.AdminTool.Packages;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Translations;
 using Perpetuum.ExportedTypes;
+using Perpetuum.GenXY;
 
 namespace Perpetuum.AdminTool.ViewModels;
 
@@ -295,6 +296,13 @@ public partial class NewRobotDialogViewModel : ObservableObject
             var relation = await _robotRepository.LoadTemplateRelationAsync(definition);
             if (relation != null)
                 TemplateRelationPanelViewModel.LoadFromClone(relation);
+
+            var dict = GenxyConverter.Deserialize(row.Options ?? "");
+            if (dict.TryGetValue("chassis", out var chassisVal) && chassisVal is int chassisDefinition)
+            {
+                var bonuses = await _robotRepository.LoadChassisBonusesAsync(chassisDefinition);
+                BonusesPanel.LoadFromClone(bonuses);
+            }
         }
         catch (Exception ex)
         {
