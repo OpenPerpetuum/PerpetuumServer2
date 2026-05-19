@@ -140,9 +140,10 @@ Keep the initial role set conservative; adding roles later is cheaper than chang
 
 ## IMPROVEMENT-009 - Targeted Objectives
 
-Status: TODO
+Status: DONE
 Priority: LOW
 Area: Seasons / Objectives
+Spec: `docs/superpowers/specs/2026-05-19-improvement-009-targeted-objectives-design.md`
 
 ### Description
 Extend the objective system to support targeted objectives, where a specific subject must be matched for progress to count. The target is activity-type-dependent — for example, a mining objective can target a specific ore type ("Mine 100 000 Colixium"), a kill objective can target an NPC role ("Kill 50 Combat NPCs") or rank, a production objective can target an item category, and so on.

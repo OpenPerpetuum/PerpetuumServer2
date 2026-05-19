@@ -28,7 +28,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
-                ScoringMode = (SeasonScoringMode)record.GetValue<int>("scoring_mode"),
+                ScoringMode = (SeasonScoringMode)record.GetValue<byte>("scoring_mode"),
             };
         }
 
@@ -58,16 +58,16 @@ namespace Perpetuum.Services.Seasons
                      .Execute()
                      .Select(r => new SeasonObjective
                      {
-                         Id           = r.GetValue<int>("id"),
-                         SeasonId     = r.GetValue<int>("season_id"),
-                         Name         = r.GetValue<string>("name"),
-                         Description  = r.GetValue<string>("description"),
+                         Id = r.GetValue<int>("id"),
+                         SeasonId = r.GetValue<int>("season_id"),
+                         Name = r.GetValue<string>("name"),
+                         Description = r.GetValue<string>("description"),
                          ActivityType = (SeasonActivityType)r.GetValue<int>("activity_type"),
-                         TargetValue  = r.GetValue<long>("target_value"),
-                         BonusPoints  = r.GetValue<int>("bonus_points"),
+                         TargetValue = r.GetValue<long>("target_value"),
+                         BonusPoints = r.GetValue<int>("bonus_points"),
                          DisplayOrder = r.GetValue<int>("display_order"),
-                         IsDaily      = r.GetValue<bool>("is_daily"),
-                         PackageId    = r.GetValue<int?>("package_id"),
+                         IsDaily = r.GetValue<bool>("is_daily"),
+                         PackageId = r.GetValue<int?>("package_id"),
                          TargetDefinitionId = r.GetValue<int?>("target_definition_id"),
                      })
                      .ToList();
