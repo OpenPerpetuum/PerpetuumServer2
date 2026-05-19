@@ -1,6 +1,6 @@
 # Last ID used
 
-019
+021
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -467,3 +467,68 @@ The robot clone source (`CloneSource`) refers to the robot entity. To load chass
 - Chassis bonus rows are only meaningful when `IsRobot` is true — the Bonuses tab should be hidden when `IsRobot` is false (consistent with head/chassis/leg/inventory tabs).
 - The `note` column is nullable; treat empty string as `NULL` in the generated SQL.
 - `effectenhancer` default is `0`; new rows should default the checkbox to unchecked.
+
+---
+
+## IMPROVEMENT-020 - AdminTool Installer
+
+Status: TODO
+Priority: MEDIUM
+Area: Admin Tool / Distribution
+
+### Description
+Create an installer for the AdminTool application that handles required runtime dependencies and supports future updates. The installer should allow operators to set up and update the AdminTool without manually managing prerequisites.
+
+### Impact
+Without an installer, operators must manually install .NET runtime dependencies and track future releases themselves. This creates friction for new deployments, increases support burden, and makes it easy to run an outdated or broken AdminTool version.
+
+### Proposed Implementation
+- Choose an installer technology appropriate for a Windows WPF/.NET 8 app (e.g. NSIS, WiX Toolset, Inno Setup, or a self-contained MSIX package).
+- Bundle or detect the required .NET 8 runtime; prompt installation if absent.
+- Include all AdminTool binaries and assets produced by the Release build.
+- Provide an uninstaller that cleanly removes all installed files.
+- Support in-place updates: either via a versioned installer (run new installer over old install) or an integrated update check mechanism that notifies the operator when a newer release is available.
+- Wire installer creation into the CI pipeline (`.github/workflows/dotnet.yml`) so a fresh installer artifact is produced on each tagged release.
+
+### Notes
+Self-contained publish (`dotnet publish --self-contained`) is an alternative to bundling the runtime installer — evaluate size vs. convenience trade-off.
+If an auto-update mechanism is included, it should be opt-in and not silently replace binaries while the tool is running.
+Installer output should be a single executable or package that operators can distribute without additional steps.
+
+---
+
+## IMPROVEMENT-021 - Upgrade to .NET 10 and Integrate Graphify
+
+Status: TODO
+Priority: HIGH
+Area: Infrastructure / Tooling / AI
+
+### Description
+Plan and execute a careful migration of the entire solution from .NET 8 to .NET 10, then integrate the [Graphify](https://github.com/willibrandon/graphify) package (a .NET 10 dependency) to generate a structural graph of the codebase and wire it to Claude for enhanced code understanding and navigation.
+
+### Impact
+.NET 10 (LTS) brings performance improvements, new C# language features, and long-term support beyond .NET 8. The Graphify integration would give Claude (and operators) a machine-readable dependency/call graph of the server codebase, enabling more accurate impact analysis, smarter navigation, and reduced hallucination risk when reasoning about unfamiliar subsystems.
+
+### Proposed Implementation
+
+**Phase 1 — .NET 10 upgrade**
+- Audit current NuGet dependencies for .NET 10 compatibility; flag any packages with no .NET 10 target or known breaking changes.
+- Update all `<TargetFramework>` entries in `.csproj` files from `net8.0` to `net10.0`.
+- Address any breaking API changes surfaced by the build (`dotnet build`): BCL changes, removed APIs, updated semantics.
+- Update the CI workflow (`.github/workflows/dotnet.yml`) to use the .NET 10 SDK.
+- Validate a full Release build and a local server run before proceeding to Phase 2.
+- Update `docs/STACK.md` to reflect the new runtime version.
+
+**Phase 2 — Graphify integration**
+- Add the Graphify NuGet package to the solution (targeting the appropriate project — likely a standalone tooling project or the AdminTool).
+- Configure Graphify to analyze the `PerpetuumServer2` solution and output a dependency/call graph in a Claude-consumable format (JSON, Markdown, or Graphify's native output).
+- Define what graph artifacts are most useful for Claude: namespace dependency graph, class hierarchy, inter-module call graph, or a combination.
+- Automate graph regeneration (e.g. as a pre-build step or CI artifact) so the graph stays current as the codebase evolves.
+- Document how Claude should load and interpret the graph output — update `.claude/knowledge/architecture.md` with a pointer to the graph artifact and a brief explanation of its structure.
+
+### Notes
+.NET 10 is on the STS/LTS release train; verify its LTS status and release date before committing to the upgrade timeline.
+Graphify requires .NET 10 — Phase 1 must be complete and stable before Phase 2 begins.
+The upgrade should be done on a dedicated branch with a full build + manual smoke test before merging.
+Pay special attention to any use of reflection, source generators, or runtime behaviour that changed between .NET 8 and .NET 10.
+Autofac and other DI/serialization libraries should be verified for .NET 10 compatibility early — these are common sources of upgrade friction.

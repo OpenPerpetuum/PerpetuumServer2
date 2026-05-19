@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <ComponentGroup Id="AdminToolComponents" Directory="INSTALLFOLDER">
+      <Files Include="$(var.Perpetuum.AdminTool.TargetDir)**" />
+
+      <Component Id="ShortcutStartMenu" Guid="{6D4B2A8E-3C9F-4E1D-A7B5-0F8C2E6B4D9A}">
+        <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder"
+                  Name="Perpetuum Admin Tool"
+                  Target="[INSTALLFOLDER]Perpetuum.AdminTool.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\OpenPerpetuum\AdminTool"
+                       Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+      <Component Id="ShortcutDesktop" Guid="{9A1E5C3D-7B4F-4D8E-B2A6-4C0D7E9B3F5A}">
+        <Shortcut Id="DesktopShortcut" Directory="DesktopFolder"
+                  Name="Perpetuum Admin Tool"
+                  Target="[INSTALLFOLDER]Perpetuum.AdminTool.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\OpenPerpetuum\AdminTool"
+                       Name="desktop" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

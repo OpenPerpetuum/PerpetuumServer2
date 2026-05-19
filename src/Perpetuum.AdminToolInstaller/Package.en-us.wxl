@@ -1,0 +1,3 @@
+<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxl" Culture="en-US">
+  <String Id="DowngradeError">A newer version of Perpetuum Admin Tool is already installed.</String>
+</WixLocalization>
