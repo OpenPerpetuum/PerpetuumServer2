@@ -472,9 +472,10 @@ The robot clone source (`CloneSource`) refers to the robot entity. To load chass
 
 ## IMPROVEMENT-020 - AdminTool Installer
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Admin Tool / Distribution
+Spec: `docs/superpowers/specs/2026-05-19-improvement-020-admintool-installer-design.md`
 
 ### Description
 Create an installer for the AdminTool application that handles required runtime dependencies and supports future updates. The installer should allow operators to set up and update the AdminTool without manually managing prerequisites.
