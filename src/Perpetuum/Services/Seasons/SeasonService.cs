@@ -41,6 +41,9 @@ namespace Perpetuum.Services.Seasons
         private TimeSpan _cacheAge = CacheRefreshInterval;
         private TimeSpan _leaderboardAge = LeaderboardAnnouncementInterval;
 
+        private ImmutableHashSet<int> _currentDailyPool = ImmutableHashSet<int>.Empty;
+        private DateOnly _currentPoolDate = DateOnly.MinValue;
+
         public SeasonService(
             SeasonRepository repository,
             ISessionManager sessionManager,
@@ -76,6 +79,22 @@ namespace Perpetuum.Services.Seasons
                 ProcessSeasonEnd(season);
             }
 
+            // Daily pool rollover — fires once per UTC day when the date changes.
+            // Uses _activeSeason (not the captured `season`) so it is a no-op if ProcessSeasonEnd just ran.
+            var activeSeason = _activeSeason;
+            if (activeSeason?.DailyObjectivesPerDay != null)
+            {
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                if (today != _currentPoolDate)
+                {
+                    _currentPoolDate = today;
+                    var objectives = _activeObjectives;
+                    _currentDailyPool = SelectDailyPool(activeSeason, objectives, today);
+                    var poolObjs = objectives.Where(o => _currentDailyPool.Contains(o.Id)).ToList();
+                    AnnounceDailyPool(poolObjs, objectives.Count(o => o.IsDaily));
+                }
+            }
+
             _leaderboardAge += time;
             if (_leaderboardAge >= LeaderboardAnnouncementInterval)
             {
@@ -103,6 +122,8 @@ namespace Perpetuum.Services.Seasons
                     _activeObjectives = ImmutableList<SeasonObjective>.Empty;
                     _activeTiers = ImmutableList<SeasonTier>.Empty;
                     _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+                    _currentDailyPool = ImmutableHashSet<int>.Empty;
+                    _currentPoolDate = DateOnly.MinValue;
 
                     var pending = _repository.GetPendingRecurringSeason();
                     if (pending != null)
@@ -119,6 +140,19 @@ namespace Perpetuum.Services.Seasons
             _activeTiers = _repository.GetTiers(season.Id).ToImmutableList();
             _activeLeaderboard = _repository.GetLeaderboardRewards(season.Id).ToImmutableList();
             _activeSeason = season; // assign last so readers see a consistent snapshot
+
+            // Pool maintenance: reset when pooling is off; compute silently on season load/change.
+            if (!season.DailyObjectivesPerDay.HasValue)
+            {
+                _currentDailyPool = ImmutableHashSet<int>.Empty;
+                _currentPoolDate = DateOnly.MinValue;
+            }
+            else if (previous?.Id != season.Id || _currentPoolDate == DateOnly.MinValue)
+            {
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                _currentDailyPool = SelectDailyPool(season, _activeObjectives, today);
+                _currentPoolDate = today;
+            }
 
             if (_lastNotifiedSeasonId != season.Id)
             {
@@ -171,6 +205,9 @@ namespace Perpetuum.Services.Seasons
             foreach (var obj in _activeObjectives.Where(o => o.ActivityType == activityType))
             {
                 if (obj.TargetDefinitionId.HasValue && obj.TargetDefinitionId != evt.DefinitionId)
+                    continue;
+
+                if (obj.IsDaily && season.DailyObjectivesPerDay.HasValue && !_currentDailyPool.Contains(obj.Id))
                     continue;
 
                 DateTime dayWindow = obj.IsDaily
@@ -291,6 +328,8 @@ namespace Perpetuum.Services.Seasons
             _activeObjectives = ImmutableList<SeasonObjective>.Empty;
             _activeTiers = ImmutableList<SeasonTier>.Empty;
             _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+            _currentDailyPool = ImmutableHashSet<int>.Empty;
+            _currentPoolDate = DateOnly.MinValue;
 
             var chatMessage = new StringBuilder();
             chatMessage.AppendLine();
@@ -342,6 +381,38 @@ namespace Perpetuum.Services.Seasons
             chatMessage.AppendLine("Way to go, Agents!");
 
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
+        }
+
+        private static ImmutableHashSet<int> SelectDailyPool(
+            Season season, ImmutableList<SeasonObjective> objectives, DateOnly day)
+        {
+            int n = season.DailyObjectivesPerDay!.Value;
+            var daily = objectives.Where(o => o.IsDaily).ToList();
+            if (n >= daily.Count)
+                return daily.Select(o => o.Id).ToImmutableHashSet();
+
+            // Deterministic Fisher-Yates shuffle seeded by (season_id, day).
+            // HashCode.Combine on two ints is stable across process restarts in .NET.
+            int seed = HashCode.Combine(season.Id, day.DayNumber);
+            var rng = new Random(seed);
+            for (int i = daily.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (daily[i], daily[j]) = (daily[j], daily[i]);
+            }
+            return daily.Take(n).Select(o => o.Id).ToImmutableHashSet();
+        }
+
+        private void AnnounceDailyPool(IReadOnlyList<SeasonObjective> pool, int totalDailyCount)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine($"Today's daily objectives ({pool.Count} of {totalDailyCount}):");
+            foreach (var obj in pool)
+                sb.AppendLine($"  — {obj.Name}");
+            sb.AppendLine();
+            sb.AppendLine("Complete them for bonus season points and rewards!");
+            _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, sb.ToString());
         }
 
         // ── Mail helpers ─────────────────────────────────────────────────────
