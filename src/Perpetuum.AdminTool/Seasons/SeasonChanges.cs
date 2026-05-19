@@ -17,11 +17,13 @@ namespace Perpetuum.AdminTool.Seasons
             return new RawSqlChange(
                 $"seasons: insert '{row.Name}'",
                 $"INSERT INTO seasons (name, description, start_time, end_time, is_active, " +
-                $"is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode) VALUES (" +
+                $"is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode, " +
+                $"daily_objectives_per_day) VALUES (" +
                 $"{SqlLiteral.Of(row.Name)}, {SqlLiteral.Of(row.Description)}, " +
                 $"'{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
                 $"'{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0, " +
-                $"{(row.IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql}, {(int)row.ScoringMode})");
+                $"{(row.IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql}, {(int)row.ScoringMode}, " +
+                $"{SqlLiteral.OfNullableInt(row.DailyObjectivesPerDay)})");
         }
 
         public static IPendingChange BuildUpdate(SeasonRow row)
@@ -38,7 +40,8 @@ namespace Perpetuum.AdminTool.Seasons
                        $"is_recurring = {(row.IsRecurring ? 1 : 0)}, " +
                        $"recurrence_gap_days = {gapSql}, " +
                        $"recurrence_base_name = {baseNameSql}, " +
-                       $"scoring_mode = {(int)row.ScoringMode}";
+                       $"scoring_mode = {(int)row.ScoringMode}, " +
+                       $"daily_objectives_per_day = {SqlLiteral.OfNullableInt(row.DailyObjectivesPerDay)}";
             return new RawSqlChange(
                 $"seasons: update id {row.Id} ('{row.Name}')",
                 $"UPDATE seasons SET {sets} WHERE id = {row.Id}");
