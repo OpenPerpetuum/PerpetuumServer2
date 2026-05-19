@@ -1,6 +1,28 @@
 # Last ID used
 
-014
+015
+
+## ISSUE-015 - Season Objectives: configured target material not displayed to players
+
+Status: TODO
+Priority: HIGH
+Area: Seasons / Objectives
+
+### Problem
+When a Season Objective has a `target_definition_id` set, the objective name shown to players does not include or reflect the target material. The operator sets the target via the Admin Tool, but players see only the generic objective name (e.g. "Mine 100 000 units") with no indication of which specific ore or plant is required.
+
+### Impact
+Players cannot know which material to mine or harvest to make progress on a targeted objective. This makes targeted objectives functionally unusable until the bug is resolved, since players either accidentally skip the objective or must rely on out-of-game communication.
+
+### Proposed Fix
+When building the objective data sent to the client, resolve the `target_definition_id` to a human-readable material name and inject it into the objective description or a dedicated target-name field. The operator's `Name`/`Description` fields already carry the human-readable text they entered, so the simplest fix is to document that operators must include the material name in the objective `Name` or `Description` (no code change), OR to append the resolved material name in a separate field that the client can display.
+
+Investigate which approach the client protocol supports: if there is an existing free-text field for supplementary objective detail, use that; otherwise, amend the operator documentation to require the name in the `Description` field.
+
+### Notes
+`target_definition_id` is stored on `season_objectives` and loaded by `SeasonRepository.GetObjectives`. The display name can be resolved from `entitydefaults` joined to the translation table. The Admin Tool already resolves `TargetDisplayName` client-side in `SeasonObjectiveRow` — the server-side equivalent is the missing piece.
+
+---
 
 ## ISSUE-004 - Avg. Points / Day shows negative values in Seasons Participation Health
 

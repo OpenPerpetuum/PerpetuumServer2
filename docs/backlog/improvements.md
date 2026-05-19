@@ -1,6 +1,6 @@
 # Last ID used
 
-021
+022
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -534,3 +534,32 @@ Graphify requires .NET 10 — Phase 1 must be complete and stable before Phase 2
 The upgrade should be done on a dedicated branch with a full build + manual smoke test before merging.
 Pay special attention to any use of reflection, source generators, or runtime behaviour that changed between .NET 8 and .NET 10.
 Autofac and other DI/serialization libraries should be verified for .NET 10 compatibility early — these are common sources of upgrade friction.
+
+---
+
+## IMPROVEMENT-022 - Seasons: Randomised Daily Objective Pool
+
+Status: TODO
+Priority: HIGH
+Area: Seasons / Objectives
+
+### Description
+Add a season-level option to limit how many daily objectives are active per day, selected randomly from the full set of configured daily objectives. Instead of all `is_daily` objectives being visible every day, each day only a configured number are drawn from the pool, providing variety across the season without requiring manual scheduling.
+
+### Impact
+With no pooling, players see the same set of daily objectives every day for the entire season, which becomes repetitive. A randomised daily pool reduces monotony, extends perceived content variety, and encourages players to engage with different activity types on different days. Season designers gain control over daily objective density without needing to manually cycle objectives.
+
+### Proposed Implementation
+- Add a `daily_objectives_per_day` field (smallint, nullable) to the season configuration — `NULL` means all configured daily objectives are active every day (current behaviour, no breaking change).
+- When a player queries their daily objectives for the current day, the server checks whether `daily_objectives_per_day` is set:
+  - If `NULL`: return all `is_daily` objectives as today.
+  - If set: deterministically sample `N` objectives from the full `is_daily` pool for the current UTC day, using a seed derived from `(season_id, day_window)` so all players see the same set on the same day.
+- Deterministic seed ensures consistency: all players on the same day get the same pool regardless of query order or server restarts.
+- Store the day's selected objective IDs (or derive them on-the-fly from the seed) — avoid per-player randomisation, which would create unfair daily experiences.
+- Admin Tool: surface `daily_objectives_per_day` in the season configuration panel as a nullable integer field (empty = all objectives).
+
+### Notes
+Depends on [[IMPROVEMENT-006]] — daily objectives infrastructure must exist before pool selection can be layered on.
+Deterministic selection is strongly preferred over per-player random to keep the daily experience consistent across all characters in a season.
+If `daily_objectives_per_day` exceeds the total number of configured daily objectives, treat it as "all objectives" rather than erroring.
+The sampling algorithm (e.g. Fisher-Yates seeded shuffle, take first N) should be documented and stable — changing it mid-season would invalidate an active day's pool for players who have not yet completed their objectives.
