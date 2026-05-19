@@ -26,5 +26,6 @@ namespace Perpetuum.Services.Seasons
         EnergyDrainReceived  = 18,
         EnergyTransferDealt  = 19,
         EnergyTransferReceived = 20,
+        PlantHarvested       = 21,
     }
 }

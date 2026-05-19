@@ -118,6 +118,7 @@ namespace Perpetuum.AdminTool.ViewModels
                 new ActivityTypeOption(SeasonActivityType.NicEarned,       "NIC Earned"),
                 new ActivityTypeOption(SeasonActivityType.NicSpent,        "NIC Spent"),
                 new ActivityTypeOption(SeasonActivityType.IntrusionPoint,  "Intrusion Point"),
+                new ActivityTypeOption(SeasonActivityType.PlantHarvested,  "Plant Harvested"),
             };
 
         public string Step1Validation { get; private set; } = "";

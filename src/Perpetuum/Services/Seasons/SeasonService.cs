@@ -520,6 +520,7 @@ namespace Perpetuum.Services.Seasons
             SeasonActivityType.EnergyDrainReceived   => "Energy Drained (Received)",
             SeasonActivityType.EnergyTransferDealt   => "Energy Transferred (Dealt)",
             SeasonActivityType.EnergyTransferReceived => "Energy Transferred (Received)",
+            SeasonActivityType.PlantHarvested        => "Plant Harvested",
             _                                         => type.ToString(),
         };
     }

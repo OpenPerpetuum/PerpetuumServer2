@@ -23,6 +23,7 @@ namespace Perpetuum.AdminTool.Seasons
             SeasonActivityType.NicEarned       => "NIC Earned",
             SeasonActivityType.NicSpent        => "NIC Spent",
             SeasonActivityType.IntrusionPoint  => "Intrusion Point",
+            SeasonActivityType.PlantHarvested => "Plant Harvested",
             _ => ActivityType.ToString()
         };
 
@@ -71,6 +72,9 @@ namespace Perpetuum.AdminTool.Seasons
                 SeasonActivityType.NicSpent => unitScale > 1
                     ? $"{pts} pts per {scale} NIC spent"
                     : $"{pts} pts per NIC spent",
+                SeasonActivityType.PlantHarvested => unitScale > 1
+                    ? $"{pts} pts per {scale} units harvested"
+                    : $"{pts} pts per unit harvested",
                 _ => $"{pts} pts"
             };
         }
