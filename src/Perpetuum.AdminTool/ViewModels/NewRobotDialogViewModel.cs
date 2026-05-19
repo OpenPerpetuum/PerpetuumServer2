@@ -73,6 +73,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
     public OptionsVisualPanelViewModel InventoryOptionsPanel { get; }
     public RobotTemplatePanelViewModel TemplatePanelViewModel { get; }
     public RobotTemplateRelationPanelViewModel TemplateRelationPanelViewModel { get; }
+    public BonusesPanelViewModel BonusesPanel { get; }
 
     // Tab-gating proxies
     public bool IsCraftable => BasicPanel.IsCraftable;
@@ -131,6 +132,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
 
         TemplatePanelViewModel = new RobotTemplatePanelViewModel();
         TemplateRelationPanelViewModel = new RobotTemplateRelationPanelViewModel();
+        BonusesPanel = new BonusesPanelViewModel();
 
         BasicPanel.PropertyChanged += (_, e) =>
         {
@@ -182,6 +184,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
             ChassisOptionsPanel.Initialize(lookups);
             LegOptionsPanel.Initialize(lookups);
             InventoryOptionsPanel.Initialize(lookups);
+            BonusesPanel.Initialize(lookups, englishNames);
 
             HeadItems = BuildPartItems((long)CategoryFlags.cf_robot_head);
             ChassisItems = BuildPartItems((long)CategoryFlags.cf_robot_chassis);
@@ -378,6 +381,7 @@ public partial class NewRobotDialogViewModel : ObservableObject
             if (ChassisStatsPanel.HasDuplicateFields()) return "Chassis Stats: duplicate aggregate field.";
             if (LegStatsPanel.HasDuplicateFields()) return "Leg Stats: duplicate aggregate field.";
             if (InventoryStatsPanel.HasDuplicateFields()) return "Inventory Stats: duplicate aggregate field.";
+            if (BonusesPanel.HasDuplicates()) return "Robot Bonuses tab: duplicate (extension + target property) pair.";
             if (TemplatePanelViewModel.HasErrors) return "Robot Template tab: name is required.";
         }
         if (IsCraftable && ProductionPanel.HasDuplicateIngredients()) return "Production tab: duplicate ingredient.";
