@@ -41,8 +41,9 @@ namespace Perpetuum.Services.Seasons
         private TimeSpan _cacheAge = CacheRefreshInterval;
         private TimeSpan _leaderboardAge = LeaderboardAnnouncementInterval;
 
-        private ImmutableHashSet<int> _currentDailyPool = ImmutableHashSet<int>.Empty;
-        private DateOnly _currentPoolDate = DateOnly.MinValue;
+        private sealed record DailyPool(ImmutableHashSet<int> Ids, DateOnly Date);
+        private static readonly DailyPool EmptyDailyPool = new(ImmutableHashSet<int>.Empty, DateOnly.MinValue);
+        private volatile DailyPool _dailyPool = EmptyDailyPool;
 
         public SeasonService(
             SeasonRepository repository,
@@ -85,12 +86,12 @@ namespace Perpetuum.Services.Seasons
             if (activeSeason?.DailyObjectivesPerDay != null)
             {
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
-                if (today != _currentPoolDate)
+                if (today != _dailyPool.Date)
                 {
-                    _currentPoolDate = today;
                     var objectives = _activeObjectives;
-                    _currentDailyPool = SelectDailyPool(activeSeason, objectives, today);
-                    var poolObjs = objectives.Where(o => _currentDailyPool.Contains(o.Id)).ToList();
+                    var newPool = SelectDailyPool(activeSeason, objectives, today);
+                    _dailyPool = new DailyPool(newPool, today);
+                    var poolObjs = objectives.Where(o => newPool.Contains(o.Id)).ToList();
                     AnnounceDailyPool(poolObjs, objectives.Count(o => o.IsDaily));
                 }
             }
@@ -122,8 +123,7 @@ namespace Perpetuum.Services.Seasons
                     _activeObjectives = ImmutableList<SeasonObjective>.Empty;
                     _activeTiers = ImmutableList<SeasonTier>.Empty;
                     _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
-                    _currentDailyPool = ImmutableHashSet<int>.Empty;
-                    _currentPoolDate = DateOnly.MinValue;
+                    _dailyPool = EmptyDailyPool;
 
                     var pending = _repository.GetPendingRecurringSeason();
                     if (pending != null)
@@ -144,14 +144,12 @@ namespace Perpetuum.Services.Seasons
             // Pool maintenance: reset when pooling is off; compute silently on season load/change.
             if (!season.DailyObjectivesPerDay.HasValue)
             {
-                _currentDailyPool = ImmutableHashSet<int>.Empty;
-                _currentPoolDate = DateOnly.MinValue;
+                _dailyPool = EmptyDailyPool;
             }
-            else if (previous?.Id != season.Id || _currentPoolDate == DateOnly.MinValue)
+            else if (previous?.Id != season.Id || _dailyPool.Date == DateOnly.MinValue)
             {
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
-                _currentDailyPool = SelectDailyPool(season, _activeObjectives, today);
-                _currentPoolDate = today;
+                _dailyPool = new DailyPool(SelectDailyPool(season, _activeObjectives, today), today);
             }
 
             if (_lastNotifiedSeasonId != season.Id)
@@ -207,7 +205,7 @@ namespace Perpetuum.Services.Seasons
                 if (obj.TargetDefinitionId.HasValue && obj.TargetDefinitionId != evt.DefinitionId)
                     continue;
 
-                if (obj.IsDaily && season.DailyObjectivesPerDay.HasValue && !_currentDailyPool.Contains(obj.Id))
+                if (obj.IsDaily && season.DailyObjectivesPerDay.HasValue && !_dailyPool.Ids.Contains(obj.Id))
                     continue;
 
                 DateTime dayWindow = obj.IsDaily
@@ -328,8 +326,7 @@ namespace Perpetuum.Services.Seasons
             _activeObjectives = ImmutableList<SeasonObjective>.Empty;
             _activeTiers = ImmutableList<SeasonTier>.Empty;
             _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
-            _currentDailyPool = ImmutableHashSet<int>.Empty;
-            _currentPoolDate = DateOnly.MinValue;
+            _dailyPool = EmptyDailyPool;
 
             var chatMessage = new StringBuilder();
             chatMessage.AppendLine();
