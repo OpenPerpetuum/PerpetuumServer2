@@ -13,6 +13,7 @@ namespace Perpetuum.Services.Seasons
         public int RecurrenceIteration { get; set; } = 1;
         public string? RecurrenceBaseName { get; set; }
         public SeasonScoringMode ScoringMode { get; set; }
+        public int? DailyObjectivesPerDay { get; set; }
     }
 
     public class SeasonActivityRate
