@@ -67,8 +67,9 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>  <!-- new row 7: scoring mode -->
-                            <RowDefinition Height="Auto"/>  <!-- row 8: save button (was row 7) -->
+                            <RowDefinition Height="Auto"/>  <!-- row 7: scoring mode -->
+                            <RowDefinition Height="Auto"/>  <!-- row 8: daily objectives per day -->
+                            <RowDefinition Height="Auto"/>  <!-- row 9: save button -->
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Season ID:" Margin="0,4"/>
@@ -132,7 +133,18 @@
                                    SelectedValuePath="Value"
                                    SelectedValue="{Binding Season.ScoringMode, Mode=TwoWay}"/>
 
-                        <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                        <!-- Row 8: Daily Objectives Per Day -->
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Daily Objectives Per Day:"
+                                   Margin="0,4" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Row="8" Grid.Column="1" Margin="0,4">
+                            <TextBox Width="80" HorizontalAlignment="Left"
+                                     Text="{Binding Season.DailyObjectivesPerDay, UpdateSourceTrigger=LostFocus, TargetNullValue=''}"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBlock Foreground="DimGray" FontStyle="Italic" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"
+                                       Text="Leave blank to show all daily objectives every day. Set a positive number to randomly draw N per day (same pool for all players)."/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
                             <Button Content="Save General" Padding="14,2" FontWeight="Bold"
                                     Command="{Binding SaveGeneralCommand}"/>
                         </StackPanel>
