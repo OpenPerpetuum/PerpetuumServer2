@@ -1,3 +1,7 @@
+# Last ID used
+
+014
+
 ## ISSUE-004 - Avg. Points / Day shows negative values in Seasons Participation Health
 
 Status: TODO
@@ -61,3 +65,58 @@ Add a `SaveGeneral` guard in `SeasonDetailViewModel`: if `Season.IsRecurring && 
 ### Notes
 Introduced by IMPROVEMENT-001 (Recurring Seasons). The wizard already validates this (gap must be ≥ 1 day), but the detail view has no equivalent guard.
 See `SeasonDetailViewModel.cs` `SaveGeneral` command for the save entry point.
+
+---
+
+## ISSUE-013 - Robot creation does not populate options field with part definitions
+
+Status: DONE
+Priority: HIGH
+Area: Game Content / Robots
+
+### Problem
+When a new robot is added, the `options` field for the robot entity is not populated with its part definitions in `GenXY` format. The options field must contain entries such as:
+
+```
+#head=n3036
+#chassis=n3037
+#leg=n3038
+#inventory=n332
+```
+
+If new robot parts are created as part of the robot creation process, the definitions generated for those parts must be referenced in these options entries.
+
+### Impact
+Robots without correctly populated options are non-functional in-game — the server cannot resolve their component parts, preventing spawning, equipping, or use of the robot.
+
+### Proposed Fix
+- Identify where robot entity creation writes the `options` field (content SQL pipeline or admin tool robot creation flow).
+- Ensure that after part definitions are created (head, chassis, leg, inventory), their resolved definition IDs are written back to the robot's `options` field using the `#head=nXXXX` / `#chassis=nXXXX` / `#leg=nXXXX` / `#inventory=nXXXX` format.
+- If part definitions are generated dynamically, the options population step must run after the part definitions exist and reference their actual IDs.
+
+### Notes
+Part definition IDs must be resolved dynamically — do not hardcode.
+Follows the `GenXY` naming convention where `n` prefix denotes a definition reference by numeric ID.
+
+---
+
+## ISSUE-014 - Robot part clone does not copy or expose options field for editing
+
+Status: TODO
+Priority: HIGH
+Area: Game Content / Robots / Admin Tool
+
+### Problem
+When cloning a robot part, the `options` field is not carried over from the source part and is not presented in the editor. The clone workflow leaves the options field empty and provides no way to review or modify it before committing.
+
+### Impact
+Cloned robot parts silently lose their options data, requiring manual correction after the fact. This is error-prone and inconsistent with the rest of the clone workflow.
+
+### Proposed Fix
+- Copy the source part's `options` field into the clone candidate at the point of clone creation.
+- Expose the options field in the clone editor using the same old/new pattern already used on the Basic tab: display the original value as read-only on the left, and provide an editable new value field on the right.
+- Reuse the existing old/new field component — do not introduce a new pattern.
+
+### Notes
+Follow the existing Basic tab old/new UI pattern exactly for consistency.
+The old (source) value must be read-only; only the new value field is editable.

@@ -3,6 +3,7 @@ using System.Text;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.NewItem;
 using Perpetuum.AdminTool.ViewModels;
+using Perpetuum.GenXY;
 
 namespace Perpetuum.AdminTool.NewRobot;
 
@@ -114,6 +115,18 @@ public static class RobotSqlBuilder
             ItemSqlBuilder.AppendEntityInsert(sql, vm.InventoryPanel, null);
             sql.AppendLine("SET @inventoryDef = SCOPE_IDENTITY();");
 
+            // 18a. Back-fill robot entity options with part definition references (GenXY decimal format).
+            // Strip any stale part-ref keys the user may have inherited via clone, preserve everything else.
+            var baseOptions = StripPartRefKeys(optVis.OptionsText);
+            sql.AppendLine(
+                "UPDATE entitydefaults" +
+                $" SET options = {SqlLiteral.Of(baseOptions)}" +
+                " + '#head=n' + CAST(@headDef AS VARCHAR(10))" +
+                " + '#chassis=n' + CAST(@chassisDef AS VARCHAR(10))" +
+                " + '#leg=n' + CAST(@legDef AS VARCHAR(10))" +
+                " + '#inventory=n' + CAST(@inventoryDef AS VARCHAR(10))" +
+                " WHERE definition = @robotDef;");
+
             // 19. Part aggregatevalues
             AppendPartStats(sql, "@headDef", vm.HeadStatsPanel);
             AppendPartStats(sql, "@chassisDef", vm.ChassisStatsPanel);
@@ -147,5 +160,21 @@ public static class RobotSqlBuilder
     {
         foreach (var row in stats.Rows)
             sql.AppendLine($"INSERT INTO aggregatevalues (definition, field, value) VALUES ({defVar}, {row.FieldId}, {SqlLiteral.Of(row.NewValue)});");
+    }
+
+    // Returns the options string with all robot-part-ref keys removed so they can be
+    // re-written with the new definition IDs without losing unrelated options.
+    private static string StripPartRefKeys(string optionsText)
+    {
+        if (string.IsNullOrEmpty(optionsText))
+            return "";
+
+        var dict = GenxyConverter.Deserialize(optionsText);
+        dict.Remove("head");
+        dict.Remove("chassis");
+        dict.Remove("leg");
+        dict.Remove("inventory");
+        dict.Remove("container");
+        return GenxyConverter.Serialize(dict);
     }
 }

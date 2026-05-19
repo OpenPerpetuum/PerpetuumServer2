@@ -1,3 +1,7 @@
+# Last ID used
+
+018
+
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
 Status: TODO
