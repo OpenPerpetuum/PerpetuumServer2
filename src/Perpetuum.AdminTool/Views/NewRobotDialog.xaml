@@ -1613,6 +1613,65 @@
                 </Grid>
             </TabItem>
 
+            <!-- ===== Robot Bonuses tab ===== -->
+            <TabItem Header="Robot Bonuses">
+                <TabItem.Style>
+                    <Style TargetType="TabItem">
+                        <Setter Property="IsEnabled" Value="False"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRobot}" Value="True">
+                                <Setter Property="IsEnabled" Value="True"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TabItem.Style>
+                <DockPanel Margin="8">
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
+                        <Button Content="Add Row" Command="{Binding BonusesPanel.AddRowCommand}" Width="80"/>
+                        <Button Content="Remove Selected" Width="120" Margin="4,0"
+                                Command="{Binding BonusesPanel.RemoveRowCommand}"
+                                CommandParameter="{Binding ElementName=BonusesGrid, Path=SelectedItem}"/>
+                    </StackPanel>
+                    <DataGrid x:Name="BonusesGrid" ItemsSource="{Binding BonusesPanel.Rows}"
+                              AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Single"
+                              HeadersVisibility="Column" GridLinesVisibility="All">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Extension" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding DataContext.BonusesPanel.AvailableExtensions,
+                                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  DisplayMemberPath="Display" SelectedValuePath="Id"
+                                                  SelectedValue="{Binding ExtensionId, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Target Property" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding DataContext.BonusesPanel.AvailableFields,
+                                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  DisplayMemberPath="DisplayLabel" SelectedValuePath="Id"
+                                                  SelectedValue="{Binding TargetPropertyId, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Original" Binding="{Binding OriginalBonus}" IsReadOnly="True" Width="90"/>
+                            <DataGridTextColumn Header="New Bonus" Binding="{Binding NewBonus}" Width="90"/>
+                            <DataGridTemplateColumn Header="Effect Enh." Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding EffectEnhancer, UpdateSourceTrigger=PropertyChanged}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
             <!-- ===== Tab 13: Robot Template ===== -->
             <TabItem Header="Robot Template">
                 <TabItem.Style>
