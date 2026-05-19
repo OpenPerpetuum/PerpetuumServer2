@@ -1,6 +1,6 @@
 # Last ID used
 
-018
+019
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -405,3 +405,65 @@ Operators need per-season control over how competitive the global score is. Some
 ### Notes
 Audit the activity point award path in the Seasons subsystem to identify all places where global score is incremented — the mode check belongs there.
 Ensure the Admin Tool change script generation covers the new field.
+
+---
+
+## IMPROVEMENT-019 - New Robot Dialog: Bonuses Tab
+
+Status: DONE
+Priority: HIGH
+Area: Admin Tool / New Robot Dialog
+Spec: `docs/superpowers/specs/2026-05-19-improvement-019-robot-bonuses-tab-design.md`
+
+### Description
+Add a **Bonuses** tab to the New Robot dialog (`NewRobotDialog.xaml`) for configuring chassis bonuses (`chassisbonus` table rows). The tab follows the same pattern as the Stats tab: empty by default for new robots, pre-filled from the cloned chassis definition when cloning, and editable (add / remove / modify rows). All bonus rows are emitted in the same single SQL script produced by `RobotSqlBuilder.Build`.
+
+Each bonus row maps to one `chassisbonus` row:
+
+| UI field | DB column | Type |
+|---|---|---|
+| Extension (dropdown) | `extension` | int → `extensions.extensionid` |
+| Bonus value | `bonus` | float |
+| Target property (dropdown) | `targetpropertyID` | int → `aggregatefields.id` |
+| Effect enhancer (checkbox) | `effectenhancer` | bit |
+| Note (optional text) | `note` | nvarchar(2000) |
+
+Chassis bonuses are stored against the **chassis part definition** (`@chassisDef`), not the top-level robot definition — the tab sits at robot level in the UI but the generated SQL targets `@chassisDef`.
+
+### Impact
+Without this tab, operators must write `chassisbonus` INSERT statements manually or copy them from existing robots. This is error-prone, not auditable through the Admin Tool workflow, and inconsistent with how stats are handled. Adding the tab completes the robot creation surface for the most robot-defining table.
+
+### Proposed Implementation
+
+**New files (follow `NewItem/` patterns):**
+- `NewRobot/NewBonusRow.cs` — `ObservableObject` with `ExtensionId` (int), `NewBonus` (double), `OriginalBonus` (double?), `TargetPropertyId` (int), `EffectEnhancer` (bool), `Note` (string)
+- `NewRobot/BonusesPanelViewModel.cs` — owns `ObservableCollection<NewBonusRow> Rows`; `Initialize(lookups)` receiving available extensions and aggregate fields; `AddRow` / `RemoveRow` relay commands; `LoadFromClone(IEnumerable<ChassisBonusRow>)` pre-filling rows with `OriginalBonus` set; `HasDuplicates()` guard (unique on extension + targetPropertyId)
+
+**Existing file changes:**
+- `NewRobot/NewRobotRepository.cs` — add `LoadChassisBonusesAsync(int chassisDefinition)` returning `IReadOnlyList<ChassisBonusRow>` (record: extensionId, bonus, targetPropertyId, effectEnhancer, note)
+- `NewRobot/CloneRobotExtendedData.cs` (new if needed, or extend `CloneExtendedData`) — include `IReadOnlyList<ChassisBonusRow> ChassisBonuses`
+- `ViewModels/NewRobotDialogViewModel.cs`:
+  - Add `BonusesPanelViewModel BonusesPanel` property
+  - `InitializeAsync`: call `BonusesPanel.Initialize(lookups)` with both `Extensions` and `AggregateFields`
+  - `LoadCloneAsync`: load chassis bonuses for the cloned robot's chassis definition and call `BonusesPanel.LoadFromClone(...)`
+  - `Validate`: add duplicate check on bonus panel
+- `NewRobot/RobotSqlBuilder.cs` — after part entities are declared, emit chassis bonus INSERTs targeting `@chassisDef`:
+  ```sql
+  INSERT INTO chassisbonus (definition, extension, bonus, targetpropertyID, effectenhancer, note)
+  VALUES (@chassisDef, {row.ExtensionId}, {row.NewBonus}, {row.TargetPropertyId}, {row.EffectEnhancer}, {row.Note});
+  ```
+- `Views/NewRobotDialog.xaml` — add the Bonuses `TabItem` (visible when `IsRobot`) with a DataGrid bound to `BonusesPanel.Rows`
+
+**Translation / display names:**
+- Extension dropdown items: look up `extensionname` in the `englishNames` dictionary (same dict passed to `InitializeAsync`); fall back to the raw `extensionname` if absent.
+- Target property dropdown: use `AggregateFieldInfo.DisplayLabel` (already includes the raw DB name and id).
+
+**Clone data source:**
+The robot clone source (`CloneSource`) refers to the robot entity. To load chassis bonuses for a cloned robot, resolve its chassis definition by looking up the source robot entity's options string for the `chassis` key (GenXY format: `#chassis=nXXXX`), then query `chassisbonus WHERE definition = @resolvedChassisDef`. This avoids a schema join and reuses the already-available options field on `EntityDefaultRow`.
+
+### Notes
+- The unique constraint on `chassisbonus (definition, extension, targetpropertyID)` must be enforced in `HasDuplicates()` — duplicate (extensionId + targetPropertyId) pair in the same save should be rejected with a clear validation message.
+- `OriginalBonus` (read-only reference value) is shown in the row when cloning, same pattern as `NewStatRow.OriginalValue`.
+- Chassis bonus rows are only meaningful when `IsRobot` is true — the Bonuses tab should be hidden when `IsRobot` is false (consistent with head/chassis/leg/inventory tabs).
+- The `note` column is nullable; treat empty string as `NULL` in the generated SQL.
+- `effectenhancer` default is `0`; new rows should default the checkbox to unchecked.
