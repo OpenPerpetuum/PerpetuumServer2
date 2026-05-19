@@ -67,10 +67,11 @@ namespace Perpetuum.AdminTool.Seasons
             return new RawSqlChange(
                 $"season_objectives: insert '{row.Name}' in season {row.SeasonId}",
                 $"INSERT INTO season_objectives (season_id, name, description, activity_type, " +
-                $"target_value, bonus_points, display_order, is_daily, package_id) VALUES (" +
+                $"target_value, bonus_points, display_order, is_daily, package_id, target_definition_id) VALUES (" +
                 $"{row.SeasonId}, {SqlLiteral.Of(row.Name)}, {SqlLiteral.Of(row.Description)}, " +
                 $"{(int)row.ActivityType}, {row.TargetValue}, {row.BonusPoints}, {row.DisplayOrder}, " +
-                $"{(row.IsDaily ? 1 : 0)}, {SqlLiteral.OfNullableInt(row.PackageId)})");
+                $"{(row.IsDaily ? 1 : 0)}, {SqlLiteral.OfNullableInt(row.PackageId)}, " +
+                $"{SqlLiteral.OfNullableInt(row.TargetDefinitionId)})");
         }
 
         public static IPendingChange BuildUpdateObjective(SeasonObjectiveRow row)
@@ -81,7 +82,8 @@ namespace Perpetuum.AdminTool.Seasons
                 $"description = {SqlLiteral.Of(row.Description)}, " +
                 $"activity_type = {(int)row.ActivityType}, target_value = {row.TargetValue}, " +
                 $"bonus_points = {row.BonusPoints}, display_order = {row.DisplayOrder}, " +
-                $"is_daily = {(row.IsDaily ? 1 : 0)}, package_id = {SqlLiteral.OfNullableInt(row.PackageId)} " +
+                $"is_daily = {(row.IsDaily ? 1 : 0)}, package_id = {SqlLiteral.OfNullableInt(row.PackageId)}, " +
+                $"target_definition_id = {SqlLiteral.OfNullableInt(row.TargetDefinitionId)} " +
                 $"WHERE id = {row.Id}");
         }
 

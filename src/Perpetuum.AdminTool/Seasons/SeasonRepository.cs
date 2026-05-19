@@ -79,7 +79,7 @@ namespace Perpetuum.AdminTool.Seasons
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
                 "SELECT id, season_id, name, description, activity_type, " +
-                "target_value, bonus_points, display_order, is_daily, package_id " +
+                "target_value, bonus_points, display_order, is_daily, package_id, target_definition_id " +
                 "FROM season_objectives WHERE season_id = @seasonId ORDER BY display_order";
             cmd.Parameters.AddWithValue("@seasonId", seasonId);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -97,6 +97,7 @@ namespace Perpetuum.AdminTool.Seasons
                     DisplayOrder = reader.GetInt32(7),
                     IsDaily      = !reader.IsDBNull(8) && reader.GetBoolean(8),
                     PackageId    = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9),
+                    TargetDefinitionId = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(10),
                 });
             }
             return result;
