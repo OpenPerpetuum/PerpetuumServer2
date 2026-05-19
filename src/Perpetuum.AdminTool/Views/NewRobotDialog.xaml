@@ -1628,7 +1628,7 @@
                 <DockPanel Margin="8">
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
                         <Button Content="Add Row" Command="{Binding BonusesPanel.AddRowCommand}" Width="80"/>
-                        <Button Content="Remove Selected" Width="120" Margin="4,0"
+                        <Button Content="Remove Selected" Width="110" Margin="4,0"
                                 Command="{Binding BonusesPanel.RemoveRowCommand}"
                                 CommandParameter="{Binding ElementName=BonusesGrid, Path=SelectedItem}"/>
                     </StackPanel>
