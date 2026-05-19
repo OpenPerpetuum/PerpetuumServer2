@@ -20,6 +20,7 @@ namespace Perpetuum.AdminTool.Seasons
         [ObservableProperty] private int _recurrenceIteration = 1;
         [ObservableProperty] private string? _recurrenceBaseName;
         [ObservableProperty] private SeasonScoringMode _scoringMode;
+        [ObservableProperty] private int? _dailyObjectivesPerDay;
 
         public SeasonRow(SeasonSnapshot snapshot)
         {
@@ -41,6 +42,7 @@ namespace Perpetuum.AdminTool.Seasons
             RecurrenceIteration = s.RecurrenceIteration;
             RecurrenceBaseName = s.RecurrenceBaseName;
             ScoringMode = s.ScoringMode;
+            DailyObjectivesPerDay = s.DailyObjectivesPerDay;
         }
 
         public void RefreshOriginalFromCurrent()
@@ -58,6 +60,7 @@ namespace Perpetuum.AdminTool.Seasons
                 RecurrenceIteration = RecurrenceIteration,
                 RecurrenceBaseName = RecurrenceBaseName,
                 ScoringMode = ScoringMode,
+                DailyObjectivesPerDay = DailyObjectivesPerDay,
             };
         }
 
@@ -86,6 +89,7 @@ namespace Perpetuum.AdminTool.Seasons
         public int RecurrenceIteration { get; init; } = 1;
         public string? RecurrenceBaseName { get; init; }
         public SeasonScoringMode ScoringMode { get; init; }
+        public int? DailyObjectivesPerDay { get; init; }
     }
 
     public enum SeasonCardState { Active, Draft, Ended }
