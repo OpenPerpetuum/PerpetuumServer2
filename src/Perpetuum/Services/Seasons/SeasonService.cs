@@ -91,8 +91,10 @@ namespace Perpetuum.Services.Seasons
                     var objectives = _activeObjectives;
                     var newPool = SelectDailyPool(activeSeason, objectives, today);
                     _dailyPool = new DailyPool(newPool, today);
+                    int totalDaily = objectives.Count(o => o.IsDaily);
                     var poolObjs = objectives.Where(o => newPool.Contains(o.Id)).ToList();
-                    AnnounceDailyPool(poolObjs, objectives.Count(o => o.IsDaily));
+                    if (poolObjs.Count > 0)
+                        AnnounceDailyPool(poolObjs, totalDaily);
                 }
             }
 
@@ -388,9 +390,7 @@ namespace Perpetuum.Services.Seasons
             if (n >= daily.Count)
                 return daily.Select(o => o.Id).ToImmutableHashSet();
 
-            // Deterministic Fisher-Yates shuffle seeded by (season_id, day).
-            // HashCode.Combine on two ints is stable across process restarts in .NET.
-            int seed = HashCode.Combine(season.Id, day.DayNumber);
+            int seed = season.Id * 397 ^ day.DayNumber;
             var rng = new Random(seed);
             for (int i = daily.Count - 1; i > 0; i--)
             {
