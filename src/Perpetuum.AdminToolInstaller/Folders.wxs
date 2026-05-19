@@ -1,6 +1,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
-    <Directory Id="INSTALLFOLDER" Name="PerpetuumAdminTool">
+    <Directory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="PerpetuumAdminTool" />
     </Directory>
   </Fragment>
 </Wix>
