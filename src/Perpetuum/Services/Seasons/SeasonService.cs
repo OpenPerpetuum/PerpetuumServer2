@@ -170,6 +170,9 @@ namespace Perpetuum.Services.Seasons
             DateTime dailyWindow = DateTime.UtcNow.Date;
             foreach (var obj in _activeObjectives.Where(o => o.ActivityType == activityType))
             {
+                if (obj.TargetDefinitionId.HasValue && obj.TargetDefinitionId != evt.DefinitionId)
+                    continue;
+
                 DateTime dayWindow = obj.IsDaily
                     ? dailyWindow
                     : new DateTime(1900, 1, 1);

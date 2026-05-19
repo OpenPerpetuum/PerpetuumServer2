@@ -52,7 +52,7 @@ namespace Perpetuum.Services.Seasons
         public List<SeasonObjective> GetObjectives(int seasonId)
         {
             return Db.Query("SELECT id, season_id, name, description, activity_type, " +
-                            "target_value, bonus_points, display_order, is_daily, package_id " +
+                            "target_value, bonus_points, display_order, is_daily, package_id, target_definition_id " +
                             "FROM season_objectives WHERE season_id = @seasonId")
                      .SetParameter("@seasonId", seasonId)
                      .Execute()
@@ -68,6 +68,7 @@ namespace Perpetuum.Services.Seasons
                          DisplayOrder = r.GetValue<int>("display_order"),
                          IsDaily      = r.GetValue<bool>("is_daily"),
                          PackageId    = r.GetValue<int?>("package_id"),
+                         TargetDefinitionId = r.GetValue<int?>("target_definition_id"),
                      })
                      .ToList();
         }

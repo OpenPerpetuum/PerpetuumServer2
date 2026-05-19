@@ -36,6 +36,7 @@ namespace Perpetuum.Services.Seasons
         public int DisplayOrder { get; set; }
         public bool IsDaily { get; set; }
         public int? PackageId { get; set; }
+        public int? TargetDefinitionId { get; set; }
     }
 
     public class SeasonTier
