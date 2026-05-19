@@ -133,6 +133,14 @@ public static class RobotSqlBuilder
             AppendPartStats(sql, "@legDef", vm.LegStatsPanel);
             AppendPartStats(sql, "@inventoryDef", vm.InventoryStatsPanel);
 
+            // 19b. chassisbonus
+            foreach (var row in vm.BonusesPanel.Rows)
+                sql.AppendLine(
+                    $"INSERT INTO chassisbonus (definition, extension, bonus, targetpropertyID, effectenhancer, note)" +
+                    $" VALUES (@chassisDef, {row.ExtensionId}, {SqlLiteral.Of(row.NewBonus)}," +
+                    $" {row.TargetPropertyId}, {SqlLiteral.Of(row.EffectEnhancer)}," +
+                    $" {(string.IsNullOrEmpty(row.Note) ? "NULL" : SqlLiteral.Of(row.Note))});");
+
             // 20. robottemplates (genxy auto-generated via FORMAT + SCOPE_IDENTITY vars)
             sql.AppendLine("DECLARE @templateId INT;");
             sql.AppendLine(
