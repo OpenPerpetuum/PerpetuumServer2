@@ -186,37 +186,37 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
         private void PayCollateralToPrincipal()
         {
             ownercharacter.AddToWallet(TransactionType.TransportAssignmentCollateral, collateral);
-            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(collateral));
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicEarned, new ActivityEvent((long)Math.Abs(collateral)));
         }
 
         private void PaybackCollateral()
         {
             volunteercharacter.AddToWallet(TransactionType.TransportAssignmentCollateralPayback, collateral);
-            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(collateral));
+            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, new ActivityEvent((long)Math.Abs(collateral)));
         }
 
         private void PaybackHalfCollateral()
         {
             volunteercharacter.AddToWallet(TransactionType.TransportAssignmentCollateralPaybackOnGiveUp, collateral * COLLATERAL_PENALTY);
-            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(collateral * COLLATERAL_PENALTY));
+            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, new ActivityEvent((long)Math.Abs(collateral * COLLATERAL_PENALTY)));
         }
 
         private void PaybackReward()
         {
             ownercharacter.AddToWallet(TransactionType.TransportAssignmentRewardPayback, reward);
-            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(reward));
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicEarned, new ActivityEvent((long)Math.Abs(reward)));
         }
 
         private void PayOutReward()
         {
             volunteercharacter.AddToWallet(TransactionType.TransportAssignmentDeliver, reward + collateral);
-            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, (long)Math.Abs(reward + collateral));
+            SeasonServiceLocator.Instance?.RecordActivity(volunteercharacter.Id, SeasonActivityType.NicEarned, new ActivityEvent((long)Math.Abs(reward + collateral)));
         }
 
         public void TakeCollateral(Character volunteer)
         {
             volunteer.SubtractFromWallet(TransactionType.TransportAssignmentCollateral, collateral);
-            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, (long)Math.Abs(collateral));
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(collateral)));
         }
 
         //storage => base => public container -> owner character
@@ -305,7 +305,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
         private void CashInOnSubmit()
         {
             ownercharacter.SubtractFromWallet(TransactionType.TransportAssignmentSubmit, reward);
-            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, (long)Math.Abs(reward));
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(reward)));
         }
 
         public VolumeWrapperContainer GetContainer()

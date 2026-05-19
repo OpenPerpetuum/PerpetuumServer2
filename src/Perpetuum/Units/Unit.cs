@@ -408,9 +408,9 @@ namespace Perpetuum.Units
             if (damageAmount > 0)
             {
                 if (source is Player attacker)
-                    SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.DamageDone, damageAmount);
+                    SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.DamageDone, new Perpetuum.Services.Seasons.ActivityEvent(damageAmount));
                 if (this is Player victim)
-                    SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.DamageReceived, damageAmount);
+                    SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.DamageReceived, new Perpetuum.Services.Seasons.ActivityEvent(damageAmount));
             }
 
             OnCombatEvent(source, e);

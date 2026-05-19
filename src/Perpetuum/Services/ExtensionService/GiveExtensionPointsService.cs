@@ -75,7 +75,7 @@ AND e.eventtime >= @now
                     Logger.Info($"Daily Extension Point Add: {affectedLeechers.Length} characters will be informed with point {BASEPOINTS} - leechers.");
                     ExtensionHelper.CreateExtensionPointsIncreasedMessage(BASEPOINTS).ToCharacters(affectedLeechers).Send();
                     foreach (var c in affectedLeechers)
-                        SeasonServiceLocator.Instance?.RecordActivity(c.Id, SeasonActivityType.EpEarned, BASEPOINTS);
+                        SeasonServiceLocator.Instance?.RecordActivity(c.Id, SeasonActivityType.EpEarned, new ActivityEvent(BASEPOINTS));
                 }
                 else
                 {
@@ -84,7 +84,7 @@ AND e.eventtime >= @now
                     Logger.Info($"Daily Extension Point Add: {affectedPayingCustomers.Length} characters will be informed with point {BONUSPOINTS} - good guys.");
                     ExtensionHelper.CreateExtensionPointsIncreasedMessage(BONUSPOINTS).ToCharacters(affectedPayingCustomers).Send();
                     foreach (var c in affectedPayingCustomers)
-                        SeasonServiceLocator.Instance?.RecordActivity(c.Id, SeasonActivityType.EpEarned, BONUSPOINTS);
+                        SeasonServiceLocator.Instance?.RecordActivity(c.Id, SeasonActivityType.EpEarned, new ActivityEvent(BONUSPOINTS));
                 }
             }
         }

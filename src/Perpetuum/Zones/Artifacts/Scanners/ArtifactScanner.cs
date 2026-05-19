@@ -60,7 +60,7 @@ namespace Perpetuum.Zones.Artifacts.Scanners
                     var ep = _zone.Configuration.IsBeta ? 10 : 5;
                     if (_zone.Configuration.Type == ZoneType.Training) ep = 0;
                     if (ep > 0) player.Character.AddExtensionPointsBoostAndLog(EpForActivityType.Artifact, ep);
-                    SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.ArtifactFound, 1);
+                    SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.ArtifactFound, new ActivityEvent(1));
 
                     player.MissionHandler.EnqueueMissionEventInfo(new FindArtifactEventInfo(player, artifact.Info.type, artifact.Position));
                 }

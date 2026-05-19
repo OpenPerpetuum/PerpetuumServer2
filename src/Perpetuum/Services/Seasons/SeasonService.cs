@@ -137,7 +137,7 @@ namespace Perpetuum.Services.Seasons
 
         // ── ISeasonService ────────────────────────────────────────────────────
 
-        public void RecordActivity(int characterId, SeasonActivityType activityType, long amount)
+        public void RecordActivity(int characterId, SeasonActivityType activityType, ActivityEvent evt)
         {
             var season = _activeSeason;
             if (season == null || DateTime.UtcNow > season.EndTime)
@@ -156,7 +156,7 @@ namespace Perpetuum.Services.Seasons
             foreach (var rate in rates)
             {
                 long scale = rate.UnitScale > 0 ? rate.UnitScale : 1;
-                basePoints += (double)Math.Round((double)amount / scale * rate.PointsPerUnit, 2);
+                basePoints += (double)Math.Round((double)evt.Amount / scale * rate.PointsPerUnit, 2);
             }
 
             if (basePoints <= 0)

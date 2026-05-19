@@ -1101,7 +1101,7 @@ namespace Perpetuum.Players
 
                         if (!victimIp.Equals(killerIp, StringComparison.OrdinalIgnoreCase))
                         {
-                            SeasonServiceLocator.Instance?.RecordActivity(killerPlayer.Character.Id, SeasonActivityType.PvpKill, 1);
+                            SeasonServiceLocator.Instance?.RecordActivity(killerPlayer.Character.Id, SeasonActivityType.PvpKill, new Perpetuum.Services.Seasons.ActivityEvent(1));
                         }
                     }
 

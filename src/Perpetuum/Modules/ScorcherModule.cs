@@ -94,9 +94,9 @@ namespace Perpetuum.Modules
                         if (drainAmount > 0)
                         {
                             if (ParentRobot is Player attacker)
-                                SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.EnergyDrainDealt, drainAmount);
+                                SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.EnergyDrainDealt, new ActivityEvent(drainAmount));
                             if (target is Player victim)
-                                SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.EnergyDrainReceived, drainAmount);
+                                SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.EnergyDrainReceived, new ActivityEvent(drainAmount));
                         }
                     }
 

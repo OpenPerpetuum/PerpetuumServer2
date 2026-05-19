@@ -76,7 +76,7 @@ namespace Perpetuum.Accounting.Characters
                 case TransactionType.ItemShopBuy:
                 case TransactionType.TransportAssignmentSubmit:
                 case TransactionType.ItemShopCreditTake:
-                    SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicSpent, (long)Math.Abs(change));
+                    SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(change)));
 
                     break;
                 case TransactionType.marketSell:
@@ -85,7 +85,7 @@ namespace Perpetuum.Accounting.Characters
                 case TransactionType.refund:
                 case TransactionType.InsurancePayOut:
                 case TransactionType.GoodiePackCredit:
-                    SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicEarned, (long)change);
+                    SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicEarned, new ActivityEvent((long)change));
 
                     break;
                 default:

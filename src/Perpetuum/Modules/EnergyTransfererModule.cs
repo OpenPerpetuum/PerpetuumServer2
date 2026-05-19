@@ -57,9 +57,9 @@ namespace Perpetuum.Modules
                 unitLock.Target.SpreadAssistThreatToNpcs(ParentRobot, new Threat(ThreatType.Support, coreAmount * 2));
 
                 if (ParentRobot is Player giver && coreNeutralized > 0.0)
-                    SeasonServiceLocator.Instance?.RecordActivity(giver.Character.Id, SeasonActivityType.EnergyTransferDealt, (long)coreNeutralized);
+                    SeasonServiceLocator.Instance?.RecordActivity(giver.Character.Id, SeasonActivityType.EnergyTransferDealt, new ActivityEvent((long)coreNeutralized));
                 if (unitLock.Target is Player receiver && coreTransfered > 0.0)
-                    SeasonServiceLocator.Instance?.RecordActivity(receiver.Character.Id, SeasonActivityType.EnergyTransferReceived, (long)coreTransfered);
+                    SeasonServiceLocator.Instance?.RecordActivity(receiver.Character.Id, SeasonActivityType.EnergyTransferReceived, new ActivityEvent((long)coreTransfered));
             }
 
             CombatLogPacket packet = new CombatLogPacket(CombatLogType.EnergyTransfer, unitLock.Target, ParentRobot, this);

@@ -252,7 +252,7 @@ namespace Perpetuum.Services.ProductionEngine
                         SeasonServiceLocator.Instance?.RecordActivity(
                             productionInProgress.character.Id,
                             seasonType.Value,
-                            productionInProgress.amountOfCycles);
+                            new ActivityEvent(productionInProgress.amountOfCycles));
                     }
 
                     if (replyDict != null)

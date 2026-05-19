@@ -67,7 +67,7 @@ namespace Perpetuum.Modules
 
             var repaired = (long)total;
             if (repaired > 0 && ParentRobot is Player repairer)
-                SeasonServiceLocator.Instance?.RecordActivity(repairer.Character.Id, SeasonActivityType.ArmorRestored, repaired);
+                SeasonServiceLocator.Instance?.RecordActivity(repairer.Character.Id, SeasonActivityType.ArmorRestored, new ActivityEvent(repaired));
         }
     }
 
