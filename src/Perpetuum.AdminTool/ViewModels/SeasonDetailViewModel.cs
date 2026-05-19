@@ -11,6 +11,8 @@ using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Packages;
 using Perpetuum.AdminTool.Seasons;
 using Perpetuum.AdminTool.Settings;
+using Perpetuum.AdminTool.Translations;
+using Perpetuum.ExportedTypes;
 using Perpetuum.Services.Seasons;
 using SeasonRepository = Perpetuum.AdminTool.Seasons.SeasonRepository;
 
@@ -23,6 +25,9 @@ namespace Perpetuum.AdminTool.ViewModels
         private readonly ChangeQueue _queue;
         private readonly LookupCache _cache;
         private readonly ConnectionSettings _connection;
+        private readonly TranslationsViewModel? _translations;
+        private IReadOnlyList<MaterialPickItem> _oreAndLiquidMaterials = Array.Empty<MaterialPickItem>();
+        private IReadOnlyList<MaterialPickItem> _organicMaterials = Array.Empty<MaterialPickItem>();
 
         [ObservableProperty] private SeasonRow _season;
         [ObservableProperty] private int _selectedTabIndex;
@@ -97,7 +102,8 @@ namespace Perpetuum.AdminTool.ViewModels
             SeasonStatisticsViewModel statsVm,
             LookupCache cache,
             ConnectionSettings connection,
-            ObservableCollection<PackageRow> packages)
+            ObservableCollection<PackageRow> packages,
+            TranslationsViewModel? translations = null)
         {
             _season = season;
             _repo = repo;
@@ -108,6 +114,7 @@ namespace Perpetuum.AdminTool.ViewModels
             PackagesVm = packagesVm;
             StatisticsVm = statsVm;
             Packages = packages;
+            _translations = translations;
             Objectives.CollectionChanged += (_, e) =>
             {
                 if (e.NewItems != null)
@@ -126,10 +133,55 @@ namespace Perpetuum.AdminTool.ViewModels
                 OnPropertyChanged(nameof(FilteredObjectives));
         }
 
+        private void BuildMaterialLists(TranslationsViewModel? translations)
+        {
+            const int EnglishLangId = 0;
+            Dictionary<string, string>? englishNames = null;
+            if (translations?.Store?.Rows != null)
+            {
+                englishNames = translations.Store.Rows
+                    .GroupBy(r => r.Key)
+                    .ToDictionary(g => g.Key, g => g.First()[EnglishLangId]);
+            }
+
+            var oreAndLiquid = new List<MaterialPickItem>();
+            var organic = new List<MaterialPickItem>();
+
+            foreach (var e in _cache.Entities)
+            {
+                if (!e.Enabled || e.Hidden) continue;
+
+                var displayName = (englishNames != null &&
+                                   englishNames.TryGetValue(e.Name, out var eng) &&
+                                   !string.IsNullOrEmpty(eng))
+                    ? eng : e.Name;
+
+                if (IsCategoryMatch(e.CategoryFlags, (long)CategoryFlags.cf_ore) ||
+                    IsCategoryMatch(e.CategoryFlags, (long)CategoryFlags.cf_liquid))
+                    oreAndLiquid.Add(new MaterialPickItem(e.Definition, displayName));
+                else if (IsCategoryMatch(e.CategoryFlags, (long)CategoryFlags.cf_organic))
+                    organic.Add(new MaterialPickItem(e.Definition, displayName));
+            }
+
+            _oreAndLiquidMaterials = oreAndLiquid
+                .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            _organicMaterials = organic
+                .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static bool IsCategoryMatch(long entityFlags, long category)
+        {
+            var mask = PackageItemPickItem.CategoryFlagsMask(category);
+            return (entityFlags & mask) == category;
+        }
+
         public async Task LoadAsync()
         {
             try
             {
+                BuildMaterialLists(_translations);
                 StatusIsError = false;
                 StatusMessage = "Loading season detail...";
 
@@ -164,6 +216,7 @@ namespace Perpetuum.AdminTool.ViewModels
                     {
                         if (o.PackageId.HasValue)
                             o.SelectedPackage = Packages.FirstOrDefault(p => p.Id == o.PackageId);
+                        o.InitializeMaterialLists(_oreAndLiquidMaterials, _organicMaterials);
                         Objectives.Add(o);
                     }
 
@@ -295,6 +348,7 @@ namespace Perpetuum.AdminTool.ViewModels
                 IsNew        = true,
                 IsDaily      = ObjectiveFilter == ObjectiveFilterMode.Daily,
             };
+            row.InitializeMaterialLists(_oreAndLiquidMaterials, _organicMaterials);
             Objectives.Add(row);
             StatusIsError = false;
             StatusMessage = "Added objective row. Edit fields, then click 'Queue Save' on the row.";
