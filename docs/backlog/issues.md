@@ -2,25 +2,26 @@
 
 015
 
-## ISSUE-015 - Season Objectives: configured target material not displayed to players
+## ISSUE-015 - Seasons Objectives tab: selected target not rendered in table cell
 
-Status: TODO
+Status: DONE
 Priority: HIGH
-Area: Seasons / Objectives
+Area: Seasons / Admin Tool
 
 ### Problem
-When a Season Objective has a `target_definition_id` set, the objective name shown to players does not include or reflect the target material. The operator sets the target via the Admin Tool, but players see only the generic objective name (e.g. "Mine 100 000 units") with no indication of which specific ore or plant is required.
+On the Admin Tool Seasons Objectives tab, when an objective has a target selected, the chosen value is not displayed in the table cell. The value is stored and visible when the user clicks into the cell (via the picker), but the table column renders as blank.
 
 ### Impact
-Players cannot know which material to mine or harvest to make progress on a targeted objective. This makes targeted objectives functionally unusable until the bug is resolved, since players either accidentally skip the objective or must rely on out-of-game communication.
+Operators cannot confirm at a glance which target is assigned to each objective. They must click every cell individually to audit or verify configurations, making bulk review error-prone and slow.
 
 ### Proposed Fix
-When building the objective data sent to the client, resolve the `target_definition_id` to a human-readable material name and inject it into the objective description or a dedicated target-name field. The operator's `Name`/`Description` fields already carry the human-readable text they entered, so the simplest fix is to document that operators must include the material name in the objective `Name` or `Description` (no code change), OR to append the resolved material name in a separate field that the client can display.
-
-Investigate which approach the client protocol supports: if there is an existing free-text field for supplementary objective detail, use that; otherwise, amend the operator documentation to require the name in the `Description` field.
+- Locate the cell template / data binding for the target column in the Objectives tab DataGrid.
+- Identify why the display path does not render the selected value (likely a missing `DisplayMemberPath`, wrong binding path, or the display value not being propagated back to the row model after picker selection).
+- Ensure the table cell shows the human-readable target label (same value visible in the picker) once a target is selected, without requiring the user to click the cell.
 
 ### Notes
-`target_definition_id` is stored on `season_objectives` and loaded by `SeasonRepository.GetObjectives`. The display name can be resolved from `entitydefaults` joined to the translation table. The Admin Tool already resolves `TargetDisplayName` client-side in `SeasonObjectiveRow` — the server-side equivalent is the missing piece.
+The picker itself works correctly — the issue is purely in how the selected value is reflected back to the table row display.
+Check whether the binding uses a converter or a nested property that is not notifying change on selection commit.
 
 ---
 

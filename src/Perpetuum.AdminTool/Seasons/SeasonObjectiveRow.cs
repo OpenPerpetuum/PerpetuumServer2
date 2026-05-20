@@ -66,6 +66,8 @@ namespace Perpetuum.AdminTool.Seasons
             if (TargetDefinitionId.HasValue &&
                 !AvailableMaterials.Any(m => m.Definition == TargetDefinitionId))
                 TargetDefinitionId = null;
+            TargetDisplayName = AvailableMaterials
+                .FirstOrDefault(m => m.Definition == TargetDefinitionId)?.DisplayName;
             OnPropertyChanged(nameof(HasTargetMaterials));
         }
     }

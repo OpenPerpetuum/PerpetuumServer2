@@ -220,8 +220,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Margin="4,0" VerticalAlignment="Center"
-                                                   Text="{Binding TargetDisplayName, FallbackValue='(any)'}"
-                                                   ToolTip="{Binding TargetDefinitionId, FallbackValue=''}"/>
+                                                   Text="{Binding TargetDisplayName, TargetNullValue='(any)'}"
+                                                   ToolTip="{Binding TargetDefinitionId, TargetNullValue=''}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                                 <DataGridTemplateColumn.CellEditingTemplate>
