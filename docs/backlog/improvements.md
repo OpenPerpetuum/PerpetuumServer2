@@ -539,7 +539,7 @@ Autofac and other DI/serialization libraries should be verified for .NET 10 comp
 
 ## IMPROVEMENT-022 - Seasons: Randomised Daily Objective Pool
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Seasons / Objectives
 
