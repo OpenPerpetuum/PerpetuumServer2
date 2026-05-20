@@ -6106,6 +6106,7 @@ Generated from DBML structure.
 | `display_order` | `int [not null, default: 0]` |
 | `is_daily` | `bit [not null, default: 0]` |
 | `package_id` | `int [null]` |
+| `target_definition_id` | `int [null]` — when set, objective progress only counts for activities matching this entity definition (e.g. a specific ore or plant type) |
 
 ### Indexes
 

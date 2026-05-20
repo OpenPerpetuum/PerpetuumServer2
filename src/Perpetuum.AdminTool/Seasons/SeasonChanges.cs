@@ -21,8 +21,8 @@ namespace Perpetuum.AdminTool.Seasons
                 $"is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode, " +
                 $"daily_objectives_per_day) VALUES (" +
                 $"{SqlLiteral.Of(row.Name)}, {SqlLiteral.Of(row.Description)}, " +
-                $"'{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
-                $"'{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0, " +
+                $"'{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-ddTHH:mm:ss}', " +
+                $"'{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-ddTHH:mm:ss}', 0, " +
                 $"{(row.IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql}, {(int)row.ScoringMode}, " +
                 $"{dailyObjSql})");
         }
@@ -37,8 +37,8 @@ namespace Perpetuum.AdminTool.Seasons
                 : "NULL";
             string dailyObjSql = SqlLiteral.OfNullableInt(row.DailyObjectivesPerDay > 0 ? row.DailyObjectivesPerDay : null);
             var sets = $"name = {SqlLiteral.Of(row.Name)}, description = {SqlLiteral.Of(row.Description)}, " +
-                       $"start_time = '{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
-                       $"end_time = '{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
+                       $"start_time = '{DateTime.SpecifyKind(row.StartTime, DateTimeKind.Utc):yyyy-MM-ddTHH:mm:ss}', " +
+                       $"end_time = '{DateTime.SpecifyKind(row.EndTime, DateTimeKind.Utc):yyyy-MM-ddTHH:mm:ss}', " +
                        $"is_recurring = {(row.IsRecurring ? 1 : 0)}, " +
                        $"recurrence_gap_days = {gapSql}, " +
                        $"recurrence_base_name = {baseNameSql}, " +

@@ -337,8 +337,8 @@ namespace Perpetuum.AdminTool.ViewModels
             sb.AppendLine("INSERT INTO seasons (name, description, start_time, end_time, is_active, " +
                           "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode)");
             sb.AppendLine($"VALUES ({SqlLiteral.Of(displayName)}, {SqlLiteral.Of(Description)},");
-            sb.AppendLine($"  '{DateTime.SpecifyKind(StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', " +
-                          $"'{DateTime.SpecifyKind(EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0, " +
+            sb.AppendLine($"  '{DateTime.SpecifyKind(StartTime, DateTimeKind.Utc):yyyy-MM-ddTHH:mm:ss}', " +
+                          $"'{DateTime.SpecifyKind(EndTime, DateTimeKind.Utc):yyyy-MM-ddTHH:mm:ss}', 0, " +
                           $"{(IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql}, {(int)ScoringMode});");
             sb.AppendLine("SET @seasonId = SCOPE_IDENTITY();");
 

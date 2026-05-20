@@ -1,6 +1,32 @@
 # Last ID used
 
-015
+016
+
+## ISSUE-016 - Saving Daily Objectives Per Day in AdminTool causes varchar to datetime cast error
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Admin Tool
+
+### Problem
+In the AdminTool Seasons view, saving the Daily Objectives Per Day field produces a SQL cast error: implicit or explicit conversion from varchar to datetime fails. The save operation aborts and the value is not persisted.
+
+### Impact
+Operators cannot configure Daily Objectives Per Day at all — the field is effectively broken. Any season that requires this setting cannot be properly administered.
+
+### Root Cause
+The `start_time` and `end_time` string literals in `SeasonChanges.BuildInsert` / `BuildUpdate` and `SeasonWizardViewModel.BuildSeasonScript` used the format `'yyyy-MM-dd HH:mm:ss'` (space separator). SQL Server's implicit varchar-to-datetime conversion for this format is locale/DATEFORMAT-sensitive. The ISO 8601 format `'yyyy-MM-ddTHH:mm:ss'` (T separator) is always accepted by SQL Server regardless of collation or DATEFORMAT. The `daily_objectives_per_day` field itself (`SqlLiteral.OfNullableInt`) is correct — it generates a numeric literal or NULL. The error surfaced when users first exercised the Save General path after the new field gave them a reason to use it.
+
+### Fix
+Changed `yyyy-MM-dd HH:mm:ss` → `yyyy-MM-ddTHH:mm:ss` in:
+- `SeasonChanges.cs` `BuildInsert` and `BuildUpdate` (both start_time and end_time)
+- `SeasonWizardViewModel.cs` `BuildSeasonScript`
+
+### Notes
+Field was recently introduced (commits `837d188`, `0e59ae9`, `6d5432c`, `b442883`).
+`daily_objectives_per_day` column type is `smallint [null]` — confirmed correct in schema docs.
+
+---
 
 ## ISSUE-015 - Seasons Objectives tab: selected target not rendered in table cell
 
