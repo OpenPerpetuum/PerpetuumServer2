@@ -1,4 +1,5 @@
 using Perpetuum.Accounting.Characters;
+using Perpetuum.Data;
 using Perpetuum.EntityFramework;
 using Perpetuum.Services.Channels;
 using Perpetuum.Services.Mail;
@@ -185,6 +186,15 @@ namespace Perpetuum.Services.Seasons
             // ExecuteScalar round-trips on every high-frequency call (e.g. each weapon cycle).
             if (Character.Get(characterId).IsInTraining())
                 return;
+
+            if (evt.CounterpartyAccountId.HasValue)
+            {
+                var myIp    = GetMostRecentSessionIp(Character.Get(characterId).AccountId);
+                var theirIp = GetMostRecentSessionIp(evt.CounterpartyAccountId.Value);
+                if (myIp != null && theirIp != null &&
+                    string.Equals(myIp, theirIp, StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
 
             double basePoints = 0;
             foreach (var rate in rates)
@@ -561,6 +571,12 @@ namespace Perpetuum.Services.Seasons
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
+
+        private static string? GetMostRecentSessionIp(int accountId)
+            => Db.Query()
+                .CommandText("SELECT TOP 1 ip FROM accountonlinetime WHERE accountid = @accountId ORDER BY loggedin DESC")
+                .SetParameter("@accountId", accountId)
+                .ExecuteScalar<string>();
 
         private static string Translate(string key, Dictionary<string, object>? dict)
         {
