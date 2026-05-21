@@ -9,6 +9,8 @@ using Perpetuum.Groups.Corporations;
 using Perpetuum.Items;
 using Perpetuum.Log;
 using Perpetuum.Robots;
+using Perpetuum.Services.Seasons;
+using SeasonActivityEvent = Perpetuum.Services.Seasons.ActivityEvent;
 using Perpetuum.Units.DockingBases;
 using Perpetuum.Zones;
 using Perpetuum.Zones.PBS.DockingBases;
@@ -413,6 +415,13 @@ namespace Perpetuum.Services.MarketEngine
 
                     //pay out
                     this.PayOutToSeller(seller, marketSellOrder.useCorporationWallet, itemOnMarket.Definition, marketSellOrder.price, quantity, TransactionType.marketSell, marketSellOrder.IsAffectsAverage(), forCorporation);
+
+                    SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                        new SeasonActivityEvent((long)(marketSellOrder.price * quantity),
+                                          CounterpartyAccountId: seller.AccountId));
+                    SeasonServiceLocator.Instance?.RecordActivity(seller.Id, SeasonActivityType.NicEarned,
+                        new SeasonActivityEvent((long)(marketSellOrder.price * quantity),
+                                          CounterpartyAccountId: buyer.AccountId));
                 }
                 else if (itemOnMarket.Quantity == quantity)
                 {
@@ -430,6 +439,13 @@ namespace Perpetuum.Services.MarketEngine
 
                     //pay out
                     this.PayOutToSeller(seller, marketSellOrder.useCorporationWallet, itemOnMarket.Definition, marketSellOrder.price, quantity, TransactionType.marketSell, marketSellOrder.IsAffectsAverage(), forCorporation);
+
+                    SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                        new SeasonActivityEvent((long)(marketSellOrder.price * quantity),
+                                          CounterpartyAccountId: seller.AccountId));
+                    SeasonServiceLocator.Instance?.RecordActivity(seller.Id, SeasonActivityType.NicEarned,
+                        new SeasonActivityEvent((long)(marketSellOrder.price * quantity),
+                                          CounterpartyAccountId: buyer.AccountId));
 
                     marketSellOrder.quantity = 0; //signal the sell order delete to the client
                 }
@@ -456,6 +472,13 @@ namespace Perpetuum.Services.MarketEngine
 
                     //pay out for the current market item
                     this.PayOutToSeller(seller, marketSellOrder.useCorporationWallet, itemOnMarket.Definition, marketSellOrder.price, itemOnMarket.Quantity, TransactionType.marketSell, marketSellOrder.IsAffectsAverage(), forCorporation);
+
+                    SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                        new SeasonActivityEvent((long)(marketSellOrder.price * itemOnMarket.Quantity),
+                                          CounterpartyAccountId: seller.AccountId));
+                    SeasonServiceLocator.Instance?.RecordActivity(seller.Id, SeasonActivityType.NicEarned,
+                        new SeasonActivityEvent((long)(marketSellOrder.price * itemOnMarket.Quantity),
+                                          CounterpartyAccountId: buyer.AccountId));
 
                     marketSellOrder.quantity = 0; //signal to the client
 
@@ -519,6 +542,9 @@ namespace Perpetuum.Services.MarketEngine
                 //take the money for the quantity bought
                 _marketHelper.CashIn(buyer, useBuyerCorporationWallet, marketSellOrder.price, marketSellOrder.itemDefinition, boughtQuantity, TransactionType.marketBuy);
 
+                SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                    new SeasonActivityEvent((long)(marketSellOrder.price * boughtQuantity)));
+
                 Message.Builder.SetCommand(Commands.MarketSellOrderUpdate)
                     .WithData(new Dictionary<string, object> { { k.sellOrder, marketSellOrder.ToDictionary() } })
                     .ToCharacter(buyer)
@@ -542,6 +568,9 @@ namespace Perpetuum.Services.MarketEngine
 
             //infinite quantity case
             _marketHelper.CashIn(buyer, useBuyerCorporationWallet, marketSellOrder.price, marketSellOrder.itemDefinition, quantity, TransactionType.marketBuy);
+
+            SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                new SeasonActivityEvent((long)(marketSellOrder.price * quantity)));
 
             itemOnMarket = publicContainer.CreateAndAddItem(marketSellOrder.itemDefinition, false, item =>
             {
@@ -635,6 +664,13 @@ namespace Perpetuum.Services.MarketEngine
             //pay out the fulfilled amount immediately using the price of the found buyorder to the seller
             PayOutToSeller(seller, useSellersCorporationWallet, boughtItem.Definition, buyOrder.price, boughtItem.Quantity, TransactionType.marketSell, buyOrder.IsAffectsAverage(), forCorporation);
 
+            SeasonServiceLocator.Instance?.RecordActivity(seller.Id, SeasonActivityType.NicEarned,
+                new SeasonActivityEvent((long)(buyOrder.price * boughtItem.Quantity),
+                                  CounterpartyAccountId: buyer.AccountId));
+            SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                new SeasonActivityEvent((long)(buyOrder.price * boughtItem.Quantity),
+                                  CounterpartyAccountId: seller.AccountId));
+
             _centralBank.SubAmount(buyOrder.price * boughtItem.Quantity, TransactionType.marketSell);
 
             Market.SendMarketItemBoughtMessage(buyer, boughtItem);
@@ -662,6 +698,9 @@ namespace Perpetuum.Services.MarketEngine
 
             //do payout
             PayOutToSeller(seller, useSellerCorporationWallet, boughtItem.Definition, vendorBuyOrder.price, boughtItem.Quantity, TransactionType.marketSell, true, false);
+
+            SeasonServiceLocator.Instance?.RecordActivity(seller.Id, SeasonActivityType.NicEarned,
+                new SeasonActivityEvent((long)(vendorBuyOrder.price * boughtItem.Quantity)));
 
             _centralBank.SubAmount(vendorBuyOrder.price * boughtItem.Quantity, TransactionType.marketSell);
 
@@ -726,6 +765,9 @@ namespace Perpetuum.Services.MarketEngine
                     //do payout
                     PayOutToSeller(seller, useSellerCorporationWallet, itemToSell.Definition, buyOrder.price, buyOrder.quantity, TransactionType.marketSell, true, false);
 
+                    SeasonServiceLocator.Instance?.RecordActivity(seller.Id, SeasonActivityType.NicEarned,
+                        new SeasonActivityEvent((long)(buyOrder.price * buyOrder.quantity)));
+
                     //average price
                     _marketHandler.InsertAveragePrice(this, itemToSell.Definition, buyOrder.quantity * buyOrder.price, buyOrder.quantity);
 
@@ -780,6 +822,9 @@ namespace Perpetuum.Services.MarketEngine
 
             //do payout
             PayOutToSeller(seller, useSellerCorporationWallet, itemToSell.Definition, buyOrder.price, itemToSell.Quantity, TransactionType.marketSell, true, false);
+
+            SeasonServiceLocator.Instance?.RecordActivity(seller.Id, SeasonActivityType.NicEarned,
+                new SeasonActivityEvent((long)(buyOrder.price * itemToSell.Quantity)));
 
             _centralBank.SubAmount(buyOrder.price * itemToSell.Quantity, TransactionType.marketSell);
 
