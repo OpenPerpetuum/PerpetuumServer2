@@ -1,6 +1,6 @@
 # Last ID used
 
-022
+023
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -534,6 +534,24 @@ Graphify requires .NET 10 — Phase 1 must be complete and stable before Phase 2
 The upgrade should be done on a dedicated branch with a full build + manual smoke test before merging.
 Pay special attention to any use of reflection, source generators, or runtime behaviour that changed between .NET 8 and .NET 10.
 Autofac and other DI/serialization libraries should be verified for .NET 10 compatibility early — these are common sources of upgrade friction.
+
+---
+
+## IMPROVEMENT-023 - Seasons: Same-IP Gate for NIC Earning/Spending Activities
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Anti-Abuse
+Spec: `docs/superpowers/specs/2026-05-21-improvement-023-same-ip-gate-design.md`
+
+### Description
+Enforce a same-IP gate on season activity recording so that a player running multiple accounts from the same machine cannot earn season points by trading with themselves. When two characters involved in a tracked NIC activity share the same originating IP address, neither transaction side earns points.
+
+### Implementation
+`ActivityEvent` extended with optional `CounterpartyAccountId`. `SeasonService.RecordActivity` queries `accountonlinetime` for the most recent session IP of both characters and suppresses recording when they match. Market NIC recording moved from `CharacterWallet` to explicit call sites in `Market.cs` where both counterparties are available. All 7 transport assignment `RecordActivity` calls updated with counterparty account IDs. PvpKill IP query fixed to use `TOP 1 ORDER BY loggedin DESC` with null guard. Branch: `p36.1`.
+
+### Notes
+Approach used: `CounterpartyAccountId` on `ActivityEvent`, gate centralised in `RecordActivity`. Vendor market fills (no player counterparty) record without gate. `buyOrderPayBack` and `CashInOnSubmit` (no counterparty) left ungated. NAT false-positive limitation documented in spec.
 
 ---
 
