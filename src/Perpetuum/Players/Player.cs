@@ -1091,15 +1091,16 @@ namespace Perpetuum.Players
                     if (killer is Player killerPlayer && killerPlayer != this && !this.IsBlessed)
                     {
                         var victimIp = Db.Query()
-                            .CommandText("select ip from accountonlinetime where accountid = @accountId")
+                            .CommandText("SELECT TOP 1 ip FROM accountonlinetime WHERE accountid = @accountId ORDER BY loggedin DESC")
                             .SetParameter("@accountId", this.Character.AccountId)
                             .ExecuteScalar<string>();
                         var killerIp = Db.Query()
-                            .CommandText("select ip from accountonlinetime where accountid = @accountId")
+                            .CommandText("SELECT TOP 1 ip FROM accountonlinetime WHERE accountid = @accountId ORDER BY loggedin DESC")
                             .SetParameter("@accountId", killerPlayer.Character.AccountId)
                             .ExecuteScalar<string>();
 
-                        if (!victimIp.Equals(killerIp, StringComparison.OrdinalIgnoreCase))
+                        if (victimIp != null && killerIp != null &&
+                            !string.Equals(victimIp, killerIp, StringComparison.OrdinalIgnoreCase))
                         {
                             SeasonServiceLocator.Instance?.RecordActivity(killerPlayer.Character.Id, SeasonActivityType.PvpKill, new Perpetuum.Services.Seasons.ActivityEvent(1));
                         }
