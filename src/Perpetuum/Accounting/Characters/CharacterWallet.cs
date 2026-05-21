@@ -53,7 +53,6 @@ namespace Perpetuum.Accounting.Characters
             switch (transactionType)
             {
                 case TransactionType.hangarRent:
-                case TransactionType.marketBuy:
                 case TransactionType.hangarRentAuto:
                 case TransactionType.marketFee:
                 case TransactionType.buyOrderDeposit:
@@ -79,7 +78,6 @@ namespace Perpetuum.Accounting.Characters
                     SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(change)));
 
                     break;
-                case TransactionType.marketSell:
                 case TransactionType.buyOrderPayBack:
                 case TransactionType.missionPayOut:
                 case TransactionType.refund:
