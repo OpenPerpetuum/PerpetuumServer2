@@ -216,7 +216,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
         public void TakeCollateral(Character volunteer)
         {
             volunteer.SubtractFromWallet(TransactionType.TransportAssignmentCollateral, collateral);
-            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(collateral), CounterpartyAccountId: volunteercharacter.AccountId));
+            SeasonServiceLocator.Instance?.RecordActivity(volunteer.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(collateral), CounterpartyAccountId: ownercharacter.AccountId));
         }
 
         //storage => base => public container -> owner character
@@ -305,7 +305,7 @@ namespace Perpetuum.Services.MissionEngine.TransportAssignments
         private void CashInOnSubmit()
         {
             ownercharacter.SubtractFromWallet(TransactionType.TransportAssignmentSubmit, reward);
-            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(reward), CounterpartyAccountId: volunteercharacter.AccountId));
+            SeasonServiceLocator.Instance?.RecordActivity(ownercharacter.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(reward)));
         }
 
         public VolumeWrapperContainer GetContainer()
