@@ -55,7 +55,7 @@ namespace Perpetuum.Services.Seasons
         {
             return Db.Query("SELECT id, season_id, name, description, activity_type, " +
                             "target_value, bonus_points, display_order, is_daily, package_id, target_definition_id " +
-                            "FROM season_objectives WHERE season_id = @seasonId")
+                            "FROM season_objectives WHERE season_id = @seasonId ORDER BY display_order")
                      .SetParameter("@seasonId", seasonId)
                      .Execute()
                      .Select(r => new SeasonObjective

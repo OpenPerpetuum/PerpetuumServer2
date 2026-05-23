@@ -151,6 +151,7 @@ namespace Perpetuum.Services.Seasons
             }
             else if (previous?.Id != season.Id || _dailyPool.Date == DateOnly.MinValue)
             {
+                // Fires on cold boot AND on the first RefreshCache after a season is activated via admin command.
                 bool isFirstLoad = _dailyPool.Date == DateOnly.MinValue;
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
                 _dailyPool = new DailyPool(SelectDailyPool(season, _activeObjectives, today), today);
