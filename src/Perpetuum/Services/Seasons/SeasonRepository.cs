@@ -30,7 +30,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
                 ScoringMode = (SeasonScoringMode)record.GetValue<byte>("scoring_mode"),
-                DailyObjectivesPerDay = record.GetValue<int?>("daily_objectives_per_day"),
+                DailyObjectivesPerDay = (int?)record.GetValue<short?>("daily_objectives_per_day"),
             };
         }
 
@@ -468,7 +468,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
                 ScoringMode = (SeasonScoringMode)record.GetValue<int>("scoring_mode"),
-                DailyObjectivesPerDay = record.GetValue<int?>("daily_objectives_per_day"),
+                DailyObjectivesPerDay = (int?)record.GetValue<short?>("daily_objectives_per_day"),
             };
         }
 
@@ -498,7 +498,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
                 ScoringMode = (SeasonScoringMode)record.GetValue<int>("scoring_mode"),
-                DailyObjectivesPerDay = record.GetValue<int?>("daily_objectives_per_day"),
+                DailyObjectivesPerDay = (int?)record.GetValue<short?>("daily_objectives_per_day"),
             };
         }
 

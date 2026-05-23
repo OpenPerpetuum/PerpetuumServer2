@@ -1,6 +1,46 @@
 # Last ID used
 
-016
+018
+
+## ISSUE-018 - SeasonRepository.GetActiveSeason throws InvalidCastException on daily_objectives_per_day
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Server
+
+### Problem
+The server crashed on every `SeasonService.Update` tick with `System.InvalidCastException: Unable to cast object of type 'System.Int16' to type 'System.Nullable\`1[System.Int32]'` when an active season existed.
+
+### Root Cause
+`daily_objectives_per_day` is `smallint [null]` in the DB — SQL Server returns a boxed `System.Int16`. `DataRecordExtensions.GetValue<T>` does a direct unbox cast `(T)record.GetValue(index)`. The CLR cannot unbox an `Int16` as `Nullable<Int32>` — the unbox target must match the stored type exactly. The crash occurred in all three season-loading methods: `GetActiveSeason`, `GetSeasonById`, and `GetPendingRecurringSeason`.
+
+The AdminTool's `SeasonRepository` already handled this correctly with explicit `reader.GetInt16(11)` → `(int)` widening.
+
+### Fix
+Changed all three `record.GetValue<int?>("daily_objectives_per_day")` calls to `(int?)record.GetValue<short?>("daily_objectives_per_day")`. This reads the value with the correct CLR type (`Int16`) and widens to `int?` at the call site. `Season.DailyObjectivesPerDay` stays `int?` — no downstream changes required.
+
+### Notes
+`recurrence_gap_days` is `int [null]` — `GetValue<int?>` is correct there and is not affected.
+`GetValue<T>` has no numeric widening; other smallint/tinyint columns read as `int?` will hit the same issue if introduced.
+
+---
+
+## ISSUE-017 - Seasons Objectives tab: Activity type selector does not show all active activity types
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Admin Tool
+
+### Problem
+On the Admin Tool Seasons Objectives tab, the Activity type selector (dropdown/picker) did not display all active activity types. The Phase 1 (non-combat) and Phase 2 (combat) types added to `SeasonActivityType` were never added to the UI option lists.
+
+### Root Cause
+`SeasonDetailViewModel.ActivityTypeOptions` and `SeasonWizardViewModel.ObjectiveActivityTypeOptions` were both hardcoded lists of 9 types. `SeasonActivityType` has 21 values — 12 were absent from both lists: `Prototyping`, `ReverseEngineering`, `Production`, `ArtifactFound`, `EpEarned`, `DamageDone`, `DamageReceived`, `ArmorRestored`, `EnergyDrainDealt`, `EnergyDrainReceived`, `EnergyTransferDealt`, `EnergyTransferReceived`.
+
+### Fix
+Added all 12 missing types to `ActivityTypeOptions` in `SeasonDetailViewModel.cs` and `ObjectiveActivityTypeOptions` in `SeasonWizardViewModel.cs`. Labels match `SeasonActivityRateRow.ActivityTypeLabel`.
+
+---
 
 ## ISSUE-016 - Saving Daily Objectives Per Day in AdminTool causes varchar to datetime cast error
 

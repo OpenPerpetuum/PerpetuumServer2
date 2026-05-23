@@ -110,15 +110,27 @@ namespace Perpetuum.AdminTool.ViewModels
         public IReadOnlyList<ActivityTypeOption> ObjectiveActivityTypeOptions { get; } =
             new[]
             {
-                new ActivityTypeOption(SeasonActivityType.NpcKill,         "NPC Kill"),
-                new ActivityTypeOption(SeasonActivityType.PvpKill,         "PvP Kill"),
-                new ActivityTypeOption(SeasonActivityType.MissionComplete, "Mission Complete"),
-                new ActivityTypeOption(SeasonActivityType.MineralMined,    "Mineral Mined"),
-                new ActivityTypeOption(SeasonActivityType.EpSpent,         "EP Spent"),
-                new ActivityTypeOption(SeasonActivityType.NicEarned,       "NIC Earned"),
-                new ActivityTypeOption(SeasonActivityType.NicSpent,        "NIC Spent"),
-                new ActivityTypeOption(SeasonActivityType.IntrusionPoint,  "Intrusion Point"),
-                new ActivityTypeOption(SeasonActivityType.PlantHarvested,  "Plant Harvested"),
+                new ActivityTypeOption(SeasonActivityType.NpcKill,                 "NPC Kill"),
+                new ActivityTypeOption(SeasonActivityType.PvpKill,                 "PvP Kill"),
+                new ActivityTypeOption(SeasonActivityType.MissionComplete,         "Mission Complete"),
+                new ActivityTypeOption(SeasonActivityType.MineralMined,            "Mineral Mined"),
+                new ActivityTypeOption(SeasonActivityType.EpSpent,                 "EP Spent"),
+                new ActivityTypeOption(SeasonActivityType.EpEarned,                "EP Earned"),
+                new ActivityTypeOption(SeasonActivityType.NicEarned,               "NIC Earned"),
+                new ActivityTypeOption(SeasonActivityType.NicSpent,                "NIC Spent"),
+                new ActivityTypeOption(SeasonActivityType.IntrusionPoint,          "Intrusion Point"),
+                new ActivityTypeOption(SeasonActivityType.PlantHarvested,          "Plant Harvested"),
+                new ActivityTypeOption(SeasonActivityType.Prototyping,             "Prototyping"),
+                new ActivityTypeOption(SeasonActivityType.ReverseEngineering,      "Reverse Engineering"),
+                new ActivityTypeOption(SeasonActivityType.Production,              "Production"),
+                new ActivityTypeOption(SeasonActivityType.ArtifactFound,           "Artifact Found"),
+                new ActivityTypeOption(SeasonActivityType.DamageDone,              "Damage Done"),
+                new ActivityTypeOption(SeasonActivityType.DamageReceived,          "Damage Received"),
+                new ActivityTypeOption(SeasonActivityType.ArmorRestored,           "Armor Restored"),
+                new ActivityTypeOption(SeasonActivityType.EnergyDrainDealt,        "Energy Drain Dealt"),
+                new ActivityTypeOption(SeasonActivityType.EnergyDrainReceived,     "Energy Drain Received"),
+                new ActivityTypeOption(SeasonActivityType.EnergyTransferDealt,     "Energy Transfer Dealt"),
+                new ActivityTypeOption(SeasonActivityType.EnergyTransferReceived,  "Energy Transfer Received"),
             };
 
         public string Step1Validation { get; private set; } = "";
