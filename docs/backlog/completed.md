@@ -248,6 +248,29 @@ refresh already calls `LookupCache.RefreshAllAsync` but does not call `Entities.
 
 ---
 
+## IMPROVEMENT-024 - Server Restart: Daily Objective Announcement and Admin Tool Statistics
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Objectives / Admin Tool
+
+### Description
+Two related improvements to daily objective visibility:
+
+1. **Server restart announcement** — on startup (or first pool computation after season activation), if an active season with daily objectives is configured, announce today's active objectives via the Seasons Info channel. Guard: fires only when `_dailyPool.Date == DateOnly.MinValue` (uninitialized pool), not on periodic 5-minute cache refreshes.
+
+2. **Admin Tool Season Statistics tab** — added "Today's Daily Objectives" section showing today's active pool and per-objective completion counts. Pool computed in C# using identical seeded Fisher-Yates algorithm as the server (`seed = seasonId * 397 ^ day.DayNumber`). Server's `GetObjectives` query aligned with `ORDER BY display_order` to ensure both sides shuffle from the same input order.
+
+### Implementation
+- `src/Perpetuum/Services/Seasons/SeasonService.cs` — `isFirstLoad` guard in `RefreshCache()`
+- `src/Perpetuum/Services/Seasons/SeasonRepository.cs` — added `ORDER BY display_order` to `GetObjectives`
+- `src/Perpetuum.AdminTool/Seasons/TodaysDailyObjectiveRow.cs` — new record
+- `src/Perpetuum.AdminTool/Seasons/SeasonRepository.cs` — `LoadTodaysDailyObjectivesAsync`
+- `src/Perpetuum.AdminTool/ViewModels/SeasonStatisticsViewModel.cs` — `TodaysDailyObjectives` collection
+- `src/Perpetuum.AdminTool/Views/SeasonDetailView.xaml` — new Statistics tab section
+
+---
+
 ## ISSUE-012 - New Robot dialog: incorrect entity filtering in clone pickers
 
 Status: DONE
@@ -409,3 +432,407 @@ Without `IsRobot` defaulting to true, operators must manually check it every tim
 - `CategoryFlagsNode.ContainsOrEquals` handles both exact match and descendant matching, so sub-types within each category are included automatically.
 - `StatsPanelViewModel.LoadFromClone` already supports the "Original" column display — no changes needed to that class.
 - The main entity clone picker (existing) is not affected; it continues to use the robots-only `BuildRobotItems` filter (see ISSUE-012).
+
+---
+
+## ISSUE-013 - Robot creation does not populate options field with part definitions
+
+Status: DONE
+Priority: HIGH
+Area: Game Content / Robots
+
+### Problem
+When a new robot is added, the `options` field for the robot entity is not populated with its part definitions in `GenXY` format. The options field must contain entries such as:
+
+```
+#head=n3036
+#chassis=n3037
+#leg=n3038
+#inventory=n332
+```
+
+If new robot parts are created as part of the robot creation process, the definitions generated for those parts must be referenced in these options entries.
+
+### Impact
+Robots without correctly populated options are non-functional in-game — the server cannot resolve their component parts, preventing spawning, equipping, or use of the robot.
+
+### Proposed Fix
+- Identify where robot entity creation writes the `options` field (content SQL pipeline or admin tool robot creation flow).
+- Ensure that after part definitions are created (head, chassis, leg, inventory), their resolved definition IDs are written back to the robot's `options` field using the `#head=nXXXX` / `#chassis=nXXXX` / `#leg=nXXXX` / `#inventory=nXXXX` format.
+- If part definitions are generated dynamically, the options population step must run after the part definitions exist and reference their actual IDs.
+
+### Notes
+Part definition IDs must be resolved dynamically — do not hardcode.
+Follows the `GenXY` naming convention where `n` prefix denotes a definition reference by numeric ID.
+
+---
+
+## ISSUE-014 - Robot part clone does not copy or expose options field for editing
+
+Status: DONE
+Priority: HIGH
+Area: Game Content / Robots / Admin Tool
+
+### Problem
+When cloning a robot part, the `options` field is not carried over from the source part and is not presented in the editor. The clone workflow leaves the options field empty and provides no way to review or modify it before committing.
+
+### Impact
+Cloned robot parts silently lose their options data, requiring manual correction after the fact. This is error-prone and inconsistent with the rest of the clone workflow.
+
+### Proposed Fix
+- Copy the source part's `options` field into the clone candidate at the point of clone creation.
+- Expose the options field in the clone editor using the same old/new pattern already used on the Basic tab: display the original value as read-only on the left, and provide an editable new value field on the right.
+- Reuse the existing old/new field component — do not introduce a new pattern.
+
+### Notes
+Follow the existing Basic tab old/new UI pattern exactly for consistency.
+The old (source) value must be read-only; only the new value field is editable.
+
+---
+
+## ISSUE-015 - Seasons Objectives tab: selected target not rendered in table cell
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Admin Tool
+
+### Problem
+On the Admin Tool Seasons Objectives tab, when an objective has a target selected, the chosen value is not displayed in the table cell. The value is stored and visible when the user clicks into the cell (via the picker), but the table column renders as blank.
+
+### Impact
+Operators cannot confirm at a glance which target is assigned to each objective. They must click every cell individually to audit or verify configurations, making bulk review error-prone and slow.
+
+### Proposed Fix
+- Locate the cell template / data binding for the target column in the Objectives tab DataGrid.
+- Identify why the display path does not render the selected value (likely a missing `DisplayMemberPath`, wrong binding path, or the display value not being propagated back to the row model after picker selection).
+- Ensure the table cell shows the human-readable target label (same value visible in the picker) once a target is selected, without requiring the user to click the cell.
+
+### Notes
+The picker itself works correctly — the issue is purely in how the selected value is reflected back to the table row display.
+Check whether the binding uses a converter or a nested property that is not notifying change on selection commit.
+
+---
+
+## ISSUE-016 - Saving Daily Objectives Per Day in AdminTool causes varchar to datetime cast error
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Admin Tool
+
+### Problem
+In the AdminTool Seasons view, saving the Daily Objectives Per Day field produces a SQL cast error: implicit or explicit conversion from varchar to datetime fails. The save operation aborts and the value is not persisted.
+
+### Impact
+Operators cannot configure Daily Objectives Per Day at all — the field is effectively broken. Any season that requires this setting cannot be properly administered.
+
+### Root Cause
+The `start_time` and `end_time` string literals in `SeasonChanges.BuildInsert` / `BuildUpdate` and `SeasonWizardViewModel.BuildSeasonScript` used the format `'yyyy-MM-dd HH:mm:ss'` (space separator). SQL Server's implicit varchar-to-datetime conversion for this format is locale/DATEFORMAT-sensitive. The ISO 8601 format `'yyyy-MM-ddTHH:mm:ss'` (T separator) is always accepted by SQL Server regardless of collation or DATEFORMAT. The `daily_objectives_per_day` field itself (`SqlLiteral.OfNullableInt`) is correct — it generates a numeric literal or NULL. The error surfaced when users first exercised the Save General path after the new field gave them a reason to use it.
+
+### Fix
+Changed `yyyy-MM-dd HH:mm:ss` → `yyyy-MM-ddTHH:mm:ss` in:
+- `SeasonChanges.cs` `BuildInsert` and `BuildUpdate` (both start_time and end_time)
+- `SeasonWizardViewModel.cs` `BuildSeasonScript`
+
+### Notes
+Field was recently introduced (commits `837d188`, `0e59ae9`, `6d5432c`, `b442883`).
+`daily_objectives_per_day` column type is `smallint [null]` — confirmed correct in schema docs.
+
+---
+
+## ISSUE-017 - Seasons Objectives tab: Activity type selector does not show all active activity types
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Admin Tool
+
+### Problem
+On the Admin Tool Seasons Objectives tab, the Activity type selector (dropdown/picker) did not display all active activity types. The Phase 1 (non-combat) and Phase 2 (combat) types added to `SeasonActivityType` were never added to the UI option lists.
+
+### Root Cause
+`SeasonDetailViewModel.ActivityTypeOptions` and `SeasonWizardViewModel.ObjectiveActivityTypeOptions` were both hardcoded lists of 9 types. `SeasonActivityType` has 21 values — 12 were absent from both lists: `Prototyping`, `ReverseEngineering`, `Production`, `ArtifactFound`, `EpEarned`, `DamageDone`, `DamageReceived`, `ArmorRestored`, `EnergyDrainDealt`, `EnergyDrainReceived`, `EnergyTransferDealt`, `EnergyTransferReceived`.
+
+### Fix
+Added all 12 missing types to `ActivityTypeOptions` in `SeasonDetailViewModel.cs` and `ObjectiveActivityTypeOptions` in `SeasonWizardViewModel.cs`. Labels match `SeasonActivityRateRow.ActivityTypeLabel`.
+
+---
+
+## ISSUE-018 - SeasonRepository.GetActiveSeason throws InvalidCastException on daily_objectives_per_day
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Server
+
+### Problem
+The server crashed on every `SeasonService.Update` tick with `System.InvalidCastException: Unable to cast object of type 'System.Int16' to type 'System.Nullable\`1[System.Int32]'` when an active season existed.
+
+### Root Cause
+`daily_objectives_per_day` is `smallint [null]` in the DB — SQL Server returns a boxed `System.Int16`. `DataRecordExtensions.GetValue<T>` does a direct unbox cast `(T)record.GetValue(index)`. The CLR cannot unbox an `Int16` as `Nullable<Int32>` — the unbox target must match the stored type exactly. The crash occurred in all three season-loading methods: `GetActiveSeason`, `GetSeasonById`, and `GetPendingRecurringSeason`.
+
+The AdminTool's `SeasonRepository` already handled this correctly with explicit `reader.GetInt16(11)` → `(int)` widening.
+
+### Fix
+Changed all three `record.GetValue<int?>("daily_objectives_per_day")` calls to `(int?)record.GetValue<short?>("daily_objectives_per_day")`. This reads the value with the correct CLR type (`Int16`) and widens to `int?` at the call site. `Season.DailyObjectivesPerDay` stays `int?` — no downstream changes required.
+
+### Notes
+`recurrence_gap_days` is `int [null]` — `GetValue<int?>` is correct there and is not affected.
+`GetValue<T>` has no numeric widening; other smallint/tinyint columns read as `int?` will hit the same issue if introduced.
+
+---
+
+## ISSUE-019 - CI build fails for AdminToolInstaller: NETSDK1047 missing RID target in assets file
+
+Status: DONE
+Priority: HIGH
+Area: Build / CI
+
+### Problem
+The CI pipeline step `dotnet build src/Perpetuum.AdminToolInstaller/Perpetuum.AdminToolInstaller.wixproj --no-restore --configuration Release -p:Platform=x64` fails with:
+
+```
+NETSDK1047: Assets file '...Perpetuum.AdminTool\obj\project.assets.json' doesn't have a target for 'net8.0-windows/win-x64'.
+Ensure that restore has run and that you have included 'net8.0-windows' in the TargetFrameworks for your project.
+You may also need to include 'win-x64' in your project's RuntimeIdentifiers.
+```
+
+### Impact
+The AdminTool installer cannot be built in CI, blocking release packaging of the AdminTool.
+
+### Root Cause
+The build step uses `--no-restore`, so NuGet restore never runs for the `Perpetuum.AdminTool` dependency. The assets file in `obj/` is either absent or was produced by a prior restore without the `win-x64` RID, so the SDK cannot resolve the `net8.0-windows/win-x64` target.
+
+### Proposed Fix
+One or more of:
+1. Add a `dotnet restore` step for `Perpetuum.AdminToolInstaller.wixproj` (or the full solution) before the `--no-restore` build, with `-p:RuntimeIdentifier=win-x64`.
+2. Ensure `Perpetuum.AdminTool.csproj` declares `<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>` so restore always produces the required RID target.
+3. Alternatively, drop `--no-restore` from the AdminToolInstaller build step and rely on the SDK to restore inline.
+
+### Notes
+The error path is `D:\a\...` (GitHub Actions runner). The fix must be applied to `.github/workflows/dotnet.yml` and/or the `.csproj`.
+
+---
+
+## IMPROVEMENT-005 - Seasons: Additional Activity Types
+
+Status: DONE
+Priority: MEDIUM
+Area: Seasons / Activities
+
+### Description
+Expanded the Seasons activity tracking system with 12 new activity types implemented in two phases. All types integrate with the existing `RecordActivity` pipeline with no DB schema changes.
+
+### Phase 1 — Non-combat types (enum values 9–13)
+- `Prototyping` (9) — hook in ProductionProcessor.cs at job completion, branch on job type
+- `ReverseEngineering` (10) — same hook, different job type branch
+- `Production` (11) — same hook, combined items + robots
+- `ArtifactFound` (12) — hook in ArtifactScanner.cs after EP boost call; amount = 1
+- `EpEarned` (13) — hook all `AddExtensionPointsBoostAndLog` call sites + passive EP accumulation path
+
+### Phase 2 — Combat types (enum values 14–20)
+- `DamageDone` (14) / `DamageReceived` (15) — hook in TakeDamage/ApplyDamageResult; amount = HP dealt
+- `ArmorRestored` (16) — hook repair module application; character = repairer; amount = HP restored
+- `EnergyDrainDealt` (17) / `EnergyDrainReceived` (18) — neutralizer + drainer modules; amount = energy removed
+- `EnergyTransferDealt` (19) / `EnergyTransferReceived` (20) — transfer module; amount = energy transferred
+
+### Anti-farming
+Handled via `unit_scale` in rates (set high for high-frequency types). Training character filter applies automatically. No new cap infrastructure needed.
+
+### Spec
+`docs/superpowers/specs/2026-05-16-improvement-005-additional-activity-types-design.md`
+
+### Notes
+Distance Travelled was deferred — see [[IMPROVEMENT-015]].
+
+---
+
+## IMPROVEMENT-006 - Daily Objectives
+
+Status: DONE
+Priority: MEDIUM
+Area: Seasons / Objectives
+
+### Description
+Introduced daily objectives: a set of objectives that reset and re-issue automatically every day. The system reuses and extends existing objective infrastructure, adding only the recurrence scheduling layer on top.
+
+### Implementation
+Extended `season_objectives` with `is_daily` (bit) and `package_id` (int, nullable). Added `day_window` (date, sentinel `1900-01-01` for regular, `UtcNow.Date` for daily) to `season_objective_progress` and rebuilt its PK to `(character_id, season_id, objective_id, day_window)`. No reset scheduler needed — fresh row per day via existing MERGE. Optional reward package delivered on daily completion via `InsertRedeemableItems`. Admin Tool gains Is Daily checkbox column, Reward Package combobox column, and All/One-time/Daily filter. Branch: `p36.1`.
+
+### Notes
+Depends on [[ISSUE-001]] — daily reset boundary must use UTC to be consistent across deployments.
+See [[IMPROVEMENT-005]] for new activity types that could back daily objective targets.
+See [[IMPROVEMENT-001]] for recurring season design — daily objectives are a finer-grained recurrence within a season.
+Reset time is hardcoded UTC midnight (configurable reset time deferred).
+
+---
+
+## IMPROVEMENT-009 - Targeted Objectives
+
+Status: DONE
+Priority: LOW
+Area: Seasons / Objectives
+Spec: `docs/superpowers/specs/2026-05-19-improvement-009-targeted-objectives-design.md`
+
+### Description
+Extended the objective system to support targeted objectives, where a specific subject must be matched for progress to count. The target is activity-type-dependent — for example, a mining objective can target a specific ore type, a kill objective can target an NPC role or rank, a production objective can target an item category, and so on.
+
+### Impact
+Targeted objectives allow season designers to create more varied and specific challenges, directing player behaviour toward particular content rather than rewarding any activity of a given type.
+
+### Notes
+Depends on [[IMPROVEMENT-005]] for the activity types that targeted objectives filter against.
+NPC rank/role filtering (see [[IMPROVEMENT-007]], [[IMPROVEMENT-008]]) was not implemented in this pass — NPC kill targets require those systems to be built first.
+
+---
+
+## IMPROVEMENT-012 - Seasons Tiers tab: on-the-fly save generating a single change script
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Admin Tool
+Spec: `docs/superpowers/specs/2026-05-16-improvement-012-tiers-tab-queue-save-design.md`
+
+### Description
+The Tiers tab in the Seasons Admin Tool was refactored to adopt the same on-the-fly save mechanic used by Activity Rates and Objectives tabs — producing a single consolidated change script per save. All three tabs now behave consistently.
+
+### Implementation
+Audited Activity Rates and Objectives save pattern (diff computation, script generation, transaction wrapper) and extended it to cover tier definitions (name, point threshold, reward). The generated script follows the same format and conventions as Activity Rates and Objectives saves.
+
+### Notes
+See [[IMPROVEMENT-010]] — the Scoring Balancing tab depends on tiers being editable inline; consistent save mechanics here unblock a clean implementation of that tab.
+Preserved existing tier DB schema — this improvement changed the save UI mechanic only, not the underlying data model.
+
+---
+
+## IMPROVEMENT-017 - New Item script filename includes definition name
+
+Status: DONE
+Priority: LOW
+Area: Admin Tool / New Item Dialog
+Spec: `docs/superpowers/specs/2026-05-18-improvement-017-script-filename-prefixes-design.md`
+
+### Description
+When saving a new item in SqlScript mode, the output `.sql` file is now named `<definitionname>_<date>_<time>.sql` instead of the generic `admintool_<date>_<time>.sql`.
+
+Example: `def_plasma_launcher_20260517_084326.sql`
+
+### Fix
+In `NewItemDialogViewModel.SaveAsync` (SqlScript branch), replaced the filename construction to prefix with the sanitised definition name. Any character that is not a letter, digit, or underscore is replaced with `_`.
+
+### Notes
+`BasicPanel.DefinitionName` is available on `NewItemDialogViewModel` via the existing `BasicPanel` property.
+The `MainViewModel.CommitAsync` SqlScript path (multi-change commits) is out of scope.
+
+---
+
+## IMPROVEMENT-018 (Season Config) - Season Config: Activity Points Scoring Mode
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Admin Tool
+
+> **Note:** ID 018 is also used by "New Robot dialog UX improvements" above. This entry covers the Season Config scoring mode improvement; that numbering conflict should be resolved by renumbering one of the two.
+
+### Description
+Added a configurable **scoring mode** option to season configuration with two values:
+
+- **Objectives only** — activity points are added to matching objective progress but do not contribute to the global season score.
+- **Objectives + Global Score** — activity points are added to objective progress and also accumulate in the global season score (current behaviour).
+
+### Implementation
+Added `scoringMode` field to the season configuration schema (DB column + server-side model). Updated the activity point processing logic to branch on this field: skips global score accumulation when mode is `ObjectivesOnly`. Exposed the option in the Admin Tool season configuration UI. New seasons default to `ObjectivesAndGlobalScore` to preserve existing behaviour.
+
+---
+
+## IMPROVEMENT-019 - New Robot Dialog: Bonuses Tab
+
+Status: DONE
+Priority: HIGH
+Area: Admin Tool / New Robot Dialog
+Spec: `docs/superpowers/specs/2026-05-19-improvement-019-robot-bonuses-tab-design.md`
+
+### Description
+Added a **Bonuses** tab to the New Robot dialog for configuring chassis bonuses (`chassisbonus` table rows). The tab follows the same pattern as the Stats tab: empty by default for new robots, pre-filled from the cloned chassis definition when cloning, and editable (add / remove / modify rows). All bonus rows are emitted in the same single SQL script produced by `RobotSqlBuilder.Build`.
+
+Each bonus row maps to one `chassisbonus` row: Extension (dropdown), Bonus value, Target property (dropdown), Effect enhancer (checkbox), Note (optional text).
+
+Chassis bonuses are stored against the chassis part definition (`@chassisDef`), not the top-level robot definition.
+
+### Notes
+Unique constraint on `chassisbonus (definition, extension, targetpropertyID)` enforced in `HasDuplicates()`.
+`OriginalBonus` (read-only reference value) is shown in the row when cloning, same pattern as `NewStatRow.OriginalValue`.
+Bonuses tab hidden when `IsRobot` is false.
+
+---
+
+## IMPROVEMENT-020 - AdminTool Installer
+
+Status: DONE
+Priority: MEDIUM
+Area: Admin Tool / Distribution
+Spec: `docs/superpowers/specs/2026-05-19-improvement-020-admintool-installer-design.md`
+
+### Description
+Created an installer for the AdminTool application using WiX Toolset. The installer handles required .NET 8 runtime dependencies and is wired into the CI pipeline to produce a fresh installer artifact on each tagged release.
+
+### Notes
+Self-contained publish was evaluated; WiX approach chosen for clean uninstall and runtime detection.
+CI job produces the installer artifact from `Perpetuum.AdminToolInstaller.wixproj`.
+
+---
+
+## IMPROVEMENT-021 - Graphify Codebase Graph Integration
+
+Status: DONE
+Priority: HIGH
+Area: Infrastructure / Tooling / AI
+Spec: docs/superpowers/specs/2026-05-23-improvement-021-graphify-integration-design.md
+
+### Description
+Integrated `graphify-dotnet` as a local dotnet tool. Generates a structural JSON graph and Markdown architecture report before every `Perpetuum.Server` build. CI publishes the report to the GitHub Wiki on each push to `develop`.
+
+### Implementation
+- `.config/dotnet-tools.json` registers `graphify-dotnet@0.7.0` (command: `graphify`)
+- `Directory.Build.targets` (solution root) fires `GenerateCodeGraph` before `Perpetuum.Server` builds; `ContinueOnError="true"` soft-fails on machines without .NET 10 SDK
+- `-f json,report` produces `docs/graph/graph.json` and `docs/graph/GRAPH_REPORT.md` (gitignored)
+- `.github/workflows/dotnet.yml` `publish-wiki` job pushes `GRAPH_REPORT.md` to GitHub Wiki as `Codebase-Graph.md` on each push to `develop`
+- `.claude/knowledge/codebase-graph.md` added for Claude orientation
+
+### Notes
+Phase 2 (.NET 8 → .NET 10 project TFM migration) is deferred as an independent workstream.
+The graphify tool requires .NET 10 SDK but the project TFMs remain at net8.0.
+
+---
+
+## IMPROVEMENT-022 - Seasons: Randomised Daily Objective Pool
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Objectives
+
+### Description
+Added a season-level `daily_objectives_per_day` option (smallint, nullable) to limit how many daily objectives are active per day, selected deterministically from the full pool. `NULL` means all configured daily objectives are active every day (existing behaviour, no breaking change).
+
+### Implementation
+When a player queries their daily objectives, the server checks `daily_objectives_per_day`. If set, it deterministically samples N objectives from the full `is_daily` pool for the current UTC day using a seed derived from `(season_id, day_window)` — all players see the same set on the same day. Admin Tool surfaces the field in the season configuration panel as a nullable integer field.
+
+### Notes
+Depends on [[IMPROVEMENT-006]] — daily objectives infrastructure must exist before pool selection can be layered on.
+Deterministic selection ensures consistent daily experience across all characters in a season.
+If `daily_objectives_per_day` exceeds the total number of configured daily objectives, treated as "all objectives."
+
+---
+
+## IMPROVEMENT-023 - Seasons: Same-IP Gate for NIC Earning/Spending Activities
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Anti-Abuse
+Spec: `docs/superpowers/specs/2026-05-21-improvement-023-same-ip-gate-design.md`
+
+### Description
+Enforced a same-IP gate on season activity recording so that a player running multiple accounts from the same machine cannot earn season points by trading with themselves. When two characters involved in a tracked NIC activity share the same originating IP address, neither transaction side earns points.
+
+### Implementation
+`ActivityEvent` extended with optional `CounterpartyAccountId`. `SeasonService.RecordActivity` queries `accountonlinetime` for the most recent session IP of both characters and suppresses recording when they match. Market NIC recording moved from `CharacterWallet` to explicit call sites in `Market.cs` where both counterparties are available. All 7 transport assignment `RecordActivity` calls updated with counterparty account IDs. PvpKill IP query fixed to use `TOP 1 ORDER BY loggedin DESC` with null guard. Branch: `p36.1`.
+
+### Notes
+Vendor market fills (no player counterparty) record without gate. `buyOrderPayBack` and `CashInOnSubmit` (no counterparty) left ungated. NAT false-positive limitation documented in spec.
