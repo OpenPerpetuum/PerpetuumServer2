@@ -1,3 +1,5 @@
+using System.Linq;
+
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Builders;
 using Perpetuum.Containers;
@@ -10,7 +12,6 @@ using Perpetuum.Modules;
 using Perpetuum.Players;
 using Perpetuum.Robots.EquipmentSets;
 using Perpetuum.Services.ExtensionService;
-using System.Linq;
 using Perpetuum.Services.Insurance;
 using Perpetuum.Timers;
 using Perpetuum.Units;
@@ -32,8 +33,11 @@ namespace Perpetuum.Robots
         private readonly IntervalTimer overheatCooldownTimer;
         private const double HeatDissipation = 1.75;
 
+        private static readonly IReadOnlySet<int> _emptySetIds = new HashSet<int>();
+
+        // Safe: Initialize() is called docked (no zone update) or at zone entry (before zone participation).
         private IReadOnlyList<ItemPropertyModifier> _setBonusModifiers = Array.Empty<ItemPropertyModifier>();
-        private IReadOnlySet<int> _activeSetIds = new HashSet<int>();
+        private IReadOnlySet<int> _activeSetIds = _emptySetIds;
 
         protected Robot()
         {
