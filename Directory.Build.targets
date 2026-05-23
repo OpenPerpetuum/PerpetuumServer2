@@ -1,0 +1,8 @@
+<Project>
+  <Target Name="GenerateCodeGraph" BeforeTargets="Build"
+          Condition="'$(MSBuildProjectName)' == 'Perpetuum.Server'">
+    <Exec Command="dotnet tool run graphify run &quot;$(MSBuildThisFileDirectory)src&quot; -o &quot;$(MSBuildThisFileDirectory)docs\graph&quot; -f json,html"
+          ContinueOnError="true"
+          WorkingDirectory="$(MSBuildThisFileDirectory)" />
+  </Target>
+</Project>
