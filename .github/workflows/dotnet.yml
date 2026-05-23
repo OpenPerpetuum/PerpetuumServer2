@@ -57,3 +57,44 @@ jobs:
         name: Perpetuum-AdminTool-Installer-${{ github.sha }}
         path: ${{ env.Workspace }}/src/Perpetuum.AdminToolInstaller/bin/x64/Release/en-US/*.msi
       if: ${{ github.event_name == 'push' }}
+
+  publish-wiki:
+
+    runs-on: windows-latest
+    needs: build
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET 10 (graphify tool requirement)
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Restore dotnet tools
+      run: dotnet tool restore
+
+    - name: Generate codebase report
+      run: dotnet tool run graphify run src -o graphify-out -f report
+
+    - name: Publish report to GitHub Wiki
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git clone "https://x-access-token:$env:GH_TOKEN@github.com/OpenPerpetuum/PerpetuumServer2.wiki.git" wiki-repo
+        Copy-Item "graphify-out/GRAPH_REPORT.md" -Destination "wiki-repo/Codebase-Graph.md" -Force
+        Set-Location wiki-repo
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add "Codebase-Graph.md"
+        $changes = git status --porcelain
+        if ($changes) {
+          git commit -m "Update codebase graph report [${{ github.sha }}]"
+          git push
+        } else {
+          Write-Host "No wiki changes to publish"
+        }
