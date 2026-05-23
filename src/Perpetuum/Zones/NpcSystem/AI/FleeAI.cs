@@ -61,6 +61,12 @@ namespace Perpetuum.Zones.NpcSystem.AI
                     movement = null;
                     StartRetreatPath();
                 }
+                else
+                {
+                    // WaypointMovement.Start resets CurrentSpeed to 1.0 on each new waypoint;
+                    // re-apply the 75% cap so the NPC actually moves slower while fleeing.
+                    smartCreature.CurrentSpeed = 0.75;
+                }
             }
 
             base.Update(time);

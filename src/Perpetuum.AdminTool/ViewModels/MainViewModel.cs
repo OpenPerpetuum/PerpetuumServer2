@@ -44,7 +44,7 @@ namespace Perpetuum.AdminTool.ViewModels
             _currentMode = session.CurrentMode;
             Translations = new TranslationsViewModel(store);
             Translations.Load();
-            Entities = new EntitiesViewModel(store, session.Changes, Translations, session.Lookups);
+            Entities = new EntitiesViewModel(store, session, session.Changes, Translations, session.Lookups);
             RobotTemplates = new RobotTemplatesViewModel(store, session.Changes, session.Lookups);
             RobotTemplateRelations = new RobotTemplateRelationsViewModel(store, session.Changes, session.Lookups);
             NpcLoot = new NpcLootViewModel(store, session.Changes, session.Lookups);
@@ -187,7 +187,7 @@ namespace Perpetuum.AdminTool.ViewModels
                 try
                 {
                     Directory.CreateDirectory(dir);
-                    var fileName = $"admintool_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
+                    var fileName = SqlScriptBuilder.BuildFileName("season", Seasons.DetailViewModel?.Season.Name);
                     var path = Path.Combine(dir, fileName);
                     await File.WriteAllTextAsync(path, script);
 

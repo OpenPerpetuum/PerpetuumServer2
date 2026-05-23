@@ -190,7 +190,7 @@ namespace Perpetuum.Modules
                                 drilledQuantity,
                                 terrainLock.Location));
                     player.Zone?.MiningLogHandler.EnqueueMiningLog(drilledMineralDefinition, drilledQuantity);
-                    SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.MineralMined, drilledQuantity);
+                    SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.MineralMined, new Perpetuum.Services.Seasons.ActivityEvent(drilledQuantity, drilledMineralDefinition));
 
                     resourceStats.Add((material.EntityDefault.Name, material.Quantity));
                 }

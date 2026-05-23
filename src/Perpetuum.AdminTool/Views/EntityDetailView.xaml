@@ -134,7 +134,7 @@
                                   SelectedItem="{Binding NewStatField}"
                                   DisplayMemberPath="DisplayLabel"/>
                         <TextBox  Grid.Column="1" Margin="6,0"
-                                  Text="{Binding NewStatValue, UpdateSourceTrigger=PropertyChanged}"/>
+                                  Text="{Binding NewStatValue, UpdateSourceTrigger=LostFocus}"/>
                         <Button   Grid.Column="2" Content="Add stat" Padding="10,2" Margin="0,0,6,0"
                                   Click="OnAddStatClick"/>
                         <Button   Grid.Column="3" Content="Remove selected" Padding="10,2"

@@ -15,5 +15,9 @@ namespace Perpetuum.AdminTool.Entities
             string.IsNullOrEmpty(Name)
                 ? $"#{Id}"
                 : $"{Name} (#{Id})";
+
+        public bool IsMissingFromEnum =>
+            !System.Enum.IsDefined(typeof(Perpetuum.ExportedTypes.AggregateField),
+                                   (Perpetuum.ExportedTypes.AggregateField)Id);
     }
 }

@@ -47,6 +47,15 @@ namespace Perpetuum.AdminTool.ViewModels
         [ObservableProperty] private DateTime _endTime = DateTime.UtcNow.Date.AddDays(30);
         [ObservableProperty] private string _startTimeText = "00:00";
         [ObservableProperty] private string _endTimeText = "00:00";
+        [ObservableProperty] private bool _isRecurring;
+        [ObservableProperty] private int _recurrenceGapDays = 7;
+        [ObservableProperty] private SeasonScoringMode _scoringMode = SeasonScoringMode.ActivityAndGlobal;
+
+        public IReadOnlyList<ScoringModeOption> ScoringModeOptions { get; } = new[]
+        {
+            new ScoringModeOption(SeasonScoringMode.ActivityAndGlobal, "Activity + Global Score"),
+            new ScoringModeOption(SeasonScoringMode.ObjectivesOnly,    "Objectives Only"),
+        };
 
         public ObservableCollection<SeasonActivityRateRow> ActivityRates { get; } = new();
         public ObservableCollection<SeasonObjectiveRow> Objectives { get; } = new();
@@ -92,17 +101,36 @@ namespace Perpetuum.AdminTool.ViewModels
         public IReadOnlyList<string> ReviewLeaderboardLines =>
             LeaderboardRewards.Select(l => $"  • Rank {l.RankMin}–{l.RankMax}: {l.SelectedPackage?.Name ?? $"pkg {l.PackageId}"}").ToList();
 
+        public string ReviewScoringMode => ScoringMode switch
+        {
+            SeasonScoringMode.ObjectivesOnly => "Objectives Only",
+            _                                => "Activity + Global Score",
+        };
+
         public IReadOnlyList<ActivityTypeOption> ObjectiveActivityTypeOptions { get; } =
             new[]
             {
-                new ActivityTypeOption(SeasonActivityType.NpcKill,         "NPC Kill"),
-                new ActivityTypeOption(SeasonActivityType.PvpKill,         "PvP Kill"),
-                new ActivityTypeOption(SeasonActivityType.MissionComplete, "Mission Complete"),
-                new ActivityTypeOption(SeasonActivityType.MineralMined,    "Mineral Mined"),
-                new ActivityTypeOption(SeasonActivityType.EpSpent,         "EP Spent"),
-                new ActivityTypeOption(SeasonActivityType.NicEarned,       "NIC Earned"),
-                new ActivityTypeOption(SeasonActivityType.NicSpent,        "NIC Spent"),
-                new ActivityTypeOption(SeasonActivityType.IntrusionPoint,  "Intrusion Point"),
+                new ActivityTypeOption(SeasonActivityType.NpcKill,                 "NPC Kill"),
+                new ActivityTypeOption(SeasonActivityType.PvpKill,                 "PvP Kill"),
+                new ActivityTypeOption(SeasonActivityType.MissionComplete,         "Mission Complete"),
+                new ActivityTypeOption(SeasonActivityType.MineralMined,            "Mineral Mined"),
+                new ActivityTypeOption(SeasonActivityType.EpSpent,                 "EP Spent"),
+                new ActivityTypeOption(SeasonActivityType.EpEarned,                "EP Earned"),
+                new ActivityTypeOption(SeasonActivityType.NicEarned,               "NIC Earned"),
+                new ActivityTypeOption(SeasonActivityType.NicSpent,                "NIC Spent"),
+                new ActivityTypeOption(SeasonActivityType.IntrusionPoint,          "Intrusion Point"),
+                new ActivityTypeOption(SeasonActivityType.PlantHarvested,          "Plant Harvested"),
+                new ActivityTypeOption(SeasonActivityType.Prototyping,             "Prototyping"),
+                new ActivityTypeOption(SeasonActivityType.ReverseEngineering,      "Reverse Engineering"),
+                new ActivityTypeOption(SeasonActivityType.Production,              "Production"),
+                new ActivityTypeOption(SeasonActivityType.ArtifactFound,           "Artifact Found"),
+                new ActivityTypeOption(SeasonActivityType.DamageDone,              "Damage Done"),
+                new ActivityTypeOption(SeasonActivityType.DamageReceived,          "Damage Received"),
+                new ActivityTypeOption(SeasonActivityType.ArmorRestored,           "Armor Restored"),
+                new ActivityTypeOption(SeasonActivityType.EnergyDrainDealt,        "Energy Drain Dealt"),
+                new ActivityTypeOption(SeasonActivityType.EnergyDrainReceived,     "Energy Drain Received"),
+                new ActivityTypeOption(SeasonActivityType.EnergyTransferDealt,     "Energy Transfer Dealt"),
+                new ActivityTypeOption(SeasonActivityType.EnergyTransferReceived,  "Energy Transfer Received"),
             };
 
         public string Step1Validation { get; private set; } = "";
@@ -170,6 +198,7 @@ namespace Perpetuum.AdminTool.ViewModels
                 OnPropertyChanged(nameof(ReviewTierLines));
                 OnPropertyChanged(nameof(ReviewLeaderboardHeader));
                 OnPropertyChanged(nameof(ReviewLeaderboardLines));
+                OnPropertyChanged(nameof(ReviewScoringMode));
             }
         }
 
@@ -178,6 +207,8 @@ namespace Perpetuum.AdminTool.ViewModels
         partial void OnEndTimeChanged(DateTime value) => ValidateStep1();
         partial void OnStartTimeTextChanged(string value) => ApplyTimeText(value, isStart: true);
         partial void OnEndTimeTextChanged(string value)   => ApplyTimeText(value, isStart: false);
+        partial void OnIsRecurringChanged(bool value) => ValidateStep1();
+        partial void OnRecurrenceGapDaysChanged(int value) => ValidateStep1();
 
         private void ApplyTimeText(string text, bool isStart)
         {
@@ -211,6 +242,8 @@ namespace Perpetuum.AdminTool.ViewModels
                 Step1Validation = "End time must be in HH:mm format (UTC).";
             else if (EndTime <= StartTime)
                 Step1Validation = "End time must be after start time.";
+            else if (IsRecurring && RecurrenceGapDays < 1)
+                Step1Validation = "Gap between runs must be at least 1 day.";
             else
                 Step1Validation = "";
             OnPropertyChanged(nameof(Step1Validation));
@@ -310,9 +343,15 @@ namespace Perpetuum.AdminTool.ViewModels
         {
             var sb = new StringBuilder();
             sb.AppendLine("DECLARE @seasonId INT;");
-            sb.AppendLine($"INSERT INTO seasons (name, description, start_time, end_time, is_active)");
-            sb.AppendLine($"VALUES ({SqlLiteral.Of(Name)}, {SqlLiteral.Of(Description)},");
-            sb.AppendLine($"  '{DateTime.SpecifyKind(StartTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', '{DateTime.SpecifyKind(EndTime, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss}', 0);");
+            string displayName = IsRecurring ? $"{Name}, Run #1" : Name;
+            string gapSql = IsRecurring ? RecurrenceGapDays.ToString() : "NULL";
+            string baseNameSql = IsRecurring ? SqlLiteral.Of(Name) : "NULL";
+            sb.AppendLine("INSERT INTO seasons (name, description, start_time, end_time, is_active, " +
+                          "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode)");
+            sb.AppendLine($"VALUES ({SqlLiteral.Of(displayName)}, {SqlLiteral.Of(Description)},");
+            sb.AppendLine($"  '{DateTime.SpecifyKind(StartTime, DateTimeKind.Utc):yyyy-MM-ddTHH:mm:ss}', " +
+                          $"'{DateTime.SpecifyKind(EndTime, DateTimeKind.Utc):yyyy-MM-ddTHH:mm:ss}', 0, " +
+                          $"{(IsRecurring ? 1 : 0)}, {gapSql}, 1, {baseNameSql}, {(int)ScoringMode});");
             sb.AppendLine("SET @seasonId = SCOPE_IDENTITY();");
 
             foreach (var rate in ActivityRates.Where(r => r.PointsPerUnit > 0))

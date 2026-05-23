@@ -66,6 +66,10 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>  <!-- row 7: scoring mode -->
+                            <RowDefinition Height="Auto"/>  <!-- row 8: daily objectives per day -->
+                            <RowDefinition Height="Auto"/>  <!-- row 9: save button -->
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Season ID:" Margin="0,4"/>
@@ -84,7 +88,63 @@
                         <TextBlock Grid.Row="4" Grid.Column="0" Text="End time (UTC):" Margin="0,4"/>
                         <DatePicker Grid.Row="4" Grid.Column="1" SelectedDate="{Binding Season.EndTime}" Margin="0,4"/>
 
-                        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                        <!-- Row 5: Recurring toggle -->
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Recurring:" Margin="0,4" VerticalAlignment="Center"/>
+                        <CheckBox Grid.Row="5" Grid.Column="1"
+                                  IsChecked="{Binding Season.IsRecurring}"
+                                  Content="Auto-restart after each run" Margin="0,6"
+                                  VerticalAlignment="Center"/>
+
+                        <!-- Row 6: Gap field (visible only when recurring) -->
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Gap between runs:" Margin="0,4" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Season.IsRecurring}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Margin="0,4">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Season.IsRecurring}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBox Width="80"
+                                     Text="{Binding Season.RecurrenceGapDays, UpdateSourceTrigger=PropertyChanged}"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </StackPanel>
+
+                        <!-- Row 7: Scoring Mode -->
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Scoring Mode:" Margin="0,4" VerticalAlignment="Center"/>
+                        <ComboBox  Grid.Row="7" Grid.Column="1" Margin="0,4"
+                                   ItemsSource="{Binding ScoringModeOptions}"
+                                   DisplayMemberPath="Label"
+                                   SelectedValuePath="Value"
+                                   SelectedValue="{Binding Season.ScoringMode, Mode=TwoWay}"/>
+
+                        <!-- Row 8: Daily Objectives Per Day -->
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Daily Objectives Per Day:"
+                                   Margin="0,4" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Row="8" Grid.Column="1" Margin="0,4">
+                            <TextBox Width="80" HorizontalAlignment="Left"
+                                     Text="{Binding Season.DailyObjectivesPerDay, UpdateSourceTrigger=LostFocus, TargetNullValue=''}"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBlock Foreground="DimGray" FontStyle="Italic" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"
+                                       Text="Leave blank to show all daily objectives every day. Set a positive number to randomly draw N per day (same pool for all players)."/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
                             <Button Content="Save General" Padding="14,2" FontWeight="Bold"
                                     Command="{Binding SaveGeneralCommand}"/>
                         </StackPanel>
@@ -126,8 +186,14 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8">
                         <Button Content="+ Add Objective" Padding="8,2" Command="{Binding AddObjectiveCommand}"/>
+                        <TextBlock Text="Show:" VerticalAlignment="Center" Margin="16,0,6,0" Foreground="DimGray"/>
+                        <ComboBox Width="140"
+                                  ItemsSource="{Binding ObjectiveFilterOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedValuePath="Value"
+                                  SelectedValue="{Binding ObjectiveFilter}"/>
                     </StackPanel>
-                    <DataGrid ItemsSource="{Binding Objectives}"
+                    <DataGrid ItemsSource="{Binding FilteredObjectives}"
                               AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                               HeadersVisibility="Column" GridLinesVisibility="All"
                               SelectionMode="Single" SelectionUnit="FullRow" Margin="8">
@@ -150,9 +216,48 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>
                             </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Target Material" Width="220">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="4,0" VerticalAlignment="Center"
+                                                   Text="{Binding TargetDisplayName, TargetNullValue='(any)'}"
+                                                   ToolTip="{Binding TargetDefinitionId, TargetNullValue=''}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding AvailableMaterials}"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValuePath="Definition"
+                                                  SelectedValue="{Binding TargetDefinitionId, UpdateSourceTrigger=PropertyChanged}"
+                                                  IsEnabled="{Binding HasTargetMaterials}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Target" Binding="{Binding TargetValue, UpdateSourceTrigger=LostFocus}" Width="100"/>
                             <DataGridTextColumn Header="Bonus Pts" Binding="{Binding BonusPoints, UpdateSourceTrigger=LostFocus}" Width="100"/>
                             <DataGridTextColumn Header="Order" Binding="{Binding DisplayOrder, UpdateSourceTrigger=LostFocus}" Width="80"/>
+                            <DataGridCheckBoxColumn Header="Is Daily"
+                                                    Binding="{Binding IsDaily}"
+                                                    Width="80"/>
+                            <DataGridTemplateColumn Header="Reward Package" Width="160">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="4,0" VerticalAlignment="Center"
+                                                   Text="{Binding SelectedPackage.Name, FallbackValue='(none)'}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Source={StaticResource VmProxy}, Path=Data.Packages}"
+                                                  DisplayMemberPath="Name"
+                                                  IsEditable="True"
+                                                  IsTextSearchEnabled="True"
+                                                  TextSearch.TextPath="Name"
+                                                  SelectedItem="{Binding SelectedPackage, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="" Width="80">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -214,6 +319,15 @@
                                     <DataTemplate>
                                         <Button Content="Remove" Padding="6,1" Foreground="DarkRed"
                                                 Command="{Binding Source={StaticResource VmProxy}, Path=Data.RemoveTierCommand}"
+                                                CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Queue Save" Padding="6,1"
+                                                Command="{Binding Source={StaticResource VmProxy}, Path=Data.QueueSaveTierCommand}"
                                                 CommandParameter="{Binding}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>

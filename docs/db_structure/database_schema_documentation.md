@@ -6070,6 +6070,7 @@ Generated from DBML structure.
 | `character_id` | `int [not null]` |
 | `season_id` | `int [not null]` |
 | `objective_id` | `int [not null]` |
+| `day_window` | `date [not null, default: '1900-01-01']` |
 | `current_value` | `float [not null, default: 0]` |
 | `completed` | `bit [not null, default: 0]` |
 | `completed_time` | `datetime` |
@@ -6077,7 +6078,7 @@ Generated from DBML structure.
 
 ### Indexes
 
-- `character_id, season_id, objective_id [pk, name: "PK_season_objective_progress"]`
+- `character_id, season_id, objective_id, day_window [pk, name: "PK_season_objective_progress"]`
 - `character_id, season_id [name: "IX_season_objective_progress_char"]`
 
 ### Relations
@@ -6103,6 +6104,9 @@ Generated from DBML structure.
 | `target_value` | `bigint [not null]` |
 | `bonus_points` | `int [not null]` |
 | `display_order` | `int [not null, default: 0]` |
+| `is_daily` | `bit [not null, default: 0]` |
+| `package_id` | `int [null]` |
+| `target_definition_id` | `int [null]` — when set, objective progress only counts for activities matching this entity definition (e.g. a specific ore or plant type) |
 
 ### Indexes
 
@@ -6180,6 +6184,12 @@ Generated from DBML structure.
 | `start_time` | `datetime [not null]` |
 | `end_time` | `datetime [not null]` |
 | `is_active` | `bit [not null, default: 0]` |
+| `is_recurring` | `bit [not null, default: 0]` — enables auto-recurrence |
+| `recurrence_gap_days` | `int [null]` — days between end of one run and start of next |
+| `recurrence_iteration` | `int [not null, default: 1]` — which run this row represents |
+| `recurrence_base_name` | `nvarchar(255) [null]` — operator-entered name; server appends `, Run #N` |
+| `scoring_mode` | `tinyint [not null, default: 0]` — scoring mode (0 = ActivityAndGlobal, 1 = ObjectivesOnly) |
+| `daily_objectives_per_day` | `smallint [null]` — when set, draw exactly N daily objectives per UTC day using a deterministic seed; NULL = all daily objectives active |
 
 ### Indexes
 

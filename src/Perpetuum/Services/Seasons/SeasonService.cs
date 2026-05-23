@@ -1,4 +1,5 @@
 using Perpetuum.Accounting.Characters;
+using Perpetuum.Data;
 using Perpetuum.EntityFramework;
 using Perpetuum.Services.Channels;
 using Perpetuum.Services.Mail;
@@ -41,6 +42,10 @@ namespace Perpetuum.Services.Seasons
         private TimeSpan _cacheAge = CacheRefreshInterval;
         private TimeSpan _leaderboardAge = LeaderboardAnnouncementInterval;
 
+        private sealed record DailyPool(ImmutableHashSet<int> Ids, DateOnly Date);
+        private static readonly DailyPool EmptyDailyPool = new(ImmutableHashSet<int>.Empty, DateOnly.MinValue);
+        private volatile DailyPool _dailyPool = EmptyDailyPool;
+
         public SeasonService(
             SeasonRepository repository,
             ISessionManager sessionManager,
@@ -76,6 +81,24 @@ namespace Perpetuum.Services.Seasons
                 ProcessSeasonEnd(season);
             }
 
+            // Daily pool rollover — fires once per UTC day when the date changes.
+            // Uses _activeSeason (not the captured `season`) so it is a no-op if ProcessSeasonEnd just ran.
+            var activeSeason = _activeSeason;
+            if (activeSeason?.DailyObjectivesPerDay != null)
+            {
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                if (today != _dailyPool.Date)
+                {
+                    var objectives = _activeObjectives;
+                    var newPool = SelectDailyPool(activeSeason, objectives, today);
+                    _dailyPool = new DailyPool(newPool, today);
+                    int totalDaily = objectives.Count(o => o.IsDaily);
+                    var poolObjs = objectives.Where(o => newPool.Contains(o.Id)).ToList();
+                    if (poolObjs.Count > 0)
+                        AnnounceDailyPool(poolObjs, totalDaily);
+                }
+            }
+
             _leaderboardAge += time;
             if (_leaderboardAge >= LeaderboardAnnouncementInterval)
             {
@@ -103,6 +126,11 @@ namespace Perpetuum.Services.Seasons
                     _activeObjectives = ImmutableList<SeasonObjective>.Empty;
                     _activeTiers = ImmutableList<SeasonTier>.Empty;
                     _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+                    _dailyPool = EmptyDailyPool;
+
+                    var pending = _repository.GetPendingRecurringSeason();
+                    if (pending != null)
+                        _repository.SetSeasonActive(pending.Id, true);
                 }
                 // No active season — discard any pending login chars
                 while (_pendingIntroChars.TryDequeue(out _)) { }
@@ -115,6 +143,17 @@ namespace Perpetuum.Services.Seasons
             _activeTiers = _repository.GetTiers(season.Id).ToImmutableList();
             _activeLeaderboard = _repository.GetLeaderboardRewards(season.Id).ToImmutableList();
             _activeSeason = season; // assign last so readers see a consistent snapshot
+
+            // Pool maintenance: reset when pooling is off; compute silently on season load/change.
+            if (!season.DailyObjectivesPerDay.HasValue)
+            {
+                _dailyPool = EmptyDailyPool;
+            }
+            else if (previous?.Id != season.Id || _dailyPool.Date == DateOnly.MinValue)
+            {
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                _dailyPool = new DailyPool(SelectDailyPool(season, _activeObjectives, today), today);
+            }
 
             if (_lastNotifiedSeasonId != season.Id)
             {
@@ -133,7 +172,7 @@ namespace Perpetuum.Services.Seasons
 
         // ── ISeasonService ────────────────────────────────────────────────────
 
-        public void RecordActivity(int characterId, SeasonActivityType activityType, long amount)
+        public void RecordActivity(int characterId, SeasonActivityType activityType, ActivityEvent evt)
         {
             var season = _activeSeason;
             if (season == null || DateTime.UtcNow > season.EndTime)
@@ -143,30 +182,60 @@ namespace Perpetuum.Services.Seasons
             if (rates.Count == 0)
                 return;
 
+            // DB lookup deferred until a rate match is confirmed — avoids 2 synchronous
+            // ExecuteScalar round-trips on every high-frequency call (e.g. each weapon cycle).
+            if (Character.Get(characterId).IsInTraining())
+                return;
+
+            if (evt.CounterpartyAccountId.HasValue)
+            {
+                var myIp    = GetMostRecentSessionIp(Character.Get(characterId).AccountId);
+                var theirIp = GetMostRecentSessionIp(evt.CounterpartyAccountId.Value);
+                if (myIp != null && theirIp != null &&
+                    string.Equals(myIp, theirIp, StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
+
             double basePoints = 0;
             foreach (var rate in rates)
             {
                 long scale = rate.UnitScale > 0 ? rate.UnitScale : 1;
-                basePoints += (double)Math.Round((double)amount / scale * rate.PointsPerUnit, 2);
+                basePoints += (double)Math.Round((double)evt.Amount / scale * rate.PointsPerUnit, 2);
             }
 
             if (basePoints <= 0)
                 return;
 
-            double newTotal = _repository.AddPoints(characterId, season.Id, basePoints);
+            double newTotal = season.ScoringMode == SeasonScoringMode.ActivityAndGlobal
+                ? _repository.AddPoints(characterId, season.Id, basePoints)
+                : _repository.GetCurrentPoints(characterId, season.Id);
 
             // Objective progress
+            DateTime dailyWindow = DateTime.UtcNow.Date;
             foreach (var obj in _activeObjectives.Where(o => o.ActivityType == activityType))
             {
+                if (obj.TargetDefinitionId.HasValue && obj.TargetDefinitionId != evt.DefinitionId)
+                    continue;
+
+                if (obj.IsDaily && season.DailyObjectivesPerDay.HasValue && !_dailyPool.Ids.Contains(obj.Id))
+                    continue;
+
+                DateTime dayWindow = obj.IsDaily
+                    ? dailyWindow
+                    : new DateTime(1900, 1, 1);
+
                 var (currentValue, bonusAwarded) =
-                    _repository.IncrementObjectiveProgress(characterId, season.Id, obj.Id, basePoints);
+                    _repository.IncrementObjectiveProgress(characterId, season.Id, obj.Id, basePoints, dayWindow);
 
                 if (!bonusAwarded && currentValue >= obj.TargetValue)
                 {
-                    if (_repository.MarkObjectiveBonusAwarded(characterId, season.Id, obj.Id))
+                    if (_repository.MarkObjectiveBonusAwarded(characterId, season.Id, obj.Id, dayWindow))
                     {
                         newTotal = _repository.AddPoints(characterId, season.Id, obj.BonusPoints);
                         SendObjectiveCompleteMail(characterId, obj, newTotal);
+
+                        if (obj.IsDaily && obj.PackageId.HasValue)
+                            DeliverObjectivePackage(characterId, obj.PackageId.Value);
                     }
                 }
             }
@@ -210,6 +279,16 @@ namespace Perpetuum.Services.Seasons
             SendTierUnlockMail(characterId, tier, currentPoints);
         }
 
+        private void DeliverObjectivePackage(int characterId, int packageId)
+        {
+            var items = _repository.GetPackageItems(packageId);
+            if (items.Count == 0)
+                return;
+
+            var character = Character.Get(characterId);
+            _repository.InsertRedeemableItems(character.AccountId, packageId, items);
+        }
+
         private void DeliverLeaderboardReward(int characterId, SeasonLeaderboardReward reward)
         {
             var items = _repository.GetPackageItems(reward.PackageId);
@@ -235,7 +314,9 @@ namespace Perpetuum.Services.Seasons
             _lastNotifiedSeasonId = 0;
             _repository.DeactivateSeason(season.Id);
 
-            var rankings = _repository.GetParticipantRankings(season.Id);
+            var rankings = _repository.GetParticipantRankings(season.Id)
+                .Where(r => !Character.Get(r.CharacterId).IsInTraining())
+                .ToList();
             var leaderboard = _activeLeaderboard;
 
             for (int rank = 1; rank <= rankings.Count; rank++)
@@ -257,6 +338,7 @@ namespace Perpetuum.Services.Seasons
             _activeObjectives = ImmutableList<SeasonObjective>.Empty;
             _activeTiers = ImmutableList<SeasonTier>.Empty;
             _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+            _dailyPool = EmptyDailyPool;
 
             var chatMessage = new StringBuilder();
             chatMessage.AppendLine();
@@ -278,17 +360,23 @@ namespace Perpetuum.Services.Seasons
             chatMessage.AppendLine("Thanks for participating! Stay tuned for the next season.");
 
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
+
+            if (season.IsRecurring)
+                _repository.CloneSeasonForNextIteration(season);
         }
 
-        internal void AnnounceLeaderboard(Season season)
+        internal void AnnounceLeaderboard(Season? season)
         {
-            if (_activeSeason == null || _activeSeason.IsActive == false)
-            {
+            if (season == null || _activeSeason == null || DateTime.UtcNow > season.EndTime)
                 return;
-            }
 
-            var rankings = _repository.GetParticipantRankings(season.Id);
+            var rankings = _repository.GetParticipantRankings(season.Id)
+                .Where(r => !Character.Get(r.CharacterId).IsInTraining())
+                .ToList();
             int displayCount = Math.Min(10, rankings.Count);
+
+            if (displayCount == 0)
+                return;
             var chatMessage = new StringBuilder();
             chatMessage.AppendLine();
             chatMessage.AppendLine($"Top {displayCount} of this season:");
@@ -302,6 +390,36 @@ namespace Perpetuum.Services.Seasons
             chatMessage.AppendLine("Way to go, Agents!");
 
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
+        }
+
+        private static ImmutableHashSet<int> SelectDailyPool(
+            Season season, ImmutableList<SeasonObjective> objectives, DateOnly day)
+        {
+            int n = season.DailyObjectivesPerDay!.Value;
+            var daily = objectives.Where(o => o.IsDaily).ToList();
+            if (n >= daily.Count)
+                return daily.Select(o => o.Id).ToImmutableHashSet();
+
+            int seed = season.Id * 397 ^ day.DayNumber;
+            var rng = new Random(seed);
+            for (int i = daily.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (daily[i], daily[j]) = (daily[j], daily[i]);
+            }
+            return daily.Take(n).Select(o => o.Id).ToImmutableHashSet();
+        }
+
+        private void AnnounceDailyPool(IReadOnlyList<SeasonObjective> pool, int totalDailyCount)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine($"Today's daily objectives ({pool.Count} of {totalDailyCount}):");
+            foreach (var obj in pool)
+                sb.AppendLine($"  — {obj.Name}");
+            sb.AppendLine();
+            sb.AppendLine("Complete them for bonus season points and rewards!");
+            _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, sb.ToString());
         }
 
         // ── Mail helpers ─────────────────────────────────────────────────────
@@ -454,6 +572,12 @@ namespace Perpetuum.Services.Seasons
 
         // ── Helpers ──────────────────────────────────────────────────────────
 
+        private static string? GetMostRecentSessionIp(int accountId)
+            => Db.Query()
+                .CommandText("SELECT TOP 1 ip FROM accountonlinetime WHERE accountid = @accountId ORDER BY loggedin DESC")
+                .SetParameter("@accountId", accountId)
+                .ExecuteScalar<string>();
+
         private static string Translate(string key, Dictionary<string, object>? dict)
         {
             if (dict != null && dict.TryGetValue(key, out var val) && val is string s && s.Length > 0)
@@ -463,15 +587,28 @@ namespace Perpetuum.Services.Seasons
 
         private static string ActivityTypeName(SeasonActivityType type) => type switch
         {
-            SeasonActivityType.NpcKill => "NPC Kill",
-            SeasonActivityType.PvpKill => "PvP Kill",
-            SeasonActivityType.MissionComplete => "Mission Completed",
-            SeasonActivityType.MineralMined => "Mineral Mined",
-            SeasonActivityType.EpSpent => "EP Spent",
-            SeasonActivityType.NicEarned => "NIC Earned",
-            SeasonActivityType.NicSpent => "NIC Spent",
-            SeasonActivityType.IntrusionPoint => "Intrusion SAP",
-            _ => type.ToString(),
+            SeasonActivityType.NpcKill               => "NPC Kill",
+            SeasonActivityType.PvpKill               => "PvP Kill",
+            SeasonActivityType.MissionComplete       => "Mission Completed",
+            SeasonActivityType.MineralMined          => "Mineral Mined",
+            SeasonActivityType.EpSpent               => "EP Spent",
+            SeasonActivityType.NicEarned             => "NIC Earned",
+            SeasonActivityType.NicSpent              => "NIC Spent",
+            SeasonActivityType.IntrusionPoint        => "Intrusion SAP",
+            SeasonActivityType.Prototyping           => "Prototyping",
+            SeasonActivityType.ReverseEngineering    => "Reverse Engineering",
+            SeasonActivityType.Production            => "Production",
+            SeasonActivityType.ArtifactFound         => "Artifact Found",
+            SeasonActivityType.EpEarned              => "EP Earned",
+            SeasonActivityType.DamageDone            => "Damage Done",
+            SeasonActivityType.DamageReceived        => "Damage Received",
+            SeasonActivityType.ArmorRestored         => "Armor Restored",
+            SeasonActivityType.EnergyDrainDealt      => "Energy Drained (Dealt)",
+            SeasonActivityType.EnergyDrainReceived   => "Energy Drained (Received)",
+            SeasonActivityType.EnergyTransferDealt   => "Energy Transferred (Dealt)",
+            SeasonActivityType.EnergyTransferReceived => "Energy Transferred (Received)",
+            SeasonActivityType.PlantHarvested        => "Plant Harvested",
+            _                                         => type.ToString(),
         };
     }
 }

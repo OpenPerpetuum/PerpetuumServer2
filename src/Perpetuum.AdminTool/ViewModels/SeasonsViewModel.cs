@@ -121,7 +121,8 @@ namespace Perpetuum.AdminTool.ViewModels
             var detail = new SeasonDetailViewModel(
                 row, _seasonRepo, _pkgRepo, _queue,
                 PackagesVm, statsVm,
-                _lookups, _connection, PackagesVm.Packages);
+                _lookups, _connection, PackagesVm.Packages,
+                _translations);
             DetailViewModel = detail;
             IsInDetail = true;
             _ = detail.LoadAsync();

@@ -5,6 +5,7 @@ using Perpetuum.Items;
 using Perpetuum.Log;
 using Perpetuum.Players;
 using Perpetuum.Services.MissionEngine.MissionTargets;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Beams;
 using Perpetuum.Zones.RemoteControl;
@@ -80,6 +81,7 @@ namespace Perpetuum.Modules
                             int extractedQuantity = extractedMaterial.Quantity;
                             player.MissionHandler.EnqueueMissionEventInfo(new HarvestPlantEventInfo(player, extractedHarvestDefinition, extractedQuantity, position));
                             player.Zone?.HarvestLogHandler.EnqueueHarvestLog(extractedHarvestDefinition, extractedQuantity);
+                            SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.PlantHarvested, new Perpetuum.Services.Seasons.ActivityEvent(extractedQuantity, extractedHarvestDefinition));
 
                             resourceStats.Add((extractedMaterial.EntityDefault.Name, extractedMaterial.Quantity));
                         }

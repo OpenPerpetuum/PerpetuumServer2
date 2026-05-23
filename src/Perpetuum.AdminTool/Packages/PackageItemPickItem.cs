@@ -81,7 +81,7 @@ namespace Perpetuum.AdminTool.Packages
             return false;
         }
 
-        private static long CategoryFlagsMask(long target)
+        internal static long CategoryFlagsMask(long target)
         {
             var mask = unchecked((long)0xFFFFFFFFFFFFFFFFUL);
             while (((ulong)target & (ulong)mask) > 0)

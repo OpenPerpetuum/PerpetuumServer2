@@ -9,6 +9,7 @@ using Perpetuum.Modules.Weapons;
 using Perpetuum.Players;
 using Perpetuum.Robots;
 using Perpetuum.Services.RiftSystem;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Timers;
 using Perpetuum.Units.ItemProperties;
 using Perpetuum.Units.UnitProperties;
@@ -402,6 +403,15 @@ namespace Perpetuum.Units
             }
 
             Armor -= e.TotalDamage;
+
+            var damageAmount = (long)e.TotalDamage;
+            if (damageAmount > 0)
+            {
+                if (source is Player attacker)
+                    SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.DamageDone, new Perpetuum.Services.Seasons.ActivityEvent(damageAmount));
+                if (this is Player victim)
+                    SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.DamageReceived, new Perpetuum.Services.Seasons.ActivityEvent(damageAmount));
+            }
 
             OnCombatEvent(source, e);
 

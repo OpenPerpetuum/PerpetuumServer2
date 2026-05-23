@@ -21,3 +21,5 @@ bin/
 Releases/
 .claude/settings.local.json
 .planning/
+*.log
+*_wpftmp.csproj

@@ -1,6 +1,6 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Perpetuum.Services.Seasons;
+using System.Globalization;
 
 namespace Perpetuum.AdminTool.Seasons
 {
@@ -15,14 +15,30 @@ namespace Perpetuum.AdminTool.Seasons
 
         public string ActivityTypeLabel => ActivityType switch
         {
-            SeasonActivityType.NpcKill         => "NPC Kill",
-            SeasonActivityType.PvpKill         => "PvP Kill",
+            SeasonActivityType.NpcKill => "NPC Kill",
+            SeasonActivityType.PvpKill => "PvP Kill",
             SeasonActivityType.MissionComplete => "Mission Complete",
-            SeasonActivityType.MineralMined    => "Mineral Mined",
-            SeasonActivityType.EpSpent         => "EP Spent",
-            SeasonActivityType.NicEarned       => "NIC Earned",
-            SeasonActivityType.NicSpent        => "NIC Spent",
-            SeasonActivityType.IntrusionPoint  => "Intrusion Point",
+            SeasonActivityType.MineralMined => "Mineral Mined",
+            SeasonActivityType.EpSpent => "EP Spent",
+            SeasonActivityType.NicEarned => "NIC Earned",
+            SeasonActivityType.NicSpent => "NIC Spent",
+            SeasonActivityType.IntrusionPoint => "Intrusion Point",
+            SeasonActivityType.PlantHarvested => "Plant Harvested",
+
+            // Phase 1 — non-combat
+            SeasonActivityType.Prototyping => "Prototyping",
+            SeasonActivityType.ReverseEngineering => "Reverse Engineering",
+            SeasonActivityType.Production => "Production",
+            SeasonActivityType.ArtifactFound => "Artifact Found",
+            SeasonActivityType.EpEarned => "EP Earned",
+            // Phase 2 — combat
+            SeasonActivityType.DamageDone => "Damage Done",
+            SeasonActivityType.DamageReceived => "Damage Received",
+            SeasonActivityType.ArmorRestored => "Armor Restored",
+            SeasonActivityType.EnergyDrainDealt => "Energy Drain Dealt",
+            SeasonActivityType.EnergyDrainReceived => "Energy Drain Received",
+            SeasonActivityType.EnergyTransferDealt => "Energy Transfer Dealt",
+            SeasonActivityType.EnergyTransferReceived => "Energy Transfer Received",
             _ => ActivityType.ToString()
         };
 
@@ -71,6 +87,9 @@ namespace Perpetuum.AdminTool.Seasons
                 SeasonActivityType.NicSpent => unitScale > 1
                     ? $"{pts} pts per {scale} NIC spent"
                     : $"{pts} pts per NIC spent",
+                SeasonActivityType.PlantHarvested => unitScale > 1
+                    ? $"{pts} pts per {scale} units harvested"
+                    : $"{pts} pts per unit harvested",
                 _ => $"{pts} pts"
             };
         }

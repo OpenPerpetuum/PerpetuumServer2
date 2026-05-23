@@ -554,7 +554,7 @@ namespace Perpetuum.Services.MissionEngine.MissionProcessorObjects
                 foreach (Character? p in participants)
                 {
                     if (p != null)
-                        SeasonServiceLocator.Instance?.RecordActivity(p.Id, SeasonActivityType.MissionComplete, 1);
+                        SeasonServiceLocator.Instance?.RecordActivity(p.Id, SeasonActivityType.MissionComplete, new ActivityEvent(1));
                 }
 
                 AdvanceBonusInGang(participants, missionInProgress);

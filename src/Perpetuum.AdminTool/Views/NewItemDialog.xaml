@@ -1,0 +1,924 @@
+<Window x:Class="Perpetuum.AdminTool.Views.NewItemDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:common="clr-namespace:Perpetuum.AdminTool.Common"
+        Title="New Item" Width="960" Height="720"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <DockPanel>
+
+        <!-- Clone picker header -->
+        <Border DockPanel.Dock="Top" Padding="8" BorderBrush="#DDD" BorderThickness="0,0,0,1" Background="#F8F8F8">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Clone from:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox Width="400"
+                          ItemsSource="{Binding EnabledItems}"
+                          SelectedItem="{Binding CloneSource}"
+                          DisplayMemberPath="Display"/>
+                <TextBlock Text="(optional — pre-fills all fields)" Foreground="Gray"
+                           VerticalAlignment="Center" Margin="8,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Footer: status + Save + Cancel -->
+        <Border DockPanel.Dock="Bottom" Padding="8" BorderBrush="#DDD" BorderThickness="0,1,0,0" Background="#F8F8F8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" Foreground="DarkRed"
+                           VerticalAlignment="Center" TextWrapping="Wrap"/>
+                <Button Grid.Column="1" Content="Save" Width="80" Margin="4,0"
+                        Command="{Binding SaveCommand}"/>
+                <Button Grid.Column="2" Content="Cancel" Width="80"
+                        Command="{Binding CancelCommand}"/>
+            </Grid>
+        </Border>
+
+        <!-- Main tab area -->
+        <TabControl Margin="4">
+
+            <!-- ===== Tab 1: Basic ===== -->
+            <TabItem Header="Basic">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="180"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <!-- 0: headers -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 1: DefinitionName -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 2: CategoryFlags -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 3: AttributeFlags -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 4: Enabled -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 5: Purchasable -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 6: Hidden -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 7: Quantity -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 8: Mass -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 9: Volume -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 10: Health -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 11: TierType -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 12: TierLevel -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 13: DescriptionToken -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 14: Note -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 15: Craftable -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- 16: HasPrototype -->
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Row 0: column headers -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Field" FontWeight="Bold" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="New Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Original (clone)" Foreground="Gray" Margin="8,0,0,6"/>
+
+                        <!-- Row 1: DefinitionName -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Definition Name" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,2,4,4">
+                            <TextBox Text="{Binding BasicPanel.DefinitionName, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="{Binding BasicPanel.DefinitionNameError}" Foreground="Red" FontSize="11">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BasicPanel.DefinitionNameError}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding BasicPanel.CloneSource.DefinitionName}"
+                                   Foreground="Gray" VerticalAlignment="Top" Margin="8,4,0,4" TextWrapping="Wrap"/>
+
+                        <!-- Row 2: CategoryFlags -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Category Flags" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="4,2,4,4">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="4,0,0,0"
+                                        Click="PickCategoryMain_Click"/>
+                                <TextBox Text="{Binding BasicPanel.CategoryFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DockPanel>
+                            <TextBlock Foreground="DimGray" FontStyle="Italic" FontSize="11"
+                                       Text="{Binding BasicPanel.CategoryFlags, Converter={x:Static common:CategoryFlagsDescriptionConverter.Instance}}"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4" TextWrapping="Wrap"
+                                   Text="{Binding BasicPanel.CloneSource.CategoryFlags, Converter={x:Static common:CategoryFlagsDescriptionConverter.Instance}}"/>
+
+                        <!-- Row 3: AttributeFlags -->
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Attribute Flags" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="3" Grid.Column="1" Margin="4,2,4,4">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="4,0,0,0"
+                                        Click="PickAttributeMain_Click"/>
+                                <TextBox Text="{Binding BasicPanel.AttributeFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DockPanel>
+                            <TextBlock Foreground="DimGray" FontStyle="Italic" FontSize="11"
+                                       Text="{Binding BasicPanel.AttributeFlags, Converter={x:Static common:AttributeFlagsDescriptionConverter.Instance}}"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4" TextWrapping="Wrap"
+                                   Text="{Binding BasicPanel.CloneSource.AttributeFlags, Converter={x:Static common:AttributeFlagsDescriptionConverter.Instance}}"/>
+
+                        <!-- Row 4: Enabled -->
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Enabled" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding BasicPanel.Enabled}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="4" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.Enabled}"/>
+
+                        <!-- Row 5: Purchasable -->
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Purchasable" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding BasicPanel.Purchasable}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="5" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.Purchasable}"/>
+
+                        <!-- Row 6: Hidden -->
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Hidden" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="6" Grid.Column="1" IsChecked="{Binding BasicPanel.Hidden}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="6" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.Hidden}"/>
+
+                        <!-- Row 7: Quantity -->
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Quantity" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding BasicPanel.Quantity}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="7" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.Quantity}"/>
+
+                        <!-- Row 8: Mass -->
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Mass" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding BasicPanel.Mass}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="8" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.Mass}"/>
+
+                        <!-- Row 9: Volume -->
+                        <TextBlock Grid.Row="9" Grid.Column="0" Text="Volume" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="9" Grid.Column="1" Text="{Binding BasicPanel.Volume}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="9" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.Volume}"/>
+
+                        <!-- Row 10: Health -->
+                        <TextBlock Grid.Row="10" Grid.Column="0" Text="Health" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding BasicPanel.Health}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="10" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.Health}"/>
+
+                        <!-- Row 11: TierType -->
+                        <TextBlock Grid.Row="11" Grid.Column="0" Text="Tier Type" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="11" Grid.Column="1" Text="{Binding BasicPanel.TierType, TargetNullValue=''}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="11" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.TierType}"/>
+
+                        <!-- Row 12: TierLevel -->
+                        <TextBlock Grid.Row="12" Grid.Column="0" Text="Tier Level" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="12" Grid.Column="1" Text="{Binding BasicPanel.TierLevel, TargetNullValue=''}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="12" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.TierLevel}"/>
+
+                        <!-- Row 13: DescriptionToken -->
+                        <TextBlock Grid.Row="13" Grid.Column="0" Text="Description Token" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="13" Grid.Column="1" Text="{Binding BasicPanel.DescriptionToken, UpdateSourceTrigger=PropertyChanged}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="13" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding BasicPanel.CloneSource.DescriptionToken}"/>
+
+                        <!-- Row 14: Note -->
+                        <TextBlock Grid.Row="14" Grid.Column="0" Text="Note" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="14" Grid.Column="1" Text="{Binding BasicPanel.Note}" AcceptsReturn="True"
+                                 Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+
+                        <!-- Row 15: IsCraftable -->
+                        <TextBlock Grid.Row="15" Grid.Column="0" Text="Craftable" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="15" Grid.Column="1" IsChecked="{Binding BasicPanel.IsCraftable}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+
+                        <!-- Row 16: HasPrototype -->
+                        <TextBlock Grid.Row="16" Grid.Column="0" Text="Has Prototype" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="16" Grid.Column="1" IsChecked="{Binding BasicPanel.HasPrototype}"
+                                  IsEnabled="{Binding BasicPanel.IsCraftable}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ===== Tab 2: Calibration Template ===== -->
+            <TabItem Header="Calibration Template" IsEnabled="{Binding IsCraftable}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="180"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Row 0: column headers -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Field" FontWeight="Bold" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="New Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Original (clone)" Foreground="Gray" Margin="8,0,0,6"/>
+
+                        <!-- Row 1: DefinitionName -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Definition Name" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,2,4,4">
+                            <TextBox Text="{Binding CalibrationPanel.DefinitionName, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="{Binding CalibrationPanel.DefinitionNameError}" Foreground="Red" FontSize="11">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CalibrationPanel.DefinitionNameError}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4" TextWrapping="Wrap"
+                                   Text="{Binding CalibrationPanel.CloneSource.DefinitionName}"/>
+
+                        <!-- Row 2: CategoryFlags -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Category Flags" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="4,2,4,4">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="4,0,0,0"
+                                        Click="PickCalibrationCategory_Click"/>
+                                <TextBox Text="{Binding CalibrationPanel.CategoryFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DockPanel>
+                            <TextBlock Foreground="DimGray" FontStyle="Italic" FontSize="11"
+                                       Text="{Binding CalibrationPanel.CategoryFlags, Converter={x:Static common:CategoryFlagsDescriptionConverter.Instance}}"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4" TextWrapping="Wrap"
+                                   Text="{Binding CalibrationPanel.CloneSource.CategoryFlags, Converter={x:Static common:CategoryFlagsDescriptionConverter.Instance}}"/>
+
+                        <!-- Row 3: AttributeFlags -->
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Attribute Flags" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="3" Grid.Column="1" Margin="4,2,4,4">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="4,0,0,0"
+                                        Click="PickCalibrationAttribute_Click"/>
+                                <TextBox Text="{Binding CalibrationPanel.AttributeFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DockPanel>
+                            <TextBlock Foreground="DimGray" FontStyle="Italic" FontSize="11"
+                                       Text="{Binding CalibrationPanel.AttributeFlags, Converter={x:Static common:AttributeFlagsDescriptionConverter.Instance}}"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4" TextWrapping="Wrap"
+                                   Text="{Binding CalibrationPanel.CloneSource.AttributeFlags, Converter={x:Static common:AttributeFlagsDescriptionConverter.Instance}}"/>
+
+                        <!-- Row 4: Enabled -->
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Enabled" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding CalibrationPanel.Enabled}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="4" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.Enabled}"/>
+
+                        <!-- Row 5: Purchasable -->
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Purchasable" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding CalibrationPanel.Purchasable}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="5" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.Purchasable}"/>
+
+                        <!-- Row 6: Hidden -->
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Hidden" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="6" Grid.Column="1" IsChecked="{Binding CalibrationPanel.Hidden}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="6" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.Hidden}"/>
+
+                        <!-- Row 7: Quantity -->
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Quantity" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding CalibrationPanel.Quantity}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="7" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.Quantity}"/>
+
+                        <!-- Row 8: Mass -->
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Mass" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding CalibrationPanel.Mass}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="8" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.Mass}"/>
+
+                        <!-- Row 9: Volume -->
+                        <TextBlock Grid.Row="9" Grid.Column="0" Text="Volume" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="9" Grid.Column="1" Text="{Binding CalibrationPanel.Volume}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="9" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.Volume}"/>
+
+                        <!-- Row 10: Health -->
+                        <TextBlock Grid.Row="10" Grid.Column="0" Text="Health" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding CalibrationPanel.Health}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="10" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.Health}"/>
+
+                        <!-- Row 11: TierType -->
+                        <TextBlock Grid.Row="11" Grid.Column="0" Text="Tier Type" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="11" Grid.Column="1" Text="{Binding CalibrationPanel.TierType, TargetNullValue=''}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="11" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.TierType}"/>
+
+                        <!-- Row 12: TierLevel -->
+                        <TextBlock Grid.Row="12" Grid.Column="0" Text="Tier Level" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="12" Grid.Column="1" Text="{Binding CalibrationPanel.TierLevel, TargetNullValue=''}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="12" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.TierLevel}"/>
+
+                        <!-- Row 13: DescriptionToken -->
+                        <TextBlock Grid.Row="13" Grid.Column="0" Text="Description Token" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="13" Grid.Column="1" Text="{Binding CalibrationPanel.DescriptionToken, UpdateSourceTrigger=PropertyChanged}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="13" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding CalibrationPanel.CloneSource.DescriptionToken}"/>
+
+                        <!-- Row 14: Note -->
+                        <TextBlock Grid.Row="14" Grid.Column="0" Text="Note" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="14" Grid.Column="1" Text="{Binding CalibrationPanel.Note}" AcceptsReturn="True"
+                                 Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ===== Tab 3: Prototype ===== -->
+            <TabItem Header="Prototype">
+                <TabItem.Style>
+                    <Style TargetType="TabItem">
+                        <Setter Property="IsEnabled" Value="True"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCraftable}" Value="False">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding HasPrototype}" Value="False">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TabItem.Style>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="180"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Row 0: column headers -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Field" FontWeight="Bold" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="New Value" FontWeight="Bold" Margin="4,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Original (clone)" Foreground="Gray" Margin="8,0,0,6"/>
+
+                        <!-- Row 1: DefinitionName -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Definition Name" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,2,4,4">
+                            <TextBox Text="{Binding PrototypePanel.DefinitionName, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="{Binding PrototypePanel.DefinitionNameError}" Foreground="Red" FontSize="11">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding PrototypePanel.DefinitionNameError}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4" TextWrapping="Wrap"
+                                   Text="{Binding PrototypePanel.CloneSource.DefinitionName}"/>
+
+                        <!-- Row 2: CategoryFlags -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Category Flags" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="4,2,4,4">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="4,0,0,0"
+                                        Click="PickPrototypeCategory_Click"/>
+                                <TextBox Text="{Binding PrototypePanel.CategoryFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DockPanel>
+                            <TextBlock Foreground="DimGray" FontStyle="Italic" FontSize="11"
+                                       Text="{Binding PrototypePanel.CategoryFlags, Converter={x:Static common:CategoryFlagsDescriptionConverter.Instance}}"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4" TextWrapping="Wrap"
+                                   Text="{Binding PrototypePanel.CloneSource.CategoryFlags, Converter={x:Static common:CategoryFlagsDescriptionConverter.Instance}}"/>
+
+                        <!-- Row 3: AttributeFlags -->
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Attribute Flags" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <StackPanel Grid.Row="3" Grid.Column="1" Margin="4,2,4,4">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="4,0,0,0"
+                                        Click="PickPrototypeAttribute_Click"/>
+                                <TextBox Text="{Binding PrototypePanel.AttributeFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DockPanel>
+                            <TextBlock Foreground="DimGray" FontStyle="Italic" FontSize="11"
+                                       Text="{Binding PrototypePanel.AttributeFlags, Converter={x:Static common:AttributeFlagsDescriptionConverter.Instance}}"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4" TextWrapping="Wrap"
+                                   Text="{Binding PrototypePanel.CloneSource.AttributeFlags, Converter={x:Static common:AttributeFlagsDescriptionConverter.Instance}}"/>
+
+                        <!-- Row 4: Enabled -->
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Enabled" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding PrototypePanel.Enabled}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="4" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.Enabled}"/>
+
+                        <!-- Row 5: Purchasable -->
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Purchasable" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding PrototypePanel.Purchasable}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="5" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.Purchasable}"/>
+
+                        <!-- Row 6: Hidden -->
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Hidden" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <CheckBox Grid.Row="6" Grid.Column="1" IsChecked="{Binding PrototypePanel.Hidden}" Margin="4,4,4,4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="6" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.Hidden}"/>
+
+                        <!-- Row 7: Quantity -->
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Quantity" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding PrototypePanel.Quantity}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="7" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.Quantity}"/>
+
+                        <!-- Row 8: Mass -->
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Mass" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding PrototypePanel.Mass}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="8" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.Mass}"/>
+
+                        <!-- Row 9: Volume -->
+                        <TextBlock Grid.Row="9" Grid.Column="0" Text="Volume" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="9" Grid.Column="1" Text="{Binding PrototypePanel.Volume}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="9" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.Volume}"/>
+
+                        <!-- Row 10: Health -->
+                        <TextBlock Grid.Row="10" Grid.Column="0" Text="Health" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding PrototypePanel.Health}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="10" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.Health}"/>
+
+                        <!-- Row 11: TierType -->
+                        <TextBlock Grid.Row="11" Grid.Column="0" Text="Tier Type" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="11" Grid.Column="1" Text="{Binding PrototypePanel.TierType, TargetNullValue=''}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="11" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.TierType}"/>
+
+                        <!-- Row 12: TierLevel -->
+                        <TextBlock Grid.Row="12" Grid.Column="0" Text="Tier Level" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="12" Grid.Column="1" Text="{Binding PrototypePanel.TierLevel, TargetNullValue=''}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="12" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.TierLevel}"/>
+
+                        <!-- Row 13: DescriptionToken -->
+                        <TextBlock Grid.Row="13" Grid.Column="0" Text="Description Token" VerticalAlignment="Center" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="13" Grid.Column="1" Text="{Binding PrototypePanel.DescriptionToken, UpdateSourceTrigger=PropertyChanged}" Margin="4,2,4,4"/>
+                        <TextBlock Grid.Row="13" Grid.Column="2" Foreground="Gray" Margin="8,4,0,4"
+                                   Text="{Binding PrototypePanel.CloneSource.DescriptionToken}"/>
+
+                        <!-- Row 14: Note -->
+                        <TextBlock Grid.Row="14" Grid.Column="0" Text="Note" VerticalAlignment="Top" Margin="0,4,4,4"/>
+                        <TextBox Grid.Row="14" Grid.Column="1" Text="{Binding PrototypePanel.Note}" AcceptsReturn="True"
+                                 Height="60" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="4,2,4,4"/>
+
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ===== Tab 4: Stats ===== -->
+            <TabItem Header="Stats">
+                <DockPanel Margin="8">
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
+                        <Button Content="Add Row" Command="{Binding StatsPanel.AddRowCommand}" Width="80"/>
+                        <Button Content="Remove Selected" Margin="4,0" Width="110"
+                                Command="{Binding StatsPanel.RemoveRowCommand}"
+                                CommandParameter="{Binding ElementName=StatsGrid, Path=SelectedItem}"/>
+                    </StackPanel>
+                    <DataGrid x:Name="StatsGrid" ItemsSource="{Binding StatsPanel.Rows}"
+                              AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Single"
+                              HeadersVisibility="Column" GridLinesVisibility="All">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Field" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding DataContext.StatsPanel.AvailableFields,
+                                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  DisplayMemberPath="DisplayLabel"
+                                                  SelectedValuePath="Id"
+                                                  SelectedValue="{Binding FieldId, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Original" Binding="{Binding OriginalValue}" IsReadOnly="True" Width="100"/>
+                            <DataGridTextColumn Header="New Value" Binding="{Binding NewValue}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ===== Tab 5: Property Modifiers ===== -->
+            <TabItem Header="Property Modifiers">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+
+                        <!-- Section A: Module Property Modifiers -->
+                        <TextBlock Text="Module Property Modifiers (modulepropertymodifiers)" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <TextBlock Text="Existing rules for this category — not modified by this wizard:"
+                                   Foreground="Gray" FontStyle="Italic" Margin="0,0,0,4"/>
+                        <DataGrid ItemsSource="{Binding PropertyModifiersPanel.ExistingModPropertyModifiers}"
+                                  AutoGenerateColumns="True" IsReadOnly="True" MaxHeight="120"
+                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="New rules:" FontWeight="Bold" Margin="0,4,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Button Content="Add" Command="{Binding PropertyModifiersPanel.AddModPropertyRowCommand}" Width="60"/>
+                            <Button Content="Remove" Margin="4,0" Width="60"
+                                    Command="{Binding PropertyModifiersPanel.RemoveModPropertyRowCommand}"
+                                    CommandParameter="{Binding ElementName=ModPropGrid, Path=SelectedItem}"/>
+                        </StackPanel>
+                        <DataGrid x:Name="ModPropGrid" ItemsSource="{Binding PropertyModifiersPanel.ModulePropertyModifierRows}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="200"
+                                  HeadersVisibility="Column" GridLinesVisibility="All" SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Base Field" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.PropertyModifiersPanel.AvailableFields,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="DisplayLabel" SelectedValuePath="Id"
+                                                      SelectedValue="{Binding BaseFieldId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Modifier Field" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.PropertyModifiersPanel.AvailableFields,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="DisplayLabel" SelectedValuePath="Id"
+                                                      SelectedValue="{Binding ModifierFieldId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Orig Base" Binding="{Binding OriginalBaseFieldId}" IsReadOnly="True" Width="80"/>
+                                <DataGridTextColumn Header="Orig Mod" Binding="{Binding OriginalModifierFieldId}" IsReadOnly="True" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Section B: Aggregate Modifiers -->
+                        <TextBlock Text="Aggregate Modifiers (aggregatemodifiers)" FontWeight="Bold" Margin="0,16,0,4"/>
+                        <TextBlock Text="Existing rules for this category — not modified by this wizard:"
+                                   Foreground="Gray" FontStyle="Italic" Margin="0,0,0,4"/>
+                        <DataGrid ItemsSource="{Binding PropertyModifiersPanel.ExistingAggregateModifiers}"
+                                  AutoGenerateColumns="True" IsReadOnly="True" MaxHeight="120"
+                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="New rules:" FontWeight="Bold" Margin="0,4,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Button Content="Add" Command="{Binding PropertyModifiersPanel.AddAggModRowCommand}" Width="60"/>
+                            <Button Content="Remove" Margin="4,0" Width="60"
+                                    Command="{Binding PropertyModifiersPanel.RemoveAggModRowCommand}"
+                                    CommandParameter="{Binding ElementName=AggModGrid, Path=SelectedItem}"/>
+                        </StackPanel>
+                        <DataGrid x:Name="AggModGrid" ItemsSource="{Binding PropertyModifiersPanel.AggregateModifierRows}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="200"
+                                  HeadersVisibility="Column" GridLinesVisibility="All" SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Base Field" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.PropertyModifiersPanel.AvailableFields,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="DisplayLabel" SelectedValuePath="Id"
+                                                      SelectedValue="{Binding BaseFieldId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Modifier Field" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.PropertyModifiersPanel.AvailableFields,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="DisplayLabel" SelectedValuePath="Id"
+                                                      SelectedValue="{Binding ModifierFieldId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Orig Base" Binding="{Binding OriginalBaseFieldId}" IsReadOnly="True" Width="80"/>
+                                <DataGridTextColumn Header="Orig Mod" Binding="{Binding OriginalModifierFieldId}" IsReadOnly="True" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ===== Tab 6: Production ===== -->
+            <TabItem Header="Production" IsEnabled="{Binding IsCraftable}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+
+                        <TextBlock Text="Components" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Button Content="Add" Command="{Binding ProductionPanel.AddComponentCommand}" Width="60"/>
+                            <Button Content="Remove" Margin="4,0" Width="60"
+                                    Command="{Binding ProductionPanel.RemoveComponentCommand}"
+                                    CommandParameter="{Binding ElementName=ComponentsGrid, Path=SelectedItem}"/>
+                        </StackPanel>
+                        <DataGrid x:Name="ComponentsGrid" ItemsSource="{Binding ProductionPanel.Components}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="240"
+                                  HeadersVisibility="Column" GridLinesVisibility="All" SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Ingredient" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.ProductionPanel.AvailableIngredients,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="Display"
+                                                      SelectedValuePath="Definition"
+                                                      SelectedValue="{Binding IngredientDefinition, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Amount" Binding="{Binding Amount}" Width="80"/>
+                                <DataGridTextColumn Header="Original" Binding="{Binding OriginalAmount}" IsReadOnly="True" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Production Duration -->
+                        <TextBlock Text="Production Duration" FontWeight="Bold" Margin="0,12,0,4"/>
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Shown when existing duration for category exists -->
+                            <TextBlock VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ProductionPanel.HasExistingProductionDuration}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <Run Text="Existing: "/>
+                                <Run Text="{Binding ProductionPanel.ExistingDurationValue, Mode=OneWay}"/>
+                                <Run Text=" (not modified — category-level duration applies)"/>
+                            </TextBlock>
+                            <!-- Shown when no existing duration — allow entry -->
+                            <StackPanel Orientation="Horizontal">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ProductionPanel.HasExistingProductionDuration}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Duration modifier:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBox Width="80" Text="{Binding ProductionPanel.DurationModifier}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ===== Tab 7: Research & Tech Tree ===== -->
+            <TabItem Header="Research &amp; Tech Tree" IsEnabled="{Binding IsCraftable}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+
+                        <!-- Sub-section A: Research Level -->
+                        <TextBlock Text="Research" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock Text="Research Level:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Width="60" Text="{Binding ResearchPanel.ResearchLevel}"/>
+                            <CheckBox Content="Enabled" IsChecked="{Binding ResearchPanel.IsEnabled}"
+                                      VerticalAlignment="Center" Margin="16,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="(Calibration program: auto-linked to new _cprg entity when Craftable)"
+                                   Foreground="Gray" FontStyle="Italic" Margin="0,0,0,8"/>
+
+                        <!-- Sub-section B: Tech Tree Placements -->
+                        <TextBlock Text="Tech Tree Placements" FontWeight="Bold" Margin="0,8,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Button Content="Add" Command="{Binding ResearchPanel.AddTechTreeRowCommand}" Width="60"/>
+                            <Button Content="Remove" Margin="4,0" Width="60"
+                                    Command="{Binding ResearchPanel.RemoveTechTreeRowCommand}"
+                                    CommandParameter="{Binding ElementName=TechTreeGrid, Path=SelectedItem}"/>
+                        </StackPanel>
+                        <DataGrid x:Name="TechTreeGrid" ItemsSource="{Binding ResearchPanel.TechTreeRows}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="200"
+                                  HeadersVisibility="Column" GridLinesVisibility="All" SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Parent Definition" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.EnabledItems,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="Display"
+                                                      SelectedValuePath="Definition"
+                                                      SelectedValue="{Binding ParentDefinition, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Group" Width="160">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.ResearchPanel.AvailableTechTreeGroups,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="Display"
+                                                      SelectedValuePath="Id"
+                                                      SelectedValue="{Binding GroupId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="X" Binding="{Binding X}" Width="50"/>
+                                <DataGridTextColumn Header="Y" Binding="{Binding Y}" Width="50"/>
+                                <DataGridTemplateColumn Header="Enabler Ext." Width="160">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.ResearchPanel.AvailableExtensions,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="Display"
+                                                      SelectedValuePath="Id"
+                                                      SelectedValue="{Binding EnablerExtensionId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Orig Parent" Binding="{Binding OriginalParentDefinition}" IsReadOnly="True" Width="80"/>
+                                <DataGridTextColumn Header="Orig X" Binding="{Binding OriginalX}" IsReadOnly="True" Width="50"/>
+                                <DataGridTextColumn Header="Orig Y" Binding="{Binding OriginalY}" IsReadOnly="True" Width="50"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Sub-section C: Research Costs -->
+                        <TextBlock Text="Research Costs" FontWeight="Bold" Margin="0,12,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Button Content="Add" Command="{Binding ResearchPanel.AddResearchCostCommand}" Width="60"/>
+                            <Button Content="Remove" Margin="4,0" Width="60"
+                                    Command="{Binding ResearchPanel.RemoveResearchCostCommand}"
+                                    CommandParameter="{Binding ElementName=ResearchCostGrid, Path=SelectedItem}"/>
+                        </StackPanel>
+                        <DataGrid x:Name="ResearchCostGrid" ItemsSource="{Binding ResearchPanel.ResearchCostRows}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="160"
+                                  HeadersVisibility="Column" GridLinesVisibility="All" SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Point Type" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.ResearchPanel.AvailablePointTypes,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="Display"
+                                                      SelectedValuePath="Id"
+                                                      SelectedValue="{Binding PointTypeId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Amount" Binding="{Binding Amount}" Width="80"/>
+                                <DataGridTextColumn Header="Original" Binding="{Binding OriginalAmount}" IsReadOnly="True" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Sub-section D: Enabler Extensions -->
+                        <TextBlock Text="Enabler Extensions" FontWeight="Bold" Margin="0,12,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Button Content="Add" Command="{Binding ResearchPanel.AddEnablerExtensionCommand}" Width="60"/>
+                            <Button Content="Remove" Margin="4,0" Width="60"
+                                    Command="{Binding ResearchPanel.RemoveEnablerExtensionCommand}"
+                                    CommandParameter="{Binding ElementName=EnablerExtGrid, Path=SelectedItem}"/>
+                        </StackPanel>
+                        <DataGrid x:Name="EnablerExtGrid" ItemsSource="{Binding ResearchPanel.EnablerExtensionRows}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="160"
+                                  HeadersVisibility="Column" GridLinesVisibility="All" SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Extension" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.ResearchPanel.AvailableExtensions,
+                                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="Display"
+                                                      SelectedValuePath="Id"
+                                                      SelectedValue="{Binding ExtensionId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Level" Binding="{Binding ExtensionLevel}" Width="60"/>
+                                <DataGridTextColumn Header="Orig Ext." Binding="{Binding OriginalExtensionId}" IsReadOnly="True" Width="80"/>
+                                <DataGridTextColumn Header="Orig Lvl" Binding="{Binding OriginalExtensionLevel}" IsReadOnly="True" Width="60"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ===== Tab 8: Options & Visual ===== -->
+            <TabItem Header="Options &amp; Visual">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+
+                        <!-- Sub-section A: Options -->
+                        <TextBlock Text="Options (Genxy)" FontWeight="Bold" Margin="0,0,0,4"/>
+                        <TextBlock Text="Clone original:" FontStyle="Italic" Foreground="Gray" Margin="0,0,0,2"/>
+                        <TextBox Text="{Binding OptionsVisualPanel.CloneOptionsText, Mode=OneWay}" IsReadOnly="True"
+                                 FontFamily="Consolas" Height="60" Margin="0,0,0,8"
+                                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Text="New options (Genxy):" Margin="0,0,0,2"/>
+                        <TextBox Text="{Binding OptionsVisualPanel.OptionsText, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="Consolas" Height="80" AcceptsReturn="True" TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" Margin="0,0,0,8"/>
+
+                        <!-- Sub-section B: Definition Config -->
+                        <TextBlock Text="Definition Config" FontWeight="Bold" Margin="0,8,0,4"/>
+                        <CheckBox Content="Has definition config"
+                                  IsChecked="{Binding OptionsVisualPanel.HasDefinitionConfig}" Margin="0,0,0,6"/>
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OptionsVisualPanel.HasDefinitionConfig}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <Button Content="Add" Command="{Binding OptionsVisualPanel.AddConfigRowCommand}" Width="60"/>
+                                <Button Content="Remove" Margin="4,0" Width="60"
+                                        Command="{Binding OptionsVisualPanel.RemoveConfigRowCommand}"
+                                        CommandParameter="{Binding ElementName=ConfigGrid, Path=SelectedItem}"/>
+                            </StackPanel>
+                            <DataGrid x:Name="ConfigGrid" ItemsSource="{Binding OptionsVisualPanel.DefinitionConfigRows}"
+                                      AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="240"
+                                      HeadersVisibility="Column" GridLinesVisibility="All" SelectionMode="Single">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="Column" Width="160">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ComboBox ItemsSource="{Binding DataContext.OptionsVisualPanel.AvailableConfigColumns,
+                                                                      RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          DisplayMemberPath="Name"
+                                                          SelectedValuePath="Name"
+                                                          SelectedValue="{Binding ColumnName, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Value" Binding="{Binding RawValue}" Width="*"/>
+                                    <DataGridTextColumn Header="Original" Binding="{Binding OriginalValue}" IsReadOnly="True" Width="120"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+    </DockPanel>
+</Window>

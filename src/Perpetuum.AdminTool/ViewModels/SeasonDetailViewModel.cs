@@ -11,6 +11,8 @@ using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Packages;
 using Perpetuum.AdminTool.Seasons;
 using Perpetuum.AdminTool.Settings;
+using Perpetuum.AdminTool.Translations;
+using Perpetuum.ExportedTypes;
 using Perpetuum.Services.Seasons;
 using SeasonRepository = Perpetuum.AdminTool.Seasons.SeasonRepository;
 
@@ -23,6 +25,9 @@ namespace Perpetuum.AdminTool.ViewModels
         private readonly ChangeQueue _queue;
         private readonly LookupCache _cache;
         private readonly ConnectionSettings _connection;
+        private readonly TranslationsViewModel? _translations;
+        private IReadOnlyList<MaterialPickItem> _oreAndLiquidMaterials = Array.Empty<MaterialPickItem>();
+        private IReadOnlyList<MaterialPickItem> _organicMaterials = Array.Empty<MaterialPickItem>();
 
         [ObservableProperty] private SeasonRow _season;
         [ObservableProperty] private int _selectedTabIndex;
@@ -41,15 +46,54 @@ namespace Perpetuum.AdminTool.ViewModels
         public IReadOnlyList<ActivityTypeOption> ActivityTypeOptions { get; } =
             new[]
             {
-                new ActivityTypeOption(SeasonActivityType.NpcKill,         "NPC Kill"),
-                new ActivityTypeOption(SeasonActivityType.PvpKill,         "PvP Kill"),
-                new ActivityTypeOption(SeasonActivityType.MissionComplete, "Mission Complete"),
-                new ActivityTypeOption(SeasonActivityType.MineralMined,    "Mineral Mined"),
-                new ActivityTypeOption(SeasonActivityType.EpSpent,         "EP Spent"),
-                new ActivityTypeOption(SeasonActivityType.NicEarned,       "NIC Earned"),
-                new ActivityTypeOption(SeasonActivityType.NicSpent,        "NIC Spent"),
-                new ActivityTypeOption(SeasonActivityType.IntrusionPoint,  "Intrusion Point"),
+                new ActivityTypeOption(SeasonActivityType.NpcKill,                 "NPC Kill"),
+                new ActivityTypeOption(SeasonActivityType.PvpKill,                 "PvP Kill"),
+                new ActivityTypeOption(SeasonActivityType.MissionComplete,         "Mission Complete"),
+                new ActivityTypeOption(SeasonActivityType.MineralMined,            "Mineral Mined"),
+                new ActivityTypeOption(SeasonActivityType.EpSpent,                 "EP Spent"),
+                new ActivityTypeOption(SeasonActivityType.EpEarned,                "EP Earned"),
+                new ActivityTypeOption(SeasonActivityType.NicEarned,               "NIC Earned"),
+                new ActivityTypeOption(SeasonActivityType.NicSpent,                "NIC Spent"),
+                new ActivityTypeOption(SeasonActivityType.IntrusionPoint,          "Intrusion Point"),
+                new ActivityTypeOption(SeasonActivityType.PlantHarvested,          "Plant Harvested"),
+                new ActivityTypeOption(SeasonActivityType.Prototyping,             "Prototyping"),
+                new ActivityTypeOption(SeasonActivityType.ReverseEngineering,      "Reverse Engineering"),
+                new ActivityTypeOption(SeasonActivityType.Production,              "Production"),
+                new ActivityTypeOption(SeasonActivityType.ArtifactFound,           "Artifact Found"),
+                new ActivityTypeOption(SeasonActivityType.DamageDone,              "Damage Done"),
+                new ActivityTypeOption(SeasonActivityType.DamageReceived,          "Damage Received"),
+                new ActivityTypeOption(SeasonActivityType.ArmorRestored,           "Armor Restored"),
+                new ActivityTypeOption(SeasonActivityType.EnergyDrainDealt,        "Energy Drain Dealt"),
+                new ActivityTypeOption(SeasonActivityType.EnergyDrainReceived,     "Energy Drain Received"),
+                new ActivityTypeOption(SeasonActivityType.EnergyTransferDealt,     "Energy Transfer Dealt"),
+                new ActivityTypeOption(SeasonActivityType.EnergyTransferReceived,  "Energy Transfer Received"),
             };
+
+        public IReadOnlyList<ObjectiveFilterOption> ObjectiveFilterOptions { get; } = new[]
+        {
+            new ObjectiveFilterOption(ObjectiveFilterMode.All,     "All"),
+            new ObjectiveFilterOption(ObjectiveFilterMode.OneTime, "One-time only"),
+            new ObjectiveFilterOption(ObjectiveFilterMode.Daily,   "Daily only"),
+        };
+
+        public IReadOnlyList<ScoringModeOption> ScoringModeOptions { get; } = new[]
+        {
+            new ScoringModeOption(SeasonScoringMode.ActivityAndGlobal, "Activity + Global Score"),
+            new ScoringModeOption(SeasonScoringMode.ObjectivesOnly,    "Objectives Only"),
+        };
+
+        [ObservableProperty]
+        private ObjectiveFilterMode _objectiveFilter = ObjectiveFilterMode.All;
+
+        partial void OnObjectiveFilterChanged(ObjectiveFilterMode value) =>
+            OnPropertyChanged(nameof(FilteredObjectives));
+
+        public IEnumerable<SeasonObjectiveRow> FilteredObjectives => ObjectiveFilter switch
+        {
+            ObjectiveFilterMode.OneTime => Objectives.Where(o => !o.IsDaily),
+            ObjectiveFilterMode.Daily   => Objectives.Where(o => o.IsDaily),
+            _                           => Objectives,
+        };
 
         public bool CanActivate => !Season.IsActive;
         public bool CanDeactivate => Season.IsActive;
@@ -70,7 +114,8 @@ namespace Perpetuum.AdminTool.ViewModels
             SeasonStatisticsViewModel statsVm,
             LookupCache cache,
             ConnectionSettings connection,
-            ObservableCollection<PackageRow> packages)
+            ObservableCollection<PackageRow> packages,
+            TranslationsViewModel? translations = null)
         {
             _season = season;
             _repo = repo;
@@ -81,12 +126,74 @@ namespace Perpetuum.AdminTool.ViewModels
             PackagesVm = packagesVm;
             StatisticsVm = statsVm;
             Packages = packages;
+            _translations = translations;
+            Objectives.CollectionChanged += (_, e) =>
+            {
+                if (e.NewItems != null)
+                    foreach (SeasonObjectiveRow r in e.NewItems)
+                        r.PropertyChanged += OnObjectivePropertyChanged;
+                if (e.OldItems != null)
+                    foreach (SeasonObjectiveRow r in e.OldItems)
+                        r.PropertyChanged -= OnObjectivePropertyChanged;
+                OnPropertyChanged(nameof(FilteredObjectives));
+            };
+        }
+
+        private void OnObjectivePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SeasonObjectiveRow.IsDaily))
+                OnPropertyChanged(nameof(FilteredObjectives));
+        }
+
+        private void BuildMaterialLists(TranslationsViewModel? translations)
+        {
+            const int EnglishLangId = 0;
+            Dictionary<string, string>? englishNames = null;
+            if (translations?.Store?.Rows != null)
+            {
+                englishNames = translations.Store.Rows
+                    .GroupBy(r => r.Key)
+                    .ToDictionary(g => g.Key, g => g.First()[EnglishLangId]);
+            }
+
+            var oreAndLiquid = new List<MaterialPickItem>();
+            var organic = new List<MaterialPickItem>();
+
+            foreach (var e in _cache.Entities)
+            {
+                if (!e.Enabled || e.Hidden) continue;
+
+                var displayName = (englishNames != null &&
+                                   englishNames.TryGetValue(e.Name, out var eng) &&
+                                   !string.IsNullOrEmpty(eng))
+                    ? eng : e.Name;
+
+                if (IsCategoryMatch(e.CategoryFlags, (long)CategoryFlags.cf_ore) ||
+                    IsCategoryMatch(e.CategoryFlags, (long)CategoryFlags.cf_liquid))
+                    oreAndLiquid.Add(new MaterialPickItem(e.Definition, displayName));
+                else if (IsCategoryMatch(e.CategoryFlags, (long)CategoryFlags.cf_organic))
+                    organic.Add(new MaterialPickItem(e.Definition, displayName));
+            }
+
+            _oreAndLiquidMaterials = oreAndLiquid
+                .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            _organicMaterials = organic
+                .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static bool IsCategoryMatch(long entityFlags, long category)
+        {
+            var mask = PackageItemPickItem.CategoryFlagsMask(category);
+            return (entityFlags & mask) == category;
         }
 
         public async Task LoadAsync()
         {
             try
             {
+                BuildMaterialLists(_translations);
                 StatusIsError = false;
                 StatusMessage = "Loading season detail...";
 
@@ -118,7 +225,12 @@ namespace Perpetuum.AdminTool.ViewModels
                 Objectives.Clear();
                 if (Season.Id > 0)
                     foreach (var o in await _repo.LoadObjectivesAsync(Season.Id))
+                    {
+                        if (o.PackageId.HasValue)
+                            o.SelectedPackage = Packages.FirstOrDefault(p => p.Id == o.PackageId);
+                        o.InitializeMaterialLists(_oreAndLiquidMaterials, _organicMaterials);
                         Objectives.Add(o);
+                    }
 
                 Tiers.Clear();
                 if (Season.Id > 0)
@@ -238,15 +350,17 @@ namespace Perpetuum.AdminTool.ViewModels
             }
             var row = new SeasonObjectiveRow
             {
-                SeasonId = Season.Id,
-                Name = "New Objective",
-                Description = "",
+                SeasonId     = Season.Id,
+                Name         = "New Objective",
+                Description  = "",
                 ActivityType = SeasonActivityType.NpcKill,
-                TargetValue = 1,
-                BonusPoints = 0,
+                TargetValue  = 1,
+                BonusPoints  = 0,
                 DisplayOrder = Objectives.Count,
-                IsNew = true
+                IsNew        = true,
+                IsDaily      = ObjectiveFilter == ObjectiveFilterMode.Daily,
             };
+            row.InitializeMaterialLists(_oreAndLiquidMaterials, _organicMaterials);
             Objectives.Add(row);
             StatusIsError = false;
             StatusMessage = "Added objective row. Edit fields, then click 'Queue Save' on the row.";
@@ -318,9 +432,8 @@ namespace Perpetuum.AdminTool.ViewModels
             };
             row.SelectedPackage = Packages[0];
             Tiers.Add(row);
-            _queue.Add(SeasonChanges.BuildInsertTier(row));
             StatusIsError = false;
-            StatusMessage = "Queued INSERT for tier.";
+            StatusMessage = "Added tier row. Edit fields, then click 'Queue Save' on the row.";
         }
 
         [RelayCommand]
@@ -337,6 +450,30 @@ namespace Perpetuum.AdminTool.ViewModels
             StatusMessage = row.Id > 0
                 ? $"Queued DELETE for tier id {row.Id}."
                 : "Removed unsaved tier.";
+        }
+
+        [RelayCommand]
+        private void QueueSaveTier(SeasonTierRow? row)
+        {
+            if (row == null) return;
+            if (Season.Id <= 0)
+            {
+                MessageBox.Show("Save the season (General tab) first.", "Season unsaved",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            row.SeasonId = Season.Id;
+            if (row.Id == 0)
+            {
+                _queue.Add(SeasonChanges.BuildInsertTier(row));
+                StatusMessage = $"Queued INSERT for tier '{row.TierName}'.";
+            }
+            else
+            {
+                _queue.Add(SeasonChanges.BuildUpdateTier(row));
+                StatusMessage = $"Queued UPDATE for tier '{row.TierName}'.";
+            }
+            StatusIsError = false;
         }
 
         [RelayCommand]
@@ -387,4 +524,7 @@ namespace Perpetuum.AdminTool.ViewModels
     }
 
     public record ActivityTypeOption(SeasonActivityType Value, string Label);
+    public enum ObjectiveFilterMode { All, OneTime, Daily }
+    public record ObjectiveFilterOption(ObjectiveFilterMode Value, string Label);
+    public record ScoringModeOption(SeasonScoringMode Value, string Label);
 }

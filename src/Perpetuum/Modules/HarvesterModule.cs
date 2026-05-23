@@ -142,7 +142,7 @@ namespace Perpetuum.Modules
                         player.Zone?.HarvestLogHandler.EnqueueHarvestLog(extractedHarvestDefinition, extractedQuantity);
 
                         resourceStats.Add((extractedMaterial.EntityDefault.Name, extractedMaterial.Quantity));
-                        SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.MineralMined, extractedMaterial.Quantity);
+                        SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.PlantHarvested, new Perpetuum.Services.Seasons.ActivityEvent(extractedMaterial.Quantity, extractedHarvestDefinition));
                     }
 
                     container.Save();

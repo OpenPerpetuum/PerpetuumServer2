@@ -122,6 +122,35 @@ Claude MUST:
 
 ---
 
+# Game Content Creation
+
+When creating or modifying gameplay entities (items, robots, effects, modules, tech tree nodes), Claude MUST consult:
+
+- `docs/content/claude_game_content_guide.md`
+
+This guide is the authoritative procedural reference for SQL content pipelines and dependency order.
+
+## Content Creation Rules
+
+Claude MUST:
+
+- Read the guide before generating any content SQL.
+- Follow the entity lifecycle and dependency order defined in the guide (sections 2 and 24).
+- Never hardcode definition or extension IDs — always resolve dynamically via `entitydefaults` / `extensions` lookups.
+- Use naming conventions from the guide (section 3): `def_`, `_pr`, `_cprg`, `effect_`, `cf_` prefixes.
+- Use idempotent SQL patterns: `MERGE`, `IF NOT EXISTS`, or `DELETE + INSERT` as appropriate per table.
+- Generate full-chain content when possible — avoid partial generation.
+- Run the validation checklist (section 26) before declaring content complete.
+- Ask the user for existing database values when dynamic resolution requires live data not available in docs.
+
+Claude MUST NOT:
+
+- Hardcode IDs for definitions, extensions, aggregate fields, or tech tree nodes.
+- Assume table relationships without verifying via `docs/db_structure/`.
+- Generate partial content chains that leave items in an unresearchable, uncraftable, or inaccessible state.
+
+---
+
 # Required Workflow
 
 For any non-trivial task:
@@ -337,7 +366,7 @@ When asked to:
 - "implement improvements"
 
 Claude should:
-1. review backlog files
+1. review backlog files, only check what you've been asked to, (e.g. issues or improvements), unless issues and improvements are depending on each other
 2. prioritize unfinished HIGH priority items
 3. prefer low-risk/high-impact work unless instructed otherwise
 4. produce a short implementation plan

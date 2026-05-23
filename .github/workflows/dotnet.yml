@@ -16,7 +16,7 @@ jobs:
 
     env:
       Workspace: ${{ github.workspace }}
-    
+
     steps:
     - uses: actions/checkout@v4
     - name: Setup .NET
@@ -33,3 +33,27 @@ jobs:
         name: Perpetuum-Server-v2-${{ github.sha }}
         path: ${{ env.Workspace }}/bin/x64/Release/net8.0
       if: ${{ github.event_name == 'push'}}
+
+  build-admintool-installer:
+
+    runs-on: windows-latest
+
+    env:
+      Workspace: ${{ github.workspace }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - name: Restore dependencies
+      run: dotnet restore -p:Platform=x64
+    - name: Build AdminTool installer
+      run: dotnet build src/Perpetuum.AdminToolInstaller/Perpetuum.AdminToolInstaller.wixproj --no-restore --configuration Release --verbosity quiet -p:Platform=x64
+    - name: Upload AdminTool installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: Perpetuum-AdminTool-Installer-${{ github.sha }}
+        path: ${{ env.Workspace }}/src/Perpetuum.AdminToolInstaller/bin/x64/Release/en-US/*.msi
+      if: ${{ github.event_name == 'push' }}

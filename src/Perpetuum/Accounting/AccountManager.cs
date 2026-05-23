@@ -314,7 +314,7 @@ namespace Perpetuum.Accounting
                 .SetParameter("@characterID", character.Id)
                 .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLInsertError);
 
-            SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.EpSpent, spentPoints);
+            SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.EpSpent, new ActivityEvent(spentPoints));
         }
 
         /// <summary>
@@ -380,6 +380,7 @@ namespace Perpetuum.Accounting
             });
 
             AddExtensionPoints(account, boostedPoints);
+            SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.EpEarned, new ActivityEvent(boostedPoints));
             return boostedPoints;
         }
 

@@ -8,6 +8,12 @@ namespace Perpetuum.Services.Seasons
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public bool IsActive { get; set; }
+        public bool IsRecurring { get; set; }
+        public int? RecurrenceGapDays { get; set; }
+        public int RecurrenceIteration { get; set; } = 1;
+        public string? RecurrenceBaseName { get; set; }
+        public SeasonScoringMode ScoringMode { get; set; }
+        public int? DailyObjectivesPerDay { get; set; }
     }
 
     public class SeasonActivityRate
@@ -29,6 +35,9 @@ namespace Perpetuum.Services.Seasons
         public long TargetValue { get; set; }
         public int BonusPoints { get; set; }
         public int DisplayOrder { get; set; }
+        public bool IsDaily { get; set; }
+        public int? PackageId { get; set; }
+        public int? TargetDefinitionId { get; set; }
     }
 
     public class SeasonTier

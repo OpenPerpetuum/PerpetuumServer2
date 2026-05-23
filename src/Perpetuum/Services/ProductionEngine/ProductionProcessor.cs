@@ -19,6 +19,7 @@ using Perpetuum.Services.MissionEngine.MissionProcessorObjects;
 using Perpetuum.Services.ProductionEngine.CalibrationPrograms;
 using Perpetuum.Services.ProductionEngine.Facilities;
 using Perpetuum.Services.ProductionEngine.ResearchKits;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Timers;
 using Perpetuum.Zones;
 
@@ -239,6 +240,20 @@ namespace Perpetuum.Services.ProductionEngine
 
                     productionInProgress.character.AddExtensionPointsBoostAndLog( EpForActivityType.Production, ep);
 
+                    var seasonType = productionInProgress.type switch
+                    {
+                        ProductionInProgressType.prototype    => (SeasonActivityType?)SeasonActivityType.Prototyping,
+                        ProductionInProgressType.research     => SeasonActivityType.ReverseEngineering,
+                        ProductionInProgressType.massProduction => SeasonActivityType.Production,
+                        _                                     => null,
+                    };
+                    if (seasonType.HasValue)
+                    {
+                        SeasonServiceLocator.Instance?.RecordActivity(
+                            productionInProgress.character.Id,
+                            seasonType.Value,
+                            new ActivityEvent(productionInProgress.amountOfCycles));
+                    }
 
                     if (replyDict != null)
                     {
