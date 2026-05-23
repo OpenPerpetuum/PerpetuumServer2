@@ -452,6 +452,21 @@
                                     <DataGridTextColumn Header="Completed" Binding="{Binding CompletedCount}" Width="120"/>
                                 </DataGrid.Columns>
                             </DataGrid>
+
+                            <StackPanel Visibility="{Binding HasTodaysDailyObjectives, Converter={StaticResource BoolToVis}}"
+                                        Margin="0,16,0,0">
+                                <TextBlock Text="Today's Daily Objectives" FontSize="13" FontWeight="Bold" Margin="0,0,0,4"/>
+                                <DataGrid ItemsSource="{Binding TodaysDailyObjectives}" AutoGenerateColumns="False"
+                                          IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                          MaxHeight="240">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Objective" Binding="{Binding Name}" Width="*"/>
+                                        <DataGridTextColumn Header="Activity Type" Binding="{Binding ActivityType}" Width="160"/>
+                                        <DataGridTextColumn Header="Target" Binding="{Binding TargetValue}" Width="80"/>
+                                        <DataGridTextColumn Header="Completed Today" Binding="{Binding CompletionsToday}" Width="130"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
