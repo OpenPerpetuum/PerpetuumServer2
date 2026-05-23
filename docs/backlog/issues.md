@@ -1,6 +1,38 @@
 # Last ID used
 
-018
+019
+
+## ISSUE-019 - CI build fails for AdminToolInstaller: NETSDK1047 missing RID target in assets file
+
+Status: DONE
+Priority: HIGH
+Area: Build / CI
+
+### Problem
+The CI pipeline step `dotnet build src/Perpetuum.AdminToolInstaller/Perpetuum.AdminToolInstaller.wixproj --no-restore --configuration Release -p:Platform=x64` fails with:
+
+```
+NETSDK1047: Assets file '...Perpetuum.AdminTool\obj\project.assets.json' doesn't have a target for 'net8.0-windows/win-x64'.
+Ensure that restore has run and that you have included 'net8.0-windows' in the TargetFrameworks for your project.
+You may also need to include 'win-x64' in your project's RuntimeIdentifiers.
+```
+
+### Impact
+The AdminTool installer cannot be built in CI, blocking release packaging of the AdminTool.
+
+### Root Cause
+The build step uses `--no-restore`, so NuGet restore never runs for the `Perpetuum.AdminTool` dependency. The assets file in `obj/` is either absent or was produced by a prior restore without the `win-x64` RID, so the SDK cannot resolve the `net8.0-windows/win-x64` target.
+
+### Proposed Fix
+One or more of:
+1. Add a `dotnet restore` step for `Perpetuum.AdminToolInstaller.wixproj` (or the full solution) before the `--no-restore` build, with `-p:RuntimeIdentifier=win-x64`.
+2. Ensure `Perpetuum.AdminTool.csproj` declares `<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>` so restore always produces the required RID target.
+3. Alternatively, drop `--no-restore` from the AdminToolInstaller build step and rely on the SDK to restore inline.
+
+### Notes
+The error path is `D:\a\...` (GitHub Actions runner). The fix must be applied to `.github/workflows/dotnet.yml` and/or the `.csproj`.
+
+---
 
 ## ISSUE-018 - SeasonRepository.GetActiveSeason throws InvalidCastException on daily_objectives_per_day
 

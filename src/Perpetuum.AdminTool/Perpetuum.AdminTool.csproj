@@ -10,6 +10,7 @@
     <RootNamespace>Perpetuum.AdminTool</RootNamespace>
     <AssemblyName>Perpetuum.AdminTool</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
