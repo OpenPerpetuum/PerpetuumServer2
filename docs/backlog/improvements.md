@@ -499,41 +499,32 @@ Installer output should be a single executable or package that operators can dis
 
 ---
 
-## IMPROVEMENT-021 - Upgrade to .NET 10 and Integrate Graphify
+## IMPROVEMENT-021 - Graphify Codebase Graph Integration
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Infrastructure / Tooling / AI
+Spec: docs/superpowers/specs/2026-05-23-improvement-021-graphify-integration-design.md
 
 ### Description
-Plan and execute a careful migration of the entire solution from .NET 8 to .NET 10, then integrate the [Graphify](https://github.com/willibrandon/graphify) package (a .NET 10 dependency) to generate a structural graph of the codebase and wire it to Claude for enhanced code understanding and navigation.
+Integrated `graphify-dotnet` (https://github.com/elbruno/graphify-dotnet) as a local dotnet
+tool. Generates a structural JSON graph and Markdown architecture report before every
+`Perpetuum.Server` build. CI publishes the report to the GitHub Wiki on each push to `develop`.
 
-### Impact
-.NET 10 (LTS) brings performance improvements, new C# language features, and long-term support beyond .NET 8. The Graphify integration would give Claude (and operators) a machine-readable dependency/call graph of the server codebase, enabling more accurate impact analysis, smarter navigation, and reduced hallucination risk when reasoning about unfamiliar subsystems.
-
-### Proposed Implementation
-
-**Phase 1 — .NET 10 upgrade**
-- Audit current NuGet dependencies for .NET 10 compatibility; flag any packages with no .NET 10 target or known breaking changes.
-- Update all `<TargetFramework>` entries in `.csproj` files from `net8.0` to `net10.0`.
-- Address any breaking API changes surfaced by the build (`dotnet build`): BCL changes, removed APIs, updated semantics.
-- Update the CI workflow (`.github/workflows/dotnet.yml`) to use the .NET 10 SDK.
-- Validate a full Release build and a local server run before proceeding to Phase 2.
-- Update `docs/STACK.md` to reflect the new runtime version.
-
-**Phase 2 — Graphify integration**
-- Add the Graphify NuGet package to the solution (targeting the appropriate project — likely a standalone tooling project or the AdminTool).
-- Configure Graphify to analyze the `PerpetuumServer2` solution and output a dependency/call graph in a Claude-consumable format (JSON, Markdown, or Graphify's native output).
-- Define what graph artifacts are most useful for Claude: namespace dependency graph, class hierarchy, inter-module call graph, or a combination.
-- Automate graph regeneration (e.g. as a pre-build step or CI artifact) so the graph stays current as the codebase evolves.
-- Document how Claude should load and interpret the graph output — update `.claude/knowledge/architecture.md` with a pointer to the graph artifact and a brief explanation of its structure.
+### Implementation
+- `.config/dotnet-tools.json` registers `graphify-dotnet@0.7.0` (command: `graphify`)
+- `Directory.Build.targets` (solution root) fires `GenerateCodeGraph` before `Perpetuum.Server`
+  builds; `ContinueOnError="true"` soft-fails on machines without .NET 10 SDK
+- `-f json,report` produces `docs/graph/graph.json` and `docs/graph/GRAPH_REPORT.md` (gitignored)
+- `.github/workflows/dotnet.yml` `publish-wiki` job pushes `GRAPH_REPORT.md` to GitHub Wiki as
+  `Codebase-Graph.md` on each push to `develop`
+- `.claude/knowledge/codebase-graph.md` added for Claude orientation
 
 ### Notes
-.NET 10 is on the STS/LTS release train; verify its LTS status and release date before committing to the upgrade timeline.
-Graphify requires .NET 10 — Phase 1 must be complete and stable before Phase 2 begins.
-The upgrade should be done on a dedicated branch with a full build + manual smoke test before merging.
-Pay special attention to any use of reflection, source generators, or runtime behaviour that changed between .NET 8 and .NET 10.
-Autofac and other DI/serialization libraries should be verified for .NET 10 compatibility early — these are common sources of upgrade friction.
+Phase 2 (.NET 8 → .NET 10 project TFM migration) is deferred as an independent workstream.
+The graphify tool requires .NET 10 SDK but the project TFMs remain at net8.0.
+Run `dotnet tool restore` once after cloning to enable graph regeneration.
+GitHub Wiki must have at least one page initialized before the CI publish job can push.
 
 ---
 

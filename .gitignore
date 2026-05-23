@@ -23,3 +23,7 @@ Releases/
 .planning/
 *.log
 *_wpftmp.csproj
+
+# graphify-dotnet generated output (regenerates on build)
+docs/graph/
+graphify-out/
