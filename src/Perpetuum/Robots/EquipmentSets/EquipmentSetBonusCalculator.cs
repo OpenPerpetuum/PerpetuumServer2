@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Perpetuum.Items;
 
 namespace Perpetuum.Robots.EquipmentSets
