@@ -151,8 +151,16 @@ namespace Perpetuum.Services.Seasons
             }
             else if (previous?.Id != season.Id || _dailyPool.Date == DateOnly.MinValue)
             {
+                bool isFirstLoad = _dailyPool.Date == DateOnly.MinValue;
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
                 _dailyPool = new DailyPool(SelectDailyPool(season, _activeObjectives, today), today);
+                if (isFirstLoad)
+                {
+                    int totalDaily = _activeObjectives.Count(o => o.IsDaily);
+                    var poolObjs = _activeObjectives.Where(o => _dailyPool.Ids.Contains(o.Id)).ToList();
+                    if (poolObjs.Count > 0)
+                        AnnounceDailyPool(poolObjs, totalDaily);
+                }
             }
 
             if (_lastNotifiedSeasonId != season.Id)
