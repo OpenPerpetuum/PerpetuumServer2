@@ -8,7 +8,9 @@ using Perpetuum.Items;
 using Perpetuum.Items.Templates;
 using Perpetuum.Modules;
 using Perpetuum.Players;
+using Perpetuum.Robots.EquipmentSets;
 using Perpetuum.Services.ExtensionService;
+using System.Linq;
 using Perpetuum.Services.Insurance;
 using Perpetuum.Timers;
 using Perpetuum.Units;
@@ -30,6 +32,9 @@ namespace Perpetuum.Robots
         private readonly IntervalTimer overheatCooldownTimer;
         private const double HeatDissipation = 1.75;
 
+        private IReadOnlyList<ItemPropertyModifier> _setBonusModifiers = Array.Empty<ItemPropertyModifier>();
+        private IReadOnlySet<int> _activeSetIds = new HashSet<int>();
+
         protected Robot()
         {
             InitLockHander();
@@ -43,6 +48,8 @@ namespace Perpetuum.Robots
         public RobotHelper RobotHelper { protected get; set; }
 
         public InsuranceHelper InsuranceHelper { protected get; set; }
+
+        public IEquipmentSetBonusCalculator EquipmentSetBonusCalculator { private get; set; }
 
         public RobotTemplate Template { get; set; }
 
@@ -123,6 +130,12 @@ namespace Perpetuum.Robots
         public override void Initialize()
         {
             InitComponents();
+            if (EquipmentSetBonusCalculator != null)
+            {
+                EquipmentSetBonusResult result = EquipmentSetBonusCalculator.Compute(Modules.Select(m => m.Definition));
+                _setBonusModifiers = result.Modifiers;
+                _activeSetIds = result.ActiveSetIds;
+            }
             base.Initialize();
         }
 
