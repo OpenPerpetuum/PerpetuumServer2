@@ -78,6 +78,7 @@ jobs:
       run: dotnet tool restore
 
     - name: Generate codebase report
+      working-directory: ${{ github.workspace }}
       run: dotnet tool run graphify run src -o graphify-out -f report
 
     - name: Publish report to GitHub Wiki

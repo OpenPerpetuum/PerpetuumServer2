@@ -6,7 +6,7 @@ solution root).
 
 ## Artifacts
 
-- **`docs/graph/graph.json`** — machine-readable graph (19 777 nodes, 33 450 edges); gitignored,
+- **`docs/graph/graph.json`** — machine-readable graph; gitignored,
   present after any local `Perpetuum.Server` build
 - **`docs/graph/GRAPH_REPORT.md`** — Markdown architecture report; gitignored, same condition
 - **GitHub Wiki** — latest report published by CI:
@@ -26,7 +26,7 @@ node's `id` to find all dependents before assessing blast radius.
 **God-node awareness** — the top 10 most-connected symbols are listed in `GRAPH_REPORT.md`
 under "God Nodes". These are the highest-risk symbols to change: `RelocateItems`,
 `LootItemRepository`, `PackItems`, `ChangeAmmo`, `UnstackAmount`, `EquipModule`,
-`ListContainer`, `IWeatherService`, `SetItemName`, `ILootItemRepository` and similar.
+`ListContainer`, `IWeatherService`, `SetItemName`, `ILootItemRepository` — see `GRAPH_REPORT.md` for the full list.
 
 **Subsystem navigation** — look up a class node in `graph.json` to find its `community` ID,
 then find other nodes with the same `community` to discover related types in the same cluster.
