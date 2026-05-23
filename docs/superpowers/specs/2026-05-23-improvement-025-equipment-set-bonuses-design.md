@@ -60,8 +60,9 @@ Add to the `effects` DB table:
 ```
 id=139, name='Set Bonus Active', ispositive=1, display=1,
 description='An equipment set bonus is active on this robot.',
-duration=0, isaura=0, effectcategory=<passive category>
+duration=0, isaura=0, effectcategory=0
 ```
+`effectcategory=0` (`undefined`) — set bonuses are not clearable by ECCM and have no stacking limit.
 
 No `effectdefaultmodifiers` rows — the effect carries no property modifiers. Stats are applied exclusively via the aggregate pipeline.
 
@@ -98,18 +99,22 @@ Autofac registration: singleton.
 Pure stateless service. Given a list of fitted module definitions, returns active bonus modifiers.
 
 ```csharp
+public record EquipmentSetBonusResult(
+    IReadOnlyList<ItemPropertyModifier> Modifiers,
+    IReadOnlySet<int> ActiveSetIds);
+
 public interface IEquipmentSetBonusCalculator
 {
-    IReadOnlyList<ItemPropertyModifier> Compute(IEnumerable<int> fittedDefinitions);
+    EquipmentSetBonusResult Compute(IEnumerable<int> fittedDefinitions);
 }
 ```
 
 **Algorithm:**
 1. Look up set memberships for all fitted definitions (one repository call).
 2. Count fitted instances per `set_id` (duplicates count — each instance contributes).
-3. For each set, retrieve thresholds; include all threshold rows where `required_pieces <= actual_count`.
-4. Accumulate into `List<ItemPropertyModifier>`.
-5. Return as `IReadOnlyList<ItemPropertyModifier>`.
+3. For each set where `actual_count >= any threshold`, add the set ID to `activeSetIds`.
+4. Include all threshold rows where `required_pieces <= actual_count`; accumulate modifiers.
+5. Return `EquipmentSetBonusResult` with both lists.
 
 No DB access at call time — all data is from the in-memory repository.
 
@@ -128,12 +133,13 @@ private IReadOnlyList<ItemPropertyModifier> _setBonusModifiers
 public override void Initialize()
 {
     InitComponents();
-    _setBonusModifiers = _setBonusCalculator.Compute(
-        Modules.Select(m => m.Definition));
+    var result = _setBonusCalculator.Compute(Modules.Select(m => m.Definition));
+    _setBonusModifiers = result.Modifiers;
+    _activeSetIds = result.ActiveSetIds;
     base.Initialize();
 }
 ```
-`_setBonusCalculator` injected via constructor.
+`_setBonusCalculator` injected via constructor. `_activeSetIds` is a new `IReadOnlySet<int>` field on `Robot`, consumed by `SetBonusEffectApplicator`.
 
 **`GetPropertyModifier()` override:**
 ```csharp
@@ -193,7 +199,7 @@ public class SetBonusEffectApplicator
 }
 ```
 
-`activeSetIds` is derived from `_setBonusModifiers` (the set IDs that contributed at least one modifier).
+`activeSetIds` comes from `Robot._activeSetIds`, populated by `Initialize()` alongside `_setBonusModifiers`.
 
 **Zone-only constraint:** `SetBonusEffectApplicator.Update()` is only called when `robot.InZone` is true. Docked robots get stats via the aggregate pipeline but no effect display — consistent with how `PassiveEffectModule` works.
 
