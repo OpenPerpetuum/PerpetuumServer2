@@ -107,6 +107,9 @@ namespace Perpetuum.Bootstrapper.Modules
             _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_field_eccm);
             _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_field_reactor_stabilizer);
 
+            // Equipment set bonus display effect
+            _ = builder.RegisterType<Effect>().Keyed<Effect>(EffectType.effect_equipment_set_bonus);
+
             _ = builder.Register<EffectFactory>(x =>
             {
                 IComponentContext ctx = x.Resolve<IComponentContext>();
