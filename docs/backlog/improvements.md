@@ -336,7 +336,7 @@ Consider interaction with existing repair/maintenance NPC infrastructure if any 
 
 ## IMPROVEMENT-027 - Equipment Set Bonus Values in Effect Display
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Combat / Items / UI
 
