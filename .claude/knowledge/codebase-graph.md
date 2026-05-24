@@ -17,7 +17,7 @@ solution root).
 
 Nodes represent C# classes, methods, and namespaces (type: `Entity` or `File`).
 Edges have two relationship types:
-- **`contains`** (17,785 edges) — within-file hierarchy: file → namespace → class → method
+- **`contains`** (33,623 edges) — within-file hierarchy: file → namespace → class → method
 - **`imports`** (66 edges) — cross-file namespace dependencies (the meaningful ones for impact analysis)
 
 Communities (Louvain clustering) group related symbols into 2,616 clusters.
@@ -37,6 +37,8 @@ Communities (Louvain clustering) group related symbols into 2,616 clusters.
 The top 10 most-connected symbols are listed in `docs/graph/GRAPH_REPORT.md` under "God Nodes".
 These are the highest-risk symbols to change — check the report before modifying any of them.
 The list regenerates on each build; do not rely on hardcoded names from prior sessions.
+
+Note: `tools/query-graph.ps1` matches `.cs` file nodes only — namespace-level entries in the God Nodes list (e.g. `Perpetuum.RequestHandlers`) cannot be queried by name and must be explored via `GRAPH_REPORT.md` directly.
 
 > **Note on import sparsity:** Only 66 `imports` edges exist across the entire codebase (AST-only
 > analysis). Inbound results for most classes will be sparse. Absence of inbound edges does not
