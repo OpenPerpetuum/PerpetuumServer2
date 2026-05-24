@@ -53,10 +53,16 @@ New "Equipment Sets" tab added to `MainWindow.xaml` between "Seasons" and "Trans
 - `EquipmentSetMemberRow` — `SetId`, `Definition`, `DefinitionName`, `TranslatedName`
 - `EquipmentSetThresholdRow` — `SetId`, `RequiredPieces`, `AggregateField` (AggregateField enum), `BonusValue` (double)
 
+**Pick items (not observable, constructed once on load):**
+
+- `SetMemberPickItem` — `Definition`, `DefinitionName`, `TranslatedName`, `Display` (`"1234 — def_mod_x  (X Module)"`, parenthesised translated name omitted when empty)
+- `AggregateFieldPickItem` — `Id`, `Name` (raw DB name, e.g. `armor_max_modifier`), `TranslatedName` (English from translation store using `Name` as key), `Display` (translated name if available, else raw `Name`)
+
 **`EquipmentSetRepository`** — Admin Tool-side DB reads via `SqlConnection`:
 - `LoadAllSetsAsync(ConnectionSettings)` → `List<EquipmentSetRow>`
 - `LoadMembersAsync(ConnectionSettings, int setId)` → `List<EquipmentSetMemberRow>`
 - `LoadThresholdsAsync(ConnectionSettings, int setId)` → `List<EquipmentSetThresholdRow>`
+- `LoadAggregateFieldsAsync(ConnectionSettings)` → `IReadOnlyList<AggregateFieldInfo>` (same query as `EntityRepository.LoadFieldsAsync`; reused to build `AggregateFieldPickItem` list with translations applied)
 
 **`EquipmentSetChanges`** — static class producing `RawSqlChange` objects:
 
@@ -135,14 +141,18 @@ DELETE FROM equipment_sets                    WHERE set_id = @id;
 **Right panel:**
 - Name TextBox + "Rename" button (disabled for pending sets): queues UPDATE
 - **Members** DataGrid — read-only columns: Definition, DefinitionName, TranslatedName; per-row "Remove" button queuing DELETE; "Add member" button opens `AddSetMemberWindow`
-- **Bonus Thresholds** DataGrid — inline-editable columns: Required Pieces (int), Aggregate Field (ComboBox from `AggregateField` enum sorted by name), Bonus Value (double); per-row remove button queuing DELETE; "Add threshold" appends a new editable row and queues UPSERT
+- **Bonus Thresholds** DataGrid — inline-editable columns: Required Pieces (int), Aggregate Field (ComboBox bound to `AggregateFieldPickItem` list loaded on Reload, sorted by `Display`, showing translated name when available), Bonus Value (double); per-row remove button queuing DELETE; "Add threshold" appends a new editable row and queues UPSERT
 
 ### 6.2 `AddSetMemberWindow` picker dialog
 
 - Title: "Add module to set"
-- Search TextBox filtering by `DefinitionName` OR `TranslatedName` (case-insensitive, same logic as `EntitiesViewModel.MatchesFilter`)
+- Item list sourced from `LookupCache.Entities`, filtered to:
+  - `Enabled == true`
+  - `Hidden == false`
+  - `CategoryFlags` is `cf_robot_equipment` or any descendant — using the same bitmask check as `PackageItemPickItem.MatchesAnyRoot` / `CategoryFlagsMask`, restricted to the single `cf_robot_equipment` root
+  - Definition not already present in `Members`
+- Search TextBox filtering the above list by `DefinitionName` OR `TranslatedName` (case-insensitive, same logic as `EntitiesViewModel.MatchesFilter`)
 - DataGrid columns: Definition, DefinitionName, TranslatedName
-- Definitions already present in `Members` are excluded from the list
 - Display format: `"1234 — def_mod_x  (X Module)"` where the parenthesised part is the translated name (omitted if empty)
 - OK: queues `BuildInsertMember` and adds row to `Members`; Cancel: dismisses
 
@@ -161,6 +171,7 @@ Observable state:
 - `EquipmentSetRow? SelectedSet`
 - `ObservableCollection<EquipmentSetMemberRow> Members`
 - `ObservableCollection<EquipmentSetThresholdRow> Thresholds`
+- `IReadOnlyList<AggregateFieldPickItem> AggregateFieldOptions` — built from `LoadAggregateFieldsAsync` on Reload, translated names resolved from `TranslationsViewModel` using `AggregateFieldInfo.Name` as the lookup key, sorted by `Display`
 - `bool IsLoading`, `string StatusMessage`, `bool StatusIsError`
 
 Commands: `ReloadCommand`, `CreateSetCommand`, `DeleteSetCommand`, `RenameSetCommand`, `RemoveMemberCommand`, `AddThresholdCommand`, `RemoveThresholdCommand`.
@@ -175,9 +186,11 @@ Located in `src/Perpetuum.AdminTool/ViewModels/AddSetMemberViewModel.cs`.
 
 Constructor parameters: `LookupCache`, `TranslationsViewModel`, `IReadOnlySet<int> alreadyAssigned`.
 
-State: `ObservableCollection<SetMemberPickItem> Items` (built from `LookupCache.Entities` excluding `alreadyAssigned`), `ICollectionView View` (filtered by `FilterText`), `SetMemberPickItem? SelectedItem`.
+State: `ObservableCollection<SetMemberPickItem> Items` (built from `LookupCache.Entities` filtered to enabled, non-hidden, `cf_robot_equipment` descendants, excluding `alreadyAssigned`), `ICollectionView View` (filtered by `FilterText`), `SetMemberPickItem? SelectedItem`.
 
-`SetMemberPickItem`: `Definition`, `DefinitionName`, `TranslatedName`, `Display`.
+Translated names are resolved at construction time by looking up each `EntityPickItem.Name` (the `definitionname`) in `TranslationsViewModel.Store` at English (lang 0) — same as `EntitiesViewModel.TranslatedName`. Items with no translation show only the definition name.
+
+Category filter uses `PackageItemPickItem.CategoryFlagsMask` with `CategoryFlags.cf_robot_equipment` as the sole root — `(entityFlags & mask) == (long)cf_robot_equipment`.
 
 ### 7.3 `MainViewModel` additions
 
@@ -219,7 +232,7 @@ No new server request handlers. No DI container changes. No `LookupCache` additi
 2. Add a member and a threshold to the pending set without committing first.
 3. Commit. Reload. Verify the set, member, and threshold appear correctly.
 4. Rename the set. Commit. Verify the name updates in DB.
-5. Add a second member via the picker. Verify translated names appear and already-assigned definitions are excluded.
+5. Add a second member via the picker. Verify translated names appear, already-assigned definitions are excluded, and the list contains only enabled, non-hidden `cf_robot_equipment` items (no robots, ammo, or materials).
 6. Remove a member. Verify DELETE is queued and row disappears on reload.
 7. Edit a threshold inline. Verify UPSERT is queued.
 8. Delete a set that has members and thresholds. Confirm the cascade warning shows correct counts. Commit. Verify all three tables are cleared for that set. Verify `entitydefaults` is unchanged.
