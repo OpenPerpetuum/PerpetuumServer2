@@ -376,7 +376,7 @@ Verify that the client-side effect display pipeline for `effect_equipment_set_bo
 
 ## IMPROVEMENT-028 - AdminTool Equipment Set Management
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Admin Tool / Items / Modules
 
