@@ -4,7 +4,7 @@ namespace Perpetuum.AdminTool.EquipmentSets
 {
     public partial class EquipmentSetRow : ObservableObject
     {
-        [ObservableProperty] private int _setId;
+        public int SetId { get; set; }
         [ObservableProperty] private string _name = "";
 
         public bool IsNew => SetId == 0;
