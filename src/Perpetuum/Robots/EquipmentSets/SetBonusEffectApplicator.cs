@@ -11,6 +11,9 @@ namespace Perpetuum.Robots.EquipmentSets
 
         public void Update(Robot robot, IReadOnlySet<int> activeSetIds)
         {
+            if (!robot.InZone)
+                return;
+
             // Remove effects for sets no longer active
             foreach (int setId in _activeTokens.Keys.Except(activeSetIds).ToList())
             {
@@ -19,7 +22,7 @@ namespace Perpetuum.Robots.EquipmentSets
             }
 
             // Apply effects for newly active sets
-            foreach (int setId in activeSetIds.Except(_activeTokens.Keys))
+            foreach (int setId in activeSetIds.Except(_activeTokens.Keys).ToList())
             {
                 EffectToken token = EffectToken.NewToken();
                 EffectBuilder builder = robot.NewEffectBuilder()
