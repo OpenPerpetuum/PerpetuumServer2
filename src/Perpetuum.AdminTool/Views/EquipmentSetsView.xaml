@@ -84,7 +84,8 @@
                         <Button DockPanel.Dock="Right" Content="Rename" Padding="8,2"
                                 Margin="6,0,0,0"
                                 Command="{Binding RenameSetCommand}"/>
-                        <TextBox Text="{Binding SelectedSet.Name, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBox Text="{Binding SelectedSet.Name, UpdateSourceTrigger=PropertyChanged}"
+                                 IsReadOnly="{Binding SelectedSet.IsNew}"/>
                     </DockPanel>
 
                     <!-- Members -->
@@ -121,7 +122,7 @@
                     <!-- Bonus Thresholds -->
                     <DockPanel Margin="0,0,0,4">
                         <Button DockPanel.Dock="Right" Content="Add threshold" Padding="8,2"
-                                Command="{Binding AddThresholdCommand}"/>
+                                Click="OnAddThresholdClick"/>
                         <TextBlock Text="Bonus Thresholds" FontWeight="Bold" VerticalAlignment="Center"/>
                     </DockPanel>
                     <DataGrid ItemsSource="{Binding Thresholds}"
@@ -134,24 +135,10 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Pieces" Width="60"
                                                 Binding="{Binding RequiredPieces, UpdateSourceTrigger=LostFocus}"/>
-                            <DataGridTemplateColumn Header="Aggregate field" Width="*" SortMemberPath="FieldDisplay">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding FieldDisplay}" Margin="4,0" VerticalAlignment="Center"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                                <DataGridTemplateColumn.CellEditingTemplate>
-                                    <DataTemplate>
-                                        <ComboBox ItemsSource="{Binding Source={StaticResource VmProxy}, Path=Data.AggregateFieldOptions}"
-                                                  DisplayMemberPath="Display"
-                                                  SelectedValuePath="Id"
-                                                  IsEditable="True"
-                                                  IsTextSearchEnabled="True"
-                                                  TextSearch.TextPath="Display"
-                                                  SelectedValue="{Binding AggregateFieldId, UpdateSourceTrigger=PropertyChanged}"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellEditingTemplate>
-                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="System name"  Width="180" IsReadOnly="True"
+                                                Binding="{Binding FieldSystemName}"/>
+                            <DataGridTextColumn Header="Display name" Width="*"   IsReadOnly="True"
+                                                Binding="{Binding FieldDisplay}"/>
                             <DataGridTextColumn Header="Bonus value" Width="100"
                                                 Binding="{Binding BonusValue, UpdateSourceTrigger=LostFocus}"/>
                             <DataGridTemplateColumn Width="50">

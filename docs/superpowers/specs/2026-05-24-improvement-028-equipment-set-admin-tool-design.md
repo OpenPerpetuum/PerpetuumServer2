@@ -51,7 +51,7 @@ New "Equipment Sets" tab added to `MainWindow.xaml` between "Seasons" and "Trans
 
 - `EquipmentSetRow` — `SetId` (int, 0 = new/pending), `Name` (string)
 - `EquipmentSetMemberRow` — `SetId`, `Definition`, `DefinitionName`, `TranslatedName`
-- `EquipmentSetThresholdRow` — `SetId`, `RequiredPieces`, `AggregateField` (AggregateField enum), `BonusValue` (double)
+- `EquipmentSetThresholdRow` — `SetId`, `OriginalRequiredPieces` (tracks DB value for orphan-delete on edit), `RequiredPieces`, `AggregateFieldId` (int), `FieldSystemName` (raw DB name), `FieldDisplay` (translated name or system name fallback), `BonusValue` (double)
 
 **Pick items (not observable, constructed once on load):**
 
@@ -141,7 +141,7 @@ DELETE FROM equipment_sets                    WHERE set_id = @id;
 **Right panel:**
 - Name TextBox + "Rename" button (disabled for pending sets): queues UPDATE
 - **Members** DataGrid — read-only columns: Definition, DefinitionName, TranslatedName; per-row "Remove" button queuing DELETE; "Add member" button opens `AddSetMemberWindow`
-- **Bonus Thresholds** DataGrid — inline-editable columns: Required Pieces (int), Aggregate Field (ComboBox bound to `AggregateFieldPickItem` list loaded on Reload, sorted by `Display`, showing translated name when available), Bonus Value (double); per-row remove button queuing DELETE; "Add threshold" appends a new editable row and queues UPSERT
+- **Bonus Thresholds** DataGrid — Required Pieces (editable int), System name (read-only), Display name (read-only), Bonus Value (editable double); per-row remove button queuing DELETE; "Add threshold" opens `AddSetThresholdWindow` (same picker pattern as members)
 
 ### 6.2 `AddSetMemberWindow` picker dialog
 
@@ -155,6 +155,16 @@ DELETE FROM equipment_sets                    WHERE set_id = @id;
 - DataGrid columns: Definition, DefinitionName, TranslatedName
 - Display format: `"1234 — def_mod_x  (X Module)"` where the parenthesised part is the translated name (omitted if empty)
 - OK: queues `BuildInsertMember` and adds row to `Members`; Cancel: dismisses
+
+### 6.3 `AddSetThresholdWindow` picker dialog
+
+- Title: "Add bonus threshold"
+- Item list sourced from `AggregateFieldOptions` (loaded on Reload)
+- Search TextBox filtering by `Name` OR `TranslatedName` (case-insensitive)
+- DataGrid columns: Id, System name (`Name`), Display name (`TranslatedName`)
+- Inputs below the list: Required Pieces (int TextBox), Bonus Value (double TextBox, `UpdateSourceTrigger=LostFocus`)
+- Validation on Add: field must be selected; pieces must be > 0; pieces must not duplicate an existing threshold in the current set
+- OK: queues `BuildUpsertThreshold` and adds row to `Thresholds` with `OriginalRequiredPieces` set; Cancel: dismisses
 
 ---
 
@@ -174,7 +184,9 @@ Observable state:
 - `IReadOnlyList<AggregateFieldPickItem> AggregateFieldOptions` — built from `LoadAggregateFieldsAsync` on Reload, translated names resolved from `TranslationsViewModel` using `AggregateFieldInfo.Name` as the lookup key, sorted by `Display`
 - `bool IsLoading`, `string StatusMessage`, `bool StatusIsError`
 
-Commands: `ReloadCommand`, `CreateSetCommand`, `DeleteSetCommand`, `RenameSetCommand`, `RemoveMemberCommand`, `AddThresholdCommand`, `RemoveThresholdCommand`.
+Commands: `ReloadCommand`, `CreateSetCommand`, `DeleteSetCommand`, `RenameSetCommand`, `RemoveMemberCommand`, `RemoveThresholdCommand`.
+
+Regular methods (not relay commands, require a `Window` owner for dialog ownership): `AddMember(Window)`, `AddThreshold(Window)`.
 
 When `SelectedSet` changes:
 - If `SetId > 0`: load members and thresholds from DB asynchronously
@@ -192,7 +204,17 @@ Translated names are resolved at construction time by looking up each `EntityPic
 
 Category filter uses `PackageItemPickItem.CategoryFlagsMask` with `CategoryFlags.cf_robot_equipment` as the sole root — `(entityFlags & mask) == (long)cf_robot_equipment`.
 
-### 7.3 `MainViewModel` additions
+### 7.3 `AddSetThresholdViewModel`
+
+Located in `src/Perpetuum.AdminTool/ViewModels/AddSetThresholdViewModel.cs`.
+
+Constructor parameters: `IEnumerable<AggregateFieldPickItem> fields`.
+
+State: `ObservableCollection<AggregateFieldPickItem> Items`, `ICollectionView View` (filtered by `FilterText`), `AggregateFieldPickItem? SelectedField`, `int RequiredPieces`, `double BonusValue`.
+
+Filter searches `Name` and `TranslatedName` case-insensitively. Used-pieces validation (duplicate check) is performed in `AddSetThresholdWindow.OnAddClick`, which receives the `IReadOnlySet<int> usedPieces` from the caller.
+
+### 7.4 `MainViewModel` additions
 
 New property: `EquipmentSetsViewModel EquipmentSets`.
 
@@ -234,7 +256,7 @@ No new server request handlers. No DI container changes. No `LookupCache` additi
 4. Rename the set. Commit. Verify the name updates in DB.
 5. Add a second member via the picker. Verify translated names appear, already-assigned definitions are excluded, and the list contains only enabled, non-hidden `cf_robot_equipment` items (no robots, ammo, or materials).
 6. Remove a member. Verify DELETE is queued and row disappears on reload.
-7. Edit a threshold inline. Verify UPSERT is queued.
+7. Add a threshold via the picker dialog. Verify field system name and display name appear in the grid. Edit Pieces and Bonus Value inline; verify UPSERT is queued.
 8. Delete a set that has members and thresholds. Confirm the cascade warning shows correct counts. Commit. Verify all three tables are cleared for that set. Verify `entitydefaults` is unchanged.
 9. Attempt to create a duplicate set name. Verify inline error and no queue entry.
 10. Attempt to add a duplicate threshold piece count. Verify inline error.

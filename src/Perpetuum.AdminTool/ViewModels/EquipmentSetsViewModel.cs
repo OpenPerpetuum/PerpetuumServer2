@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -139,16 +140,16 @@ namespace Perpetuum.AdminTool.ViewModels
 
                 foreach (var t in thresholds)
                 {
-                    var display = AggregateFieldOptions
-                        .FirstOrDefault(f => f.Id == t.AggregateFieldId)?.Display
-                        ?? t.AggregateFieldId.ToString();
+                    var field = AggregateFieldOptions.FirstOrDefault(f => f.Id == t.AggregateFieldId);
                     var row = new EquipmentSetThresholdRow
                     {
-                        SetId            = t.SetId,
-                        RequiredPieces   = t.RequiredPieces,
-                        AggregateFieldId = t.AggregateFieldId,
-                        FieldDisplay     = display,
-                        BonusValue       = t.BonusValue,
+                        SetId                  = t.SetId,
+                        RequiredPieces         = t.RequiredPieces,
+                        OriginalRequiredPieces  = t.RequiredPieces,
+                        AggregateFieldId       = t.AggregateFieldId,
+                        FieldSystemName        = field?.Name ?? t.AggregateFieldId.ToString(),
+                        FieldDisplay           = field?.Display ?? t.AggregateFieldId.ToString(),
+                        BonusValue             = t.BonusValue,
                     };
                     row.PropertyChanged += OnThresholdPropertyChanged;
                     Thresholds.Add(row);
@@ -169,15 +170,23 @@ namespace Perpetuum.AdminTool.ViewModels
             if (sender is not EquipmentSetThresholdRow row) return;
             if (SelectedSet == null) return;
 
-            if (e.PropertyName == nameof(EquipmentSetThresholdRow.AggregateFieldId))
-            {
-                row.FieldDisplay = AggregateFieldOptions
-                    .FirstOrDefault(f => f.Id == row.AggregateFieldId)?.Display
-                    ?? row.AggregateFieldId.ToString();
-            }
-
             if (row.RequiredPieces > 0 && row.AggregateFieldId > 0)
             {
+                if (Thresholds.Any(t => !ReferenceEquals(t, row) && t.RequiredPieces == row.RequiredPieces))
+                {
+                    SetStatus($"A threshold for {row.RequiredPieces} piece(s) already exists.", isError: true);
+                    return;
+                }
+
+                if (e.PropertyName == nameof(EquipmentSetThresholdRow.RequiredPieces)
+                    && row.OriginalRequiredPieces > 0
+                    && row.OriginalRequiredPieces != row.RequiredPieces)
+                {
+                    _queue.Add(EquipmentSetChanges.BuildDeleteThreshold(
+                        SelectedSet.SetId, SelectedSet.Name, row.OriginalRequiredPieces));
+                    row.OriginalRequiredPieces = row.RequiredPieces;
+                }
+
                 _queue.Add(EquipmentSetChanges.BuildUpsertThreshold(
                     SelectedSet.SetId, SelectedSet.Name,
                     row.RequiredPieces, row.AggregateFieldId, row.BonusValue));
@@ -284,12 +293,28 @@ namespace Perpetuum.AdminTool.ViewModels
 
         // ── Add threshold ─────────────────────────────────────────────────────
 
-        [RelayCommand]
-        private void AddThreshold()
+        public void AddThreshold(Window owner)
         {
             if (SelectedSet == null) return;
-            var row = new EquipmentSetThresholdRow { SetId = SelectedSet.SetId };
+            var usedPieces = Thresholds.Select(t => t.RequiredPieces).ToHashSet();
+            var vm  = new AddSetThresholdViewModel(AggregateFieldOptions);
+            var win = new AddSetThresholdWindow(vm, usedPieces) { Owner = owner };
+            if (win.ShowDialog() != true || vm.SelectedField == null) return;
+
+            var row = new EquipmentSetThresholdRow
+            {
+                SetId                  = SelectedSet.SetId,
+                RequiredPieces         = vm.RequiredPieces,
+                OriginalRequiredPieces = vm.RequiredPieces,
+                AggregateFieldId       = vm.SelectedField.Id,
+                FieldSystemName        = vm.SelectedField.Name,
+                FieldDisplay           = vm.SelectedField.Display,
+                BonusValue             = vm.BonusValue,
+            };
             row.PropertyChanged += OnThresholdPropertyChanged;
+            _queue.Add(EquipmentSetChanges.BuildUpsertThreshold(
+                SelectedSet.SetId, SelectedSet.Name,
+                row.RequiredPieces, row.AggregateFieldId, row.BonusValue));
             Thresholds.Add(row);
         }
 

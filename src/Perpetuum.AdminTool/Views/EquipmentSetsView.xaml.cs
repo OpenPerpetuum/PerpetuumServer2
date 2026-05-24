@@ -9,6 +9,14 @@ namespace Perpetuum.AdminTool.Views
         public EquipmentSetsView()
         {
             InitializeComponent();
+            Loaded += OnFirstLoaded;
+        }
+
+        private async void OnFirstLoaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= OnFirstLoaded;
+            if (Vm.Sets.Count == 0)
+                await Vm.ReloadAsync();
         }
 
         private EquipmentSetsViewModel Vm => (EquipmentSetsViewModel)DataContext;
@@ -21,6 +29,11 @@ namespace Perpetuum.AdminTool.Views
         private void OnAddMemberClick(object sender, RoutedEventArgs e)
         {
             Vm.AddMember(Window.GetWindow(this)!);
+        }
+
+        private void OnAddThresholdClick(object sender, RoutedEventArgs e)
+        {
+            Vm.AddThreshold(Window.GetWindow(this)!);
         }
     }
 }
