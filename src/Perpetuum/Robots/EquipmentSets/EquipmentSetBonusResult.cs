@@ -1,22 +1,25 @@
 using Perpetuum.Items;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace Perpetuum.Robots.EquipmentSets
 {
     public sealed class EquipmentSetBonusResult
     {
-        public static readonly EquipmentSetBonusResult Empty =
-            new(Array.Empty<ItemPropertyModifier>(), new HashSet<int>());
+        private static readonly IReadOnlyDictionary<int, IReadOnlyList<ItemPropertyModifier>> _emptyDict =
+            new ReadOnlyDictionary<int, IReadOnlyList<ItemPropertyModifier>>(
+                new Dictionary<int, IReadOnlyList<ItemPropertyModifier>>());
 
-        public EquipmentSetBonusResult(
-            IReadOnlyList<ItemPropertyModifier> modifiers,
-            IReadOnlySet<int> activeSetIds)
+        public static readonly EquipmentSetBonusResult Empty = new(_emptyDict);
+
+        public EquipmentSetBonusResult(IReadOnlyDictionary<int, IReadOnlyList<ItemPropertyModifier>> modifiersPerSet)
         {
-            Modifiers = modifiers;
-            ActiveSetIds = activeSetIds;
+            ModifiersPerSet = modifiersPerSet;
+            Modifiers = modifiersPerSet.Values.SelectMany(x => x).ToArray();
         }
 
+        public IReadOnlyDictionary<int, IReadOnlyList<ItemPropertyModifier>> ModifiersPerSet { get; }
         public IReadOnlyList<ItemPropertyModifier> Modifiers { get; }
-        public IReadOnlySet<int> ActiveSetIds { get; }
     }
 }

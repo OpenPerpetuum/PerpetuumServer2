@@ -17,7 +17,6 @@ namespace Perpetuum.Robots.EquipmentSets
             if (fittedDefinitions == null)
                 return EquipmentSetBonusResult.Empty;
 
-            // Count fitted instances per set_id
             var countPerSet = new Dictionary<int, int>();
             foreach (int def in fittedDefinitions)
             {
@@ -31,32 +30,31 @@ namespace Perpetuum.Robots.EquipmentSets
             if (countPerSet.Count == 0)
                 return EquipmentSetBonusResult.Empty;
 
-            var modifiers = new List<ItemPropertyModifier>();
-            var activeSetIds = new HashSet<int>();
+            var modifiersPerSet = new Dictionary<int, IReadOnlyList<ItemPropertyModifier>>();
 
             foreach (KeyValuePair<int, int> entry in countPerSet)
             {
                 int setId = entry.Key;
                 int count = entry.Value;
-                bool anyThresholdMet = false;
+                List<ItemPropertyModifier> setModifiers = null;
 
                 foreach (SetBonusThreshold threshold in _repository.GetThresholds(setId))
                 {
                     if (threshold.RequiredPieces <= count)
                     {
-                        modifiers.Add(ItemPropertyModifier.Create(threshold.Field, threshold.Value));
-                        anyThresholdMet = true;
+                        setModifiers ??= new List<ItemPropertyModifier>();
+                        setModifiers.Add(ItemPropertyModifier.Create(threshold.Field, threshold.Value));
                     }
                 }
 
-                if (anyThresholdMet)
-                    activeSetIds.Add(setId);
+                if (setModifiers != null)
+                    modifiersPerSet[setId] = setModifiers; // List<T> upcast to IReadOnlyList<T>
             }
 
-            if (modifiers.Count == 0)
+            if (modifiersPerSet.Count == 0)
                 return EquipmentSetBonusResult.Empty;
 
-            return new EquipmentSetBonusResult(modifiers, activeSetIds);
+            return new EquipmentSetBonusResult(modifiersPerSet);
         }
     }
 }

@@ -33,11 +33,8 @@ namespace Perpetuum.Robots
         private readonly IntervalTimer overheatCooldownTimer;
         private const double HeatDissipation = 1.75;
 
-        private static readonly IReadOnlySet<int> _emptySetIds = new HashSet<int>();
-
         // Safe: Initialize() is called docked (no zone update) or at zone entry (before zone participation).
-        private IReadOnlyList<ItemPropertyModifier> _setBonusModifiers = Array.Empty<ItemPropertyModifier>();
-        private IReadOnlySet<int> _activeSetIds = _emptySetIds;
+        private EquipmentSetBonusResult _setBonusResult = EquipmentSetBonusResult.Empty;
         private readonly SetBonusEffectApplicator _setBonusEffectApplicator = new SetBonusEffectApplicator();
 
         protected Robot()
@@ -137,9 +134,7 @@ namespace Perpetuum.Robots
             InitComponents();
             if (EquipmentSetBonusCalculator != null)
             {
-                EquipmentSetBonusResult result = EquipmentSetBonusCalculator.Compute(Modules.Select(m => m.Definition));
-                _setBonusModifiers = result.Modifiers;
-                _activeSetIds = result.ActiveSetIds;
+                _setBonusResult = EquipmentSetBonusCalculator.Compute(Modules.Select(m => m.Definition));
             }
             base.Initialize();
         }
@@ -368,7 +363,7 @@ namespace Perpetuum.Robots
                 robotComponent.Update(time);
             }
 
-            _setBonusEffectApplicator.Update(this, _activeSetIds);
+            _setBonusEffectApplicator.Update(this, _setBonusResult.ModifiersPerSet);
 
             if (overheatCooldownTimer.Passed)
             {
