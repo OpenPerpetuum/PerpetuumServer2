@@ -287,7 +287,8 @@ namespace Perpetuum.AdminTool.ViewModels
         [RelayCommand]
         private void AddThreshold()
         {
-            var row = new EquipmentSetThresholdRow { SetId = SelectedSet?.SetId ?? 0 };
+            if (SelectedSet == null) return;
+            var row = new EquipmentSetThresholdRow { SetId = SelectedSet.SetId };
             row.PropertyChanged += OnThresholdPropertyChanged;
             Thresholds.Add(row);
         }
