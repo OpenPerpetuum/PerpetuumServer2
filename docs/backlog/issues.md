@@ -1,6 +1,37 @@
 # Last ID used
 
-019
+020
+
+## ISSUE-020 - NIC Spend activity not tracked for market purchases
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Activities
+
+### Problem
+The `NIC spend` daily objective does not credit points when a player buys an item on the market. A player bought an item costing over 1,000,000 NIC (activity rate: 1 pt per 10,000 NIC), the objective was active, buyer and seller had different IPs, but no completion announcement was made and no points were awarded.
+
+### Impact
+The `NIC spend` objective is silently broken for market purchases. Players cannot progress through or complete this daily objective, undermining season participation and reward integrity.
+
+### Known Facts
+- Objective is configured and active.
+- Rate: 1 point per 10,000 NIC.
+- Purchase amount: >1,000,000 NIC (should yield >100 points).
+- Buyer and seller had different IPs (rules out self-trade suppression as cause).
+- No completion announcement fired, confirming zero points were awarded.
+
+### Proposed Fix
+- Locate where market buy orders are fulfilled and identify where (or whether) the `NIC spend` activity hook is called.
+- Verify the hook call site passes the correct player, amount, and activity type.
+- Check if the activity tracking filters out market transactions (e.g. self-trade guard, zone guard, or missing call entirely).
+- Add the missing hook call or fix the incorrect filtering so NIC spent on market purchases is credited.
+
+### Notes
+Cross-reference the `DamageDone` and `NPC kill` activity paths to understand the expected hook pattern.
+Check whether the `NIC spend` hook is also missing for other spend types (crafting, repair, etc.) — this may be a broader gap.
+
+---
 
 ## ISSUE-004 - Avg. Points / Day shows negative values in Seasons Participation Health
 

@@ -4,6 +4,7 @@ using Perpetuum.Common.Loggers.Transaction;
 using Perpetuum.Data;
 using Perpetuum.Host.Requests;
 using Perpetuum.Services.MarketEngine;
+using Perpetuum.Services.Seasons;
 
 namespace Perpetuum.RequestHandlers.Markets
 {
@@ -100,6 +101,10 @@ namespace Perpetuum.RequestHandlers.Markets
                     //pay out
                     market.PayOutToSeller(seller, sellOrder.useCorporationWallet, resultItem.Definition, sellOrder.price, boughtQuantity, TransactionType.marketSell, sellOrder.IsAffectsAverage(), forCorporation);
 
+                    SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                        new ActivityEvent((long)(sellOrder.price * boughtQuantity), CounterpartyAccountId: seller.AccountId));
+                    SeasonServiceLocator.Instance?.RecordActivity(seller.Id, SeasonActivityType.NicEarned,
+                        new ActivityEvent((long)(sellOrder.price * boughtQuantity), CounterpartyAccountId: buyer.AccountId));
 
                     Market.SendMarketItemBoughtMessage(buyer,resultItem);
 
@@ -115,6 +120,9 @@ namespace Perpetuum.RequestHandlers.Markets
                     {
                         //infinite quantity case
                         _marketHelper.CashIn(buyer, useCorporationWallet, sellOrder.price, sellOrder.itemDefinition, quantity, TransactionType.marketBuy);
+
+                        SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                            new ActivityEvent((long)(sellOrder.price * quantity)));
 
                         var boughtItem = publicContainer.CreateAndAddItem(sellOrder.itemDefinition, false, item =>
                         {
@@ -153,6 +161,9 @@ namespace Perpetuum.RequestHandlers.Markets
                         }
 
                         _marketHelper.CashIn(buyer, useCorporationWallet, sellOrder.price, sellOrder.itemDefinition, boughtQuantity, TransactionType.marketBuy);
+
+                        SeasonServiceLocator.Instance?.RecordActivity(buyer.Id, SeasonActivityType.NicSpent,
+                            new ActivityEvent((long)(sellOrder.price * boughtQuantity)));
 
                         //average price
                         _marketHandler.InsertAveragePrice(market, sellOrder.itemDefinition, boughtQuantity * sellOrder.price, boughtQuantity);
