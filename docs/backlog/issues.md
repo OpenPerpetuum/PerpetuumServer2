@@ -1,6 +1,30 @@
 # Last ID used
 
-020
+021
+
+## ISSUE-021 - NPC fleeing state speed reduction insufficient or not applied
+
+Status: DONE
+Priority: HIGH
+Area: NPC AI / Combat
+
+### Problem
+Players report that NPCs in a fleeing state still move too fast. The expected maximum speed while fleeing is 75% of normal, but the reduction may be set too high or may not apply at all. Target value is 50% of normal max speed.
+
+### Impact
+NPCs can outrun or evade players while fleeing more effectively than intended, undermining combat balance and player experience.
+
+### Proposed Fix
+- Locate where the fleeing state applies a speed modifier to NPCs.
+- Verify the modifier is actually applied during fleeing (not silently skipped).
+- Change the maximum speed cap for the fleeing state from 75% to 50%.
+- Add a code-level assertion or log that confirms the modifier is applied when an NPC enters the fleeing state.
+
+### Notes
+Validate by tracing the NPC state machine: confirm the fleeing state handler sets the speed modifier and that the modifier reaches the movement/speed calculation layer.
+Check whether other states (e.g. roaming, chasing) use a similar modifier pattern and could be used as a reference.
+
+---
 
 ## ISSUE-020 - NIC Spend activity not tracked for market purchases
 

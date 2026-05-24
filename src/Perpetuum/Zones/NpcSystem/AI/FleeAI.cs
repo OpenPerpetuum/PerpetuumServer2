@@ -11,6 +11,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
     {
         private const int FallbackRetreatDistance = 60;
         private const int PassableSearchRadius = 10;
+        private const double FleeSpeedMultiplier = 0.50;
 
         private readonly PathFinder pathFinder;
         private PathMovement movement;
@@ -25,7 +26,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
         public override void Enter()
         {
-            smartCreature.CurrentSpeed = 0.75;
+            smartCreature.CurrentSpeed = FleeSpeedMultiplier;
             moduleActivators.AddRange(smartCreature.ActiveModules
                 .OfType<ArmorRepairModule>()
                 .Select(m => new ModuleActivator(m)));
@@ -64,8 +65,8 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 else
                 {
                     // WaypointMovement.Start resets CurrentSpeed to 1.0 on each new waypoint;
-                    // re-apply the 75% cap so the NPC actually moves slower while fleeing.
-                    smartCreature.CurrentSpeed = 0.75;
+                    // re-apply the 50% cap every tick so the NPC actually moves slower while fleeing.
+                    smartCreature.CurrentSpeed = FleeSpeedMultiplier;
                 }
             }
 
