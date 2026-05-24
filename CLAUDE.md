@@ -158,10 +158,11 @@ For any non-trivial task:
 1. Identify affected subsystems
 2. Identify relevant documentation
 3. Locate similar implementations
-4. Understand existing patterns
-5. Evaluate runtime implications
-6. Produce a short implementation plan
-7. Then implement
+4. Check `docs/graph/GRAPH_REPORT.md` — if the target type is in the God Nodes list, note high blast radius; run `.\tools\query-graph.ps1 <ClassName>` for full dependent enumeration
+5. Understand existing patterns
+6. Evaluate runtime implications
+7. Produce a short implementation plan
+8. Then implement
 
 ---
 
@@ -328,6 +329,7 @@ Avoid parallel abstractions unless justified.
 |---|---|
 | Main AI instructions | `CLAUDE.md` |
 | Architecture deep-dive | `.claude/knowledge/architecture.md` |
+| Codebase graph & impact analysis | `.claude/knowledge/codebase-graph.md` |
 | Specialist agents | `.claude/agents/<name>.md` |
 
 
