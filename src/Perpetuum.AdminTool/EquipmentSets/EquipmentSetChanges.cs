@@ -45,7 +45,7 @@ namespace Perpetuum.AdminTool.EquipmentSets
             int setId, string setName, int requiredPieces, int aggregateFieldId, double bonusValue)
         {
             var sid = SetIdExpr(setId, setName);
-            var val = bonusValue.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+            var val = SqlLiteral.Of(bonusValue);
             return new RawSqlChange(
                 $"equipment_set_bonus_thresholds: upsert set '{setName}' pieces {requiredPieces}",
                 $"MERGE INTO equipment_set_bonus_thresholds AS target " +
