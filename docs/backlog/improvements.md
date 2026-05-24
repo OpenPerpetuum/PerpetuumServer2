@@ -254,7 +254,7 @@ Admin Tool completion count reflects the running day only; historical per-day st
 
 ## IMPROVEMENT-025 - Equipment Set Synergy Bonuses
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Combat / Items / Modules
 
