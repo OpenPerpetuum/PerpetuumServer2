@@ -38,6 +38,7 @@ namespace Perpetuum.Robots
         // Safe: Initialize() is called docked (no zone update) or at zone entry (before zone participation).
         private IReadOnlyList<ItemPropertyModifier> _setBonusModifiers = Array.Empty<ItemPropertyModifier>();
         private IReadOnlySet<int> _activeSetIds = _emptySetIds;
+        private readonly SetBonusEffectApplicator _setBonusEffectApplicator = new SetBonusEffectApplicator();
 
         protected Robot()
         {
@@ -366,6 +367,8 @@ namespace Perpetuum.Robots
             {
                 robotComponent.Update(time);
             }
+
+            _setBonusEffectApplicator.Update(this, _activeSetIds);
 
             if (overheatCooldownTimer.Passed)
             {
