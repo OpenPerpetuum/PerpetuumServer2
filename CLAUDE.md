@@ -158,10 +158,11 @@ For any non-trivial task:
 1. Identify affected subsystems
 2. Identify relevant documentation
 3. Locate similar implementations
-4. Understand existing patterns
-5. Evaluate runtime implications
-6. Produce a short implementation plan
-7. Then implement
+4. Check `docs/graph/GRAPH_REPORT.md` for God Nodes (high-risk symbols); run `.\tools\query-graph.ps1 <ClassName> -Direction in` to enumerate direct dependents — a null result is normal (most classes have no detected importers) and does not mean the change is safe (if `graph.json` is absent, skip and continue to step 5)
+5. Understand existing patterns
+6. Evaluate runtime implications
+7. Produce a short implementation plan
+8. Then implement
 
 ---
 
@@ -328,6 +329,7 @@ Avoid parallel abstractions unless justified.
 |---|---|
 | Main AI instructions | `CLAUDE.md` |
 | Architecture deep-dive | `.claude/knowledge/architecture.md` |
+| Codebase graph & impact analysis | `.claude/knowledge/codebase-graph.md` |
 | Specialist agents | `.claude/agents/<name>.md` |
 
 

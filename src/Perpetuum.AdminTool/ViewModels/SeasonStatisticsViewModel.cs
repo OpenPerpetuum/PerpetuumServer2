@@ -20,6 +20,8 @@ namespace Perpetuum.AdminTool.ViewModels
         public ObservableCollection<TierDistributionRow> TierDistribution { get; } = new();
         public ObservableCollection<LeaderboardEntryRow> Top10 { get; } = new();
         public ObservableCollection<ObjectiveCompletionRow> ObjectiveCompletion { get; } = new();
+        public ObservableCollection<TodaysDailyObjectiveRow> TodaysDailyObjectives { get; } = new();
+        [ObservableProperty] private bool _hasTodaysDailyObjectives;
 
         public SeasonStatisticsViewModel(SeasonRepository repo)
         {
@@ -46,6 +48,11 @@ namespace Perpetuum.AdminTool.ViewModels
 
                 ObjectiveCompletion.Clear();
                 foreach (var r in await _repo.LoadObjectiveCompletionAsync(seasonId)) ObjectiveCompletion.Add(r);
+
+                TodaysDailyObjectives.Clear();
+                foreach (var r in await _repo.LoadTodaysDailyObjectivesAsync(seasonId))
+                    TodaysDailyObjectives.Add(r);
+                HasTodaysDailyObjectives = TodaysDailyObjectives.Count > 0;
             }
             finally { IsLoading = false; }
         }

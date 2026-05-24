@@ -1,125 +1,59 @@
 # Last ID used
 
-019
+021
 
-## ISSUE-019 - CI build fails for AdminToolInstaller: NETSDK1047 missing RID target in assets file
-
-Status: DONE
-Priority: HIGH
-Area: Build / CI
-
-### Problem
-The CI pipeline step `dotnet build src/Perpetuum.AdminToolInstaller/Perpetuum.AdminToolInstaller.wixproj --no-restore --configuration Release -p:Platform=x64` fails with:
-
-```
-NETSDK1047: Assets file '...Perpetuum.AdminTool\obj\project.assets.json' doesn't have a target for 'net8.0-windows/win-x64'.
-Ensure that restore has run and that you have included 'net8.0-windows' in the TargetFrameworks for your project.
-You may also need to include 'win-x64' in your project's RuntimeIdentifiers.
-```
-
-### Impact
-The AdminTool installer cannot be built in CI, blocking release packaging of the AdminTool.
-
-### Root Cause
-The build step uses `--no-restore`, so NuGet restore never runs for the `Perpetuum.AdminTool` dependency. The assets file in `obj/` is either absent or was produced by a prior restore without the `win-x64` RID, so the SDK cannot resolve the `net8.0-windows/win-x64` target.
-
-### Proposed Fix
-One or more of:
-1. Add a `dotnet restore` step for `Perpetuum.AdminToolInstaller.wixproj` (or the full solution) before the `--no-restore` build, with `-p:RuntimeIdentifier=win-x64`.
-2. Ensure `Perpetuum.AdminTool.csproj` declares `<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>` so restore always produces the required RID target.
-3. Alternatively, drop `--no-restore` from the AdminToolInstaller build step and rely on the SDK to restore inline.
-
-### Notes
-The error path is `D:\a\...` (GitHub Actions runner). The fix must be applied to `.github/workflows/dotnet.yml` and/or the `.csproj`.
-
----
-
-## ISSUE-018 - SeasonRepository.GetActiveSeason throws InvalidCastException on daily_objectives_per_day
-
-Status: DONE
-Priority: CRITICAL
-Area: Seasons / Server
-
-### Problem
-The server crashed on every `SeasonService.Update` tick with `System.InvalidCastException: Unable to cast object of type 'System.Int16' to type 'System.Nullable\`1[System.Int32]'` when an active season existed.
-
-### Root Cause
-`daily_objectives_per_day` is `smallint [null]` in the DB — SQL Server returns a boxed `System.Int16`. `DataRecordExtensions.GetValue<T>` does a direct unbox cast `(T)record.GetValue(index)`. The CLR cannot unbox an `Int16` as `Nullable<Int32>` — the unbox target must match the stored type exactly. The crash occurred in all three season-loading methods: `GetActiveSeason`, `GetSeasonById`, and `GetPendingRecurringSeason`.
-
-The AdminTool's `SeasonRepository` already handled this correctly with explicit `reader.GetInt16(11)` → `(int)` widening.
-
-### Fix
-Changed all three `record.GetValue<int?>("daily_objectives_per_day")` calls to `(int?)record.GetValue<short?>("daily_objectives_per_day")`. This reads the value with the correct CLR type (`Int16`) and widens to `int?` at the call site. `Season.DailyObjectivesPerDay` stays `int?` — no downstream changes required.
-
-### Notes
-`recurrence_gap_days` is `int [null]` — `GetValue<int?>` is correct there and is not affected.
-`GetValue<T>` has no numeric widening; other smallint/tinyint columns read as `int?` will hit the same issue if introduced.
-
----
-
-## ISSUE-017 - Seasons Objectives tab: Activity type selector does not show all active activity types
-
-Status: DONE
-Priority: CRITICAL
-Area: Seasons / Admin Tool
-
-### Problem
-On the Admin Tool Seasons Objectives tab, the Activity type selector (dropdown/picker) did not display all active activity types. The Phase 1 (non-combat) and Phase 2 (combat) types added to `SeasonActivityType` were never added to the UI option lists.
-
-### Root Cause
-`SeasonDetailViewModel.ActivityTypeOptions` and `SeasonWizardViewModel.ObjectiveActivityTypeOptions` were both hardcoded lists of 9 types. `SeasonActivityType` has 21 values — 12 were absent from both lists: `Prototyping`, `ReverseEngineering`, `Production`, `ArtifactFound`, `EpEarned`, `DamageDone`, `DamageReceived`, `ArmorRestored`, `EnergyDrainDealt`, `EnergyDrainReceived`, `EnergyTransferDealt`, `EnergyTransferReceived`.
-
-### Fix
-Added all 12 missing types to `ActivityTypeOptions` in `SeasonDetailViewModel.cs` and `ObjectiveActivityTypeOptions` in `SeasonWizardViewModel.cs`. Labels match `SeasonActivityRateRow.ActivityTypeLabel`.
-
----
-
-## ISSUE-016 - Saving Daily Objectives Per Day in AdminTool causes varchar to datetime cast error
-
-Status: DONE
-Priority: CRITICAL
-Area: Seasons / Admin Tool
-
-### Problem
-In the AdminTool Seasons view, saving the Daily Objectives Per Day field produces a SQL cast error: implicit or explicit conversion from varchar to datetime fails. The save operation aborts and the value is not persisted.
-
-### Impact
-Operators cannot configure Daily Objectives Per Day at all — the field is effectively broken. Any season that requires this setting cannot be properly administered.
-
-### Root Cause
-The `start_time` and `end_time` string literals in `SeasonChanges.BuildInsert` / `BuildUpdate` and `SeasonWizardViewModel.BuildSeasonScript` used the format `'yyyy-MM-dd HH:mm:ss'` (space separator). SQL Server's implicit varchar-to-datetime conversion for this format is locale/DATEFORMAT-sensitive. The ISO 8601 format `'yyyy-MM-ddTHH:mm:ss'` (T separator) is always accepted by SQL Server regardless of collation or DATEFORMAT. The `daily_objectives_per_day` field itself (`SqlLiteral.OfNullableInt`) is correct — it generates a numeric literal or NULL. The error surfaced when users first exercised the Save General path after the new field gave them a reason to use it.
-
-### Fix
-Changed `yyyy-MM-dd HH:mm:ss` → `yyyy-MM-ddTHH:mm:ss` in:
-- `SeasonChanges.cs` `BuildInsert` and `BuildUpdate` (both start_time and end_time)
-- `SeasonWizardViewModel.cs` `BuildSeasonScript`
-
-### Notes
-Field was recently introduced (commits `837d188`, `0e59ae9`, `6d5432c`, `b442883`).
-`daily_objectives_per_day` column type is `smallint [null]` — confirmed correct in schema docs.
-
----
-
-## ISSUE-015 - Seasons Objectives tab: selected target not rendered in table cell
+## ISSUE-021 - NPC fleeing state speed reduction insufficient or not applied
 
 Status: DONE
 Priority: HIGH
-Area: Seasons / Admin Tool
+Area: NPC AI / Combat
 
 ### Problem
-On the Admin Tool Seasons Objectives tab, when an objective has a target selected, the chosen value is not displayed in the table cell. The value is stored and visible when the user clicks into the cell (via the picker), but the table column renders as blank.
+Players report that NPCs in a fleeing state still move too fast. The expected maximum speed while fleeing is 75% of normal, but the reduction may be set too high or may not apply at all. Target value is 50% of normal max speed.
 
 ### Impact
-Operators cannot confirm at a glance which target is assigned to each objective. They must click every cell individually to audit or verify configurations, making bulk review error-prone and slow.
+NPCs can outrun or evade players while fleeing more effectively than intended, undermining combat balance and player experience.
 
 ### Proposed Fix
-- Locate the cell template / data binding for the target column in the Objectives tab DataGrid.
-- Identify why the display path does not render the selected value (likely a missing `DisplayMemberPath`, wrong binding path, or the display value not being propagated back to the row model after picker selection).
-- Ensure the table cell shows the human-readable target label (same value visible in the picker) once a target is selected, without requiring the user to click the cell.
+- Locate where the fleeing state applies a speed modifier to NPCs.
+- Verify the modifier is actually applied during fleeing (not silently skipped).
+- Change the maximum speed cap for the fleeing state from 75% to 50%.
+- Add a code-level assertion or log that confirms the modifier is applied when an NPC enters the fleeing state.
 
 ### Notes
-The picker itself works correctly — the issue is purely in how the selected value is reflected back to the table row display.
-Check whether the binding uses a converter or a nested property that is not notifying change on selection commit.
+Validate by tracing the NPC state machine: confirm the fleeing state handler sets the speed modifier and that the modifier reaches the movement/speed calculation layer.
+Check whether other states (e.g. roaming, chasing) use a similar modifier pattern and could be used as a reference.
+
+---
+
+## ISSUE-020 - NIC Spend activity not tracked for market purchases
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Activities
+
+### Problem
+The `NIC spend` daily objective does not credit points when a player buys an item on the market. A player bought an item costing over 1,000,000 NIC (activity rate: 1 pt per 10,000 NIC), the objective was active, buyer and seller had different IPs, but no completion announcement was made and no points were awarded.
+
+### Impact
+The `NIC spend` objective is silently broken for market purchases. Players cannot progress through or complete this daily objective, undermining season participation and reward integrity.
+
+### Known Facts
+- Objective is configured and active.
+- Rate: 1 point per 10,000 NIC.
+- Purchase amount: >1,000,000 NIC (should yield >100 points).
+- Buyer and seller had different IPs (rules out self-trade suppression as cause).
+- No completion announcement fired, confirming zero points were awarded.
+
+### Proposed Fix
+- Locate where market buy orders are fulfilled and identify where (or whether) the `NIC spend` activity hook is called.
+- Verify the hook call site passes the correct player, amount, and activity type.
+- Check if the activity tracking filters out market transactions (e.g. self-trade guard, zone guard, or missing call entirely).
+- Add the missing hook call or fix the incorrect filtering so NIC spent on market purchases is credited.
+
+### Notes
+Cross-reference the `DamageDone` and `NPC kill` activity paths to understand the expected hook pattern.
+Check whether the `NIC spend` hook is also missing for other spend types (crafting, repair, etc.) — this may be a broader gap.
 
 ---
 
@@ -186,58 +120,3 @@ Add a `SaveGeneral` guard in `SeasonDetailViewModel`: if `Season.IsRecurring && 
 ### Notes
 Introduced by IMPROVEMENT-001 (Recurring Seasons). The wizard already validates this (gap must be ≥ 1 day), but the detail view has no equivalent guard.
 See `SeasonDetailViewModel.cs` `SaveGeneral` command for the save entry point.
-
----
-
-## ISSUE-013 - Robot creation does not populate options field with part definitions
-
-Status: DONE
-Priority: HIGH
-Area: Game Content / Robots
-
-### Problem
-When a new robot is added, the `options` field for the robot entity is not populated with its part definitions in `GenXY` format. The options field must contain entries such as:
-
-```
-#head=n3036
-#chassis=n3037
-#leg=n3038
-#inventory=n332
-```
-
-If new robot parts are created as part of the robot creation process, the definitions generated for those parts must be referenced in these options entries.
-
-### Impact
-Robots without correctly populated options are non-functional in-game — the server cannot resolve their component parts, preventing spawning, equipping, or use of the robot.
-
-### Proposed Fix
-- Identify where robot entity creation writes the `options` field (content SQL pipeline or admin tool robot creation flow).
-- Ensure that after part definitions are created (head, chassis, leg, inventory), their resolved definition IDs are written back to the robot's `options` field using the `#head=nXXXX` / `#chassis=nXXXX` / `#leg=nXXXX` / `#inventory=nXXXX` format.
-- If part definitions are generated dynamically, the options population step must run after the part definitions exist and reference their actual IDs.
-
-### Notes
-Part definition IDs must be resolved dynamically — do not hardcode.
-Follows the `GenXY` naming convention where `n` prefix denotes a definition reference by numeric ID.
-
----
-
-## ISSUE-014 - Robot part clone does not copy or expose options field for editing
-
-Status: DONE
-Priority: HIGH
-Area: Game Content / Robots / Admin Tool
-
-### Problem
-When cloning a robot part, the `options` field is not carried over from the source part and is not presented in the editor. The clone workflow leaves the options field empty and provides no way to review or modify it before committing.
-
-### Impact
-Cloned robot parts silently lose their options data, requiring manual correction after the fact. This is error-prone and inconsistent with the rest of the clone workflow.
-
-### Proposed Fix
-- Copy the source part's `options` field into the clone candidate at the point of clone creation.
-- Expose the options field in the clone editor using the same old/new pattern already used on the Basic tab: display the original value as read-only on the left, and provide an editable new value field on the right.
-- Reuse the existing old/new field component — do not introduce a new pattern.
-
-### Notes
-Follow the existing Basic tab old/new UI pattern exactly for consistency.
-The old (source) value must be read-only; only the new value field is editable.

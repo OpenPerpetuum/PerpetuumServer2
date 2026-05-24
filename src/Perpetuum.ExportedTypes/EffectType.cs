@@ -139,5 +139,6 @@ namespace Perpetuum.ExportedTypes
         effect_field_stealth = 136,
         effect_field_eccm = 137,
         effect_field_reactor_stabilizer = 138,
+        effect_equipment_set_bonus = 139,
     }
 }

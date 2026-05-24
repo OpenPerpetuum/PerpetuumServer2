@@ -19,6 +19,7 @@ using Perpetuum.Modules.Terraforming;
 using Perpetuum.Modules.Weapons;
 using Perpetuum.Players;
 using Perpetuum.Robots;
+using Perpetuum.Robots.EquipmentSets;
 using Perpetuum.Services.ItemShop;
 using Perpetuum.Services.Looting;
 using Perpetuum.Services.MarketEngine;
@@ -753,6 +754,15 @@ namespace Perpetuum.Bootstrapper.Modules
         {
             _ = builder.RegisterType<ItemDeployerHelper>();
             _ = builder.RegisterType<DefaultPropertyModifierReader>().AsSelf().OnActivated(e => e.Instance.Init()).SingleInstance();
+
+            builder.RegisterType<EquipmentSetRepository>()
+                .As<IEquipmentSetRepository>()
+                .SingleInstance()
+                .OnActivated(e => e.Instance.Init());
+
+            builder.RegisterType<EquipmentSetBonusCalculator>()
+                .As<IEquipmentSetBonusCalculator>()
+                .SingleInstance();
         }
 
     }

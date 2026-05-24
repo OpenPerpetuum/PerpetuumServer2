@@ -151,8 +151,17 @@ namespace Perpetuum.Services.Seasons
             }
             else if (previous?.Id != season.Id || _dailyPool.Date == DateOnly.MinValue)
             {
+                // Fires on cold boot AND on the first RefreshCache after a season is activated via admin command.
+                bool isFirstLoad = _dailyPool.Date == DateOnly.MinValue;
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
                 _dailyPool = new DailyPool(SelectDailyPool(season, _activeObjectives, today), today);
+                if (isFirstLoad)
+                {
+                    int totalDaily = _activeObjectives.Count(o => o.IsDaily);
+                    var poolObjs = _activeObjectives.Where(o => _dailyPool.Ids.Contains(o.Id)).ToList();
+                    if (poolObjs.Count > 0)
+                        AnnounceDailyPool(poolObjs, totalDaily);
+                }
             }
 
             if (_lastNotifiedSeasonId != season.Id)
@@ -189,7 +198,7 @@ namespace Perpetuum.Services.Seasons
 
             if (evt.CounterpartyAccountId.HasValue)
             {
-                var myIp    = GetMostRecentSessionIp(Character.Get(characterId).AccountId);
+                var myIp = GetMostRecentSessionIp(Character.Get(characterId).AccountId);
                 var theirIp = GetMostRecentSessionIp(evt.CounterpartyAccountId.Value);
                 if (myIp != null && theirIp != null &&
                     string.Equals(myIp, theirIp, StringComparison.OrdinalIgnoreCase))
@@ -416,7 +425,7 @@ namespace Perpetuum.Services.Seasons
             sb.AppendLine();
             sb.AppendLine($"Today's daily objectives ({pool.Count} of {totalDailyCount}):");
             foreach (var obj in pool)
-                sb.AppendLine($"  — {obj.Name}");
+                sb.AppendLine($"  — {obj.Name}: {obj.Description}");
             sb.AppendLine();
             sb.AppendLine("Complete them for bonus season points and rewards!");
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, sb.ToString());
@@ -587,28 +596,28 @@ namespace Perpetuum.Services.Seasons
 
         private static string ActivityTypeName(SeasonActivityType type) => type switch
         {
-            SeasonActivityType.NpcKill               => "NPC Kill",
-            SeasonActivityType.PvpKill               => "PvP Kill",
-            SeasonActivityType.MissionComplete       => "Mission Completed",
-            SeasonActivityType.MineralMined          => "Mineral Mined",
-            SeasonActivityType.EpSpent               => "EP Spent",
-            SeasonActivityType.NicEarned             => "NIC Earned",
-            SeasonActivityType.NicSpent              => "NIC Spent",
-            SeasonActivityType.IntrusionPoint        => "Intrusion SAP",
-            SeasonActivityType.Prototyping           => "Prototyping",
-            SeasonActivityType.ReverseEngineering    => "Reverse Engineering",
-            SeasonActivityType.Production            => "Production",
-            SeasonActivityType.ArtifactFound         => "Artifact Found",
-            SeasonActivityType.EpEarned              => "EP Earned",
-            SeasonActivityType.DamageDone            => "Damage Done",
-            SeasonActivityType.DamageReceived        => "Damage Received",
-            SeasonActivityType.ArmorRestored         => "Armor Restored",
-            SeasonActivityType.EnergyDrainDealt      => "Energy Drained (Dealt)",
-            SeasonActivityType.EnergyDrainReceived   => "Energy Drained (Received)",
-            SeasonActivityType.EnergyTransferDealt   => "Energy Transferred (Dealt)",
+            SeasonActivityType.NpcKill => "NPC Kill",
+            SeasonActivityType.PvpKill => "PvP Kill",
+            SeasonActivityType.MissionComplete => "Mission Completed",
+            SeasonActivityType.MineralMined => "Mineral Mined",
+            SeasonActivityType.EpSpent => "EP Spent",
+            SeasonActivityType.NicEarned => "NIC Earned",
+            SeasonActivityType.NicSpent => "NIC Spent",
+            SeasonActivityType.IntrusionPoint => "Intrusion SAP",
+            SeasonActivityType.Prototyping => "Prototyping",
+            SeasonActivityType.ReverseEngineering => "Reverse Engineering",
+            SeasonActivityType.Production => "Production",
+            SeasonActivityType.ArtifactFound => "Artifact Found",
+            SeasonActivityType.EpEarned => "EP Earned",
+            SeasonActivityType.DamageDone => "Damage Done",
+            SeasonActivityType.DamageReceived => "Damage Received",
+            SeasonActivityType.ArmorRestored => "Armor Restored",
+            SeasonActivityType.EnergyDrainDealt => "Energy Drained (Dealt)",
+            SeasonActivityType.EnergyDrainReceived => "Energy Drained (Received)",
+            SeasonActivityType.EnergyTransferDealt => "Energy Transferred (Dealt)",
             SeasonActivityType.EnergyTransferReceived => "Energy Transferred (Received)",
-            SeasonActivityType.PlantHarvested        => "Plant Harvested",
-            _                                         => type.ToString(),
+            SeasonActivityType.PlantHarvested => "Plant Harvested",
+            _ => type.ToString(),
         };
     }
 }

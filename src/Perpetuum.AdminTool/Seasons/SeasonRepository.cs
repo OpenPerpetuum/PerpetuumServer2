@@ -272,6 +272,109 @@ namespace Perpetuum.AdminTool.Seasons
             if (v == null || v == System.DBNull.Value) return 0.0;
             return System.Convert.ToDouble(v);
         }
+
+        public async Task<List<TodaysDailyObjectiveRow>> LoadTodaysDailyObjectivesAsync(int seasonId)
+        {
+            await using var cn = new SqlConnection(_connection.BuildConnectionString());
+            await cn.OpenAsync();
+
+            // 1. Load daily_objectives_per_day for the season
+            int? dailyPerDay;
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT daily_objectives_per_day FROM seasons WHERE id = @seasonId";
+                cmd.Parameters.AddWithValue("@seasonId", seasonId);
+                var raw = await cmd.ExecuteScalarAsync();
+                dailyPerDay = raw == null || raw == DBNull.Value ? (int?)null : (int)(short)raw;
+            }
+
+            // 2. Load all is_daily objectives ordered by display_order
+            var daily = new List<(int Id, string Name, SeasonActivityType ActivityType, long TargetValue)>();
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT id, name, activity_type, target_value " +
+                    "FROM season_objectives " +
+                    "WHERE season_id = @seasonId AND is_daily = 1 " +
+                    "ORDER BY display_order";
+                cmd.Parameters.AddWithValue("@seasonId", seasonId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    daily.Add((
+                        reader.GetInt32(0),
+                        reader.IsDBNull(1) ? "" : reader.GetString(1),
+                        (SeasonActivityType)reader.GetInt32(2),
+                        reader.GetInt64(3)
+                    ));
+                }
+            }
+
+            if (daily.Count == 0)
+                return [];
+
+            // 3. Compute pool using same seeded Fisher-Yates as SeasonService.SelectDailyPool
+            List<(int Id, string Name, SeasonActivityType ActivityType, long TargetValue)> pool;
+            if (!dailyPerDay.HasValue || dailyPerDay.Value >= daily.Count)
+            {
+                pool = daily;
+            }
+            else
+            {
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                // Precedence: * binds tighter than ^ — result is (seasonId * 397) XOR today.DayNumber
+                int seed = seasonId * 397 ^ today.DayNumber;
+                var rng = new Random(seed);
+                var shuffled = daily.ToList();
+                for (int i = shuffled.Count - 1; i > 0; i--)
+                {
+                    int j = rng.Next(i + 1);
+                    (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
+                }
+                pool = shuffled.Take(dailyPerDay.Value).ToList();
+            }
+
+            if (pool.Count == 0)
+                return [];
+
+            // 4. Query completion counts for pool IDs scoped to today's day_window
+            var ids = pool.Select(o => o.Id).ToList();
+            var idParams = string.Join(",", ids.Select((_, i) => $"@id{i}"));
+            var counts = new Dictionary<int, int>();
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandText =
+                    $"SELECT o.id, COUNT(DISTINCT p.character_id) AS completions_today " +
+                    $"FROM season_objectives o " +
+                    $"LEFT JOIN season_objective_progress p " +
+                    $"    ON p.objective_id = o.id " +
+                    $"   AND p.season_id = @seasonId " +
+                    $"   AND p.day_window = CAST(GETUTCDATE() AS date) " +
+                    $"   AND p.completed = 1 " +
+                    $"WHERE o.season_id = @seasonId AND o.id IN ({idParams}) " +
+                    $"GROUP BY o.id";
+                cmd.Parameters.AddWithValue("@seasonId", seasonId);
+                for (int i = 0; i < ids.Count; i++)
+                    cmd.Parameters.AddWithValue($"@id{i}", ids[i]);
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                    counts[reader.GetInt32(0)] = reader.GetInt32(1);
+            }
+
+            // Restore display_order (shuffle randomised pool; daily is ordered by display_order)
+            var displayIndex = daily
+                .Select((o, idx) => (o.Id, idx))
+                .ToDictionary(x => x.Id, x => x.idx);
+
+            return pool
+                .OrderBy(o => displayIndex.GetValueOrDefault(o.Id, int.MaxValue))
+                .Select(o => new TodaysDailyObjectiveRow(
+                    o.Name,
+                    o.ActivityType,
+                    o.TargetValue,
+                    counts.GetValueOrDefault(o.Id, 0)))
+                .ToList();
+        }
     }
 
     public record TierDistributionRow(int TierNumber, string TierName, int ClaimCount);

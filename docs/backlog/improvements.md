@@ -1,6 +1,6 @@
 # Last ID used
 
-023
+029
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -25,64 +25,6 @@ Hardcoded strings are fragile: a rename or new deployment environment requires h
 ### Notes
 Audit starting points: seasons announcement code, chat subsystem, any admin tool chat/broadcast helpers.
 Keep backward compatibility with existing DB channel records — constants should match stored names unless a migration is also performed.
-
----
-
-## IMPROVEMENT-005 - Seasons: Additional Activity Types
-
-Status: DONE
-Priority: MEDIUM
-Area: Seasons / Activities
-
-### Description
-Expand the Seasons activity tracking system with 12 new activity types implemented in two phases. All types integrate with the existing `RecordActivity` pipeline with no DB schema changes.
-
-### Phase 1 — Non-combat types (enum values 9–13)
-- `Prototyping` (9) — hook in ProductionProcessor.cs at job completion, branch on job type
-- `ReverseEngineering` (10) — same hook, different job type branch
-- `Production` (11) — same hook, combined items + robots
-- `ArtifactFound` (12) — hook in ArtifactScanner.cs after EP boost call; amount = 1
-- `EpEarned` (13) — hook all `AddExtensionPointsBoostAndLog` call sites + passive EP accumulation path
-
-### Phase 2 — Combat types (enum values 14–20)
-- `DamageDone` (14) / `DamageReceived` (15) — hook in TakeDamage/ApplyDamageResult; amount = HP dealt
-- `ArmorRestored` (16) — hook repair module application; character = repairer; amount = HP restored
-- `EnergyDrainDealt` (17) / `EnergyDrainReceived` (18) — neutralizer + drainer modules; amount = energy removed
-- `EnergyTransferDealt` (19) / `EnergyTransferReceived` (20) — transfer module; amount = energy transferred
-
-### Anti-farming
-Handled via `unit_scale` in rates (set high for high-frequency types). Training character filter applies automatically. No new cap infrastructure needed.
-
-### Spec
-`docs/superpowers/specs/2026-05-16-improvement-005-additional-activity-types-design.md`
-
-### Notes
-Distance Travelled was deferred — see [[IMPROVEMENT-015]].
-Verify passive EP accumulation call site (AccountManager.cs or dedicated scheduler) before wiring EpEarned.
-Confirm NPCs do not have character IDs that would cause accidental season point accumulation on DamageReceived.
-
----
-
-## IMPROVEMENT-006 - Daily Objectives
-
-Status: DONE
-Priority: MEDIUM
-Area: Seasons / Objectives
-
-### Description
-Introduce daily objectives: a set of objectives that reset and re-issue automatically every day. The system should reuse or extend existing objective infrastructure wherever possible, adding only the recurrence scheduling layer on top.
-
-### Impact
-Daily objectives provide a regular engagement loop that encourages players to log in consistently, broadening the appeal of the seasons system beyond one-time or long-horizon goals.
-
-### Implementation
-Extended `season_objectives` with `is_daily` (bit) and `package_id` (int, nullable). Added `day_window` (date, sentinel `1900-01-01` for regular, `UtcNow.Date` for daily) to `season_objective_progress` and rebuilt its PK to `(character_id, season_id, objective_id, day_window)`. No reset scheduler needed — fresh row per day via existing MERGE. Optional reward package delivered on daily completion via `InsertRedeemableItems`. Admin Tool gains Is Daily checkbox column, Reward Package combobox column, and All/One-time/Daily filter. Branch: `p36.1`.
-
-### Notes
-Depends on [[ISSUE-001]] — daily reset boundary must use UTC to be consistent across deployments.
-See [[IMPROVEMENT-005]] for new activity types that could back daily objective targets.
-See [[IMPROVEMENT-001]] for recurring season design — daily objectives are a finer-grained recurrence within a season.
-Reset time is hardcoded UTC midnight (configurable reset time deferred).
 
 ---
 
@@ -135,65 +77,6 @@ Role classification gives AI subsystems and content systems a stable, queryable 
 Role and rank (see [[IMPROVEMENT-007]]) are complementary attributes — implement consistently (same table, same read path, same Admin Tool panel).
 If season activity types need to filter by NPC role (see [[IMPROVEMENT-005]]), role must be accessible at the point where kill events are emitted.
 Keep the initial role set conservative; adding roles later is cheaper than changing existing ones after downstream systems reference them.
-
----
-
-## IMPROVEMENT-009 - Targeted Objectives
-
-Status: DONE
-Priority: LOW
-Area: Seasons / Objectives
-Spec: `docs/superpowers/specs/2026-05-19-improvement-009-targeted-objectives-design.md`
-
-### Description
-Extend the objective system to support targeted objectives, where a specific subject must be matched for progress to count. The target is activity-type-dependent — for example, a mining objective can target a specific ore type ("Mine 100 000 Colixium"), a kill objective can target an NPC role ("Kill 50 Combat NPCs") or rank, a production objective can target an item category, and so on.
-
-### Impact
-Targeted objectives allow season designers to create more varied and specific challenges, directing player behaviour toward particular content rather than rewarding any activity of a given type. This significantly increases the design space for seasons and daily objectives.
-
-### Proposed Implementation
-- Extend the objective definition schema with an optional `target_filter` structure: a type-discriminated payload whose shape is determined by the activity type (e.g. `{ type: "item", definition_id: 123 }` for mining, `{ type: "npc_role", role: 1 }` for kills).
-- Each activity handler is responsible for evaluating whether the event matches the objective's target filter before crediting progress; no-filter objectives behave as today (match all).
-- Target filter types to implement initially, aligned with supported activity types:
-  - **Mining** — specific ore `definition_id` or ore category.
-  - **NPC kill** — NPC `role` (see [[IMPROVEMENT-008]]) and/or `rank` (see [[IMPROVEMENT-007]]).
-  - **Production** — item category or specific `definition_id`.
-  - **Artifacting** — artifact tier or island type.
-  - **Island visitation** — specific island or island category (alpha/beta/gamma).
-- Admin Tool: when defining an objective, show a target picker whose options are driven by the selected activity type.
-- Objective display text should incorporate the target name (resolved from `definition_id` or enum label) for readable in-game descriptions.
-
-### Notes
-Depends on [[IMPROVEMENT-005]] for the activity types that targeted objectives will filter against.
-Depends on [[IMPROVEMENT-007]] and [[IMPROVEMENT-008]] for NPC rank/role filtering on kill objectives.
-Target filter should be stored as structured data (e.g. JSON column or normalised filter table) rather than freeform strings to allow reliable matching and Admin Tool rendering.
-Keep the filter evaluation path lightweight — it runs on every matching game event and must not introduce blocking or excessive allocation in hot paths.
-
----
-
-## IMPROVEMENT-012 - Seasons Tiers tab: on-the-fly save generating a single change script
-
-Status: DONE
-Priority: HIGH
-Area: Seasons / Admin Tool
-Spec: `docs/superpowers/specs/2026-05-16-improvement-012-tiers-tab-queue-save-design.md`
-
-### Description
-The Tiers tab in the Seasons Admin Tool currently uses a different save mechanic from the Activity Rates and Objectives tabs. Activity Rates and Objectives already support on-the-fly editing that produces a single consolidated change script per save. The Tiers tab should adopt the same pattern so all three tabs behave consistently.
-
-### Impact
-Inconsistent save mechanics increase operator confusion and risk: a different save flow for Tiers may require multiple manual steps or produce partial scripts, making season adjustments error-prone and harder to audit compared to the Activity Rates / Objectives workflow.
-
-### Proposed Implementation
-- Audit how Activity Rates and Objectives generate their single change script on save — identify the shared pattern (diff computation, script generation, transaction wrapper).
-- Refactor or extend that pattern to cover tier definitions (name, point threshold, reward).
-- Tiers tab save flow: compute a diff between the current persisted tier state and the edited in-memory state, then emit a single SQL/migration script covering all inserts, updates, and deletes in one transaction.
-- The generated script should follow the same format and conventions as those produced by Activity Rates and Objectives saves, so all three can be reviewed and applied uniformly.
-- Ensure that editing tiers, activity rates, and objectives in the same session and saving each produces independently coherent scripts — no cross-tab state leakage.
-
-### Notes
-See [[IMPROVEMENT-010]] — the Scoring Balancing tab depends on tiers being editable inline; consistent save mechanics here unblock a clean implementation of that tab.
-Preserve existing tier DB schema — this improvement changes the save UI mechanic only, not the underlying data model.
 
 ---
 
@@ -328,247 +211,234 @@ Destructive changes (DELETE) should also replace any prior non-destructive chang
 
 ---
 
-## IMPROVEMENT-017 - New Item script filename includes definition name
-
-Status: DONE
-Priority: LOW
-Area: Admin Tool / New Item Dialog
-Spec: `docs/superpowers/specs/2026-05-18-improvement-017-script-filename-prefixes-design.md`
-
-### Description
-When saving a new item in SqlScript mode, the output `.sql` file is named
-`admintool_<date>_<time>.sql`. Include the item's `definitionname` in the
-filename so the file is immediately identifiable without opening it:
-
-```
-<definitionname>_<date>_<time>.sql
-```
-
-Example: `def_plasma_launcher_20260517_084326.sql`
-
-### Impact
-Low. In SqlScript mode operators save one item per dialog invocation, so
-name collisions are unlikely regardless. The improvement is purely for
-operator ergonomics — easier to locate a specific item's script in the
-output directory without inspecting file contents.
-
-### Proposed Fix
-In `NewItemDialogViewModel.SaveAsync` (SqlScript branch), replace the
-filename construction:
-
-```csharp
-// current
-var fileName = $"admintool_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
-
-// proposed
-var safeName = string.Concat(BasicPanel.DefinitionName
-    .Select(c => char.IsLetterOrDigit(c) || c == '_' ? c : '_'));
-var fileName = $"{safeName}_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
-```
-
-The sanitisation step replaces any character that is not a letter, digit,
-or underscore with `_` to ensure the name is valid on all filesystems.
-Since definition names are validated to start with `def_` and contain only
-safe characters, the sanitisation is a defensive no-op in practice.
-
-### Notes
-`BasicPanel.DefinitionName` is available on `NewItemDialogViewModel` via
-the existing `BasicPanel` property; no new fields are needed.
-`NewItemDialogViewModel.SaveAsync` is the only call site (line ~185 of
-`NewItemDialogViewModel.cs`).
-The `MainViewModel.CommitAsync` SqlScript path uses the same
-`admintool_<date>_<time>.sql` template for multi-change commits — that
-path is out of scope since it covers multiple changes, not a single item.
-
----
-
-## IMPROVEMENT-018 - Season Config: Activity Points Scoring Mode
+## IMPROVEMENT-024 - Server Restart: Daily Objective Announcement and Admin Tool Statistics
 
 Status: DONE
 Priority: HIGH
-Area: Seasons / Admin Tool
+Area: Seasons / Objectives / Admin Tool
 
 ### Description
-When configuring a season, there is currently no way to control how earned activity points are applied to scoring. Add a configurable **scoring mode** option with two values:
+Two related improvements to daily objective visibility:
 
-- **Objectives only** — activity points are added to matching objective progress but do not contribute to the global season score.
-- **Objectives + Global Score** — activity points are added to objective progress and also accumulate in the global season score (current behaviour).
+1. **Server restart announcement** — on startup, if an active season with daily objectives is configured, announce the current day's active objectives to all players via the existing announcement channel. If the daily pool for the current day has not yet been generated (e.g. first query after midnight on a fresh restart), run the pooling selection logic (see [[IMPROVEMENT-022]]) before announcing, so the announcement reflects the actual set players will see.
 
-### Impact
-Operators need per-season control over how competitive the global score is. Some seasons are designed around objective completion only; others use global score as a leaderboard or reward gate. Without this option, the game logic must be patched per-season or objectives must be artificially balanced to avoid unwanted global score inflation.
-
-### Proposed Implementation
-- Add a `scoringMode` (or equivalent) field to the season configuration schema (DB column + server-side model).
-- Update the activity point processing logic to branch on this field: skip global score accumulation when mode is `ObjectivesOnly`.
-- Expose the option in the Admin Tool season configuration UI as a dropdown or radio selector.
-- Default new seasons to `ObjectivesAndGlobalScore` to preserve current behaviour.
-
-### Notes
-Audit the activity point award path in the Seasons subsystem to identify all places where global score is incremented — the mode check belongs there.
-Ensure the Admin Tool change script generation covers the new field.
-
----
-
-## IMPROVEMENT-019 - New Robot Dialog: Bonuses Tab
-
-Status: DONE
-Priority: HIGH
-Area: Admin Tool / New Robot Dialog
-Spec: `docs/superpowers/specs/2026-05-19-improvement-019-robot-bonuses-tab-design.md`
-
-### Description
-Add a **Bonuses** tab to the New Robot dialog (`NewRobotDialog.xaml`) for configuring chassis bonuses (`chassisbonus` table rows). The tab follows the same pattern as the Stats tab: empty by default for new robots, pre-filled from the cloned chassis definition when cloning, and editable (add / remove / modify rows). All bonus rows are emitted in the same single SQL script produced by `RobotSqlBuilder.Build`.
-
-Each bonus row maps to one `chassisbonus` row:
-
-| UI field | DB column | Type |
-|---|---|---|
-| Extension (dropdown) | `extension` | int → `extensions.extensionid` |
-| Bonus value | `bonus` | float |
-| Target property (dropdown) | `targetpropertyID` | int → `aggregatefields.id` |
-| Effect enhancer (checkbox) | `effectenhancer` | bit |
-| Note (optional text) | `note` | nvarchar(2000) |
-
-Chassis bonuses are stored against the **chassis part definition** (`@chassisDef`), not the top-level robot definition — the tab sits at robot level in the UI but the generated SQL targets `@chassisDef`.
+2. **Admin Tool Season Statistics tab** — surface the current active daily objective set and per-objective completion counts on the Season Statistics tab. For each daily objective active today, display: objective name, activity type, target (if any), and the number of distinct characters who have completed it on the current day.
 
 ### Impact
-Without this tab, operators must write `chassisbonus` INSERT statements manually or copy them from existing robots. This is error-prone, not auditable through the Admin Tool workflow, and inconsistent with how stats are handled. Adding the tab completes the robot creation surface for the most robot-defining table.
+Without the announcement, players who log in after a server restart have no immediate indication that daily objectives are available or what they are — they must navigate to the objectives panel themselves. For the Admin Tool, operators currently have no at-a-glance view of how many players are completing each daily objective on a given day, making it impossible to assess engagement or spot broken objectives without raw DB queries.
 
 ### Proposed Implementation
 
-**New files (follow `NewItem/` patterns):**
-- `NewRobot/NewBonusRow.cs` — `ObservableObject` with `ExtensionId` (int), `NewBonus` (double), `OriginalBonus` (double?), `TargetPropertyId` (int), `EffectEnhancer` (bool), `Note` (string)
-- `NewRobot/BonusesPanelViewModel.cs` — owns `ObservableCollection<NewBonusRow> Rows`; `Initialize(lookups)` receiving available extensions and aggregate fields; `AddRow` / `RemoveRow` relay commands; `LoadFromClone(IEnumerable<ChassisBonusRow>)` pre-filling rows with `OriginalBonus` set; `HasDuplicates()` guard (unique on extension + targetPropertyId)
+**Server restart announcement:**
+- Wire into `SeasonService.RefreshCache`, which is already called on startup and whenever the season cache is invalidated.
+- After the cache is refreshed, check whether an active season exists with `is_daily` objectives configured for the current UTC day.
+- If the daily pool for today has not yet been materialised (no rows in `season_objective_progress` for today's `day_window` and active season), trigger the deterministic pool selection from [[IMPROVEMENT-022]] first.
+- Compose an announcement message listing the active daily objective names (and targets where applicable), then dispatch it via the existing Seasons Info channel / Announcer character — reuse the announcement path used for season start/end notifications.
+- If no active season or no daily objectives are configured, skip silently — no error or empty announcement.
 
-**Existing file changes:**
-- `NewRobot/NewRobotRepository.cs` — add `LoadChassisBonusesAsync(int chassisDefinition)` returning `IReadOnlyList<ChassisBonusRow>` (record: extensionId, bonus, targetPropertyId, effectEnhancer, note)
-- `NewRobot/CloneRobotExtendedData.cs` (new if needed, or extend `CloneExtendedData`) — include `IReadOnlyList<ChassisBonusRow> ChassisBonuses`
-- `ViewModels/NewRobotDialogViewModel.cs`:
-  - Add `BonusesPanelViewModel BonusesPanel` property
-  - `InitializeAsync`: call `BonusesPanel.Initialize(lookups)` with both `Extensions` and `AggregateFields`
-  - `LoadCloneAsync`: load chassis bonuses for the cloned robot's chassis definition and call `BonusesPanel.LoadFromClone(...)`
-  - `Validate`: add duplicate check on bonus panel
-- `NewRobot/RobotSqlBuilder.cs` — after part entities are declared, emit chassis bonus INSERTs targeting `@chassisDef`:
-  ```sql
-  INSERT INTO chassisbonus (definition, extension, bonus, targetpropertyID, effectenhancer, note)
-  VALUES (@chassisDef, {row.ExtensionId}, {row.NewBonus}, {row.TargetPropertyId}, {row.EffectEnhancer}, {row.Note});
-  ```
-- `Views/NewRobotDialog.xaml` — add the Bonuses `TabItem` (visible when `IsRobot`) with a DataGrid bound to `BonusesPanel.Rows`
-
-**Translation / display names:**
-- Extension dropdown items: look up `extensionname` in the `englishNames` dictionary (same dict passed to `InitializeAsync`); fall back to the raw `extensionname` if absent.
-- Target property dropdown: use `AggregateFieldInfo.DisplayLabel` (already includes the raw DB name and id).
-
-**Clone data source:**
-The robot clone source (`CloneSource`) refers to the robot entity. To load chassis bonuses for a cloned robot, resolve its chassis definition by looking up the source robot entity's options string for the `chassis` key (GenXY format: `#chassis=nXXXX`), then query `chassisbonus WHERE definition = @resolvedChassisDef`. This avoids a schema join and reuses the already-available options field on `EntityDefaultRow`.
+**Admin Tool Season Statistics tab:**
+- Add a "Today's Daily Objectives" section to the Season Statistics tab (or a new sub-panel within it).
+- Query: for the selected season and current UTC `day_window`, return the active daily objective IDs (applying pool selection if `daily_objectives_per_day` is set), joined with `season_objective_progress` to count distinct `character_id` values where `completed = 1` per objective.
+- Display as a grid: Objective Name | Activity Type | Target | Completions Today.
+- Refresh on demand (button or tab activation) — no live polling required.
+- The query must respect the same deterministic pool selection as the server side so the displayed objectives match what players actually see.
 
 ### Notes
-- The unique constraint on `chassisbonus (definition, extension, targetpropertyID)` must be enforced in `HasDuplicates()` — duplicate (extensionId + targetPropertyId) pair in the same save should be rejected with a clear validation message.
-- `OriginalBonus` (read-only reference value) is shown in the row when cloning, same pattern as `NewStatRow.OriginalValue`.
-- Chassis bonus rows are only meaningful when `IsRobot` is true — the Bonuses tab should be hidden when `IsRobot` is false (consistent with head/chassis/leg/inventory tabs).
-- The `note` column is nullable; treat empty string as `NULL` in the generated SQL.
-- `effectenhancer` default is `0`; new rows should default the checkbox to unchecked.
+Depends on [[IMPROVEMENT-006]] — daily objective infrastructure (schema, progress tracking) must be in place.
+Depends on [[IMPROVEMENT-022]] — pool selection logic must be extractable/reusable by both the announcement path and the Admin Tool query.
+The announcement fires from `SeasonService.RefreshCache` — guard against duplicate announcements if `RefreshCache` is called multiple times within the same day (e.g. track the last announced `day_window` in memory and skip if it matches).
+If no season is active at restart time but one activates later (e.g. scheduled start), the announcement is not retroactively sent — it only fires at server startup.
+Admin Tool completion count reflects the running day only; historical per-day stats are out of scope for this improvement.
 
 ---
 
-## IMPROVEMENT-020 - AdminTool Installer
+## IMPROVEMENT-025 - Equipment Set Synergy Bonuses
 
 Status: DONE
 Priority: MEDIUM
-Area: Admin Tool / Distribution
-Spec: `docs/superpowers/specs/2026-05-19-improvement-020-admintool-installer-design.md`
+Area: Combat / Items / Modules
 
 ### Description
-Create an installer for the AdminTool application that handles required runtime dependencies and supports future updates. The installer should allow operators to set up and update the AdminTool without manually managing prerequisites.
+Introduce an equipment set mechanic: modules belonging to the same named set grant the equipping character additional stat bonuses that scale proportionally with the number of set pieces currently fitted. The more set pieces equipped, the stronger the cumulative synergy bonus.
 
 ### Impact
-Without an installer, operators must manually install .NET runtime dependencies and track future releases themselves. This creates friction for new deployments, increases support burden, and makes it easy to run an outdated or broken AdminTool version.
+Adds a meaningful progression layer on top of individual module selection, encouraging themed loadouts and giving players a tangible reward for committing to a set. Increases build diversity and long-term equipment goals without requiring new combat systems.
 
 ### Proposed Implementation
-- Choose an installer technology appropriate for a Windows WPF/.NET 8 app (e.g. NSIS, WiX Toolset, Inno Setup, or a self-contained MSIX package).
-- Bundle or detect the required .NET 8 runtime; prompt installation if absent.
-- Include all AdminTool binaries and assets produced by the Release build.
-- Provide an uninstaller that cleanly removes all installed files.
-- Support in-place updates: either via a versioned installer (run new installer over old install) or an integrated update check mechanism that notifies the operator when a newer release is available.
-- Wire installer creation into the CI pipeline (`.github/workflows/dotnet.yml`) so a fresh installer artifact is produced on each tagged release.
+
+**Data layer:**
+- Add a `set_id` (or `set_name`) column to `entitydefaults` (or a new `equipment_sets` table) to group modules into named sets.
+- Add a `equipment_set_bonuses` table: `(set_id, required_pieces, aggregate_field, bonus_value)` — each row defines a bonus unlocked at a specific piece count threshold. Alternatively, use a linear scaling formula stored per set (e.g. `bonus_per_piece`) to avoid per-threshold rows.
+
+**Server runtime:**
+- On robot fitting change (equip/unequip), scan all fitted modules for `set_id` values, count pieces per set, then evaluate the bonus table for each set.
+- Apply resulting bonuses as robot aggregate modifiers using the existing `RobotExtensions`/aggregate field pipeline — no new combat math required.
+- Bonuses must be recalculated whenever the robot's fitting changes (equip, unequip, robot swap).
+- Ensure bonuses are stripped correctly when modules are removed mid-combat or robot is unfit.
+
+**Content:**
+- Define at least one pilot set to validate the pipeline end-to-end.
+- Follow naming convention from `docs/content/claude_game_content_guide.md` (`set_` prefix suggested).
+
+**Client / UI:**
+- Module tooltip should indicate set membership and current active bonus count.
+- Requires client-side data delivery for set metadata (set name, total pieces, bonuses per threshold) — evaluate whether existing tooltip aggregate extension protocol is sufficient or if a new packet field is needed.
 
 ### Notes
-Self-contained publish (`dotnet publish --self-contained`) is an alternative to bundling the runtime installer — evaluate size vs. convenience trade-off.
-If an auto-update mechanism is included, it should be opt-in and not silently replace binaries while the tool is running.
-Installer output should be a single executable or package that operators can distribute without additional steps.
+Bonus recalculation must not run inside the zone update hot path synchronously — trigger on fitting events only.
+Stacking rules (e.g. can a player equip two copies of the same set piece?) should be defined before implementation.
+Consider whether set bonuses interact with existing robot extension bonuses additively or via a separate modifier layer.
 
 ---
 
-## IMPROVEMENT-021 - Graphify Codebase Graph Integration
+## IMPROVEMENT-026 - Wear & Tear Mechanic
 
-Status: DONE
-Priority: HIGH
-Area: Infrastructure / Tooling / AI
-Spec: docs/superpowers/specs/2026-05-23-improvement-021-graphify-integration-design.md
-
-### Description
-Integrated `graphify-dotnet` (https://github.com/elbruno/graphify-dotnet) as a local dotnet
-tool. Generates a structural JSON graph and Markdown architecture report before every
-`Perpetuum.Server` build. CI publishes the report to the GitHub Wiki on each push to `develop`.
-
-### Implementation
-- `.config/dotnet-tools.json` registers `graphify-dotnet@0.7.0` (command: `graphify`)
-- `Directory.Build.targets` (solution root) fires `GenerateCodeGraph` before `Perpetuum.Server`
-  builds; `ContinueOnError="true"` soft-fails on machines without .NET 10 SDK
-- `-f json,report` produces `docs/graph/graph.json` and `docs/graph/GRAPH_REPORT.md` (gitignored)
-- `.github/workflows/dotnet.yml` `publish-wiki` job pushes `GRAPH_REPORT.md` to GitHub Wiki as
-  `Codebase-Graph.md` on each push to `develop`
-- `.claude/knowledge/codebase-graph.md` added for Claude orientation
-
-### Notes
-Phase 2 (.NET 8 → .NET 10 project TFM migration) is deferred as an independent workstream.
-The graphify tool requires .NET 10 SDK but the project TFMs remain at net8.0.
-Run `dotnet tool restore` once after cloning to enable graph regeneration.
-GitHub Wiki must have at least one page initialized before the CI publish job can push.
-
----
-
-## IMPROVEMENT-023 - Seasons: Same-IP Gate for NIC Earning/Spending Activities
-
-Status: DONE
-Priority: HIGH
-Area: Seasons / Anti-Abuse
-Spec: `docs/superpowers/specs/2026-05-21-improvement-023-same-ip-gate-design.md`
+Status: TODO
+Priority: LOW
+Area: Items / Modules / Economy
 
 ### Description
-Enforce a same-IP gate on season activity recording so that a player running multiple accounts from the same machine cannot earn season points by trading with themselves. When two characters involved in a tracked NIC activity share the same originating IP address, neither transaction side earns points.
-
-### Implementation
-`ActivityEvent` extended with optional `CounterpartyAccountId`. `SeasonService.RecordActivity` queries `accountonlinetime` for the most recent session IP of both characters and suppresses recording when they match. Market NIC recording moved from `CharacterWallet` to explicit call sites in `Market.cs` where both counterparties are available. All 7 transport assignment `RecordActivity` calls updated with counterparty account IDs. PvpKill IP query fixed to use `TOP 1 ORDER BY loggedin DESC` with null guard. Branch: `p36.1`.
-
-### Notes
-Approach used: `CounterpartyAccountId` on `ActivityEvent`, gate centralised in `RecordActivity`. Vendor market fills (no player counterparty) record without gate. `buyOrderPayBack` and `CashInOnSubmit` (no counterparty) left ungated. NAT false-positive limitation documented in spec.
-
----
-
-## IMPROVEMENT-022 - Seasons: Randomised Daily Objective Pool
-
-Status: DONE
-Priority: HIGH
-Area: Seasons / Objectives
-
-### Description
-Add a season-level option to limit how many daily objectives are active per day, selected randomly from the full set of configured daily objectives. Instead of all `is_daily` objectives being visible every day, each day only a configured number are drawn from the pool, providing variety across the season without requiring manual scheduling.
+Equipped and actively-used items gradually lose condition (health or a dedicated durability stat), reducing their efficiency proportionally. Items that reach critical condition become degraded; items left unrepaired eventually break or are destroyed. Periodic repair via an NPC service or player skill restores condition.
 
 ### Impact
-With no pooling, players see the same set of daily objectives every day for the entire season, which becomes repetitive. A randomised daily pool reduces monotony, extends perceived content variety, and encourages players to engage with different activity types on different days. Season designers gain control over daily objective density without needing to manually cycle objectives.
+Adds an ongoing maintenance loop that drives NPC interaction, credit sinks, and crafting demand. Encourages players to manage loadouts actively and creates meaningful consequences for extended combat or negligence. Increases economic depth by making repair services and spare parts relevant.
 
 ### Proposed Implementation
-- Add a `daily_objectives_per_day` field (smallint, nullable) to the season configuration — `NULL` means all configured daily objectives are active every day (current behaviour, no breaking change).
-- When a player queries their daily objectives for the current day, the server checks whether `daily_objectives_per_day` is set:
-  - If `NULL`: return all `is_daily` objectives as today.
-  - If set: deterministically sample `N` objectives from the full `is_daily` pool for the current UTC day, using a seed derived from `(season_id, day_window)` so all players see the same set on the same day.
-- Deterministic seed ensures consistency: all players on the same day get the same pool regardless of query order or server restarts.
-- Store the day's selected objective IDs (or derive them on-the-fly from the seed) — avoid per-player randomisation, which would create unfair daily experiences.
-- Admin Tool: surface `daily_objectives_per_day` in the season configuration panel as a nullable integer field (empty = all objectives).
+
+**Data layer:**
+- Add a `condition` (or `durability`) field to the item instance table (e.g. `items` or equivalent), defaulting to max value on spawn.
+- Add per-definition `max_durability` and `durability_loss_rate` columns to `entitydefaults` (or a separate `item_wear_config` table).
+- Add a `broken` flag or a `condition = 0` sentinel to represent destroyed/non-functional state.
+
+**Server runtime:**
+- Hook into the existing damage/combat pipeline and module activation events to decrement condition by the configured rate on each relevant tick or activation.
+- Apply an efficiency scalar to module aggregate contributions proportional to remaining condition (e.g. 50% condition → some % stat penalty). Define the penalty curve (linear vs stepped) before implementation.
+- Broadcast condition changes to the client so the UI can reflect degradation.
+- At condition = 0, disable the module (treat as unfit or non-functional) without destroying the item unless the design calls for permanent destruction.
+
+**Repair:**
+- Add a repair interaction with NPC repairers (cost scales with item tier and missing condition).
+- Optionally support player-side repair via a skill or consumable.
+- Repair must respect zone safety — no blocking DB writes in the zone update loop.
+
+**Client / UI:**
+- Module tooltip and fitting screen should display current condition / max condition.
+- Add a visual indicator (colour, icon overlay) when condition falls below a warning threshold.
+- Requires client protocol additions for condition field delivery; assess whether existing item attribute packet can carry this or a new field is needed.
 
 ### Notes
-Depends on [[IMPROVEMENT-006]] — daily objectives infrastructure must exist before pool selection can be layered on.
-Deterministic selection is strongly preferred over per-player random to keep the daily experience consistent across all characters in a season.
-If `daily_objectives_per_day` exceeds the total number of configured daily objectives, treat it as "all objectives" rather than erroring.
-The sampling algorithm (e.g. Fisher-Yates seeded shuffle, take first N) should be documented and stable — changing it mid-season would invalidate an active day's pool for players who have not yet completed their objectives.
+Define which item categories wear (active modules only, all fitted items, weapons, etc.) before implementation to scope the data changes.
+Determine whether condition persists on trade/storage or resets — this has significant economy implications.
+Avoid running condition decay calculations in the zone update hot path; prefer event-driven hooks on module activation and combat events.
+Consider interaction with existing repair/maintenance NPC infrastructure if any exists.
+
+---
+
+## IMPROVEMENT-027 - Equipment Set Bonus Values in Effect Display
+
+Status: DONE
+Priority: HIGH
+Area: Combat / Items / UI
+
+### Problem
+
+The set bonus effect applied by `SetBonusEffectApplicator` uses `.EnableModifiers(false)`, so no property modifier values are embedded in the effect. The client receives the `effect_equipment_set_bonus` effect token and can show an icon, but has no bonus amounts to display — the player cannot see what they actually gained.
+
+### Impact
+
+Players equipping set pieces receive silent bonuses with no in-UI feedback. This makes the mechanic invisible and undermines the design intent of rewarding themed loadouts.
+
+### Proposed Fix
+
+Embed the actual `ItemPropertyModifier` values into each set's effect using the same `.WithPropertyModifiers()` builder pattern already used by `RemoteCommandTranslatorModule.SetupEffect()`.
+
+**Required changes:**
+
+1. **`EquipmentSetBonusResult`** — replace the flat `IReadOnlyList<ItemPropertyModifier> Modifiers` with `IReadOnlyDictionary<int, IReadOnlyList<ItemPropertyModifier>> ModifiersPerSet` keyed by set ID. Retain `ActiveSetIds` or derive it from the dictionary keys.
+
+2. **`EquipmentSetBonusCalculator.Compute()`** — the per-set grouping loop already exists; retain modifiers per set ID instead of collecting them into a flat list.
+
+3. **`SetBonusEffectApplicator.Update()`** — accept the full `EquipmentSetBonusResult` (or the `ModifiersPerSet` dictionary). When creating a new set effect, call `.EnableModifiers(true)` and chain `.WithPropertyModifiers(modifiersForThisSet)`. Effect removal logic is unchanged.
+
+4. **`Robot.OnUpdate()`** — pass the per-set modifier data when calling `_setBonusEffectApplicator.Update()`. `_setBonusModifiers` field may be removed if no other consumer needs the flat list.
+
+**Reuse note:** The `ModuleProperty` class hierarchy from `RemoteCommandTranslatorModule` is not applicable here — set bonus values are static DB-sourced thresholds, not dynamically computed from ammo. The reusable element is solely the `EffectBuilder.WithPropertyModifiers()` call pattern.
+
+### Performance Notes
+
+`SetBonusEffectApplicator.Update()` is called every `OnUpdate()` tick but creates or removes effects only when the active set composition changes (set-difference check). Modifiers are passed only at effect-creation time, not on every tick. `EquipmentSetBonusCalculator.Compute()` already runs on fitting events only, not in the hot path. The per-set grouping change inside `Compute()` is a trivial restructure with no hot-path impact. No performance concern.
+
+### Notes
+
+Verify that the client-side effect display pipeline for `effect_equipment_set_bonus` actually reads and renders `PropertyModifiers` from the effect packet — confirm before declaring the work complete.
+
+---
+
+## IMPROVEMENT-028 - AdminTool Equipment Set Management
+
+Status: DONE
+Priority: MEDIUM
+Area: Admin Tool / Items / Modules
+
+### Description
+
+Extend the AdminTool with a dedicated UI for managing equipment sets (introduced in IMPROVEMENT-025) and the synergy bonuses they provide. Operators currently have no in-tool way to create sets, assign modules to sets, or configure per-threshold bonuses — all changes require direct DB edits.
+
+### Impact
+
+Without tooling, managing equipment sets is error-prone and requires database access. A purpose-built AdminTool panel lowers the barrier for content creators, reduces the risk of inconsistent data, and makes set configuration auditable from within the admin interface.
+
+### Proposed Implementation
+
+**Equipment Sets panel:**
+- List all defined sets (from `equipment_sets` table) with name and ID.
+- Create / rename / delete sets.
+- View which module definitions are assigned to each set.
+
+**Module assignment:**
+- In the existing module/item definition editor, expose a "Set" dropdown (nullable) that lets operators assign or clear the module's set membership (`set_id` on `entitydefaults` or equivalent column).
+
+**Bonus threshold editor:**
+- For each set, display the bonus rows from `equipment_set_bonuses` (`required_pieces`, `aggregate_field`, `bonus_value`).
+- Allow adding, editing, and removing bonus threshold rows.
+- Validate that `required_pieces` values are positive integers and that `aggregate_field` references a known aggregate field ID.
+
+**Read path:**
+- Surface current set assignments and bonus rows without requiring a server restart — query live DB state.
+
+### Notes
+
+Follow existing AdminTool patterns for CRUD panels (look at NPC or loot table editors as reference).
+Consider read-only vs. edit permissions if the AdminTool has role-based access controls.
+Deleting a set should warn if modules are still assigned to it.
+
+---
+
+## IMPROVEMENT-029 - Pin Daily Activity Announcements in Discord
+
+Status: TODO
+Priority: HIGH
+Area: Seasons / Announcements / Discord Integration
+
+### Problem
+
+Daily activity announcements are sent to players but quickly get buried by subsequent in-game chat messages. The in-game channel topic is not a viable alternative due to its character limit. Relying on players scrolling back to find the announcement is not sustainable.
+
+### Impact
+
+Players miss the current day's active objectives because the announcement disappears from view. Objective visibility is critical for engagement — if players cannot easily see what objectives are active, participation drops.
+
+### Proposed Fix
+
+When a daily activity announcement is dispatched to the integrated Discord channel, automatically pin the message so it remains visible regardless of subsequent chat volume.
+
+- After sending the announcement message to Discord, retrieve the message ID from the Discord API response.
+- Call the Discord "Pin Message" endpoint for the channel to pin the message.
+- Before pinning the new announcement, unpin the previous day's announcement (if any) to avoid the pin list growing indefinitely — store the last pinned message ID (in memory or a small config/DB record) so it can be unpinned on the next announcement cycle.
+- If the unpin or pin call fails (e.g. bot lacks Manage Messages permission), log a warning but do not block the announcement itself.
+
+### Notes
+
+Requires the Discord bot/webhook integration to have the `Manage Messages` permission in the target channel.
+If the current integration uses an incoming webhook rather than a bot token, pinning is not possible via webhooks — a bot token with the `Manage Messages` permission will be required. Assess the current integration type before implementing.
+The last pinned message ID can be stored in memory across restarts only if a restart always re-announces; otherwise persist it (a single-row config table or a flat file entry is sufficient).
