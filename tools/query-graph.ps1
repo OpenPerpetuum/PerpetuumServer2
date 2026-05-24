@@ -20,7 +20,10 @@ if (-not (Test-Path $graphPath)) {
 Write-Host "Loading graph..." -ForegroundColor DarkGray
 $g = Get-Content $graphPath -Raw | ConvertFrom-Json
 
-$matchedNodes = @($g.nodes | Where-Object { $_.label -like "*$ClassName*" })
+$nodeIndex = @{}
+$g.nodes | ForEach-Object { $nodeIndex[$_.id] = $_ }
+
+$matchedNodes = @($g.nodes | Where-Object { $_.label -like "*$ClassName*" -and $_.label -like '*.cs' -and $_.id -notlike 'file:*' })
 
 if ($matchedNodes.Count -eq 0) {
     Write-Host "No node found matching '$ClassName'"
@@ -46,7 +49,7 @@ if ($Direction -eq 'in' -or $Direction -eq 'both') {
         Write-Host "  (none)"
     } else {
         foreach ($edge in $inEdges) {
-            $srcNode = $g.nodes | Where-Object { $_.id -eq $edge.source } | Select-Object -First 1
+            $srcNode = $nodeIndex[$edge.source]
             $srcLabel = if ($srcNode) { $srcNode.label } else { $edge.source }
             Write-Host "  [$($edge.relationship)]  $srcLabel"
         }
@@ -61,7 +64,7 @@ if ($Direction -eq 'out' -or $Direction -eq 'both') {
         Write-Host "  (none)"
     } else {
         foreach ($edge in $outEdges) {
-            $tgtNode = $g.nodes | Where-Object { $_.id -eq $edge.target } | Select-Object -First 1
+            $tgtNode = $nodeIndex[$edge.target]
             $tgtLabel = if ($tgtNode) { $tgtNode.label } else { $edge.target }
             Write-Host "  [$($edge.relationship)]  $tgtLabel"
         }
