@@ -158,7 +158,7 @@ For any non-trivial task:
 1. Identify affected subsystems
 2. Identify relevant documentation
 3. Locate similar implementations
-4. Check `docs/graph/GRAPH_REPORT.md` — if the target type is in the God Nodes list, note high blast radius; run `.\tools\query-graph.ps1 <ClassName>` for full dependent enumeration
+4. Check `docs/graph/GRAPH_REPORT.md` for God Nodes (high-risk symbols); run `.\tools\query-graph.ps1 <ClassName> -Direction in` to enumerate direct dependents of the target class (if `graph.json` is absent, skip and continue to step 5)
 5. Understand existing patterns
 6. Evaluate runtime implications
 7. Produce a short implementation plan
