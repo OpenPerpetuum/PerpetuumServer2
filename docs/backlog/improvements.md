@@ -1,6 +1,6 @@
 # Last ID used
 
-028
+029
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -411,3 +411,34 @@ Without tooling, managing equipment sets is error-prone and requires database ac
 Follow existing AdminTool patterns for CRUD panels (look at NPC or loot table editors as reference).
 Consider read-only vs. edit permissions if the AdminTool has role-based access controls.
 Deleting a set should warn if modules are still assigned to it.
+
+---
+
+## IMPROVEMENT-029 - Pin Daily Activity Announcements in Discord
+
+Status: TODO
+Priority: HIGH
+Area: Seasons / Announcements / Discord Integration
+
+### Problem
+
+Daily activity announcements are sent to players but quickly get buried by subsequent in-game chat messages. The in-game channel topic is not a viable alternative due to its character limit. Relying on players scrolling back to find the announcement is not sustainable.
+
+### Impact
+
+Players miss the current day's active objectives because the announcement disappears from view. Objective visibility is critical for engagement — if players cannot easily see what objectives are active, participation drops.
+
+### Proposed Fix
+
+When a daily activity announcement is dispatched to the integrated Discord channel, automatically pin the message so it remains visible regardless of subsequent chat volume.
+
+- After sending the announcement message to Discord, retrieve the message ID from the Discord API response.
+- Call the Discord "Pin Message" endpoint for the channel to pin the message.
+- Before pinning the new announcement, unpin the previous day's announcement (if any) to avoid the pin list growing indefinitely — store the last pinned message ID (in memory or a small config/DB record) so it can be unpinned on the next announcement cycle.
+- If the unpin or pin call fails (e.g. bot lacks Manage Messages permission), log a warning but do not block the announcement itself.
+
+### Notes
+
+Requires the Discord bot/webhook integration to have the `Manage Messages` permission in the target channel.
+If the current integration uses an incoming webhook rather than a bot token, pinning is not possible via webhooks — a bot token with the `Manage Messages` permission will be required. Assess the current integration type before implementing.
+The last pinned message ID can be stored in memory across restarts only if a restart always re-announces; otherwise persist it (a single-row config table or a flat file entry is sufficient).
