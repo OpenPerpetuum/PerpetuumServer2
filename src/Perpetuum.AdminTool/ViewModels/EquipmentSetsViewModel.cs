@@ -231,10 +231,10 @@ namespace Perpetuum.AdminTool.ViewModels
         // ── Rename set ────────────────────────────────────────────────────────
 
         [RelayCommand(CanExecute = nameof(CanRename))]
-        private void RenameSet(string newName)
+        private void RenameSet()
         {
             if (SelectedSet == null) return;
-            newName = newName.Trim();
+            var newName = SelectedSet.Name.Trim();
             if (string.IsNullOrEmpty(newName))
             {
                 SetStatus("New name is required.", isError: true);

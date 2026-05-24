@@ -18,21 +18,6 @@ namespace Perpetuum.AdminTool.Views
             await Vm.ReloadAsync();
         }
 
-        private void OnCreateSetClick(object sender, RoutedEventArgs e)
-        {
-            Vm.CreateSetCommand.Execute(null);
-        }
-
-        private void OnDeleteSetClick(object sender, RoutedEventArgs e)
-        {
-            Vm.DeleteSetCommand.Execute(null);
-        }
-
-        private void OnRenameSetClick(object sender, RoutedEventArgs e)
-        {
-            Vm.RenameSetCommand.Execute(RenameBox.Text);
-        }
-
         private void OnAddMemberClick(object sender, RoutedEventArgs e)
         {
             Vm.AddMember(Window.GetWindow(this)!);

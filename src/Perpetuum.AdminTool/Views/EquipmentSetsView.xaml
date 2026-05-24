@@ -58,13 +58,12 @@
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
                     <DockPanel Margin="0,0,0,4">
                         <Button DockPanel.Dock="Right" Content="Create" Padding="8,2"
-                                Margin="4,0,0,0" Click="OnCreateSetClick"/>
+                                Margin="4,0,0,0" Command="{Binding CreateSetCommand}"/>
                         <TextBox Text="{Binding NewSetName, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="New set name"/>
                     </DockPanel>
                     <Button Content="Delete set" Padding="8,2" Foreground="DarkRed"
-                            IsEnabled="{Binding HasSelection}"
-                            Click="OnDeleteSetClick"/>
+                            Command="{Binding DeleteSetCommand}"/>
                 </StackPanel>
 
                 <ListBox ItemsSource="{Binding Sets}"
@@ -84,10 +83,8 @@
                     <DockPanel Margin="0,0,0,16">
                         <Button DockPanel.Dock="Right" Content="Rename" Padding="8,2"
                                 Margin="6,0,0,0"
-                                IsEnabled="{Binding CanRename}"
-                                Click="OnRenameSetClick"/>
-                        <TextBox x:Name="RenameBox"
-                                 Text="{Binding SelectedSet.Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                Command="{Binding RenameSetCommand}"/>
+                        <TextBox Text="{Binding SelectedSet.Name, UpdateSourceTrigger=PropertyChanged}"/>
                     </DockPanel>
 
                     <!-- Members -->
