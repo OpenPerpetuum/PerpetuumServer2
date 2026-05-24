@@ -1,6 +1,6 @@
 # Last ID used
 
-026
+028
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -331,3 +331,83 @@ Define which item categories wear (active modules only, all fitted items, weapon
 Determine whether condition persists on trade/storage or resets — this has significant economy implications.
 Avoid running condition decay calculations in the zone update hot path; prefer event-driven hooks on module activation and combat events.
 Consider interaction with existing repair/maintenance NPC infrastructure if any exists.
+
+---
+
+## IMPROVEMENT-027 - Equipment Set Bonus Values in Effect Display
+
+Status: TODO
+Priority: HIGH
+Area: Combat / Items / UI
+
+### Problem
+
+The set bonus effect applied by `SetBonusEffectApplicator` uses `.EnableModifiers(false)`, so no property modifier values are embedded in the effect. The client receives the `effect_equipment_set_bonus` effect token and can show an icon, but has no bonus amounts to display — the player cannot see what they actually gained.
+
+### Impact
+
+Players equipping set pieces receive silent bonuses with no in-UI feedback. This makes the mechanic invisible and undermines the design intent of rewarding themed loadouts.
+
+### Proposed Fix
+
+Embed the actual `ItemPropertyModifier` values into each set's effect using the same `.WithPropertyModifiers()` builder pattern already used by `RemoteCommandTranslatorModule.SetupEffect()`.
+
+**Required changes:**
+
+1. **`EquipmentSetBonusResult`** — replace the flat `IReadOnlyList<ItemPropertyModifier> Modifiers` with `IReadOnlyDictionary<int, IReadOnlyList<ItemPropertyModifier>> ModifiersPerSet` keyed by set ID. Retain `ActiveSetIds` or derive it from the dictionary keys.
+
+2. **`EquipmentSetBonusCalculator.Compute()`** — the per-set grouping loop already exists; retain modifiers per set ID instead of collecting them into a flat list.
+
+3. **`SetBonusEffectApplicator.Update()`** — accept the full `EquipmentSetBonusResult` (or the `ModifiersPerSet` dictionary). When creating a new set effect, call `.EnableModifiers(true)` and chain `.WithPropertyModifiers(modifiersForThisSet)`. Effect removal logic is unchanged.
+
+4. **`Robot.OnUpdate()`** — pass the per-set modifier data when calling `_setBonusEffectApplicator.Update()`. `_setBonusModifiers` field may be removed if no other consumer needs the flat list.
+
+**Reuse note:** The `ModuleProperty` class hierarchy from `RemoteCommandTranslatorModule` is not applicable here — set bonus values are static DB-sourced thresholds, not dynamically computed from ammo. The reusable element is solely the `EffectBuilder.WithPropertyModifiers()` call pattern.
+
+### Performance Notes
+
+`SetBonusEffectApplicator.Update()` is called every `OnUpdate()` tick but creates or removes effects only when the active set composition changes (set-difference check). Modifiers are passed only at effect-creation time, not on every tick. `EquipmentSetBonusCalculator.Compute()` already runs on fitting events only, not in the hot path. The per-set grouping change inside `Compute()` is a trivial restructure with no hot-path impact. No performance concern.
+
+### Notes
+
+Verify that the client-side effect display pipeline for `effect_equipment_set_bonus` actually reads and renders `PropertyModifiers` from the effect packet — confirm before declaring the work complete.
+
+---
+
+## IMPROVEMENT-028 - AdminTool Equipment Set Management
+
+Status: TODO
+Priority: MEDIUM
+Area: Admin Tool / Items / Modules
+
+### Description
+
+Extend the AdminTool with a dedicated UI for managing equipment sets (introduced in IMPROVEMENT-025) and the synergy bonuses they provide. Operators currently have no in-tool way to create sets, assign modules to sets, or configure per-threshold bonuses — all changes require direct DB edits.
+
+### Impact
+
+Without tooling, managing equipment sets is error-prone and requires database access. A purpose-built AdminTool panel lowers the barrier for content creators, reduces the risk of inconsistent data, and makes set configuration auditable from within the admin interface.
+
+### Proposed Implementation
+
+**Equipment Sets panel:**
+- List all defined sets (from `equipment_sets` table) with name and ID.
+- Create / rename / delete sets.
+- View which module definitions are assigned to each set.
+
+**Module assignment:**
+- In the existing module/item definition editor, expose a "Set" dropdown (nullable) that lets operators assign or clear the module's set membership (`set_id` on `entitydefaults` or equivalent column).
+
+**Bonus threshold editor:**
+- For each set, display the bonus rows from `equipment_set_bonuses` (`required_pieces`, `aggregate_field`, `bonus_value`).
+- Allow adding, editing, and removing bonus threshold rows.
+- Validate that `required_pieces` values are positive integers and that `aggregate_field` references a known aggregate field ID.
+
+**Read path:**
+- Surface current set assignments and bonus rows without requiring a server restart — query live DB state.
+
+### Notes
+
+Follow existing AdminTool patterns for CRUD panels (look at NPC or loot table editors as reference).
+Consider read-only vs. edit permissions if the AdminTool has role-based access controls.
+Deleting a set should warn if modules are still assigned to it.
