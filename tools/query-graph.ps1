@@ -73,7 +73,7 @@ if ($Direction -eq 'out' -or $Direction -eq 'both') {
 }
 
 if ($Direction -eq 'community') {
-    $communityNodes = @($g.nodes | Where-Object { $_.community -eq $node.community -and $_.id -ne $node.id } | Sort-Object label)
+    $communityNodes = @($g.nodes | Where-Object { $_.community -eq $node.community -and $_.id -ne $node.id -and $_.id -notlike 'file:*' -and $_.label -like '*.cs' } | Sort-Object label)
     Write-Host "=== Community $($node.community) ($($communityNodes.Count + 1) members) ===" -ForegroundColor Green
     Write-Host "  [self]  $($node.label)"
     foreach ($member in $communityNodes) {

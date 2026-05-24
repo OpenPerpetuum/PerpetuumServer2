@@ -30,7 +30,7 @@ Communities (Louvain clustering) group related symbols into 2,616 clusters.
 | Blast radius before modifying a class | `.\tools\query-graph.ps1 <ClassName> -Direction in` |
 | What a class depends on | `.\tools\query-graph.ps1 <ClassName> -Direction out` |
 | Full dependency picture | `.\tools\query-graph.ps1 <ClassName>` (default: both) |
-| Find related types in the same subsystem | `.\tools\query-graph.ps1 <ClassName> -Direction community` |
+| Find other `.cs` files in the same Louvain cluster | `.\tools\query-graph.ps1 <ClassName> -Direction community` |
 
 ## God-Node Awareness
 
@@ -41,5 +41,6 @@ The list regenerates on each build; do not rely on hardcoded names from prior se
 Note: `tools/query-graph.ps1` matches `.cs` file nodes only — namespace-level entries in the God Nodes list (e.g. `Perpetuum.RequestHandlers`) cannot be queried by name and must be explored via `GRAPH_REPORT.md` directly.
 
 > **Note on import sparsity:** Only 66 `imports` edges exist across the entire codebase (AST-only
-> analysis). Inbound results for most classes will be sparse. Absence of inbound edges does not
-> mean a class is unused — it means graphify did not detect a namespace import.
+> analysis). Only ~7 classes have meaningful inbound edges — for all others, `-Direction in` returns
+> only the parent file's `contains` edge, not actual callers. Absence of inbound edges is the norm,
+> not a signal that a class is safe to change.
