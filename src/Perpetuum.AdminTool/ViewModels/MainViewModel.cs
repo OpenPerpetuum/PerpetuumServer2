@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Packages;
+using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Seasons;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Views;
@@ -36,6 +37,7 @@ namespace Perpetuum.AdminTool.ViewModels
         public PresencesViewModel Presences { get; }
         public FlocksViewModel Flocks { get; }
         public SeasonsViewModel Seasons { get; }
+        public EquipmentSetsViewModel EquipmentSets { get; }
 
         public MainViewModel(AppSettingsStore store, AppSession session)
         {
@@ -56,6 +58,11 @@ namespace Perpetuum.AdminTool.ViewModels
                 session.Changes,
                 session.Lookups,
                 store.Settings.Connection,
+                Translations);
+            EquipmentSets = new EquipmentSetsViewModel(
+                new EquipmentSetRepository(store.Settings.Connection),
+                session.Changes,
+                session.Lookups,
                 Translations);
             UpdateStatus();
 

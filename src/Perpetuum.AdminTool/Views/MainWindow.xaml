@@ -66,6 +66,9 @@
             <TabItem Header="Seasons">
                 <views:SeasonsView DataContext="{Binding Seasons}"/>
             </TabItem>
+            <TabItem Header="Equipment Sets">
+                <views:EquipmentSetsView DataContext="{Binding EquipmentSets}"/>
+            </TabItem>
             <TabItem Header="Translations">
                 <views:TranslationsView DataContext="{Binding Translations}"/>
             </TabItem>
