@@ -2339,6 +2339,26 @@ Generated from DBML structure.
 
 ---
 
+## discord_pin_state
+
+**Schema:** `dbo`
+
+Stores the Discord channel ID and message ID of the currently pinned message per pin slot (DailyPool=0, Leaderboard=1). Used by the server to unpin the previous announcement when a new one is sent.
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `pin_slot` | `tinyint [not null]` |
+| `discord_channel_id` | `varchar(20) [not null]` |
+| `discord_message_id` | `varchar(20) [not null]` |
+
+### Indexes
+
+- `pin_slot [pk]`
+
+---
+
 ## defaultfieldscalculation
 
 **Schema:** `dbo`

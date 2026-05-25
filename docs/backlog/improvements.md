@@ -416,7 +416,7 @@ Deleting a set should warn if modules are still assigned to it.
 
 ## IMPROVEMENT-029 - Pin Daily Activity Announcements in Discord
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Seasons / Announcements / Discord Integration
 

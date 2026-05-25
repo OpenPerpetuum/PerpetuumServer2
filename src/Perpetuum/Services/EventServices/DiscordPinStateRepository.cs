@@ -29,7 +29,7 @@ namespace Perpetuum.Services.EventServices
         public void Upsert(PinSlot slot, ulong channelId, ulong messageId)
         {
             Db.Query(
-                "MERGE discord_pin_state AS t " +
+                "MERGE discord_pin_state WITH (HOLDLOCK) AS t " +
                 "USING (VALUES (@pin_slot, @channel_id, @message_id)) " +
                 "    AS s (pin_slot, discord_channel_id, discord_message_id) " +
                 "ON t.pin_slot = s.pin_slot " +
