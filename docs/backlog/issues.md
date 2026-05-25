@@ -1,6 +1,61 @@
 # Last ID used
 
-021
+023
+
+## ISSUE-023 - Editing existing Season objectives does not save 'Is Daily' flag changes
+
+Status: TODO
+Priority: CRITICAL
+Area: Seasons / Admin Tool
+
+### Problem
+When an admin edits an existing objective on an existing Season and changes the 'Is Daily' flag, the change is not persisted. The flag reverts to its previous value after saving, leaving the objective in an incorrect state with no feedback to the admin.
+
+### Impact
+Admins cannot correct the daily/non-daily designation of objectives on live seasons. This blocks fixing misconfigured objectives without deleting and recreating them, which is disruptive and may affect active participant progress.
+
+### Proposed Fix
+- Locate the save path for objective edits in the Season Admin Tool (likely `SeasonDetailViewModel` or equivalent objective edit command).
+- Verify that `IsDaily` is included in the change set sent to the server when building the objective update payload.
+- Confirm the server-side handler and repository update include the `is_daily` column in the `UPDATE` statement.
+- Fix whichever layer is dropping the field (UI binding, change-set builder, or SQL update).
+
+### Notes
+- Reproduces on existing seasons with existing objectives; new objectives are unconfirmed.
+- Check whether other boolean flags on objectives (e.g. `IsActive`, visibility flags) are similarly dropped — the root cause may affect a wider set of fields.
+
+---
+
+## ISSUE-022 - Season activity points awarded on market orders that are immediately cancelled (exploit)
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Activities / Market
+
+### Problem
+A player can place a buy order on the market and immediately cancel it, yet still receive season activity points for the order placement. The same exploit likely applies to sell orders and potentially other NIC-related market actions. This allows instant, repeatable season progression with no actual economic commitment.
+
+### Impact
+Players can exploit this to gain unlimited season points with zero cost (place order, cancel, repeat). This undermines season integrity, devalues legitimate progression, and constitutes a confirmed exploit that must be addressed before widespread abuse occurs.
+
+### Proposed Fix
+Two candidate approaches, in order of preference:
+
+1. **Award points only on order fulfillment** — move the activity hook from order placement to order execution (when the trade actually settles). This is the correct semantic fix: a fulfilled trade represents real economic activity.
+2. **Award points only on non-cancelled orders** — on cancellation, reverse or forfeit any points that were awarded at placement time. More complex; requires tracking awarded points per order.
+
+The fastest mitigation is to not credit activity at order placement at all, only at fulfillment. Investigate whether sell orders and other NIC actions share the same vulnerability (likely yes — audit all market-related activity hooks).
+
+### Notes
+- Confirmed for buy orders; sell orders and other NIC actions are suspected but unconfirmed.
+- Cross-reference `ISSUE-020` (NIC spend activity for market purchases) — the fix for that issue and this one likely share the same hook call site.
+- Audit all activity hooks triggered by market events to scope the full surface area.
+- Fixed by removing `buyOrderDeposit` (NicSpent) and `buyOrderPayBack` (NicEarned) from
+`CharacterWallet.OnCommited`. `TransportAssignmentSubmit` double-count also fixed in the
+same change. NicSpent for actual market fulfillments is unaffected (handled by explicit
+hooks in `Market.cs`).
+
+---
 
 ## ISSUE-021 - NPC fleeing state speed reduction insufficient or not applied
 
