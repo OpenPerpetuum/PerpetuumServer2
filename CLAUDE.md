@@ -161,7 +161,7 @@ For any non-trivial task:
 4. Check `docs/graph/GRAPH_REPORT.md` for God Nodes (high-risk symbols); run `.\tools\query-graph.ps1 <ClassName> -Direction in` to enumerate direct dependents — a null result is normal (most classes have no detected importers) and does not mean the change is safe (if `graph.json` is absent, skip and continue to step 5)
 5. Understand existing patterns
 6. Evaluate runtime implications
-7. Produce a short implementation plan
+7. Produce a short implementation plan — for any task that modifies an interface or a widely-used class, the plan must include an explicit step to run `.\tools\query-graph.ps1 <ClassName> -Direction in` before touching that file
 8. Then implement
 
 ---

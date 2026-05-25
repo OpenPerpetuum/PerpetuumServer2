@@ -219,7 +219,18 @@ git commit -m "feat: add DiscordPinStateRepository (IMPROVEMENT-029)"
 - Modify: `src/Perpetuum/Services/Channels/IChannelManager.cs`
 - Modify: `src/Perpetuum/Services/Channels/ChannelManager.cs`
 
-- [ ] **Step 1: Add the method to `IChannelManager.cs`**
+- [ ] **Step 1: Check the code graph for impact**
+
+Before modifying the interface, confirm all implementors and high-traffic consumers:
+
+```powershell
+.\tools\query-graph.ps1 IChannelManager -Direction in
+.\tools\query-graph.ps1 ChannelManager -Direction in
+```
+
+Check `docs/graph/GRAPH_REPORT.md` to see if either is a God Node. If `graph.json` is absent, skip and continue. Expected: one implementor (`ChannelManager`). If unexpected implementors appear, they must also receive the new method before proceeding.
+
+- [ ] **Step 2: Add the method to `IChannelManager.cs`**
 
 In `src/Perpetuum/Services/Channels/IChannelManager.cs`, add a `using` for the event messages namespace at the top:
 
@@ -241,7 +252,7 @@ void PinnedAnnouncement(string channelName, Character sender, string message, Pi
 void KickOrBan(string channelName, Character issuer, Character character, string message, bool ban);
 ```
 
-- [ ] **Step 2: Implement the method in `ChannelManager.cs`**
+- [ ] **Step 3: Implement the method in `ChannelManager.cs`**
 
 In `src/Perpetuum/Services/Channels/ChannelManager.cs`, insert the new method immediately after the closing brace of `Announcement()` (around line 359). The existing `Announcement()` ends with the recipient path; add the new method after it:
 
@@ -266,7 +277,7 @@ public void PinnedAnnouncement(string channelName, Character sender, string mess
 }
 ```
 
-- [ ] **Step 3: Build to verify no errors**
+- [ ] **Step 4: Build to verify no errors**
 
 ```
 dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64
@@ -274,7 +285,7 @@ dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64
 
 Expected: build succeeds with zero errors.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/Perpetuum/Services/Channels/IChannelManager.cs
@@ -289,7 +300,15 @@ git commit -m "feat: add PinnedAnnouncement to ChannelManager (IMPROVEMENT-029)"
 **Files:**
 - Modify: `src/Perpetuum/Services/EventServices/EventListenerService.cs`
 
-- [ ] **Step 1: Add the repository field and update the constructor**
+- [ ] **Step 1: Check the code graph for impact**
+
+```powershell
+.\tools\query-graph.ps1 EventListenerService -Direction in
+```
+
+Check `docs/graph/GRAPH_REPORT.md` to see if it is a God Node. If `graph.json` is absent, skip and continue. This confirms the scope of callers affected by the constructor change before touching the file.
+
+- [ ] **Step 2: Add the repository field and update the constructor**
 
 In `EventListenerService.cs`, add the field after `_globalConfiguration`:
 
@@ -315,9 +334,9 @@ public EventListenerService(GlobalConfiguration globalConfiguration, IDiscordPin
 }
 ```
 
-- [ ] **Step 2: Add the `DiscordPinnableMessage` branch in `PublishMessage`**
+- [ ] **Step 3: Add the `DiscordPinnableMessage` branch in `PublishMessage`**
 
-In `PublishMessage`, the existing `if` block ends at line 53 with `}`. Add the new branch immediately after it, before the `else` that enqueues:
+In `PublishMessage`, the existing `if` block ends at line 53 with `}`. Add the new branch immediately after it, before the `else` that enqueues. Note: the final implementation should wrap the entire `Task.Run` body in an outer `try/catch { }` so a `SendMessageAsync` failure doesn't leave the task unobserved:
 
 ```csharp
 public void PublishMessage(IEventMessage message)
@@ -373,7 +392,7 @@ public void PublishMessage(IEventMessage message)
 }
 ```
 
-- [ ] **Step 3: Build to verify no errors**
+- [ ] **Step 4: Build to verify no errors**
 
 ```
 dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64
@@ -381,7 +400,7 @@ dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64
 
 Expected: build succeeds with zero errors.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/Perpetuum/Services/EventServices/EventListenerService.cs
