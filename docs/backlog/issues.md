@@ -4,7 +4,7 @@
 
 ## ISSUE-023 - Editing existing Season objectives does not save 'Is Daily' flag changes
 
-Status: TODO
+Status: DONE
 Priority: CRITICAL
 Area: Seasons / Admin Tool
 

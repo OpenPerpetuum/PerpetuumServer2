@@ -237,9 +237,14 @@
                             <DataGridTextColumn Header="Target" Binding="{Binding TargetValue, UpdateSourceTrigger=LostFocus}" Width="100"/>
                             <DataGridTextColumn Header="Bonus Pts" Binding="{Binding BonusPoints, UpdateSourceTrigger=LostFocus}" Width="100"/>
                             <DataGridTextColumn Header="Order" Binding="{Binding DisplayOrder, UpdateSourceTrigger=LostFocus}" Width="80"/>
-                            <DataGridCheckBoxColumn Header="Is Daily"
-                                                    Binding="{Binding IsDaily}"
-                                                    Width="80"/>
+                            <DataGridTemplateColumn Header="Is Daily" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsDaily, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Reward Package" Width="160">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
