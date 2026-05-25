@@ -59,30 +59,34 @@ namespace Perpetuum.Services.EventServices
                 {
                     Task.Run(async () =>
                     {
-                        string messageToSend = $"**<{pinnableMessage.Nick}>**: {pinnableMessage.Message}";
-                        var sent = await discordChannel.SendMessageAsync(
-                            messageToSend,
-                            allowedMentions: new AllowedMentions { AllowedTypes = AllowedMentionTypes.Users });
-
-                        var existing = _pinStateRepository.Get(pinnableMessage.PinSlot);
-                        if (existing.HasValue)
+                        try
                         {
-                            try
+                            string messageToSend = $"**<{pinnableMessage.Nick}>**: {pinnableMessage.Message}";
+                            var sent = await discordChannel.SendMessageAsync(
+                                messageToSend,
+                                allowedMentions: new AllowedMentions { AllowedTypes = AllowedMentionTypes.Users });
+
+                            var existing = _pinStateRepository.Get(pinnableMessage.PinSlot);
+                            if (existing.HasValue)
                             {
-                                var oldMsg = await discordChannel.GetMessageAsync(existing.Value.messageId);
-                                if (oldMsg is IUserMessage oldUserMsg)
-                                    await oldUserMsg.UnpinAsync();
+                                try
+                                {
+                                    var oldMsg = await discordChannel.GetMessageAsync(existing.Value.messageId);
+                                    if (oldMsg is IUserMessage oldUserMsg)
+                                        await oldUserMsg.UnpinAsync();
+                                }
+                                catch { }
                             }
+
+                            try { await sent.PinAsync(); }
                             catch { }
+
+                            _pinStateRepository.Upsert(
+                                pinnableMessage.PinSlot,
+                                pinnableMessage.DiscordChannelId,
+                                sent.Id);
                         }
-
-                        try { await sent.PinAsync(); }
                         catch { }
-
-                        _pinStateRepository.Upsert(
-                            pinnableMessage.PinSlot,
-                            pinnableMessage.DiscordChannelId,
-                            sent.Id);
                     });
                 }
             }
