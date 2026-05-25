@@ -358,6 +358,25 @@ namespace Perpetuum.Services.Channels
             channel.SendToOne(_sessionManager, recipient, builder);
         }
 
+        public void PinnedAnnouncement(string channelName, Character sender, string message, PinSlot pinSlot)
+        {
+            if (!_channels.TryGetValue(channelName, out Channel? channel))
+                return;
+
+            channel.Logger.LogMessage(sender, message);
+            channel.SendMessageToAll(_sessionManager, sender, message);
+
+            if (channel.DiscordId != null && sender.Nick != "Discord")
+            {
+                _eventChannel.PublishMessage(
+                    new DiscordPinnableMessage(
+                        channel.DiscordId.Value,
+                        sender.Nick,
+                        message,
+                        pinSlot));
+            }
+        }
+
         public void KickOrBan(string channelName, Character issuer, Character character, string message, bool ban)
         {
             if (issuer == character)
