@@ -16,10 +16,14 @@ namespace Perpetuum.Services.EventServices
             if (record == null)
                 return null;
 
-            return (
-                ulong.Parse(record.GetValue<string>("discord_channel_id")),
-                ulong.Parse(record.GetValue<string>("discord_message_id"))
-            );
+            var rawChannel = record.GetValue<string>("discord_channel_id");
+            var rawMessage = record.GetValue<string>("discord_message_id");
+
+            if (!ulong.TryParse(rawChannel, out var channelId) ||
+                !ulong.TryParse(rawMessage, out var messageId))
+                return null;
+
+            return (channelId, messageId);
         }
 
         public void Upsert(PinSlot slot, ulong channelId, ulong messageId)
