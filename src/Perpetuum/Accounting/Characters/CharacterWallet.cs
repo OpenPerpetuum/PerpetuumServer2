@@ -55,7 +55,6 @@ namespace Perpetuum.Accounting.Characters
                 case TransactionType.hangarRent:
                 case TransactionType.hangarRentAuto:
                 case TransactionType.marketFee:
-                case TransactionType.buyOrderDeposit:
                 case TransactionType.corporationCreate:
                 case TransactionType.extensionLearn:
                 case TransactionType.ItemRepair:
@@ -73,12 +72,10 @@ namespace Perpetuum.Accounting.Characters
                 case TransactionType.ResearchKitMerge:
                 case TransactionType.ProductionCPRGForge:
                 case TransactionType.ItemShopBuy:
-                case TransactionType.TransportAssignmentSubmit:
                 case TransactionType.ItemShopCreditTake:
                     SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(change)));
 
                     break;
-                case TransactionType.buyOrderPayBack:
                 case TransactionType.missionPayOut:
                 case TransactionType.refund:
                 case TransactionType.InsurancePayOut:
