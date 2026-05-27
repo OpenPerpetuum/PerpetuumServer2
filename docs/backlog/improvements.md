@@ -1,6 +1,6 @@
 # Last ID used
 
-029
+030
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -442,3 +442,54 @@ When a daily activity announcement is dispatched to the integrated Discord chann
 Requires the Discord bot/webhook integration to have the `Manage Messages` permission in the target channel.
 If the current integration uses an incoming webhook rather than a bot token, pinning is not possible via webhooks — a bot token with the `Manage Messages` permission will be required. Assess the current integration type before implementing.
 The last pinned message ID can be stored in memory across restarts only if a restart always re-announces; otherwise persist it (a single-row config table or a flat file entry is sufficient).
+
+---
+
+## IMPROVEMENT-030 - AutoMarket Overhaul: NIC Injection Control, Dynamic Risk-Aware Pricing, and Performance Refactor
+
+Status: TODO
+Priority: HIGH
+Area: Economy / AutoMarket / Database
+
+### Problem
+
+The AutoMarket has three interconnected problems that together drive hyperinflation:
+
+1. **Plasma buy orders are a NIC faucet.** Every plasma sale to the bot calls `PayOutToSeller`, which creates NIC from nothing — there is no vendor wallet being drained. The buy quantity equals 100% of all plasma gathered in the past 7 days (`cdp.gathered`), making the bot procyclical: more farming → larger buy orders → more NIC created. No daily spending limit exists.
+
+2. **Raw material prices are backwards and static.** `recalculate_raw_material_prices` distributes plasma NIC proportionally to gather volume, which means more supply → higher price (opposite of supply/demand). The static `raw_material_prices` fallback table requires manual maintenance and ignores zone risk — alpha and gamma materials are priced identically per the formula.
+
+3. **Performance and thread-safety concerns.** `usp_RefreshAutoMarketOrders` uses four SQL cursors for order placement (row-by-row, slow). `MarketAutoOrdersManager` fires blocking DB operations synchronously from the process loop. `resources_gathered` lacks zone origin data.
+
+### Impact
+
+Inflation continues unchecked while the AutoMarket runs. Raw material prices do not reflect actual gather difficulty or zone risk, making the crafting economy unrealistic. Cursor-based SQL and blocking process-loop operations are latent performance risks.
+
+### Proposed Fix
+
+**Part A — NIC Injection Control:**
+- New `automarket_config` table for all configurable parameters (anchor fraction, buy quantity fraction, daily budget).
+- `usp_RefreshAutoMarketOrders`: multiply plasma buy quantity by `plasma_buy_qty_fraction` (default 0.60); add hard daily NIC budget cap derived from `plasma_sold.income`.
+- `MarketAutoOrdersManager`: change refresh interval from 3 days to 1 day.
+
+**Part B — Zone-Aware Gather Tracking:**
+- Add `is_pvp BIT NOT NULL DEFAULT 0` to `resources_gathered_daily` and `resources_gathered`.
+- Add `@is_pvp BIT = 0` parameter to `sp_RecordResourceGathered`; update `consolidate_statistics` to preserve it in the merge key.
+- Update 5 C# gather call sites (`DrillerModule`, `HarvesterModule`, `LargeDrillerModule`, `LargeHarvesterModule`, `LootContainer`) to pass `!zone.Configuration.Protected`.
+
+**Part C — Dynamic Risk-Aware Raw Material Pricing:**
+- Rewrite `recalculate_raw_material_prices` with a new formula: `price = plasma_anchor × supply_demand_ratio × pvp_risk_multiplier`. Plasma anchor = live alpha plasma price × configurable fraction (default 0.15). Supply/demand ratio clamped 0.25–4.0. Risk multiplier 1.0 (all PvE) to 2.0 (all PvP); ungathered materials default to max scarcity + max risk.
+- Remove the `raw_material_prices` fallback from `v_all_production_costs`. The table is deprecated but left in place.
+
+**Part D — Performance and Thread-Safety Refactoring:**
+- Analyze `MarketAutoOrdersManager.Update(time)`: determine process thread ownership; if blocking DB calls on the main process loop are confirmed, offload via `Task.Run` with proper exception handling following existing codebase patterns.
+- Replace SQL cursors in `usp_RefreshAutoMarketOrders` with set-based `INSERT ... SELECT` where analysis confirms a performance benefit. Evaluate DELETE-all + INSERT-all vs. MERGE for the order refresh pattern.
+- Assess lock contention between frequent `sp_RecordResourceGathered` inserts and `consolidate_statistics` MERGE under load.
+
+### Notes
+
+Full design spec: `docs/superpowers/specs/2026-05-27-automarket-overhaul-design.md`
+
+The `raw_material_prices` table is not dropped — only removed from active query paths — to preserve historical reference and allow rollback.
+The `@is_pvp` parameter on `sp_RecordResourceGathered` defaults to `0`, so any call site not yet updated silently falls back to PvE treatment rather than failing.
+Part D refactoring is scoped to analysis + targeted fixes only; broad restructuring of the market engine is out of scope.
