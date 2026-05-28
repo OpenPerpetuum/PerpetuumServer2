@@ -60,5 +60,6 @@ namespace Perpetuum.AdminTool.ViewModels
         }
 
         private bool CanRefreshNow() => !IsRefreshing;
+        partial void OnIsRefreshingChanged(bool value) => RefreshNowCommand.NotifyCanExecuteChanged();
     }
 }

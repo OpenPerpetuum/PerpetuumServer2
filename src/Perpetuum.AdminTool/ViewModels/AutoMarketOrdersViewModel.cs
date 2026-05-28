@@ -92,8 +92,9 @@ namespace Perpetuum.AdminTool.ViewModels
         }
 
         private bool CanRefresh() => !IsLoading;
-        partial void OnOrderTypeFilterChanged(string? _) => ApplyFilter();
-        partial void OnCategoryFilterChanged(string? _)  => ApplyFilter();
+        partial void OnIsLoadingChanged(bool _)           => RefreshCommand.NotifyCanExecuteChanged();
+        partial void OnOrderTypeFilterChanged(string? _)  => ApplyFilter();
+        partial void OnCategoryFilterChanged(string? _)   => ApplyFilter();
 
         private void ApplyFilter()
         {
