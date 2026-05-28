@@ -1,6 +1,43 @@
 # Last ID used
 
-023
+024
+
+## ISSUE-024 - AutoMarket pricing structurally excludes player crafters from the production economy
+
+Status: DONE
+Priority: CRITICAL
+Area: Market / Economy
+
+### Problem
+AutoMarket's raw material buy prices are designed to be the best on the market, which means farmers preferentially sell to AutoMarket rather than to player crafters. Crafters who need raw materials are left with two unviable options: outbid AutoMarket for farmer supply (unsustainable) or buy from AutoMarket's own raw material sell orders at 2× production cost.
+
+At 2× production cost for inputs, crafters cannot profitably undercut AutoMarket's production sell orders, which are priced at exactly 1× production cost. This makes player crafting economically non-viable. AutoMarket ends up as both the dominant raw material buyer and the dominant production item seller, with no player-to-player trade in either segment.
+
+### Impact
+- Player crafters have no viable economic role when competing against AutoMarket.
+- The raw material market is dominated by AutoMarket; farmer → crafter trade does not develop.
+- The production market stabilizes at AutoMarket's prices with no player undercutting possible.
+- NIC injection via raw material purchases is currently uncapped (only plasma purchases have a daily budget cap), creating an inflation risk as AutoMarket absorbs all farming output.
+- Economy health degrades to a two-step loop (farmer → AutoMarket → buyer) with no value-add player layer.
+
+### Proposed Fix
+Three levers, in order of impact:
+
+1. **Add a margin to production sell prices** — sell production items at production cost × 1.2–1.3 instead of exactly 1×. This creates headroom for crafters who source materials below AutoMarket's buy price to profitably undercut. Lowest implementation cost: one config parameter.
+
+2. **Reduce raw material sell markup from 2× to ~1.3×** — crafters buying from AutoMarket's sell orders at 1.3× can still craft and sell below AutoMarket's marked-up production prices, creating a viable crafter niche even without direct farmer supply.
+
+3. **Add production item buyback orders** — AutoMarket posts buy orders for production items at ~0.85× production cost. Gives crafters a guaranteed exit price, making crafting economically viable in thin player markets and creating a NIC sink that scales with production volume. Largest implementation effort but highest long-term impact.
+
+The minimum viable fix is (1) + (2) as config-only changes. Adding (3) is the complete solution.
+
+### Notes
+- Root cause is that AutoMarket is positioned as a market maker (best price) rather than a backstop (last resort). The gap between AutoMarket prices and fair value should be where player trade operates.
+- AutoMarket does not currently buy production items back from players.
+- The 24h price refresh lag creates an arbitrage window but does not address the structural problem.
+- Cap raw material purchase budget similarly to the plasma budget (`daily_plasma_budget_nic`) to prevent unbounded NIC injection.
+
+---
 
 ## ISSUE-023 - Editing existing Season objectives does not save 'Is Daily' flag changes
 
