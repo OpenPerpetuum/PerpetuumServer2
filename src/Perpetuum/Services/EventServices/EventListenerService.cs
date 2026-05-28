@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Perpetuum.Log;
 using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Services.EventServices.EventProcessors;
 using Perpetuum.Threading.Process;
@@ -77,18 +78,27 @@ namespace Perpetuum.Services.EventServices
                                     if (oldMsg is IUserMessage oldUserMsg)
                                         await oldUserMsg.UnpinAsync();
                                 }
-                                catch { }
+                                catch (Exception ex)
+                                {
+                                    Logger.Error(ex.Message);
+                                }
                             }
 
                             try { await sent.PinAsync(); }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                Logger.Error(ex.Message);
+                            }
 
                             _pinStateRepository.Upsert(
                                 pinnableMessage.PinSlot,
                                 pinnableMessage.DiscordChannelId,
                                 sent.Id);
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            Logger.Error(ex.Message);
+                        }
                     });
                 }
             }

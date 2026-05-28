@@ -59,20 +59,22 @@ computed_costs AS (
     SELECT
         ac.product,
         SUM(
-            ac.total_quantity * ISNULL(mp.unit_price, (SELECT price FROM max_scarcity_price))
+            ac.total_quantity * ISNULL(mp.unit_price, msp.price)
         ) AS production_cost_nic
     FROM aggregated_costs ac
     LEFT JOIN latest_market_prices mp
         ON ac.raw_material COLLATE DATABASE_DEFAULT = mp.resource_name COLLATE DATABASE_DEFAULT
+    CROSS JOIN max_scarcity_price msp
     GROUP BY ac.product
 ),
 raw_resources AS (
     SELECT
         base.raw_material AS product,
-        ISNULL(mp.unit_price, (SELECT price FROM max_scarcity_price)) AS production_cost_nic
+        ISNULL(mp.unit_price, msp.price) AS production_cost_nic
     FROM (SELECT DISTINCT raw_material FROM v_required_raw_materials) base
     LEFT JOIN latest_market_prices mp
         ON base.raw_material COLLATE DATABASE_DEFAULT = mp.resource_name COLLATE DATABASE_DEFAULT
+    CROSS JOIN max_scarcity_price msp
 ),
 final_costs AS (
     SELECT * FROM computed_costs
