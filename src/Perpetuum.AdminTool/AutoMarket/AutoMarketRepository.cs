@@ -295,18 +295,9 @@ namespace Perpetuum.AdminTool.AutoMarket
 
         public async Task<List<AutoMarketOrderData>> LoadOrdersAsync()
         {
-            var productionItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var result = new List<AutoMarketOrderData>();
             await using var cn = new SqlConnection(_connection.BuildConnectionString());
             await cn.OpenAsync();
-
-            await using (var cmd = cn.CreateCommand())
-            {
-                cmd.CommandText = "SELECT definitionname FROM market_orders_configuration";
-                await using var r = await cmd.ExecuteReaderAsync();
-                while (await r.ReadAsync()) productionItems.Add(r.GetString(0));
-            }
-
-            var result = new List<AutoMarketOrderData>();
             await using (var cmd = cn.CreateCommand())
             {
                 cmd.CommandText =
