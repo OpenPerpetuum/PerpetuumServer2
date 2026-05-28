@@ -5615,6 +5615,8 @@ Stores the Discord channel ID and message ID of the currently pinned message per
 
 ## raw_material_prices
 
+> **Deprecated (IMPROVEMENT-030):** This table is no longer read by any active query path. Rows are retained as historical reference. Do not add new query dependencies on this table.
+
 **Schema:** `dbo`
 
 ### Columns
