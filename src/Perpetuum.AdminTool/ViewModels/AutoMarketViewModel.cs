@@ -31,7 +31,7 @@ namespace Perpetuum.AdminTool.ViewModels
             _repo      = repo;
             Config     = new AutoMarketConfigViewModel(repo, queue);
             TradeList  = new AutoMarketTradeListViewModel(repo, queue, lookups, translations);
-            Statistics = new AutoMarketStatisticsViewModel(repo);
+            Statistics = new AutoMarketStatisticsViewModel(repo, translations);
             Orders     = new AutoMarketOrdersViewModel(repo, translations);
         }
 

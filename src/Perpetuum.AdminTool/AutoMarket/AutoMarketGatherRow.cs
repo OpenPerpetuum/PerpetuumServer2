@@ -3,6 +3,7 @@ namespace Perpetuum.AdminTool.AutoMarket
     public class AutoMarketGatherRow
     {
         public string ResourceName { get; init; } = "";
+        public string DisplayName  { get; set;  } = "";
         public long   PveQty       { get; init; }
         public long   PvpQty       { get; init; }
         public long   TotalQty     => PveQty + PvpQty;

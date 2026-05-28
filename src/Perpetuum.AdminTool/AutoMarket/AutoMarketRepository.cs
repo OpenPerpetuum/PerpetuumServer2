@@ -162,7 +162,7 @@ namespace Perpetuum.AdminTool.AutoMarket
                     "SELECT TOP 1 dynamic_price FROM fn_CalculateDynamicPlasmaPrices(1) " +
                     "WHERE plasma_type = 'def_common_reactor_plasma'";
                 await using var r = await cmd.ExecuteReaderAsync();
-                if (await r.ReadAsync()) alphaPlasmaPrice = r.IsDBNull(0) ? 0 : r.GetDouble(0);
+                if (await r.ReadAsync()) alphaPlasmaPrice = r.IsDBNull(0) ? 0 : (double)r.GetDecimal(0);
             }
 
             // 2. Config params
@@ -201,7 +201,7 @@ namespace Perpetuum.AdminTool.AutoMarket
                 await using var r = await cmd.ExecuteReaderAsync();
                 while (await r.ReadAsync())
                 {
-                    supply[r.GetString(0)] = (r.GetDouble(3), r.GetInt64(1), r.GetInt64(2));
+                    supply[r.GetString(0)] = ((double)r.GetDecimal(3), r.GetInt64(1), r.GetInt64(2));
                 }
             }
 
@@ -213,7 +213,7 @@ namespace Perpetuum.AdminTool.AutoMarket
                     "SELECT raw_material, SUM(total_quantity) / 7.0 " +
                     "FROM v_required_raw_materials GROUP BY raw_material";
                 await using var r = await cmd.ExecuteReaderAsync();
-                while (await r.ReadAsync()) demand[r.GetString(0)] = r.GetDouble(1);
+                while (await r.ReadAsync()) demand[r.GetString(0)] = (double)r.GetDecimal(1);
             }
 
             // 5. Materials list

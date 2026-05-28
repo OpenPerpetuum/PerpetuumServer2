@@ -57,7 +57,7 @@
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                           Margin="0,0,0,16">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Resource"       Binding="{Binding ResourceName}"                        Width="180"/>
+                        <DataGridTextColumn Header="Resource"       Binding="{Binding DisplayName}"                         Width="180"/>
                         <DataGridTextColumn Header="Plasma Anchor"  Binding="{Binding PlasmaAnchor,   StringFormat='{}{0:N2}'}" Width="110"/>
                         <DataGridTextColumn Header="S/D Ratio"      Binding="{Binding SdRatio,        StringFormat='{}{0:F4}'}" Width="90"/>
                         <DataGridTextColumn Header="Risk Mult"      Binding="{Binding RiskMultiplier, StringFormat='{}{0:F4}'}" Width="90"/>
@@ -73,7 +73,7 @@
                           CanUserAddRows="False" CanUserDeleteRows="False"
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Resource" Binding="{Binding ResourceName}" Width="180"/>
+                        <DataGridTextColumn Header="Resource" Binding="{Binding DisplayName}"  Width="180"/>
                         <DataGridTextColumn Header="PvE qty"  Binding="{Binding PveQty, StringFormat='{}{0:N0}'}" Width="110"/>
                         <DataGridTextColumn Header="PvP qty"  Binding="{Binding PvpQty, StringFormat='{}{0:N0}'}" Width="110"/>
                         <DataGridTextColumn Header="Total"    Binding="{Binding TotalQty, StringFormat='{}{0:N0}'}" Width="110"/>
