@@ -5774,6 +5774,7 @@ Stores the Discord channel ID and message ID of the currently pinned message per
 | `gathered_on` | `date [not null]` |
 | `resource_name` | `varchar(100) [not null]` |
 | `quantity` | `bigint [not null]` |
+| `is_pvp` | `bit [not null, default: 0]` |
 
 ---
 
@@ -5788,6 +5789,7 @@ Stores the Discord channel ID and message ID of the currently pinned message per
 | `gathered_on` | `date [not null]` |
 | `resource_name` | `varchar(100) [not null]` |
 | `quantity` | `bigint [not null]` |
+| `is_pvp` | `bit [not null, default: 0]` |
 
 ---
 
