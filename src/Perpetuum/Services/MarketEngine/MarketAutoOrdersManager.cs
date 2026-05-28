@@ -1,4 +1,5 @@
 ﻿using Perpetuum.Data;
+using Perpetuum.Log;
 using Perpetuum.Threading.Process;
 using Perpetuum.Timers;
 using System.Transactions;
@@ -26,12 +27,32 @@ namespace Perpetuum.Services.MarketEngine
 
         private void Init()
         {
-            _timers.Add(new TimerAction(ConsolidateStatistics, TimeSpan.FromMinutes(15)));
-            _timers.Add(new TimerAction(RecalculatePricesAndRenewOrders, TimeSpan.FromDays(3)));
+            // Callbacks fire synchronously on the MainLoop thread (ProcessManager.UpdateLoop).
+            // The async wrappers offload blocking DB work to the thread pool to avoid stalling the loop.
+            _timers.Add(new TimerAction(ConsolidateStatisticsAsync, TimeSpan.FromMinutes(15)));
+            _timers.Add(new TimerAction(RecalculatePricesAndRenewOrdersAsync, TimeSpan.FromDays(1)));
 
             // Debug purposes, do not uncomment
-            //_timers.Add(new TimerAction(ConsolidateStatistics, TimeSpan.FromMinutes(15)));
-            //_timers.Add(new TimerAction(RecalculatePricesAndRenewOrders, TimeSpan.FromMinutes(3)));
+            //_timers.Add(new TimerAction(ConsolidateStatisticsAsync, TimeSpan.FromMinutes(15)));
+            //_timers.Add(new TimerAction(RecalculatePricesAndRenewOrdersAsync, TimeSpan.FromMinutes(3)));
+        }
+
+        private void ConsolidateStatisticsAsync()
+        {
+            Task.Run(() =>
+            {
+                try { ConsolidateStatistics(); }
+                catch (Exception ex) { Logger.Exception(ex); }
+            });
+        }
+
+        private void RecalculatePricesAndRenewOrdersAsync()
+        {
+            Task.Run(() =>
+            {
+                try { RecalculatePricesAndRenewOrders(); }
+                catch (Exception ex) { Logger.Exception(ex); }
+            });
         }
 
         private void ConsolidateStatistics()
