@@ -1,0 +1,57 @@
+<UserControl x:Class="Perpetuum.AdminTool.Views.AutoMarketOrdersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:AutoMarketOrdersViewModel}">
+    <DockPanel>
+
+        <!-- Toolbar: filters + refresh -->
+        <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="8,6"
+                BorderBrush="#DDD" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Order type:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox Width="100" VerticalAlignment="Center" Margin="0,0,16,0"
+                          ItemsSource="{Binding OrderTypeOptionsList}"
+                          SelectedItem="{Binding OrderTypeFilter}"/>
+                <TextBlock Text="Category:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox Width="140" VerticalAlignment="Center" Margin="0,0,16,0"
+                          ItemsSource="{Binding CategoryOptionsList}"
+                          SelectedItem="{Binding CategoryFilter}"/>
+                <Button Content="Refresh Orders" Padding="10,2"
+                        Command="{Binding RefreshCommand}"/>
+                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
+                           Text="{Binding StatusMessage}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="DimGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="DarkRed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <DataGrid ItemsSource="{Binding FilteredOrders}"
+                  AutoGenerateColumns="False" IsReadOnly="True"
+                  CanUserAddRows="False" CanUserDeleteRows="False"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                  Margin="8">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Item"     Binding="{Binding DisplayName}" Width="*"/>
+                <DataGridTextColumn Header="Type"     Binding="{Binding OrderType}"   Width="80"/>
+                <DataGridTextColumn Header="Category" Binding="{Binding Category}"    Width="130"/>
+                <DataGridTextColumn Header="Price"    Binding="{Binding Price,  StringFormat='{}{0:N2}'}" Width="110"/>
+                <DataGridTextColumn Header="Amount"   Binding="{Binding Amount, StringFormat='{}{0:N0}'}" Width="90"/>
+                <DataGridTextColumn Header="Market"   Binding="{Binding MarketName}"  Width="160"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+    </DockPanel>
+</UserControl>

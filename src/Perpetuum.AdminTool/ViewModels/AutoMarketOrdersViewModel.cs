@@ -32,6 +32,10 @@ namespace Perpetuum.AdminTool.ViewModels
         public static IReadOnlyList<string?> CategoryOptions { get; } =
             new List<string?> { null, "Plasma", "Raw Material", "Production Item" };
 
+        // Instance forwarders for WPF binding (avoids XAML build-time x:Static resolution issues)
+        public IReadOnlyList<string?> OrderTypeOptionsList => OrderTypeOptions;
+        public IReadOnlyList<string?> CategoryOptionsList  => CategoryOptions;
+
         public AutoMarketOrdersViewModel(AutoMarketRepository repo, TranslationsViewModel? translations)
         {
             _repo         = repo;
