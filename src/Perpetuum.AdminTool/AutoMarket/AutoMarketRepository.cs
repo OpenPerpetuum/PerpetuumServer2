@@ -102,9 +102,9 @@ namespace Perpetuum.AdminTool.AutoMarket
                     "FROM plasma_sold";
                 await using var r = await cmd.ExecuteReaderAsync();
                 await r.ReadAsync();
-                todayPlasma = (long)r.GetDouble(0);
-                weekPlasma  = (long)r.GetDouble(1);
-                allPlasma   = (long)r.GetDouble(2);
+                todayPlasma = (long)Math.Round(r.GetDouble(0));
+                weekPlasma  = (long)Math.Round(r.GetDouble(1));
+                allPlasma   = (long)Math.Round(r.GetDouble(2));
             }
 
             await using (var cmd = cn.CreateCommand())
@@ -117,9 +117,9 @@ namespace Perpetuum.AdminTool.AutoMarket
                     "FROM rawmat_purchased";
                 await using var r = await cmd.ExecuteReaderAsync();
                 await r.ReadAsync();
-                todayRawmat = (long)r.GetDouble(0);
-                weekRawmat  = (long)r.GetDouble(1);
-                allRawmat   = (long)r.GetDouble(2);
+                todayRawmat = (long)Math.Round(r.GetDouble(0));
+                weekRawmat  = (long)Math.Round(r.GetDouble(1));
+                allRawmat   = (long)Math.Round(r.GetDouble(2));
             }
 
             await using (var cmd = cn.CreateCommand())
