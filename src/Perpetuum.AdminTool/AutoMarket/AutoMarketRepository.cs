@@ -292,5 +292,57 @@ namespace Perpetuum.AdminTool.AutoMarket
                 });
             return result;
         }
+
+        public async Task<List<AutoMarketOrderData>> LoadOrdersAsync()
+        {
+            var productionItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            await using var cn = new SqlConnection(_connection.BuildConnectionString());
+            await cn.OpenAsync();
+
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT definitionname FROM market_orders_configuration";
+                await using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync()) productionItems.Add(r.GetString(0));
+            }
+
+            var result = new List<AutoMarketOrderData>();
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT mi.itemdefinition, ISNULL(ed.definitionname,''), mi.isSell, " +
+                    "  mi.price, mi.quantity, ISNULL(ed2.definitionname,'') " +
+                    "FROM marketitems mi " +
+                    "LEFT JOIN entitydefaults ed  ON ed.definition  = mi.itemdefinition " +
+                    "LEFT JOIN entities        ent ON ent.eid        = mi.marketeid " +
+                    "LEFT JOIN entitydefaults ed2 ON ed2.definition = ent.definition " +
+                    "WHERE mi.isAutoOrder = 1 " +
+                    "ORDER BY ed.definitionname";
+                await using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                    result.Add(new AutoMarketOrderData(
+                        r.GetInt32(0), r.GetString(1), r.GetBoolean(2),
+                        r.GetDouble(3), r.GetInt32(4), r.GetString(5)));
+            }
+            return result;
+        }
+
+        public async Task RefreshNowAsync()
+        {
+            await using var cn = new SqlConnection(_connection.BuildConnectionString());
+            await cn.OpenAsync();
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandTimeout = 120;
+                cmd.CommandText = "EXEC recalculate_raw_material_prices";
+                await cmd.ExecuteNonQueryAsync();
+            }
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandTimeout = 120;
+                cmd.CommandText = "EXEC usp_RefreshAutoMarketOrders";
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
     }
 }

@@ -1,6 +1,6 @@
 namespace Perpetuum.AdminTool.AutoMarket
 {
-    internal record AutoMarketOrderData(
+    public record AutoMarketOrderData(
         int    ItemDefinition,
         string DefinitionName,
         bool   IsSell,
