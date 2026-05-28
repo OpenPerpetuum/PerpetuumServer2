@@ -30,6 +30,7 @@ Generated from DBML structure.
 - [artifactspawninfo](#artifactspawninfo)
 - [artifacttypes](#artifacttypes)
 - [attributeFlags](#attributeflags)
+- [automarket_config](#automarket-config)
 - [automarket_unbought_resources](#automarket-unbought-resources)
 - [automarket_unsold_leftovers](#automarket-unsold-leftovers)
 - [beams](#beams)
@@ -987,6 +988,29 @@ Generated from DBML structure.
 ### Indexes
 
 - `offset [unique, name: "IX_attributeFlags_offset"]`
+
+---
+
+## automarket_config
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `param_name` | `varchar(100) [not null, pk]` |
+| `param_value` | `float [not null]` |
+
+### Seeded rows
+
+| param_name | param_value |
+|---|---|
+| `plasma_anchor_fraction` | `0.15` |
+| `plasma_buy_qty_fraction` | `0.60` |
+| `daily_plasma_budget_nic` | `500000` |
+| `resource_ds_ratio_min` | `0.25` |
+| `resource_ds_ratio_max` | `4.0` |
 
 ---
 
