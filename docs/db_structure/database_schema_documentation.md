@@ -1004,13 +1004,17 @@ Generated from DBML structure.
 
 ### Seeded rows
 
-| param_name | param_value |
-|---|---|
-| `plasma_anchor_fraction` | `0.15` |
-| `plasma_buy_qty_fraction` | `0.60` |
-| `daily_plasma_budget_nic` | `500000` |
-| `resource_ds_ratio_min` | `0.25` |
-| `resource_ds_ratio_max` | `4.0` |
+| param_name | param_value | Description |
+|---|---|---|
+| `plasma_anchor_fraction` | `0.15` | |
+| `plasma_buy_qty_fraction` | `0.60` | |
+| `daily_plasma_budget_nic` | `500000` | |
+| `resource_ds_ratio_min` | `0.25` | |
+| `resource_ds_ratio_max` | `4.0` | |
+| `product_sell_margin` | `1.2` | Product sell orders priced at production_cost × this value (was 1.0). Creates headroom for player crafters to undercut AutoMarket. |
+| `raw_mat_sell_multiplier` | `1.5` | Raw material sell orders priced at production_cost × this value (was 2.0). Reduces input cost barrier for crafters. |
+| `product_buyback_margin` | `0.80` | AutoMarket buys production items back at production_cost × this value. Guarantees crafters an exit price floor. |
+| `daily_rawmat_budget_nic` | `5000000` | Max NIC paid for raw material buy order fulfillments per UTC calendar day. Caps NIC injection from AutoMarket raw material purchases. |
 
 ---
 
@@ -5351,6 +5355,27 @@ Stores the Discord channel ID and message ID of the currently pinned message per
 | `plasma_type` | `varchar(100) [not null]` |
 | `quantity` | `bigint [not null]` |
 | `income` | `float` |
+
+---
+
+## rawmat_purchased
+
+**Schema:** `dbo`
+
+Tracks NIC paid for raw material AutoMarket buy order fulfillments. Used by `usp_RefreshAutoMarketOrders` to enforce the daily raw material purchase budget cap (`daily_rawmat_budget_nic`).
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `purchased_on` | `date [not null]` |
+| `item_definition` | `int [not null]` |
+| `quantity` | `bigint [not null]` |
+| `income` | `float [not null]` |
+
+**Primary Key:** (purchased_on, item_definition)
+
+Rows older than 90 days are pruned by `recalculate_raw_material_prices`.
 
 ---
 
