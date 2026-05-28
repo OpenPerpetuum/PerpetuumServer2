@@ -447,7 +447,7 @@ The last pinned message ID can be stored in memory across restarts only if a res
 
 ## IMPROVEMENT-030 - AutoMarket Overhaul: NIC Injection Control, Dynamic Risk-Aware Pricing, and Performance Refactor
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Economy / AutoMarket / Database
 
@@ -485,6 +485,34 @@ Inflation continues unchecked while the AutoMarket runs. Raw material prices do 
 - Analyze `MarketAutoOrdersManager.Update(time)`: determine process thread ownership; if blocking DB calls on the main process loop are confirmed, offload via `Task.Run` with proper exception handling following existing codebase patterns.
 - Replace SQL cursors in `usp_RefreshAutoMarketOrders` with set-based `INSERT ... SELECT` where analysis confirms a performance benefit. Evaluate DELETE-all + INSERT-all vs. MERGE for the order refresh pattern.
 - Assess lock contention between frequent `sp_RecordResourceGathered` inserts and `consolidate_statistics` MERGE under load.
+
+### Implementation Notes
+
+Completed in branch p36.4. All code changes committed to server runtime. Operator must execute the following SQL DDL against live database before new logic takes effect:
+
+**Schema changes (Part B):**
+1. `ALTER TABLE resources_gathered_daily ADD is_pvp BIT NOT NULL DEFAULT 0`
+2. `ALTER TABLE resources_gathered ADD is_pvp BIT NOT NULL DEFAULT 0`
+
+**Configuration table (Part A):**
+3. `CREATE TABLE automarket_config (id INT PRIMARY KEY, plasma_buy_qty_fraction DECIMAL(5,4), daily_nic_budget BIGINT, plasma_anchor_fraction DECIMAL(5,4))`
+4. Insert default row: `INSERT INTO automarket_config VALUES (1, 0.60, [calculate from current gather], 0.15)`
+
+**Stored procedure changes (Parts A, B, C):**
+5. `ALTER PROCEDURE sp_RecordResourceGathered` — add `@is_pvp BIT = 0` parameter
+6. `ALTER PROCEDURE consolidate_statistics` — add `is_pvp` to GROUP BY and MERGE key
+7. `ALTER PROCEDURE recalculate_raw_material_prices` — rewrite with new formula (see design spec)
+8. `ALTER PROCEDURE usp_RefreshAutoMarketOrders` — apply budget cap and set-based inserts
+
+**View changes (Part C):**
+9. `ALTER VIEW v_all_production_costs` — remove `raw_material_prices` dependency, use dynamic pricing from procedure
+
+**Execution notes:**
+- Schema changes 1-2 are safe (backward-compatible defaults).
+- Execute configuration table creation (3-4) before stored procedure changes.
+- Procedures 5-9 must be executed in order: schema → config → procedures → view.
+- No data migration required; existing tables and values remain unchanged.
+- After DDL execution, refresh server cache (`gameConfig.ConfigManager` or admin command) to load `automarket_config`.
 
 ### Notes
 
