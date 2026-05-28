@@ -634,10 +634,11 @@ namespace Perpetuum.Services.Looting
                         try
                         {
                             Db.Query()
-                                .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity")
+                                .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity, @is_pvp")
                                 .SetParameter("@gathered_on", DateTime.UtcNow)
                                 .SetParameter("@resource_name", fragment.Key)
                                 .SetParameter("@quantity", fragment.Sum(x => x.ItemInfo.Quantity))
+                                .SetParameter("@is_pvp", !zone.Configuration.Protected)
                                 .ExecuteNonQuery();
                         }
                         catch (Exception ex)
