@@ -9,6 +9,8 @@ namespace Perpetuum.Services.MarketEngine
     public class MarketAutoOrdersManager : IProcess
     {
         private readonly TimerList _timers = new TimerList();
+        private volatile bool _consolidating;
+        private volatile bool _recalculating;
 
         public void Start()
         {
@@ -39,19 +41,25 @@ namespace Perpetuum.Services.MarketEngine
 
         private void ConsolidateStatisticsAsync()
         {
-            Task.Run(() =>
+            if (_consolidating) return;
+            _consolidating = true;
+            _ = Task.Run(() =>
             {
                 try { ConsolidateStatistics(); }
                 catch (Exception ex) { Logger.Exception(ex); }
+                finally { _consolidating = false; }
             });
         }
 
         private void RecalculatePricesAndRenewOrdersAsync()
         {
-            Task.Run(() =>
+            if (_recalculating) return;
+            _recalculating = true;
+            _ = Task.Run(() =>
             {
                 try { RecalculatePricesAndRenewOrders(); }
                 catch (Exception ex) { Logger.Exception(ex); }
+                finally { _recalculating = false; }
             });
         }
 
