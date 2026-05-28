@@ -1,6 +1,6 @@
 # Last ID used
 
-030
+031
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -521,3 +521,85 @@ Full design spec: `docs/superpowers/specs/2026-05-27-automarket-overhaul-design.
 The `raw_material_prices` table is not dropped — only removed from active query paths — to preserve historical reference and allow rollback.
 The `@is_pvp` parameter on `sp_RecordResourceGathered` defaults to `0`, so any call site not yet updated silently falls back to PvE treatment rather than failing.
 Part D refactoring is scoped to analysis + targeted fixes only; broad restructuring of the market engine is out of scope.
+
+---
+
+## IMPROVEMENT-031 - AdminTool: AutoMarket Management and Statistics
+
+Status: DONE
+Priority: HIGH
+Area: Admin Tool / Economy / AutoMarket
+
+### Description
+
+Add a dedicated **AutoMarket** panel to the AdminTool with four tabs: Config, Trade List, Statistics, and Orders. Operators currently have no in-tool way to tune AutoMarket parameters, manage the item trade list, or inspect economy health — all changes require direct DB access.
+
+Follows the Seasons panel pattern: single nav entry, tabbed ViewModel, MVVM + ChangeQueue. No new server-side API is needed except one thin request handler for the manual refresh trigger.
+
+### Tab 1 — Config
+
+Editable grid of all `automarket_config` parameters with human-readable labels:
+`plasma_anchor_fraction`, `plasma_buy_qty_fraction`, `daily_plasma_budget_nic`, `daily_rawmat_budget_nic`, `product_sell_margin`, `raw_mat_sell_multiplier`, `product_buyback_margin`, `resource_ds_ratio_min`, `resource_ds_ratio_max`.
+
+Changes are queued via `ChangeQueue` and committed through the existing SQL script / direct-apply pipeline.
+
+A **Refresh Now** toolbar button sends a server request to immediately trigger `MarketAutoOrdersManager` — requires one new thin request handler wired via the existing `Commands.cs` / Autofac pattern.
+
+### Tab 2 — Trade List
+
+Editable grid of `market_orders_configuration` rows. Columns: translated item name, definition name (read-only), amount (editable). Translated names via the existing translations system; falls back to `definitionname`.
+
+- **Add item** — searchable item picker backed by `entitydefaults`, filterable by translated or internal name.
+- **Remove item** — warns if the item is a dependency of others (via `v_required_raw_materials`).
+- **Queue Save** per row — follows the ChangeQueue deduplication pattern ([[IMPROVEMENT-016]]).
+
+A read-only sub-panel below the grid shows the derived raw materials that will be generated from the current trade list (via `v_required_raw_materials`), also with translated names.
+
+### Tab 3 — Statistics
+
+Read-only dashboard, refreshes on demand.
+
+- **NIC Flow** — plasma NIC in and rawmat NIC out for today / last 7 days / total (from `plasma_sold` and `rawmat_purchased`); net delta per period; today's spend vs daily cap shown as a ratio.
+- **Pricing Trace** — per raw material: translated name, plasma anchor input, supply/demand ratio, PvP risk multiplier, resulting price. Explains why each material is priced as it is.
+- **Gather Breakdown** — per raw material: gather volume over last 7 days split by PvP vs PvE (from `resources_gathered_daily.is_pvp`). Validates risk multiplier inputs.
+
+### Tab 4 — Orders
+
+Read-only live snapshot of all active AutoMarket orders. Columns: translated item name, order type (Buy / Sell / Buyback), price, amount, translated market/base name, category (Plasma / Raw Material / Production Item). Filterable by order type and category.
+
+Market/base names use translated display names via the existing translations system, with fallback to internal name.
+
+### Impact
+
+Without this panel, every config change, trade list edit, and economy health check requires direct DB access. The AdminTool gives operators a safe, auditable surface for the most frequently tuned AutoMarket levers introduced in [[IMPROVEMENT-030]] and [[ISSUE-024]].
+
+### Proposed Implementation
+
+**Server side:**
+- Add one new `Commands.cs` entry and request handler (`AutoMarketRefreshHandler` or similar) that calls `MarketAutoOrdersManager` refresh method directly.
+- Register via Autofac following existing handler patterns.
+
+**AdminTool:**
+- `AutoMarketViewModel` — root VM, owns tab VMs, wires Refresh Now command via server request.
+- `AutoMarketConfigViewModel` — loads `automarket_config`; editable rows; ChangeQueue integration.
+- `AutoMarketTradeListViewModel` — loads `market_orders_configuration`; item picker dialog; derived raw material sub-panel; ChangeQueue integration.
+- `AutoMarketStatisticsViewModel` — loads NIC flow aggregates, pricing trace, gather breakdown; refresh-on-demand.
+- `AutoMarketOrdersViewModel` — loads live market order snapshot; filter support; refresh-on-demand.
+- Corresponding XAML Views for each VM.
+- Wire `AutoMarketViewModel` into `MainViewModel` following the same pattern as `SeasonsViewModel`.
+
+**No new DB tables required.** All data comes from existing tables and views introduced in IMPROVEMENT-030 and ISSUE-024.
+
+### Notes
+
+Translations: use the existing translations system throughout (item names, market/base names). Fall back to internal names if no translation exists — never show raw definition IDs to the operator.
+ChangeQueue deduplication for Config and Trade List tabs — see [[IMPROVEMENT-016]].
+The derived raw materials sub-panel in Trade List is read-only and does not generate ChangeQueue entries.
+The Refresh Now button should be disabled while a refresh is in progress and should surface any server-side error to the operator.
+Pricing Trace data source: query the last computed values from `resource_market_prices` (or equivalent output of `recalculate_raw_material_prices`) — no live re-computation in the AdminTool.
+
+### Implementation
+
+Implemented via plan `docs/superpowers/plans/2026-05-28-automarket-admintool.md` (14 tasks, branch p36.4).
+Refresh Now calls SPs directly from AdminTool DB connection (no server-side handler needed).
+`{x:Static}` binding on source-generator types causes MC1000 BAML errors — worked around with instance forwarder properties on `AutoMarketOrdersViewModel`.
