@@ -128,10 +128,11 @@ namespace Perpetuum.Modules
                     try
                     {
                         Db.Query()
-                            .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity")
+                            .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity, @is_pvp")
                             .SetParameter("@gathered_on", DateTime.UtcNow)
                             .SetParameter("@resource_name", resourceName)
                             .SetParameter("@quantity", quantity)
+                            .SetParameter("@is_pvp", !zone.Configuration.Protected)
                             .ExecuteNonQuery();
                     }
                     catch (Exception ex)

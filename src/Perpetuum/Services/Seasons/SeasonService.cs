@@ -2,6 +2,7 @@ using Perpetuum.Accounting.Characters;
 using Perpetuum.Data;
 using Perpetuum.EntityFramework;
 using Perpetuum.Services.Channels;
+using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Services.Mail;
 using Perpetuum.Services.Sessions;
 using Perpetuum.Threading.Process;
@@ -398,7 +399,7 @@ namespace Perpetuum.Services.Seasons
             chatMessage.AppendLine();
             chatMessage.AppendLine("Way to go, Agents!");
 
-            _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
+            _channelManager.Value.PinnedAnnouncement(SeasonChannelName, _announcer.Value, chatMessage.ToString(), PinSlot.Leaderboard);
         }
 
         private static ImmutableHashSet<int> SelectDailyPool(
@@ -428,7 +429,7 @@ namespace Perpetuum.Services.Seasons
                 sb.AppendLine($"  — {obj.Name}: {obj.Description}");
             sb.AppendLine();
             sb.AppendLine("Complete them for bonus season points and rewards!");
-            _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, sb.ToString());
+            _channelManager.Value.PinnedAnnouncement(SeasonChannelName, _announcer.Value, sb.ToString(), PinSlot.DailyPool);
         }
 
         // ── Mail helpers ─────────────────────────────────────────────────────

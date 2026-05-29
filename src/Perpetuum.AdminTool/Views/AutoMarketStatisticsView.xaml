@@ -1,0 +1,87 @@
+<UserControl x:Class="Perpetuum.AdminTool.Views.AutoMarketStatisticsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:AutoMarketStatisticsViewModel}">
+    <DockPanel>
+
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="8,6"
+                BorderBrush="#DDD" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Refresh Statistics" Padding="10,2"
+                        Command="{Binding RefreshCommand}"/>
+                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="DimGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="DarkRed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="8">
+
+                <!-- NIC Flow -->
+                <TextBlock Text="NIC Flow" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <DataGrid ItemsSource="{Binding NicFlow}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          Margin="0,0,0,16">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Period"           Binding="{Binding Period}"          Width="120"/>
+                        <DataGridTextColumn Header="Plasma In (NIC)"  Binding="{Binding PlasmaIn,  StringFormat='{}{0:N0}'}" Width="130"/>
+                        <DataGridTextColumn Header="Rawmat Out (NIC)" Binding="{Binding RawmatOut, StringFormat='{}{0:N0}'}" Width="130"/>
+                        <DataGridTextColumn Header="Net Delta (NIC)"  Binding="{Binding NetDelta,  StringFormat='{}{0:N0}'}" Width="130"/>
+                        <DataGridTextColumn Header="Plasma vs Budget" Binding="{Binding PlasmaBudgetPct, StringFormat='{}{0:F1}%'}" Width="130"/>
+                        <DataGridTextColumn Header="Rawmat vs Budget" Binding="{Binding RawmatBudgetPct, StringFormat='{}{0:F1}%'}" Width="130"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Pricing Trace -->
+                <TextBlock Text="Pricing Trace" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <DataGrid ItemsSource="{Binding PricingTrace}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          Margin="0,0,0,16">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Resource"       Binding="{Binding DisplayName}"                         Width="180"/>
+                        <DataGridTextColumn Header="Plasma Anchor"  Binding="{Binding PlasmaAnchor,   StringFormat='{}{0:N2}'}" Width="110"/>
+                        <DataGridTextColumn Header="S/D Ratio"      Binding="{Binding SdRatio,        StringFormat='{}{0:F4}'}" Width="90"/>
+                        <DataGridTextColumn Header="Risk Mult"      Binding="{Binding RiskMultiplier, StringFormat='{}{0:F4}'}" Width="90"/>
+                        <DataGridTextColumn Header="Computed Price" Binding="{Binding ComputedPrice,  StringFormat='{}{0:N2}'}" Width="110"/>
+                        <DataGridTextColumn Header="Stored Price"   Binding="{Binding StoredPrice,    StringFormat='{}{0:N2}'}" Width="110"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Gather Breakdown -->
+                <TextBlock Text="Gather Breakdown (last 7 days)" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <DataGrid ItemsSource="{Binding GatherBreakdown}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Resource" Binding="{Binding DisplayName}"  Width="180"/>
+                        <DataGridTextColumn Header="PvE qty"  Binding="{Binding PveQty, StringFormat='{}{0:N0}'}" Width="110"/>
+                        <DataGridTextColumn Header="PvP qty"  Binding="{Binding PvpQty, StringFormat='{}{0:N0}'}" Width="110"/>
+                        <DataGridTextColumn Header="Total"    Binding="{Binding TotalQty, StringFormat='{}{0:N0}'}" Width="110"/>
+                        <DataGridTextColumn Header="PvP %"    Binding="{Binding PvpPct, StringFormat='{}{0:F1}%'}" Width="80"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

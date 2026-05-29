@@ -69,6 +69,9 @@
             <TabItem Header="Equipment Sets">
                 <views:EquipmentSetsView DataContext="{Binding EquipmentSets}"/>
             </TabItem>
+            <TabItem Header="AutoMarket">
+                <views:AutoMarketView DataContext="{Binding AutoMarket}"/>
+            </TabItem>
             <TabItem Header="Translations">
                 <views:TranslationsView DataContext="{Binding Translations}"/>
             </TabItem>

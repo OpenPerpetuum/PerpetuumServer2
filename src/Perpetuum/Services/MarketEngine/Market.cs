@@ -789,6 +789,22 @@ namespace Perpetuum.Services.MarketEngine
                         }
                     }
 
+                    // Log raw material AutoMarket purchase for daily budget tracking
+                    if (buyOrder.isVendorItem && itemToSell.ED.CategoryFlags.IsCategory(CategoryFlags.cf_raw_material))
+                    {
+                        using (TransactionScope scope = Db.CreateTransaction())
+                        {
+                            _ = Db.Query()
+                                .CommandText("exec sp_RecordRawMatPurchased @purchased_on, @item_def, @quantity, @income")
+                                .SetParameter("@purchased_on", DateTime.UtcNow)
+                                .SetParameter("@item_def", itemToSell.Definition)
+                                .SetParameter("@quantity", buyOrder.quantity)
+                                .SetParameter("@income", buyOrder.price * buyOrder.quantity)
+                                .ExecuteNonQuery();
+                            scope.Complete();
+                        }
+                    }
+
                     quantity = buyOrder.quantity;
                     buyOrder.quantity = 0; //signal to client
 
@@ -807,6 +823,22 @@ namespace Perpetuum.Services.MarketEngine
                             .CommandText("exec sp_RecordPlasmaSold @sold_on, @plasma_type, @quantity, @income")
                             .SetParameter("@sold_on", DateTime.UtcNow)
                             .SetParameter("@plasma_type", itemToSell.ED.Name)
+                            .SetParameter("@quantity", quantity)
+                            .SetParameter("@income", buyOrder.price * quantity)
+                            .ExecuteNonQuery();
+                        scope.Complete();
+                    }
+                }
+
+                // Log raw material AutoMarket purchase for daily budget tracking
+                if (buyOrder.isVendorItem && itemToSell.ED.CategoryFlags.IsCategory(CategoryFlags.cf_raw_material))
+                {
+                    using (TransactionScope scope = Db.CreateTransaction())
+                    {
+                        _ = Db.Query()
+                            .CommandText("exec sp_RecordRawMatPurchased @purchased_on, @item_def, @quantity, @income")
+                            .SetParameter("@purchased_on", DateTime.UtcNow)
+                            .SetParameter("@item_def", itemToSell.Definition)
                             .SetParameter("@quantity", quantity)
                             .SetParameter("@income", buyOrder.price * quantity)
                             .ExecuteNonQuery();
@@ -842,6 +874,22 @@ namespace Perpetuum.Services.MarketEngine
                         .CommandText("exec sp_RecordPlasmaSold @sold_on, @plasma_type, @quantity, @income")
                         .SetParameter("@sold_on", DateTime.UtcNow)
                         .SetParameter("@plasma_type", itemToSell.ED.Name)
+                        .SetParameter("@quantity", itemToSell.Quantity)
+                        .SetParameter("@income", buyOrder.price * itemToSell.Quantity)
+                        .ExecuteNonQuery();
+                    scope.Complete();
+                }
+            }
+
+            // Log raw material AutoMarket purchase for daily budget tracking
+            if (buyOrder.isVendorItem && itemToSell.ED.CategoryFlags.IsCategory(CategoryFlags.cf_raw_material))
+            {
+                using (TransactionScope scope = Db.CreateTransaction())
+                {
+                    _ = Db.Query()
+                        .CommandText("exec sp_RecordRawMatPurchased @purchased_on, @item_def, @quantity, @income")
+                        .SetParameter("@purchased_on", DateTime.UtcNow)
+                        .SetParameter("@item_def", itemToSell.Definition)
                         .SetParameter("@quantity", itemToSell.Quantity)
                         .SetParameter("@income", buyOrder.price * itemToSell.Quantity)
                         .ExecuteNonQuery();

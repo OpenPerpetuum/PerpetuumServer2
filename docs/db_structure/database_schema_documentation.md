@@ -30,6 +30,7 @@ Generated from DBML structure.
 - [artifactspawninfo](#artifactspawninfo)
 - [artifacttypes](#artifacttypes)
 - [attributeFlags](#attributeflags)
+- [automarket_config](#automarket-config)
 - [automarket_unbought_resources](#automarket-unbought-resources)
 - [automarket_unsold_leftovers](#automarket-unsold-leftovers)
 - [beams](#beams)
@@ -987,6 +988,33 @@ Generated from DBML structure.
 ### Indexes
 
 - `offset [unique, name: "IX_attributeFlags_offset"]`
+
+---
+
+## automarket_config
+
+**Schema:** `dbo`
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `param_name` | `varchar(100) [not null, pk]` |
+| `param_value` | `float [not null]` |
+
+### Seeded rows
+
+| param_name | param_value | Description |
+|---|---|---|
+| `plasma_anchor_fraction` | `0.15` | |
+| `plasma_buy_qty_fraction` | `0.60` | |
+| `daily_plasma_budget_nic` | `500000` | |
+| `resource_ds_ratio_min` | `0.25` | |
+| `resource_ds_ratio_max` | `4.0` | |
+| `product_sell_margin` | `1.2` | Product sell orders priced at production_cost × this value (was 1.0). Creates headroom for player crafters to undercut AutoMarket. |
+| `raw_mat_sell_multiplier` | `1.5` | Raw material sell orders priced at production_cost × this value (was 2.0). Reduces input cost barrier for crafters. |
+| `product_buyback_margin` | `0.80` | AutoMarket buys production items back at production_cost × this value. Guarantees crafters an exit price floor. |
+| `daily_rawmat_budget_nic` | `5000000` | Max NIC paid for raw material buy order fulfillments per UTC calendar day. Caps NIC injection from AutoMarket raw material purchases. |
 
 ---
 
@@ -2336,6 +2364,26 @@ Generated from DBML structure.
 
 - Referenced by `decorcategories.id`
 - Referenced by `entitydefaults.definition`
+
+---
+
+## discord_pin_state
+
+**Schema:** `dbo`
+
+Stores the Discord channel ID and message ID of the currently pinned message per pin slot (DailyPool=0, Leaderboard=1). Used by the server to unpin the previous announcement when a new one is sent.
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `pin_slot` | `tinyint [not null]` |
+| `discord_channel_id` | `varchar(20) [not null]` |
+| `discord_message_id` | `varchar(20) [not null]` |
+
+### Indexes
+
+- `pin_slot [pk]`
 
 ---
 
@@ -5310,6 +5358,27 @@ Generated from DBML structure.
 
 ---
 
+## rawmat_purchased
+
+**Schema:** `dbo`
+
+Tracks NIC paid for raw material AutoMarket buy order fulfillments. Used by `usp_RefreshAutoMarketOrders` to enforce the daily raw material purchase budget cap (`daily_rawmat_budget_nic`).
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `purchased_on` | `date [not null]` |
+| `item_definition` | `int [not null]` |
+| `quantity` | `bigint [not null]` |
+| `income` | `float [not null]` |
+
+**Primary Key:** (purchased_on, item_definition)
+
+Rows older than 90 days are pruned by `recalculate_raw_material_prices`.
+
+---
+
 ## polls
 
 **Schema:** `dbo`
@@ -5571,6 +5640,8 @@ Generated from DBML structure.
 
 ## raw_material_prices
 
+> **Deprecated (IMPROVEMENT-030):** This table is no longer read by any active query path. Rows are retained as historical reference. Do not add new query dependencies on this table.
+
 **Schema:** `dbo`
 
 ### Columns
@@ -5730,6 +5801,7 @@ Generated from DBML structure.
 | `gathered_on` | `date [not null]` |
 | `resource_name` | `varchar(100) [not null]` |
 | `quantity` | `bigint [not null]` |
+| `is_pvp` | `bit [not null, default: 0]` |
 
 ---
 
@@ -5744,6 +5816,7 @@ Generated from DBML structure.
 | `gathered_on` | `date [not null]` |
 | `resource_name` | `varchar(100) [not null]` |
 | `quantity` | `bigint [not null]` |
+| `is_pvp` | `bit [not null, default: 0]` |
 
 ---
 

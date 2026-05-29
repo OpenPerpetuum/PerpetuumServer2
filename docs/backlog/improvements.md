@@ -1,6 +1,6 @@
 # Last ID used
 
-029
+031
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -416,7 +416,7 @@ Deleting a set should warn if modules are still assigned to it.
 
 ## IMPROVEMENT-029 - Pin Daily Activity Announcements in Discord
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Seasons / Announcements / Discord Integration
 
@@ -442,3 +442,164 @@ When a daily activity announcement is dispatched to the integrated Discord chann
 Requires the Discord bot/webhook integration to have the `Manage Messages` permission in the target channel.
 If the current integration uses an incoming webhook rather than a bot token, pinning is not possible via webhooks — a bot token with the `Manage Messages` permission will be required. Assess the current integration type before implementing.
 The last pinned message ID can be stored in memory across restarts only if a restart always re-announces; otherwise persist it (a single-row config table or a flat file entry is sufficient).
+
+---
+
+## IMPROVEMENT-030 - AutoMarket Overhaul: NIC Injection Control, Dynamic Risk-Aware Pricing, and Performance Refactor
+
+Status: DONE
+Priority: HIGH
+Area: Economy / AutoMarket / Database
+
+### Problem
+
+The AutoMarket has three interconnected problems that together drive hyperinflation:
+
+1. **Plasma buy orders are a NIC faucet.** Every plasma sale to the bot calls `PayOutToSeller`, which creates NIC from nothing — there is no vendor wallet being drained. The buy quantity equals 100% of all plasma gathered in the past 7 days (`cdp.gathered`), making the bot procyclical: more farming → larger buy orders → more NIC created. No daily spending limit exists.
+
+2. **Raw material prices are backwards and static.** `recalculate_raw_material_prices` distributes plasma NIC proportionally to gather volume, which means more supply → higher price (opposite of supply/demand). The static `raw_material_prices` fallback table requires manual maintenance and ignores zone risk — alpha and gamma materials are priced identically per the formula.
+
+3. **Performance and thread-safety concerns.** `usp_RefreshAutoMarketOrders` uses four SQL cursors for order placement (row-by-row, slow). `MarketAutoOrdersManager` fires blocking DB operations synchronously from the process loop. `resources_gathered` lacks zone origin data.
+
+### Impact
+
+Inflation continues unchecked while the AutoMarket runs. Raw material prices do not reflect actual gather difficulty or zone risk, making the crafting economy unrealistic. Cursor-based SQL and blocking process-loop operations are latent performance risks.
+
+### Proposed Fix
+
+**Part A — NIC Injection Control:**
+- New `automarket_config` table for all configurable parameters (anchor fraction, buy quantity fraction, daily budget).
+- `usp_RefreshAutoMarketOrders`: multiply plasma buy quantity by `plasma_buy_qty_fraction` (default 0.60); add hard daily NIC budget cap derived from `plasma_sold.income`.
+- `MarketAutoOrdersManager`: change refresh interval from 3 days to 1 day.
+
+**Part B — Zone-Aware Gather Tracking:**
+- Add `is_pvp BIT NOT NULL DEFAULT 0` to `resources_gathered_daily` and `resources_gathered`.
+- Add `@is_pvp BIT = 0` parameter to `sp_RecordResourceGathered`; update `consolidate_statistics` to preserve it in the merge key.
+- Update 5 C# gather call sites (`DrillerModule`, `HarvesterModule`, `LargeDrillerModule`, `LargeHarvesterModule`, `LootContainer`) to pass `!zone.Configuration.Protected`.
+
+**Part C — Dynamic Risk-Aware Raw Material Pricing:**
+- Rewrite `recalculate_raw_material_prices` with a new formula: `price = plasma_anchor × supply_demand_ratio × pvp_risk_multiplier`. Plasma anchor = live alpha plasma price × configurable fraction (default 0.15). Supply/demand ratio clamped 0.25–4.0. Risk multiplier 1.0 (all PvE) to 2.0 (all PvP); ungathered materials default to max scarcity + max risk.
+- Remove the `raw_material_prices` fallback from `v_all_production_costs`. The table is deprecated but left in place.
+
+**Part D — Performance and Thread-Safety Refactoring:**
+- Analyze `MarketAutoOrdersManager.Update(time)`: determine process thread ownership; if blocking DB calls on the main process loop are confirmed, offload via `Task.Run` with proper exception handling following existing codebase patterns.
+- Replace SQL cursors in `usp_RefreshAutoMarketOrders` with set-based `INSERT ... SELECT` where analysis confirms a performance benefit. Evaluate DELETE-all + INSERT-all vs. MERGE for the order refresh pattern.
+- Assess lock contention between frequent `sp_RecordResourceGathered` inserts and `consolidate_statistics` MERGE under load.
+
+### Implementation Notes
+
+Completed in branch p36.4. All code changes committed to server runtime. Operator must execute the following SQL DDL against live database before new logic takes effect:
+
+**Schema changes (Part B):**
+1. `ALTER TABLE resources_gathered_daily ADD is_pvp BIT NOT NULL DEFAULT 0`
+2. `ALTER TABLE resources_gathered ADD is_pvp BIT NOT NULL DEFAULT 0`
+
+**Configuration table (Part A):**
+3. `CREATE TABLE automarket_config (id INT PRIMARY KEY, plasma_buy_qty_fraction DECIMAL(5,4), daily_nic_budget BIGINT, plasma_anchor_fraction DECIMAL(5,4))`
+4. Insert default row: `INSERT INTO automarket_config VALUES (1, 0.60, [calculate from current gather], 0.15)`
+
+**Stored procedure changes (Parts A, B, C):**
+5. `ALTER PROCEDURE sp_RecordResourceGathered` — add `@is_pvp BIT = 0` parameter
+6. `ALTER PROCEDURE consolidate_statistics` — add `is_pvp` to GROUP BY and MERGE key
+7. `ALTER PROCEDURE recalculate_raw_material_prices` — rewrite with new formula (see design spec)
+8. `ALTER PROCEDURE usp_RefreshAutoMarketOrders` — apply budget cap and set-based inserts
+
+**View changes (Part C):**
+9. `ALTER VIEW v_all_production_costs` — remove `raw_material_prices` dependency, use dynamic pricing from procedure
+
+**Execution notes:**
+- Schema changes 1-2 are safe (backward-compatible defaults).
+- Execute configuration table creation (3-4) before stored procedure changes.
+- Procedures 5-9 must be executed in order: schema → config → procedures → view.
+- No data migration required; existing tables and values remain unchanged.
+- After DDL execution, refresh server cache (`gameConfig.ConfigManager` or admin command) to load `automarket_config`.
+
+### Notes
+
+Full design spec: `docs/superpowers/specs/2026-05-27-automarket-overhaul-design.md`
+
+The `raw_material_prices` table is not dropped — only removed from active query paths — to preserve historical reference and allow rollback.
+The `@is_pvp` parameter on `sp_RecordResourceGathered` defaults to `0`, so any call site not yet updated silently falls back to PvE treatment rather than failing.
+Part D refactoring is scoped to analysis + targeted fixes only; broad restructuring of the market engine is out of scope.
+
+---
+
+## IMPROVEMENT-031 - AdminTool: AutoMarket Management and Statistics
+
+Status: DONE
+Priority: HIGH
+Area: Admin Tool / Economy / AutoMarket
+
+### Description
+
+Add a dedicated **AutoMarket** panel to the AdminTool with four tabs: Config, Trade List, Statistics, and Orders. Operators currently have no in-tool way to tune AutoMarket parameters, manage the item trade list, or inspect economy health — all changes require direct DB access.
+
+Follows the Seasons panel pattern: single nav entry, tabbed ViewModel, MVVM + ChangeQueue. No new server-side API is needed except one thin request handler for the manual refresh trigger.
+
+### Tab 1 — Config
+
+Editable grid of all `automarket_config` parameters with human-readable labels:
+`plasma_anchor_fraction`, `plasma_buy_qty_fraction`, `daily_plasma_budget_nic`, `daily_rawmat_budget_nic`, `product_sell_margin`, `raw_mat_sell_multiplier`, `product_buyback_margin`, `resource_ds_ratio_min`, `resource_ds_ratio_max`.
+
+Changes are queued via `ChangeQueue` and committed through the existing SQL script / direct-apply pipeline.
+
+A **Refresh Now** toolbar button sends a server request to immediately trigger `MarketAutoOrdersManager` — requires one new thin request handler wired via the existing `Commands.cs` / Autofac pattern.
+
+### Tab 2 — Trade List
+
+Editable grid of `market_orders_configuration` rows. Columns: translated item name, definition name (read-only), amount (editable). Translated names via the existing translations system; falls back to `definitionname`.
+
+- **Add item** — searchable item picker backed by `entitydefaults`, filterable by translated or internal name.
+- **Remove item** — warns if the item is a dependency of others (via `v_required_raw_materials`).
+- **Queue Save** per row — follows the ChangeQueue deduplication pattern ([[IMPROVEMENT-016]]).
+
+A read-only sub-panel below the grid shows the derived raw materials that will be generated from the current trade list (via `v_required_raw_materials`), also with translated names.
+
+### Tab 3 — Statistics
+
+Read-only dashboard, refreshes on demand.
+
+- **NIC Flow** — plasma NIC in and rawmat NIC out for today / last 7 days / total (from `plasma_sold` and `rawmat_purchased`); net delta per period; today's spend vs daily cap shown as a ratio.
+- **Pricing Trace** — per raw material: translated name, plasma anchor input, supply/demand ratio, PvP risk multiplier, resulting price. Explains why each material is priced as it is.
+- **Gather Breakdown** — per raw material: gather volume over last 7 days split by PvP vs PvE (from `resources_gathered_daily.is_pvp`). Validates risk multiplier inputs.
+
+### Tab 4 — Orders
+
+Read-only live snapshot of all active AutoMarket orders. Columns: translated item name, order type (Buy / Sell / Buyback), price, amount, translated market/base name, category (Plasma / Raw Material / Production Item). Filterable by order type and category.
+
+Market/base names use translated display names via the existing translations system, with fallback to internal name.
+
+### Impact
+
+Without this panel, every config change, trade list edit, and economy health check requires direct DB access. The AdminTool gives operators a safe, auditable surface for the most frequently tuned AutoMarket levers introduced in [[IMPROVEMENT-030]] and [[ISSUE-024]].
+
+### Proposed Implementation
+
+**Server side:**
+- Add one new `Commands.cs` entry and request handler (`AutoMarketRefreshHandler` or similar) that calls `MarketAutoOrdersManager` refresh method directly.
+- Register via Autofac following existing handler patterns.
+
+**AdminTool:**
+- `AutoMarketViewModel` — root VM, owns tab VMs, wires Refresh Now command via server request.
+- `AutoMarketConfigViewModel` — loads `automarket_config`; editable rows; ChangeQueue integration.
+- `AutoMarketTradeListViewModel` — loads `market_orders_configuration`; item picker dialog; derived raw material sub-panel; ChangeQueue integration.
+- `AutoMarketStatisticsViewModel` — loads NIC flow aggregates, pricing trace, gather breakdown; refresh-on-demand.
+- `AutoMarketOrdersViewModel` — loads live market order snapshot; filter support; refresh-on-demand.
+- Corresponding XAML Views for each VM.
+- Wire `AutoMarketViewModel` into `MainViewModel` following the same pattern as `SeasonsViewModel`.
+
+**No new DB tables required.** All data comes from existing tables and views introduced in IMPROVEMENT-030 and ISSUE-024.
+
+### Notes
+
+Translations: use the existing translations system throughout (item names, market/base names). Fall back to internal names if no translation exists — never show raw definition IDs to the operator.
+ChangeQueue deduplication for Config and Trade List tabs — see [[IMPROVEMENT-016]].
+The derived raw materials sub-panel in Trade List is read-only and does not generate ChangeQueue entries.
+The Refresh Now button should be disabled while a refresh is in progress and should surface any server-side error to the operator.
+Pricing Trace data source: query the last computed values from `resource_market_prices` (or equivalent output of `recalculate_raw_material_prices`) — no live re-computation in the AdminTool.
+
+### Implementation
+
+Implemented via plan `docs/superpowers/plans/2026-05-28-automarket-admintool.md` (14 tasks, branch p36.4).
+Refresh Now calls SPs directly from AdminTool DB connection (no server-side handler needed).
+`{x:Static}` binding on source-generator types causes MC1000 BAML errors — worked around with instance forwarder properties on `AutoMarketOrdersViewModel`.

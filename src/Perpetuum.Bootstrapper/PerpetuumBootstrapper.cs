@@ -578,6 +578,8 @@ namespace Perpetuum.Bootstrapper
                 e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
             });
 
+            _ = _builder.RegisterType<DiscordPinStateRepository>().As<IDiscordPinStateRepository>().SingleInstance();
+
             // OPP: EventListenerService and consumers
             _ = _builder.RegisterType<ChatEcho>();
             _ = _builder.RegisterType<DirectMessenger>();

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Perpetuum.AdminTool.AutoMarket;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Packages;
@@ -38,6 +39,7 @@ namespace Perpetuum.AdminTool.ViewModels
         public FlocksViewModel Flocks { get; }
         public SeasonsViewModel Seasons { get; }
         public EquipmentSetsViewModel EquipmentSets { get; }
+        public AutoMarketViewModel AutoMarket { get; }
 
         public MainViewModel(AppSettingsStore store, AppSession session)
         {
@@ -61,6 +63,11 @@ namespace Perpetuum.AdminTool.ViewModels
                 Translations);
             EquipmentSets = new EquipmentSetsViewModel(
                 new EquipmentSetRepository(store.Settings.Connection),
+                session.Changes,
+                session.Lookups,
+                Translations);
+            AutoMarket = new AutoMarketViewModel(
+                new AutoMarketRepository(store.Settings.Connection),
                 session.Changes,
                 session.Lookups,
                 Translations);

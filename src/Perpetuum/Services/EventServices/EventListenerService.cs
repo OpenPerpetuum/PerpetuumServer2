@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Perpetuum.Log;
 using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Services.EventServices.EventProcessors;
 using Perpetuum.Threading.Process;
@@ -20,8 +21,9 @@ namespace Perpetuum.Services.EventServices
 
         //private readonly DiscordSocketClient _client;
         private readonly GlobalConfiguration _globalConfiguration;
+        private readonly IDiscordPinStateRepository _pinStateRepository;
 
-        public EventListenerService(GlobalConfiguration globalConfiguration)
+        public EventListenerService(GlobalConfiguration globalConfiguration, IDiscordPinStateRepository pinStateRepository)
         {
             _observers = new Dictionary<EventType, IList<IEventProcessor>>();
             _queue = new ConcurrentQueue<IEventMessage>();
@@ -32,6 +34,7 @@ namespace Perpetuum.Services.EventServices
             });
 
             _globalConfiguration = globalConfiguration;
+            _pinStateRepository = pinStateRepository;
         }
 
         /// <summary>
@@ -49,6 +52,54 @@ namespace Perpetuum.Services.EventServices
                     discordChannel.SendMessageAsync(
                         messageToSend,
                         allowedMentions: new AllowedMentions { AllowedTypes = AllowedMentionTypes.Users });
+                }
+            }
+            else if (message is DiscordPinnableMessage pinnableMessage)
+            {
+                if (_client.GetChannel(pinnableMessage.DiscordChannelId) is IMessageChannel discordChannel)
+                {
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            string messageToSend = $"**<{pinnableMessage.Nick}>**: {pinnableMessage.Message}";
+                            var sent = await discordChannel.SendMessageAsync(
+                                messageToSend,
+                                allowedMentions: new AllowedMentions { AllowedTypes = AllowedMentionTypes.Users });
+
+                            var existing = _pinStateRepository.Get(pinnableMessage.PinSlot);
+                            if (existing.HasValue)
+                            {
+                                try
+                                {
+                                    var unpinChannel = _client.GetChannel(existing.Value.channelId) as IMessageChannel
+                                                       ?? discordChannel;
+                                    var oldMsg = await unpinChannel.GetMessageAsync(existing.Value.messageId);
+                                    if (oldMsg is IUserMessage oldUserMsg)
+                                        await oldUserMsg.UnpinAsync();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Error(ex.Message);
+                                }
+                            }
+
+                            try { await sent.PinAsync(); }
+                            catch (Exception ex)
+                            {
+                                Logger.Error(ex.Message);
+                            }
+
+                            _pinStateRepository.Upsert(
+                                pinnableMessage.PinSlot,
+                                pinnableMessage.DiscordChannelId,
+                                sent.Id);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error(ex.Message);
+                        }
+                    });
                 }
             }
             else
