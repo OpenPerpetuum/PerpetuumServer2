@@ -27,3 +27,6 @@ Releases/
 # graphify-dotnet generated output (regenerates on build)
 docs/graph/
 graphify-out/
+
+# Claude Code worktrees
+.claude/worktrees/
