@@ -245,7 +245,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Reward Package" Width="160">
+                            <DataGridTemplateColumn Header="Package Reward" Width="150">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Margin="4,0" VerticalAlignment="Center"
@@ -260,6 +260,21 @@
                                                   IsTextSearchEnabled="True"
                                                   TextSearch.TextPath="Name"
                                                   SelectedItem="{Binding SelectedPackage, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Set Reward" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="4,0" VerticalAlignment="Center"
+                                                   Text="{Binding SelectedEquipmentSet.Name, FallbackValue='(none)'}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Source={StaticResource VmProxy}, Path=Data.EquipmentSets}"
+                                                  DisplayMemberPath="Name"
+                                                  SelectedItem="{Binding SelectedEquipmentSet, UpdateSourceTrigger=PropertyChanged}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>
                             </DataGridTemplateColumn>
@@ -301,7 +316,7 @@
                             <DataGridTextColumn Header="Tier #" Binding="{Binding TierNumber, UpdateSourceTrigger=LostFocus}" Width="80"/>
                             <DataGridTextColumn Header="Name" Binding="{Binding TierName, UpdateSourceTrigger=LostFocus}" Width="200"/>
                             <DataGridTextColumn Header="Points Required" Binding="{Binding PointsRequired, UpdateSourceTrigger=LostFocus}" Width="140"/>
-                            <DataGridTemplateColumn Header="Reward Package" Width="*">
+                            <DataGridTemplateColumn Header="Package Reward" Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Margin="4,0" VerticalAlignment="Center"
@@ -316,6 +331,21 @@
                                                   IsTextSearchEnabled="True"
                                                   TextSearch.TextPath="Name"
                                                   SelectedItem="{Binding SelectedPackage, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Set Reward" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="4,0" VerticalAlignment="Center"
+                                                   Text="{Binding SelectedEquipmentSet.Name, FallbackValue='(none)'}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Source={StaticResource VmProxy}, Path=Data.EquipmentSets}"
+                                                  DisplayMemberPath="Name"
+                                                  SelectedItem="{Binding SelectedEquipmentSet, UpdateSourceTrigger=PropertyChanged}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>
                             </DataGridTemplateColumn>
@@ -356,7 +386,7 @@
                             <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="60" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Rank Min" Binding="{Binding RankMin, UpdateSourceTrigger=LostFocus}" Width="100"/>
                             <DataGridTextColumn Header="Rank Max" Binding="{Binding RankMax, UpdateSourceTrigger=LostFocus}" Width="100"/>
-                            <DataGridTemplateColumn Header="Reward Package" Width="*">
+                            <DataGridTemplateColumn Header="Package Reward" Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Margin="4,0" VerticalAlignment="Center"
@@ -373,6 +403,30 @@
                                                   SelectedItem="{Binding SelectedPackage, UpdateSourceTrigger=PropertyChanged}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Set Reward" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="4,0" VerticalAlignment="Center"
+                                                   Text="{Binding SelectedEquipmentSet.Name, FallbackValue='(none)'}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Source={StaticResource VmProxy}, Path=Data.EquipmentSets}"
+                                                  DisplayMemberPath="Name"
+                                                  SelectedItem="{Binding SelectedEquipmentSet, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Queue Save" Padding="6,1"
+                                                Command="{Binding Source={StaticResource VmProxy}, Path=Data.QueueSaveLeaderboardRewardCommand}"
+                                                CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="" Width="80">
                                 <DataGridTemplateColumn.CellTemplate>
