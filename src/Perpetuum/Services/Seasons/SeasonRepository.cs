@@ -270,6 +270,15 @@ namespace Perpetuum.Services.Seasons
                      .ToList();
         }
 
+        public List<int> GetSetMemberDefinitions(int setId)
+        {
+            return Db.Query("SELECT definition FROM equipment_set_members WHERE set_id = @setId")
+                     .SetParameter("@setId", setId)
+                     .Execute()
+                     .Select(r => r.GetValue<int>("definition"))
+                     .ToList();
+        }
+
         public void InsertRedeemableItems(int accountId, int packageId, List<SeasonPackageItem> items)
         {
             foreach (var item in items)
@@ -282,6 +291,15 @@ namespace Perpetuum.Services.Seasons
                   .SetParameter("@packageId", packageId)
                   .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLInsertError);
             }
+        }
+
+        public void InsertRedeemableItem(int accountId, int definition)
+        {
+            Db.Query("INSERT INTO accountredeemableitems (accountid, definition, quantity) " +
+                     "VALUES (@accountId, @definition, 1)")
+              .SetParameter("@accountId", accountId)
+              .SetParameter("@definition", definition)
+              .ExecuteNonQuery().ThrowIfEqual(0, ErrorCodes.SQLInsertError);
         }
 
         // ── End-of-season ────────────────────────────────────────────────────
