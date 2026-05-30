@@ -1,6 +1,6 @@
 # Last ID used
 
-031
+033
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -603,3 +603,71 @@ Pricing Trace data source: query the last computed values from `resource_market_
 Implemented via plan `docs/superpowers/plans/2026-05-28-automarket-admintool.md` (14 tasks, branch p36.4).
 Refresh Now calls SPs directly from AdminTool DB connection (no server-side handler needed).
 `{x:Static}` binding on source-generator types causes MC1000 BAML errors — worked around with instance forwarder properties on `AutoMarketOrdersViewModel`.
+
+---
+
+## IMPROVEMENT-032 - Export: Generate Full SQL Scripts for Seasons, Items, and Robots
+
+Status: TODO
+Priority: MEDIUM
+Area: Admin Tool / Content / Tooling
+
+### Description
+
+Add an **Export** feature to the Admin Tool that generates a complete, self-contained SQL script for a selected entity — a season, an item definition, or a robot definition. The script must capture all dependent data (definitions, extensions, tech tree nodes, effects, module assignments, crafting recipes, etc.) so it can be replayed on a clean database to recreate the entity from scratch.
+
+### Impact
+
+Currently there is no way to extract a game entity as portable SQL. Transferring content between server instances, creating backups of handcrafted entities, or sharing content with other operators requires direct DB access and manual query construction. An export tool reduces this friction significantly and acts as a lightweight content migration mechanism.
+
+### Proposed Implementation
+
+- **Export targets:** Season (full chain: season record, activities, objectives, reward packages, reward items), Item definition (entitydefaults row, extensions, aggregate fields, tech tree nodes, crafting recipe, market config), Robot definition (entitydefaults row, chassis slots, head/leg/chassis component links, extensions, tech tree nodes).
+- **Output format:** Idempotent SQL script using `MERGE` / `IF NOT EXISTS` / `DELETE + INSERT` patterns consistent with the existing content pipeline (see `docs/content/claude_game_content_guide.md`). Scripts must be replayable without manual ID editing — resolve foreign keys dynamically by name where possible, or embed explicit ID resolution CTEs.
+- **UI surface:** Export button/menu entry in each relevant Admin Tool panel (Seasons panel, item editor, robot editor). Opens a dialog showing the generated script with a Copy and a Save As option.
+- **Scope boundary:** Export is read-only and generates SQL text only — it does not execute the script or modify any data.
+
+### Notes
+
+- Never hardcode definition or extension IDs in generated output — resolve via `entitydefaults`/`extensions` name lookups exactly as the manual content guide mandates.
+- The generated script should include a header comment identifying the export source, entity name, and export timestamp.
+- Consult `docs/content/claude_game_content_guide.md` sections 2 and 24 for dependency order before implementing the traversal logic.
+- Consider a shared `SqlExportBuilder` utility class to avoid duplicating script-generation logic across the three entity types.
+
+---
+
+## IMPROVEMENT-033 - Equipment Set Rewards for Seasons
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Rewards
+
+### Description
+
+At every reward grant point in the Seasons system — tier rewards, objective completion rewards, and leaderboard rewards — add support for specifying an **equipment set** as a reward option. When a reward of this type is granted, the player receives one randomly selected item from the named equipment set instead of a fixed item.
+
+### Impact
+
+Tier rewards, objective rewards, and leaderboard rewards currently support only fixed item grants. Equipment set rewards add designer-controlled randomness: a player is guaranteed an item from a curated pool (a themed set) but does not know which piece they will receive. This increases perceived value, supports set-collection engagement loops, and reduces designer overhead by allowing one reward entry to cover an entire set rather than requiring individual item reward rows.
+
+### Proposed Implementation
+
+**Data layer:**
+- Extend the reward package schema to include an optional `equipment_set_id` column (FK to `equipment_sets`) alongside the existing item definition reference. Exactly one of `item_definition_id` or `equipment_set_id` should be non-null per reward row.
+- On reward grant, if `equipment_set_id` is set: query all module definitions belonging to that set, select one at random, and grant that item via the standard item grant pipeline.
+- If the equipment set has no members at grant time, log a warning and skip the reward (no crash, no silent data corruption).
+
+**Server runtime:**
+- Extend the reward grant path (shared by tier, objective, and leaderboard rewards) to handle the `equipment_set_id` case — keep the branching in the reward delivery layer, not scattered across each reward trigger site.
+- Random selection should be uniform across all set members unless a weighted variant is later requested.
+
+**Admin Tool:**
+- In the reward package editor (used by tier rewards, objective rewards, and leaderboard rewards), add an "Equipment Set" reward type option alongside the existing item picker.
+- When "Equipment Set" is selected, show a dropdown of defined equipment sets; hide the item definition picker.
+
+### Notes
+
+- Reuse the equipment set membership data already introduced by IMPROVEMENT-025 (`equipment_sets` / module-to-set assignment) — do not introduce a parallel set definition mechanism.
+- Consult `docs/content/claude_game_content_guide.md` for reward package SQL patterns before generating migration SQL.
+- Validate that the selected set has at least one member before saving in the Admin Tool (warn, do not hard-block).
+- Random selection occurs at grant time on the server, not at reward package definition time.
