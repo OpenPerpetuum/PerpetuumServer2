@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.Services.Seasons;
 
@@ -81,7 +82,8 @@ namespace Perpetuum.AdminTool.Seasons
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
                 "SELECT id, season_id, name, description, activity_type, " +
-                "target_value, bonus_points, display_order, is_daily, package_id, target_definition_id " +
+                "target_value, bonus_points, display_order, is_daily, package_id, " +
+                "target_definition_id, equipment_set_id " +
                 "FROM season_objectives WHERE season_id = @seasonId ORDER BY display_order";
             cmd.Parameters.AddWithValue("@seasonId", seasonId);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -100,6 +102,7 @@ namespace Perpetuum.AdminTool.Seasons
                     IsDaily      = !reader.IsDBNull(8) && reader.GetBoolean(8),
                     PackageId    = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9),
                     TargetDefinitionId = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(10),
+                    EquipmentSetId = reader.IsDBNull(11) ? (int?)null : reader.GetInt32(11),
                 });
             }
             return result;
@@ -112,7 +115,8 @@ namespace Perpetuum.AdminTool.Seasons
             await cn.OpenAsync();
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
-                "SELECT id, season_id, tier_number, tier_name, points_required, package_id " +
+                "SELECT id, season_id, tier_number, tier_name, points_required, " +
+                "package_id, equipment_set_id " +
                 "FROM season_tiers WHERE season_id = @seasonId ORDER BY tier_number";
             cmd.Parameters.AddWithValue("@seasonId", seasonId);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -120,12 +124,13 @@ namespace Perpetuum.AdminTool.Seasons
             {
                 result.Add(new SeasonTierRow
                 {
-                    Id = reader.GetInt32(0),
-                    SeasonId = reader.GetInt32(1),
-                    TierNumber = reader.GetInt32(2),
-                    TierName = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                    Id             = reader.GetInt32(0),
+                    SeasonId       = reader.GetInt32(1),
+                    TierNumber     = reader.GetInt32(2),
+                    TierName       = reader.IsDBNull(3) ? "" : reader.GetString(3),
                     PointsRequired = reader.GetInt32(4),
-                    PackageId = reader.GetInt32(5)
+                    PackageId      = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5),
+                    EquipmentSetId = reader.IsDBNull(6) ? (int?)null : reader.GetInt32(6),
                 });
             }
             return result;
@@ -138,7 +143,7 @@ namespace Perpetuum.AdminTool.Seasons
             await cn.OpenAsync();
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
-                "SELECT id, season_id, rank_min, rank_max, package_id " +
+                "SELECT id, season_id, rank_min, rank_max, package_id, equipment_set_id " +
                 "FROM season_leaderboard_rewards WHERE season_id = @seasonId ORDER BY rank_min";
             cmd.Parameters.AddWithValue("@seasonId", seasonId);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -146,11 +151,12 @@ namespace Perpetuum.AdminTool.Seasons
             {
                 result.Add(new SeasonLeaderboardRewardRow
                 {
-                    Id = reader.GetInt32(0),
-                    SeasonId = reader.GetInt32(1),
-                    RankMin = reader.GetInt32(2),
-                    RankMax = reader.GetInt32(3),
-                    PackageId = reader.GetInt32(4)
+                    Id             = reader.GetInt32(0),
+                    SeasonId       = reader.GetInt32(1),
+                    RankMin        = reader.GetInt32(2),
+                    RankMax        = reader.GetInt32(3),
+                    PackageId      = reader.IsDBNull(4) ? (int?)null : reader.GetInt32(4),
+                    EquipmentSetId = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5),
                 });
             }
             return result;
@@ -271,6 +277,23 @@ namespace Perpetuum.AdminTool.Seasons
             var v = await cmd.ExecuteScalarAsync();
             if (v == null || v == System.DBNull.Value) return 0.0;
             return System.Convert.ToDouble(v);
+        }
+
+        public async Task<List<EquipmentSetRow>> LoadEquipmentSetsAsync()
+        {
+            var result = new List<EquipmentSetRow>();
+            await using var cn = new SqlConnection(_connection.BuildConnectionString());
+            await cn.OpenAsync();
+            await using var cmd = cn.CreateCommand();
+            cmd.CommandText = "SELECT set_id, name FROM equipment_sets ORDER BY name";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                result.Add(new EquipmentSetRow
+                {
+                    SetId = reader.GetInt32(0),
+                    Name  = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                });
+            return result;
         }
 
         public async Task<List<TodaysDailyObjectiveRow>> LoadTodaysDailyObjectivesAsync(int seasonId)
