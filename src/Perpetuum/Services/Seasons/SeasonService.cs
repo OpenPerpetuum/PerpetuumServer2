@@ -257,7 +257,7 @@ namespace Perpetuum.Services.Seasons
                          .OrderBy(t => t.TierNumber))
             {
                 if (_repository.InsertTierClaim(characterId, season.Id, tier.Id))
-                    DeliverTierReward(characterId, season.Id, tier, newTotal);
+                    DeliverTierReward(characterId, tier, newTotal);
             }
         }
 
@@ -278,7 +278,7 @@ namespace Perpetuum.Services.Seasons
 
         // ── Reward delivery ──────────────────────────────────────────────────
 
-        private void DeliverTierReward(int characterId, int seasonId, SeasonTier tier, double currentPoints)
+        private void DeliverTierReward(int characterId, SeasonTier tier, double currentPoints)
         {
             var character = Character.Get(characterId);
 
@@ -291,7 +291,7 @@ namespace Perpetuum.Services.Seasons
                         $"[SeasonService] Tier {tier.Id} equipment set {tier.EquipmentSetId} has no members; skipping reward.");
                     return;
                 }
-                var definition = definitions[new Random().Next(definitions.Count)];
+                var definition = definitions[Random.Shared.Next(definitions.Count)];
                 _repository.InsertRedeemableItem(character.AccountId, definition);
                 SendTierUnlockMail(characterId, tier, currentPoints, new List<SeasonPackageItem>());
             }
@@ -323,7 +323,7 @@ namespace Perpetuum.Services.Seasons
                         $"[SeasonService] Objective equipment set {equipmentSetId} has no members; skipping reward.");
                     return;
                 }
-                var definition = definitions[new Random().Next(definitions.Count)];
+                var definition = definitions[Random.Shared.Next(definitions.Count)];
                 _repository.InsertRedeemableItem(character.AccountId, definition);
             }
             else if (packageId.HasValue)
@@ -353,7 +353,7 @@ namespace Perpetuum.Services.Seasons
                         $"[SeasonService] Leaderboard reward {reward.Id} equipment set {reward.EquipmentSetId} has no members; skipping.");
                     return;
                 }
-                var definition = definitions[new Random().Next(definitions.Count)];
+                var definition = definitions[Random.Shared.Next(definitions.Count)];
                 _repository.InsertRedeemableItem(character.AccountId, definition);
             }
             else if (reward.PackageId.HasValue)
