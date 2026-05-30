@@ -54,7 +54,8 @@ namespace Perpetuum.Services.Seasons
         public List<SeasonObjective> GetObjectives(int seasonId)
         {
             return Db.Query("SELECT id, season_id, name, description, activity_type, " +
-                            "target_value, bonus_points, display_order, is_daily, package_id, target_definition_id " +
+                            "target_value, bonus_points, display_order, is_daily, package_id, " +
+                            "target_definition_id, equipment_set_id " +
                             "FROM season_objectives WHERE season_id = @seasonId ORDER BY display_order")
                      .SetParameter("@seasonId", seasonId)
                      .Execute()
@@ -71,13 +72,15 @@ namespace Perpetuum.Services.Seasons
                          IsDaily = r.GetValue<bool>("is_daily"),
                          PackageId = r.GetValue<int?>("package_id"),
                          TargetDefinitionId = r.GetValue<int?>("target_definition_id"),
+                         EquipmentSetId = r.GetValue<int?>("equipment_set_id"),
                      })
                      .ToList();
         }
 
         public List<SeasonTier> GetTiers(int seasonId)
         {
-            return Db.Query("SELECT id, season_id, tier_number, tier_name, points_required, package_id " +
+            return Db.Query("SELECT id, season_id, tier_number, tier_name, points_required, " +
+                            "package_id, equipment_set_id " +
                             "FROM season_tiers WHERE season_id = @seasonId ORDER BY tier_number")
                      .SetParameter("@seasonId", seasonId)
                      .Execute()
@@ -88,14 +91,15 @@ namespace Perpetuum.Services.Seasons
                          TierNumber = r.GetValue<int>("tier_number"),
                          TierName = r.GetValue<string>("tier_name"),
                          PointsRequired = r.GetValue<int>("points_required"),
-                         PackageId = r.GetValue<int>("package_id"),
+                         PackageId = r.GetValue<int?>("package_id"),
+                         EquipmentSetId = r.GetValue<int?>("equipment_set_id"),
                      })
                      .ToList();
         }
 
         public List<SeasonLeaderboardReward> GetLeaderboardRewards(int seasonId)
         {
-            return Db.Query("SELECT id, season_id, rank_min, rank_max, package_id " +
+            return Db.Query("SELECT id, season_id, rank_min, rank_max, package_id, equipment_set_id " +
                             "FROM season_leaderboard_rewards WHERE season_id = @seasonId")
                      .SetParameter("@seasonId", seasonId)
                      .Execute()
@@ -105,7 +109,8 @@ namespace Perpetuum.Services.Seasons
                          SeasonId = r.GetValue<int>("season_id"),
                          RankMin = r.GetValue<int>("rank_min"),
                          RankMax = r.GetValue<int>("rank_max"),
-                         PackageId = r.GetValue<int>("package_id"),
+                         PackageId = r.GetValue<int?>("package_id"),
+                         EquipmentSetId = r.GetValue<int?>("equipment_set_id"),
                      })
                      .ToList();
         }
@@ -542,25 +547,27 @@ namespace Perpetuum.Services.Seasons
             Db.Query(
                 "INSERT INTO season_objectives " +
                 "(season_id, name, description, activity_type, target_value, " +
-                "bonus_points, display_order, is_daily, package_id) " +
+                "bonus_points, display_order, is_daily, package_id, equipment_set_id) " +
                 "SELECT @newId, name, description, activity_type, target_value, " +
-                "bonus_points, display_order, is_daily, package_id " +
+                "bonus_points, display_order, is_daily, package_id, equipment_set_id " +
                 "FROM season_objectives WHERE season_id = @prevId")
                 .SetParameter("@newId", newId)
                 .SetParameter("@prevId", previous.Id)
                 .ExecuteNonQuery();
 
             Db.Query(
-                "INSERT INTO season_tiers (season_id, tier_number, tier_name, points_required, package_id) " +
-                "SELECT @newId, tier_number, tier_name, points_required, package_id " +
+                "INSERT INTO season_tiers " +
+                "(season_id, tier_number, tier_name, points_required, package_id, equipment_set_id) " +
+                "SELECT @newId, tier_number, tier_name, points_required, package_id, equipment_set_id " +
                 "FROM season_tiers WHERE season_id = @prevId")
                 .SetParameter("@newId", newId)
                 .SetParameter("@prevId", previous.Id)
                 .ExecuteNonQuery();
 
             Db.Query(
-                "INSERT INTO season_leaderboard_rewards (season_id, rank_min, rank_max, package_id) " +
-                "SELECT @newId, rank_min, rank_max, package_id " +
+                "INSERT INTO season_leaderboard_rewards " +
+                "(season_id, rank_min, rank_max, package_id, equipment_set_id) " +
+                "SELECT @newId, rank_min, rank_max, package_id, equipment_set_id " +
                 "FROM season_leaderboard_rewards WHERE season_id = @prevId")
                 .SetParameter("@newId", newId)
                 .SetParameter("@prevId", previous.Id)
