@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Packages;
 using Perpetuum.Services.Seasons;
 
@@ -25,7 +26,31 @@ namespace Perpetuum.AdminTool.Seasons
 
         partial void OnSelectedPackageChanged(PackageRow? value)
         {
-            PackageId = value?.Id;
+            if (value != null)
+            {
+                PackageId = value.Id;
+                EquipmentSetId = null;
+                _selectedEquipmentSet = null;
+                OnPropertyChanged(nameof(SelectedEquipmentSet));
+            }
+            else
+            {
+                PackageId = value?.Id;
+            }
+        }
+
+        [ObservableProperty] private int? _equipmentSetId;
+        [ObservableProperty] private EquipmentSetRow? _selectedEquipmentSet;
+
+        partial void OnSelectedEquipmentSetChanged(EquipmentSetRow? value)
+        {
+            if (value != null)
+            {
+                EquipmentSetId = value.SetId;
+                PackageId = null;
+                _selectedPackage = null;
+                OnPropertyChanged(nameof(SelectedPackage));
+            }
         }
 
         [ObservableProperty] private int? _targetDefinitionId;
