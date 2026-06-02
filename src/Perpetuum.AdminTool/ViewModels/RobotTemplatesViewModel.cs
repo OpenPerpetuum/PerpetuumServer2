@@ -3,12 +3,16 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
+using Perpetuum.AdminTool.Export;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
+using Perpetuum.AdminTool.Views;
 using Perpetuum.GenXY;
 
 namespace Perpetuum.AdminTool.ViewModels
@@ -157,6 +161,38 @@ namespace Perpetuum.AdminTool.ViewModels
             foreach (var c in changes) _queue.Add(c);
             return changes;
         }
+
+        [RelayCommand(CanExecute = nameof(CanExport))]
+        private async Task ExportTemplateAsync()
+        {
+            if (SelectedRow == null) return;
+            IsLoading     = true;
+            StatusMessage = "Generating export script...";
+            StatusIsError = false;
+            try
+            {
+                var script = await RobotExporter.ExportAsync(SelectedRow.Id, _settings.Settings.Connection);
+                var vm     = new ExportScriptViewModel($"Robot: {SelectedRow.Name}", script);
+                var win    = new ExportScriptWindow(vm) { Owner = Application.Current?.MainWindow };
+                win.ShowDialog();
+                StatusMessage = "Export complete.";
+            }
+            catch (Exception ex)
+            {
+                StatusIsError = true;
+                StatusMessage = $"Export failed: {ex.Message}";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private bool CanExport() => SelectedRow != null && !IsLoading;
+
+        partial void OnSelectedRowChanged(RobotTemplateRow? value) => ExportTemplateCommand.NotifyCanExecuteChanged();
+
+        partial void OnIsLoadingChanged(bool _) => ExportTemplateCommand.NotifyCanExecuteChanged();
 
         public void ValidateGenxy()
         {
