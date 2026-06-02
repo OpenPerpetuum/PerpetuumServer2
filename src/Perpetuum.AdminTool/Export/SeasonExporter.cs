@@ -26,19 +26,19 @@ namespace Perpetuum.AdminTool.Export
             await CollectPackageItemDefsAsync(packageIds, defIds, cn);
             await CollectSetMemberDefsAsync(setIds, defIds, cn);
 
-            // Prerequisite data first
-            await AddPackagesMergeAsync(changes, packageIds, cn);
-            await AddPackageItemsMergeAsync(changes, packageIds, cn);
-            await AddEquipmentSetsMergeAsync(changes, setIds, cn);
-            await AddEquipmentSetMembersAsync(changes, setIds, cn);
-            await AddEquipmentSetThresholdsAsync(changes, setIds, cn);
-
-            // Reward item definitions
+            // Reward item definitions first (packageitems and set_members FK to entitydefaults)
             foreach (var defId in defIds)
             {
                 var itemChanges = await ItemExporter.ExportAsync(defId, cn);
                 changes.AddRange(itemChanges);
             }
+
+            // Prerequisite data after item definitions exist
+            await AddPackagesMergeAsync(changes, packageIds, cn);
+            await AddPackageItemsMergeAsync(changes, packageIds, cn);
+            await AddEquipmentSetsMergeAsync(changes, setIds, cn);
+            await AddEquipmentSetMembersAsync(changes, setIds, cn);
+            await AddEquipmentSetThresholdsAsync(changes, setIds, cn);
 
             // Season and its child tables
             await AddSeasonMergeAsync(changes, seasonId, seasonName, seasonDesc, cn);
@@ -60,11 +60,11 @@ namespace Perpetuum.AdminTool.Export
             return (r.IsDBNull(0) ? "" : r.GetString(0), r.IsDBNull(1) ? "" : r.GetString(1));
         }
 
-        private static async Task<(List<int> PackageIds, List<int> SetIds)> CollectRewardRefsAsync(
+        private static async Task<(HashSet<int> PackageIds, HashSet<int> SetIds)> CollectRewardRefsAsync(
             int seasonId, SqlConnection cn)
         {
-            var packageIds = new List<int>();
-            var setIds = new List<int>();
+            var packageIds = new HashSet<int>();
+            var setIds = new HashSet<int>();
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
                 "SELECT package_id, equipment_set_id FROM season_objectives WHERE season_id = @id " +
@@ -79,14 +79,14 @@ namespace Perpetuum.AdminTool.Export
             await using var r = await cmd.ExecuteReaderAsync();
             while (await r.ReadAsync())
             {
-                if (!r.IsDBNull(0)) { var v = r.GetInt32(0); if (!packageIds.Contains(v)) packageIds.Add(v); }
-                if (!r.IsDBNull(1)) { var v = r.GetInt32(1); if (!setIds.Contains(v))     setIds.Add(v); }
+                if (!r.IsDBNull(0)) packageIds.Add(r.GetInt32(0));
+                if (!r.IsDBNull(1)) setIds.Add(r.GetInt32(1));
             }
             return (packageIds, setIds);
         }
 
         private static async Task CollectPackageItemDefsAsync(
-            List<int> packageIds, HashSet<int> defIds, SqlConnection cn)
+            HashSet<int> packageIds, HashSet<int> defIds, SqlConnection cn)
         {
             if (packageIds.Count == 0) return;
             var list = string.Join(",", packageIds);
@@ -97,7 +97,7 @@ namespace Perpetuum.AdminTool.Export
         }
 
         private static async Task CollectSetMemberDefsAsync(
-            List<int> setIds, HashSet<int> defIds, SqlConnection cn)
+            HashSet<int> setIds, HashSet<int> defIds, SqlConnection cn)
         {
             if (setIds.Count == 0) return;
             var list = string.Join(",", setIds);
@@ -108,7 +108,7 @@ namespace Perpetuum.AdminTool.Export
         }
 
         private static async Task AddPackagesMergeAsync(
-            List<RawSqlChange> changes, List<int> packageIds, SqlConnection cn)
+            List<RawSqlChange> changes, HashSet<int> packageIds, SqlConnection cn)
         {
             if (packageIds.Count == 0) return;
             var list = string.Join(",", packageIds);
@@ -130,7 +130,7 @@ namespace Perpetuum.AdminTool.Export
         }
 
         private static async Task AddPackageItemsMergeAsync(
-            List<RawSqlChange> changes, List<int> packageIds, SqlConnection cn)
+            List<RawSqlChange> changes, HashSet<int> packageIds, SqlConnection cn)
         {
             if (packageIds.Count == 0) return;
             var list = string.Join(",", packageIds);
@@ -162,7 +162,7 @@ namespace Perpetuum.AdminTool.Export
         }
 
         private static async Task AddEquipmentSetsMergeAsync(
-            List<RawSqlChange> changes, List<int> setIds, SqlConnection cn)
+            List<RawSqlChange> changes, HashSet<int> setIds, SqlConnection cn)
         {
             if (setIds.Count == 0) return;
             var list = string.Join(",", setIds);
@@ -184,7 +184,7 @@ namespace Perpetuum.AdminTool.Export
         }
 
         private static async Task AddEquipmentSetMembersAsync(
-            List<RawSqlChange> changes, List<int> setIds, SqlConnection cn)
+            List<RawSqlChange> changes, HashSet<int> setIds, SqlConnection cn)
         {
             if (setIds.Count == 0) return;
             var list = string.Join(",", setIds);
@@ -213,7 +213,7 @@ namespace Perpetuum.AdminTool.Export
         }
 
         private static async Task AddEquipmentSetThresholdsAsync(
-            List<RawSqlChange> changes, List<int> setIds, SqlConnection cn)
+            List<RawSqlChange> changes, HashSet<int> setIds, SqlConnection cn)
         {
             if (setIds.Count == 0) return;
             var list = string.Join(",", setIds);

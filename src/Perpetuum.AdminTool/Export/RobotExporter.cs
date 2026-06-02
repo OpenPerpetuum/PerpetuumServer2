@@ -22,10 +22,12 @@ namespace Perpetuum.AdminTool.Export
 
             // Export each unique part definition (parts before template — FK order)
             var exported = new HashSet<int>();
+            var failedExports = new HashSet<int>();
             foreach (var defId in partIds.Values)
             {
                 if (defId <= 0 || !exported.Add(defId)) continue;
                 var itemChanges = await ItemExporter.ExportAsync(defId, cn);
+                if (itemChanges.Count == 0) { failedExports.Add(defId); exported.Remove(defId); continue; }
                 changes.AddRange(itemChanges);
             }
 
@@ -34,7 +36,7 @@ namespace Perpetuum.AdminTool.Export
                 await AddChassisBonusAsync(changes, defId, cn);
 
             // robottemplates MERGE with dynamically-built description
-            await AddRobotTemplateMergeAsync(changes, name, note, partIds);
+            await AddRobotTemplateMergeAsync(changes, name, note, partIds, failedExports);
 
             return SqlScriptBuilder.Build(changes);
         }
@@ -103,14 +105,15 @@ namespace Perpetuum.AdminTool.Export
         }
 
         private static Task AddRobotTemplateMergeAsync(
-            List<RawSqlChange> changes, string name, string? note, Dictionary<string, int> partIds)
+            List<RawSqlChange> changes, string name, string? note, Dictionary<string, int> partIds,
+            HashSet<int> failedExports)
         {
             // Build the description as a T-SQL NVARCHAR expression using the @def_* variables
             // already declared by ItemExporter above. The result is correct even when target-DB
             // IDENTITY IDs differ from the source.
             string PartRef(string key)
             {
-                if (!partIds.TryGetValue(key, out var defId) || defId <= 0)
+                if (!partIds.TryGetValue(key, out var defId) || defId <= 0 || failedExports.Contains(defId))
                     return "0";
                 return $"CAST({ItemExporter.VarName(defId)} AS NVARCHAR(20))";
             }
