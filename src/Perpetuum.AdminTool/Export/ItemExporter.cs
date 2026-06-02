@@ -153,7 +153,7 @@ namespace Perpetuum.AdminTool.Export
                 "WHERE irl.definition = @id";
             cmd.Parameters.AddWithValue("@id", definitionId);
             await using var r = await cmd.ExecuteReaderAsync();
-            if (!await r.ReadAsync()) return;
+            if (!await r.ReadAsync()) return; // definition has a unique index — at most one row
 
             var level   = r.GetInt32(0).ToString();
             var calProg = r.IsDBNull(1) ? "NULL" : $"(SELECT definition FROM entitydefaults WHERE definitionname = {SqlLiteral.Of(r.GetString(1))})";
