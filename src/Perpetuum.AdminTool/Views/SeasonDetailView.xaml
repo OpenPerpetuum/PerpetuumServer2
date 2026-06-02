@@ -22,6 +22,8 @@
                         Foreground="DarkRed"
                         Command="{Binding DeactivateCommand}"
                         IsEnabled="{Binding CanDeactivate}"/>
+                <Button DockPanel.Dock="Right" Content="Export SQL..." Padding="10,2" Margin="6,0,0,0"
+                        Command="{Binding ExportCommand}"/>
                 <Button DockPanel.Dock="Right" Content="Activate" Padding="10,2"
                         Command="{Binding ActivateCommand}"
                         IsEnabled="{Binding CanActivate}"/>

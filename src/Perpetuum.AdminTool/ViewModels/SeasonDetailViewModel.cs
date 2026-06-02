@@ -8,6 +8,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
+using Perpetuum.AdminTool.Export;
+using Perpetuum.AdminTool.Views;
 using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Packages;
 using Perpetuum.AdminTool.Seasons;
@@ -541,6 +543,36 @@ namespace Perpetuum.AdminTool.ViewModels
                 ? $"Queued DELETE for leaderboard reward id {row.Id}."
                 : "Removed unsaved leaderboard reward.";
         }
+
+        [ObservableProperty] private bool _isExporting;
+        partial void OnIsExportingChanged(bool _) => ExportCommand.NotifyCanExecuteChanged();
+
+        [RelayCommand(CanExecute = nameof(CanExport))]
+        private async Task ExportAsync()
+        {
+            IsExporting   = true;
+            StatusMessage = "Generating export script...";
+            StatusIsError = false;
+            try
+            {
+                var script = await SeasonExporter.ExportAsync(Season.Id, _connection);
+                var vm     = new ExportScriptViewModel($"Season: {Season.Name}", script);
+                var win    = new ExportScriptWindow(vm) { Owner = System.Windows.Application.Current?.MainWindow };
+                win.ShowDialog();
+                StatusMessage = "Export complete.";
+            }
+            catch (Exception ex)
+            {
+                StatusIsError = true;
+                StatusMessage = $"Export failed: {ex.Message}";
+            }
+            finally
+            {
+                IsExporting = false;
+            }
+        }
+
+        private bool CanExport() => !IsExporting;
     }
 
     public record ActivityTypeOption(SeasonActivityType Value, string Label);
