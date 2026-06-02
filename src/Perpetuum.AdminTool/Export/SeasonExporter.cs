@@ -18,6 +18,7 @@ namespace Perpetuum.AdminTool.Export
             await cn.OpenAsync();
 
             var (seasonName, seasonDesc) = await LoadSeasonHeaderAsync(seasonId, cn);
+            if (string.IsNullOrEmpty(seasonName)) return string.Empty;
             var seasonVar = $"(SELECT id FROM seasons WHERE name = {SqlLiteral.Of(seasonName)})";
 
             var (packageIds, setIds) = await CollectRewardRefsAsync(seasonId, cn);
@@ -278,7 +279,7 @@ namespace Perpetuum.AdminTool.Export
                 $"scoring_mode = {scoreMode}, daily_objectives_per_day = {dailyObjPD} " +
                 $"WHEN NOT MATCHED THEN INSERT (name, description, start_time, end_time, is_active, is_recurring, " +
                 $"recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode, daily_objectives_per_day) " +
-                $"VALUES ({name}, {desc}, {start}, {end}, 0, {isRecur}, {gapDays}, {recurIter}, {baseName}, {scoreMode}, {dailyObjPD})";
+                $"VALUES ({name}, {desc}, {start}, {end}, 0 /*is_active: exported seasons start inactive*/, {isRecur}, {gapDays}, {recurIter}, {baseName}, {scoreMode}, {dailyObjPD})";
             changes.Add(new RawSqlChange($"seasons: merge '{seasonName}'", sql));
         }
 
