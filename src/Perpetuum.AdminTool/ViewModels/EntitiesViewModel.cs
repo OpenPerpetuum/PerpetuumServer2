@@ -4,16 +4,20 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Data.SqlClient;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
+using Perpetuum.AdminTool.Export;
 using Perpetuum.AdminTool.NewItem;
 using Perpetuum.AdminTool.NewRobot;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Translations;
+using Perpetuum.AdminTool.Views;
 
 namespace Perpetuum.AdminTool.ViewModels
 {
@@ -72,7 +76,10 @@ namespace Perpetuum.AdminTool.ViewModels
             {
                 Detail.Row = value;
             }
+            ExportEntityCommand.NotifyCanExecuteChanged();
         }
+
+        partial void OnIsLoadingChanged(bool _) => ExportEntityCommand.NotifyCanExecuteChanged();
 
         private bool MatchesFilter(object obj)
         {
@@ -259,6 +266,38 @@ namespace Perpetuum.AdminTool.ViewModels
                 await ReloadAsync();
             }
         }
+
+        [RelayCommand(CanExecute = nameof(CanExport))]
+        private async Task ExportEntityAsync()
+        {
+            if (SelectedRow == null) return;
+            IsLoading     = true;
+            StatusMessage = "Generating export script...";
+            StatusIsError = false;
+            try
+            {
+                var conn   = _settings.Settings.Connection;
+                await using var cn = new SqlConnection(conn.BuildConnectionString());
+                await cn.OpenAsync();
+                var itemChanges = await ItemExporter.ExportAsync(SelectedRow.Definition, cn);
+                var script = SqlScriptBuilder.Build(itemChanges);
+                var vm     = new ExportScriptViewModel($"Item: {SelectedRow.DefinitionName}", script);
+                var win    = new ExportScriptWindow(vm) { Owner = Application.Current?.MainWindow };
+                win.ShowDialog();
+                StatusMessage = "Export complete.";
+            }
+            catch (Exception ex)
+            {
+                StatusIsError = true;
+                StatusMessage = $"Export failed: {ex.Message}";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private bool CanExport() => SelectedRow != null && !IsLoading;
 
         public async Task ReloadAsync()
         {
