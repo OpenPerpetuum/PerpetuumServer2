@@ -1,0 +1,29 @@
+<Window x:Class="Perpetuum.AdminTool.Views.ExportScriptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Perpetuum.AdminTool.Export"
+        Title="{Binding Title}"
+        Width="780" Height="560"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        d:DataContext="{d:DesignInstance Type=vm:ExportScriptViewModel}"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d">
+    <DockPanel Margin="8">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Copy" Padding="14,4" Margin="0,0,8,0"
+                    Command="{Binding CopyToClipboardCommand}"/>
+            <Button Content="Save As..." Padding="14,4" Margin="0,0,8,0"
+                    Command="{Binding SaveAsCommand}"/>
+            <Button Content="Close" Padding="10,4" IsCancel="True" Click="OnCloseClick"/>
+        </StackPanel>
+        <TextBox Text="{Binding Script, Mode=OneWay}"
+                 IsReadOnly="True"
+                 FontFamily="Consolas" FontSize="12"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 AcceptsReturn="True"/>
+    </DockPanel>
+</Window>
