@@ -514,6 +514,12 @@ namespace Perpetuum.AdminTool.ViewModels
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            if (row.RankMin > row.RankMax)
+            {
+                StatusIsError = true;
+                StatusMessage = $"Invalid rank range: min ({row.RankMin}) must not be greater than max ({row.RankMax}).";
+                return;
+            }
             row.SeasonId = Season.Id;
             if (row.Id == 0)
             {
