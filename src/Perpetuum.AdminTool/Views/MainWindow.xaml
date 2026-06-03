@@ -75,6 +75,9 @@
             <TabItem Header="Economy">
                 <views:EconomyView DataContext="{Binding Economy}"/>
             </TabItem>
+            <TabItem Header="Money Supply">
+                <views:EconomyMoneySupplyView DataContext="{Binding EconomyMoneySupply}"/>
+            </TabItem>
             <TabItem Header="Translations">
                 <views:TranslationsView DataContext="{Binding Translations}"/>
             </TabItem>
