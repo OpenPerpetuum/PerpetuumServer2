@@ -1,6 +1,72 @@
 # Last ID used
 
-033
+035
+
+## IMPROVEMENT-035 - Factor player buy/sell orders into AutoMarket supply/demand rate calculation
+
+Status: TODO
+Priority: MEDIUM
+Area: AutoMarket / Economy
+
+### Description
+AutoMarket currently calculates supply and demand rates using only its own transaction history. Player-created buy and sell orders on the market represent real demand and supply signals that AutoMarket ignores. Including them in the rate calculation could produce more accurate pricing — but the outcome must be analyzed before implementation.
+
+### Analysis Required (do before implementation)
+
+**Pros of including player orders:**
+
+- Demand signal is more accurate: a flood of player buy orders indicates real demand AutoMarket should respond to by raising prices or increasing stock.
+- Supply signal is more accurate: many player sell orders indicate surplus; AutoMarket prices should soften rather than hold artificially high.
+- Reduces price divergence between AutoMarket and the player market — prevents situations where AutoMarket and player prices drift far apart.
+- Makes AutoMarket behave more like a responsive market maker rather than a self-referential loop.
+
+**Cons / risks of including player orders:**
+
+- Players can manipulate AutoMarket pricing by placing large fake orders and cancelling them (wash signaling). This is a significant exploit risk, especially given ISSUE-022 (cancelled orders still awarded season points — the same class of abuse applies here).
+- Thin player markets (low population periods) produce noisy, unrepresentative order books; AutoMarket prices could swing erratically.
+- Increases complexity of the rate calculation; harder to reason about and tune.
+- Player orders may already be priced to undercut or match AutoMarket, creating a feedback loop where AutoMarket chases its own reflected signal.
+- Requires deciding how to weight player order volume vs. AutoMarket transaction volume — no obvious correct ratio.
+
+**Recommended pre-implementation steps:**
+
+1. Read the current supply/demand rate calculation in the AutoMarket codebase and document exactly what signals it uses today.
+2. Model what price behavior would change on a few representative items if player orders were included — use historical order data if available.
+3. Define an anti-manipulation guard (e.g. only count orders open for ≥ N minutes, exclude orders cancelled within a short window).
+4. Present the modeled outcomes to the operator before committing to implementation.
+
+### Notes
+- Cross-reference ISSUE-022 (order placement exploit) — any manipulation risk there applies here too; an anti-manipulation guard is a prerequisite.
+- Cross-reference IMPROVEMENT-034 (NIC flow statistics) — better data visibility may make it easier to evaluate the impact of this change before and after rollout.
+- Do not implement until the analysis step above is complete and the operator has reviewed the modeled outcomes.
+
+---
+
+## IMPROVEMENT-034 - Expand AutoMarket NIC flow statistics in Admin Tool
+
+Status: TODO
+Priority: MEDIUM
+Area: Admin Tool / AutoMarket / Economy
+
+### Description
+The AutoMarket tab in the Admin Tool currently shows limited statistics. It needs a full NIC flow breakdown — both income and outgoing — to give operators a complete picture of the server economy. This includes, but is not limited to: market taxes, transaction fees, mission rewards, crafting costs, repair fees, insurance payouts, and any other server-side NIC sources or sinks.
+
+### Impact
+Without full NIC flow visibility, operators cannot diagnose inflation, NIC sinks underperforming, or unexpected injections. A comprehensive view enables data-driven economy tuning and early detection of exploits or misconfigurations.
+
+### Proposed Implementation
+- Audit all server-side NIC sources (injections) and sinks (removals) — e.g. mission rewards, NPC loot, market taxes, transaction fees, crafting, repair, insurance, AutoMarket buy/sell margins, fines, etc.
+- Design a statistics view that groups these into **NIC In** and **NIC Out** categories with per-source totals and time-range filtering (daily / weekly / all-time or a configurable window).
+- Determine whether these values are available from existing DB tables/logs or require new instrumentation at each NIC transfer point.
+- Implement the server-side query or aggregation endpoint.
+- Add the expanded statistics panel to the AutoMarket tab in the Admin Tool WPF UI, alongside or replacing the existing summary.
+
+### Notes
+- Coordinate with existing AutoMarket statistics infrastructure before adding new queries — avoid duplicating aggregation logic.
+- If NIC transfers are not already logged with source type, an instrumentation pass will be needed before meaningful statistics can be shown; scope that as a prerequisite sub-task.
+- Consider whether this data should feed into a broader Economy Health dashboard (separate improvement) rather than living solely on the AutoMarket tab.
+
+---
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -608,7 +674,7 @@ Refresh Now calls SPs directly from AdminTool DB connection (no server-side hand
 
 ## IMPROVEMENT-032 - Export: Generate Full SQL Scripts for Seasons, Items, and Robots
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
 Area: Admin Tool / Content / Tooling
 
