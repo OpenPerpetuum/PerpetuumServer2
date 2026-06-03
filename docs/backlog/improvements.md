@@ -4,49 +4,43 @@
 
 ## IMPROVEMENT-035 - Factor player buy/sell orders into AutoMarket supply/demand rate calculation
 
-Status: TODO
+Status: DEFERRED
 Priority: MEDIUM
 Area: AutoMarket / Economy
 
 ### Description
-AutoMarket currently calculates supply and demand rates using only its own transaction history. Player-created buy and sell orders on the market represent real demand and supply signals that AutoMarket ignores. Including them in the rate calculation could produce more accurate pricing — but the outcome must be analyzed before implementation.
+AutoMarket currently calculates supply and demand rates using only its own transaction history. Player-created buy and sell orders on the market represent real demand and supply signals that AutoMarket ignores. Including them in the rate calculation could produce more accurate pricing.
 
-### Analysis Required (do before implementation)
+### Analysis Outcome (2026-06-03)
 
-**Pros of including player orders:**
+Full brainstorming and economic modelling completed. Decision: **defer**.
 
-- Demand signal is more accurate: a flood of player buy orders indicates real demand AutoMarket should respond to by raising prices or increasing stock.
-- Supply signal is more accurate: many player sell orders indicate surplus; AutoMarket prices should soften rather than hold artificially high.
-- Reduces price divergence between AutoMarket and the player market — prevents situations where AutoMarket and player prices drift far apart.
-- Makes AutoMarket behave more like a responsive market maker rather than a self-referential loop.
+**Benefit is small in practice.** On a low-population server, player raw material order volume is thin — the signal would be near-zero most of the time, producing behaviour identical to today. The improvement only matters at population peaks.
 
-**Cons / risks of including player orders:**
+**The existing system already captures most of the signal indirectly.** Product sell-through → `automarket_unsold_leftovers` → AutoMarket buys more raw materials next refresh. This indirect loop is slower but manipulation-proof.
 
-- Players can manipulate AutoMarket pricing by placing large fake orders and cancelling them (wash signaling). This is a significant exploit risk, especially given ISSUE-022 (cancelled orders still awarded season points — the same class of abuse applies here).
-- Thin player markets (low population periods) produce noisy, unrepresentative order books; AutoMarket prices could swing erratically.
-- Increases complexity of the rate calculation; harder to reason about and tune.
-- Player orders may already be priced to undercut or match AutoMarket, creating a feedback loop where AutoMarket chases its own reflected signal.
-- Requires deciding how to weight player order volume vs. AutoMarket transaction volume — no obvious correct ratio.
+**Manipulation guard is structurally weak.** A 30-minute age filter stops rapid pump-cancel cycles but not fake 1-NIC buy orders left open for 24 hours, which cost nothing to place. Closing that hole properly requires either a price floor on counted orders (circular dependency on the price being computed) or per-character quantity caps — roughly doubling implementation complexity.
 
-**Recommended pre-implementation steps:**
+**Manipulation ceiling:** ds_min/ds_max clamp [0.25, 4.0] and `daily_rawmat_budget_nic` bound the worst-case damage, but a coordinated attack on all raw materials simultaneously is a systemic risk.
 
-1. Read the current supply/demand rate calculation in the AutoMarket codebase and document exactly what signals it uses today.
-2. Model what price behavior would change on a few representative items if player orders were included — use historical order data if available.
-3. Define an anti-manipulation guard (e.g. only count orders open for ≥ N minutes, exclude orders cancelled within a short window).
-4. Present the modeled outcomes to the operator before committing to implementation.
+### Conditions to Revisit
+
+Reconsider only when:
+1. IMPROVEMENT-034 (NIC flow statistics) is in place and provides operator visibility into raw material price trends.
+2. That data shows a concrete, sustained divergence between AutoMarket raw material prices and player market prices that the existing indirect feedback loop is not correcting.
+3. Population is high enough for player order volume to constitute a meaningful signal (not just noise).
 
 ### Notes
-- Cross-reference ISSUE-022 (order placement exploit) — any manipulation risk there applies here too; an anti-manipulation guard is a prerequisite.
-- Cross-reference IMPROVEMENT-034 (NIC flow statistics) — better data visibility may make it easier to evaluate the impact of this change before and after rollout.
-- Do not implement until the analysis step above is complete and the operator has reviewed the modeled outcomes.
+- Cross-reference ISSUE-022 (order placement exploit) — same class of abuse applies here.
+- Cross-reference IMPROVEMENT-034 — prerequisite for gathering the data needed to justify revisiting.
 
 ---
 
 ## IMPROVEMENT-034 - Expand AutoMarket NIC flow statistics in Admin Tool
 
-Status: TODO
+Status: DONE
 Priority: MEDIUM
-Area: Admin Tool / AutoMarket / Economy
+Area: Admin Tool / Economy
 
 ### Description
 The AutoMarket tab in the Admin Tool currently shows limited statistics. It needs a full NIC flow breakdown — both income and outgoing — to give operators a complete picture of the server economy. This includes, but is not limited to: market taxes, transaction fees, mission rewards, crafting costs, repair fees, insurance payouts, and any other server-side NIC sources or sinks.
@@ -54,17 +48,24 @@ The AutoMarket tab in the Admin Tool currently shows limited statistics. It need
 ### Impact
 Without full NIC flow visibility, operators cannot diagnose inflation, NIC sinks underperforming, or unexpected injections. A comprehensive view enables data-driven economy tuning and early detection of exploits or misconfigurations.
 
-### Proposed Implementation
-- Audit all server-side NIC sources (injections) and sinks (removals) — e.g. mission rewards, NPC loot, market taxes, transaction fees, crafting, repair, insurance, AutoMarket buy/sell margins, fines, etc.
-- Design a statistics view that groups these into **NIC In** and **NIC Out** categories with per-source totals and time-range filtering (daily / weekly / all-time or a configurable window).
-- Determine whether these values are available from existing DB tables/logs or require new instrumentation at each NIC transfer point.
-- Implement the server-side query or aggregation endpoint.
-- Add the expanded statistics panel to the AutoMarket tab in the Admin Tool WPF UI, alongside or replacing the existing summary.
+### Implementation
+
+Implemented as a new top-level **Economy** panel in the Admin Tool (separate from AutoMarket). Data sourced from existing `charactertransactions` and `corporationtransactions` tables (classified by `transactiontype` into named categories) plus `plasma_sold` and `rawmat_purchased` for AutoMarket flows. No schema changes or server-side code changes required.
+
+**NIC In categories:** Mission Rewards, Insurance Payouts, Intrusion Income, AutoMarket Plasma, System Credits & Refunds.
+
+**NIC Out categories:** Market Fees & Taxes, Production Costs, Repair Costs, Insurance Fees, Infrastructure Costs, Extension Learning, Spark Costs, Corporate & Alliance Fees, Other Fees, AutoMarket Raw Materials.
+
+Time periods: Today / Last 7 Days / Last 30 Days / All Time. Net balance shown with green/red coloring.
+
+Design spec: `docs/superpowers/specs/2026-06-03-economy-nic-flow-design.md`
+Implementation plan: `docs/superpowers/plans/2026-06-03-economy-nic-flow.md`
+Branch: p36.5 (commits 9a3a1b2 → a147494)
 
 ### Notes
-- Coordinate with existing AutoMarket statistics infrastructure before adding new queries — avoid duplicating aggregation logic.
-- If NIC transfers are not already logged with source type, an instrumentation pass will be needed before meaningful statistics can be shown; scope that as a prerequisite sub-task.
-- Consider whether this data should feed into a broader Economy Health dashboard (separate improvement) rather than living solely on the AutoMarket tab.
+- `SiegeFee(37)`, `SiegeFeeRefund(38)`, and `SiegePoolPayback(41)` are unclassified — siege subsystem appears dormant; add to appropriate categories when siege activity resumes.
+- `transactiondate` uses `getdate()` (local server time); queries compare against `GETUTCDATE()`. Accurate as long as SQL Server runs in UTC (standard deployment).
+- Cross-reference IMPROVEMENT-035 — this panel provides the operator visibility prerequisite for revisiting player order signal in AutoMarket pricing.
 
 ---
 
