@@ -74,7 +74,12 @@ namespace Perpetuum.AdminTool.ViewModels
                 session.Lookups,
                 Translations);
             Economy = new EconomyViewModel(
-                new EconomyRepository(store.Settings.Connection));
+                new EconomyRepository(store.Settings.Connection),
+                new EconomyMoneySupplyRepository(store.Settings.Connection),
+                new EconomyMarketHealthRepository(store.Settings.Connection),
+                new EconomySinkRepository(store.Settings.Connection),
+                session.Changes,
+                session.Lookups);
             UpdateStatus();
 
             _ = InitializeLookupsAsync();
