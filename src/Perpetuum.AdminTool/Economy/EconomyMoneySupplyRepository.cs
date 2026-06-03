@@ -25,10 +25,14 @@ namespace Perpetuum.AdminTool.Economy
             var  balances   = await LoadAllBalancesAsync(cn);
             long idleNic    = await LoadIdleNicAsync(cn);
 
-            long medianNic    = balances.Count > 0 ? balances[balances.Count / 2] : 0L;
+            long medianNic = balances.Count == 0 ? 0L
+                : balances.Count % 2 == 1
+                    ? balances[balances.Count / 2]
+                    : (balances[balances.Count / 2 - 1] + balances[balances.Count / 2]) / 2;
             int  top1Count    = (int)Math.Ceiling(balances.Count * 0.01);
             long top1Nic      = top1Count > 0 ? balances.Take(top1Count).Sum() : 0L;
-            double top1Share  = totalNic > 0 ? (double)top1Nic / totalNic * 100.0 : 0.0;
+            long charTotal    = balances.Count > 0 ? balances.Sum() : 0L;
+            double top1Share  = charTotal > 0 ? (double)top1Nic / charTotal * 100.0 : 0.0;
 
             return new EconomyMoneySupplyData
             {
@@ -97,7 +101,7 @@ namespace Perpetuum.AdminTool.Economy
             cmd.CommandText =
                 "SELECT ISNULL(SUM(CAST(credit AS BIGINT)),0) FROM characters " +
                 "WHERE active=1 AND deletedAt IS NULL " +
-                "  AND lastUsed < DATEADD(DAY,-30,GETUTCDATE())";
+                "  AND (lastUsed IS NULL OR lastUsed < DATEADD(DAY,-30,GETUTCDATE()))";
             var result = await cmd.ExecuteScalarAsync();
             return result == null || result == DBNull.Value ? 0L : Convert.ToInt64(result);
         }
