@@ -139,6 +139,30 @@ namespace Perpetuum.Services.Channels.ChatCommands
             SendMessageToAll(data, $"Season {id} end_time set to past. Processing within 1 minute.");
         }
 
+        // #SeasonRedeliverLeaderboard,<seasonId>
+        [ChatCommand("SeasonRedeliverLeaderboard")]
+        public static void SeasonRedeliverLeaderboard(AdminCommandData data)
+        {
+            AdminCommandHandlers.CheckRequiredArgLength(data, 1);
+            if (!int.TryParse(data.Command.Args[0], out int id))
+            {
+                SendMessageToAll(data, "Invalid seasonId");
+                return;
+            }
+            if (SeasonServiceLocator.Instance is not SeasonService svc)
+            {
+                SendMessageToAll(data, "Season service unavailable.");
+                return;
+            }
+            int delivered = svc.RedeliverLeaderboardRewards(id);
+            if (delivered < 0)
+            {
+                SendMessageToAll(data, $"Season {id} not found.");
+                return;
+            }
+            SendMessageToAll(data, $"Season {id}: {delivered} leaderboard reward(s) delivered.");
+        }
+
         private static void SendMessageToAll(AdminCommandData data, string message)
         {
             data.Channel.SendMessageToAll(data.SessionManager, data.Sender, message);
