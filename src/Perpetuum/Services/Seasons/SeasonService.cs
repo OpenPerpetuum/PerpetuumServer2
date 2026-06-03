@@ -340,7 +340,7 @@ namespace Perpetuum.Services.Seasons
             }
         }
 
-        private void DeliverLeaderboardReward(int characterId, SeasonLeaderboardReward reward)
+        private bool DeliverLeaderboardReward(int characterId, SeasonLeaderboardReward reward)
         {
             var character = Character.Get(characterId);
 
@@ -351,22 +351,25 @@ namespace Perpetuum.Services.Seasons
                 {
                     System.Diagnostics.Trace.TraceWarning(
                         $"[SeasonService] Leaderboard reward {reward.Id} equipment set {reward.EquipmentSetId} has no members; skipping.");
-                    return;
+                    return false;
                 }
                 var definition = definitions[Random.Shared.Next(definitions.Count)];
                 _repository.InsertRedeemableItem(character.AccountId, definition);
+                return true;
             }
             else if (reward.PackageId.HasValue)
             {
                 var items = _repository.GetPackageItems(reward.PackageId.Value);
                 if (items.Count == 0)
-                    return;
+                    return false;
                 _repository.InsertRedeemableItems(character.AccountId, reward.PackageId.Value, items);
+                return true;
             }
             else
             {
                 System.Diagnostics.Trace.TraceWarning(
                     $"[SeasonService] Leaderboard reward {reward.Id} has neither package_id nor equipment_set_id; skipping.");
+                return false;
             }
         }
 
@@ -395,9 +398,8 @@ namespace Perpetuum.Services.Seasons
                 if (entry.LeaderboardRewardDelivered) continue;
 
                 var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
-                if (reward != null)
+                if (reward != null && DeliverLeaderboardReward(entry.CharacterId, reward))
                 {
-                    DeliverLeaderboardReward(entry.CharacterId, reward);
                     delivered++;
                     _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
                 }
@@ -432,12 +434,11 @@ namespace Perpetuum.Services.Seasons
                     continue;
 
                 var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
-                if (reward != null)
-                    DeliverLeaderboardReward(entry.CharacterId, reward);
+                bool rewardDelivered = reward != null && DeliverLeaderboardReward(entry.CharacterId, reward);
 
                 _repository.MarkLeaderboardDelivered(entry.CharacterId, season.Id);
                 SendFinalStandingsMail(entry.CharacterId, rank, entry.TotalPoints,
-                    reward != null, season.Name);
+                    rewardDelivered, season.Name);
             }
 
             _activeRates = ImmutableList<SeasonActivityRate>.Empty;
