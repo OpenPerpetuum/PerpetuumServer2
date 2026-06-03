@@ -1,6 +1,68 @@
 # Last ID used
 
-024
+026
+
+## ISSUE-026 - AdminTool AutoMarket Orders filters not working as expected
+
+Status: TODO
+Priority: MEDIUM
+Area: Admin Tool / AutoMarket
+
+### Problem
+Three distinct filter bugs on the AutoMarket → Orders view in the Admin Tool:
+
+1. **Order type filter returns no results** — selecting a buy or sell order type filter produces an empty list regardless of actual order volume. Likely a binding or query mismatch between the selected enum/value and what the server-side filter expects.
+2. **Category filter excludes child categories** — filtering by a parent category only returns items assigned directly to that category; items in sub-categories are excluded. The filter needs to match the selected category and all of its descendants.
+3. **No way to reset filters** — once a filter is applied, there is no reset or clear button. Users must restart or navigate away to return to the unfiltered list.
+
+### Impact
+Operators cannot meaningfully browse or audit market orders. The broken type and category filters make it impractical to find specific orders; the lack of reset compounds the friction by trapping users in a filtered state.
+
+### Proposed Fix
+1. **Order type filter** — trace the selected value from the UI dropdown through the ViewModel command to the server query. Verify the filter value is correctly mapped to the DB column type and that the query predicate is applied (not silently dropped).
+2. **Category filter** — replace the direct category equality check with a recursive or closure-based lookup that resolves all descendant category IDs for the selected node and filters on the full set (e.g. via a recursive CTE or a pre-loaded category tree walk).
+3. **Reset filters** — add a "Clear Filters" button (or equivalent reset action) to the Orders view that restores all filter fields to their default/unset state and reloads the full order list.
+
+### Notes
+- Investigate whether the type filter bug is a null/default value mismatch (e.g. enum default being passed as the filter even when "All" is selected, or vice versa).
+- The category tree hierarchy is likely already used elsewhere in the Admin Tool or game content — reuse the existing resolution pattern rather than introducing a new one.
+- Fix all three as a single unit since they share the same view; shipping a partial fix leaves the Orders filter UX still broken.
+
+---
+
+## ISSUE-025 - Top leaderboard participants did not receive rewards after Active Season ended
+
+Status: TODO
+Priority: CRITICAL
+Area: Seasons / Rewards / Leaderboard
+
+### Problem
+After an Active Season concluded, top leaderboard participants did not receive their expected rewards. Root cause is unknown — this may be a Season configuration error (missing or misconfigured reward entries) or a code bug in the reward distribution path triggered at season end.
+
+### Impact
+Players who legitimately topped the leaderboard received no reward, directly breaking the season reward contract. This is a high-visibility failure that erodes player trust in the season system.
+
+### Investigation Steps
+
+**Before touching code, request the following configuration data from the user:**
+
+1. Season record: `season_id`, `name`, `start_time`, `end_time`, `status` from the `seasons` table for the affected season.
+2. Leaderboard reward entries: all rows from the season reward/leaderboard reward table linked to this season (reward type, rank range, item definition, quantity, equipment set reference if any).
+3. Confirm whether any reward rows exist at all for this season in the DB.
+4. Check the server log around the season-end timestamp for any errors in the reward distribution path.
+5. Verify which characters topped the leaderboard and whether any reward delivery records exist for them.
+
+**After data is available:**
+
+- If reward rows are missing or misconfigured → configuration issue; fix the data and re-trigger distribution.
+- If reward rows exist but delivery did not fire → code bug; locate the season-end reward dispatch path and identify the failure point.
+- Check `QueueSaveLeaderboardReward` and any season-end hooks that trigger reward distribution.
+
+### Notes
+- Cross-reference IMPROVEMENT-033 (Equipment Set season rewards) — the reward distribution path was recently extended; regression is possible.
+- Do not attempt a fix until the user provides the configuration data above; the correct action differs entirely depending on whether this is a data or code problem.
+
+---
 
 ## ISSUE-024 - AutoMarket pricing structurally excludes player crafters from the production economy
 
