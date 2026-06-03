@@ -32,35 +32,51 @@ Operators cannot meaningfully browse or audit market orders. The broken type and
 
 ## ISSUE-025 - Top leaderboard participants did not receive rewards after Active Season ended
 
-Status: TODO
+Status: IN_PROGRESS
 Priority: CRITICAL
 Area: Seasons / Rewards / Leaderboard
 
 ### Problem
-After an Active Season concluded, top leaderboard participants did not receive their expected rewards. Root cause is unknown — this may be a Season configuration error (missing or misconfigured reward entries) or a code bug in the reward distribution path triggered at season end.
+After "Seasons, oh May!" (end_time 2026-06-01T03:00:00) concluded, top leaderboard participants received no rewards. Root cause confirmed: data configuration error.
 
-### Impact
-Players who legitimately topped the leaderboard received no reward, directly breaking the season reward contract. This is a high-visibility failure that erodes player trust in the season system.
+### Root Cause (Confirmed)
+All 3 `season_leaderboard_rewards` rows have `rank_min > rank_max` (swapped fields):
 
-### Investigation Steps
+| rank_min | rank_max | Package | Intended |
+|---|---|---|---|
+| 3 | 1 | Syndicate_Season1_Leadership1 | min=1, max=3 |
+| 6 | 4 | Syndicate_Season1_Leadership2 | min=4, max=6 |
+| 10 | 7 | Syndicate_Season1_Leadership3 | min=7, max=10 |
 
-**Before touching code, request the following configuration data from the user:**
+Server matching (`SeasonService.cs:399`): `rank >= r.RankMin && rank <= r.RankMax` — impossible to satisfy when min > max. Rewards were never delivered.
 
-1. Season record: `season_id`, `name`, `start_time`, `end_time`, `status` from the `seasons` table for the affected season.
-2. Leaderboard reward entries: all rows from the season reward/leaderboard reward table linked to this season (reward type, rank range, item definition, quantity, equipment set reference if any).
-3. Confirm whether any reward rows exist at all for this season in the DB.
-4. Check the server log around the season-end timestamp for any errors in the reward distribution path.
-5. Verify which characters topped the leaderboard and whether any reward delivery records exist for them.
+Compounded by `MarkLeaderboardDelivered` being called unconditionally (`SeasonService.cs:403`) even when no reward matched. All participants have `leaderboard_reward_delivered = 1`, blocking any automatic re-run.
 
-**After data is available:**
+### Fix
 
-- If reward rows are missing or misconfigured → configuration issue; fix the data and re-trigger distribution.
-- If reward rows exist but delivery did not fire → code bug; locate the season-end reward dispatch path and identify the failure point.
-- Check `QueueSaveLeaderboardReward` and any season-end hooks that trigger reward distribution.
+**Operator must apply immediately (SQL):**
+```sql
+-- Reset delivered flag
+UPDATE season_character_points
+SET leaderboard_reward_delivered = 0
+WHERE season_id = (SELECT id FROM seasons WHERE name = N'Seasons, oh May!');
+
+-- Fix swapped rank ranges
+UPDATE season_leaderboard_rewards SET rank_min=1, rank_max=3
+WHERE season_id=(SELECT id FROM seasons WHERE name=N'Seasons, oh May!') AND rank_min=3 AND rank_max=1;
+UPDATE season_leaderboard_rewards SET rank_min=4, rank_max=6
+WHERE season_id=(SELECT id FROM seasons WHERE name=N'Seasons, oh May!') AND rank_min=6 AND rank_max=4;
+UPDATE season_leaderboard_rewards SET rank_min=7, rank_max=10
+WHERE season_id=(SELECT id FROM seasons WHERE name=N'Seasons, oh May!') AND rank_min=10 AND rank_max=7;
+```
+
+**Code changes required:**
+1. New `SeasonRedeliverLeaderboardRewards` admin request handler — re-runs reward delivery for a past ended season by ID, respecting the `leaderboard_reward_delivered` flag.
+2. Admin Tool validation in `SeasonDetailViewModel.QueueSaveLeaderboardReward` — guard `rank_min ≤ rank_max` before queuing the save.
 
 ### Notes
-- Cross-reference IMPROVEMENT-033 (Equipment Set season rewards) — the reward distribution path was recently extended; regression is possible.
-- Do not attempt a fix until the user provides the configuration data above; the correct action differs entirely depending on whether this is a data or code problem.
+- `DeliverLeaderboardReward` writes to the redeemable items table via `InsertRedeemableItems` — no server restart needed once the command exists.
+- The re-deliver command must load leaderboard reward rows directly from the DB (not the in-memory cache, which is cleared at season end).
 
 ---
 
