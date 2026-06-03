@@ -399,8 +399,8 @@ namespace Perpetuum.Services.Seasons
                 {
                     DeliverLeaderboardReward(entry.CharacterId, reward);
                     delivered++;
+                    _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
                 }
-                _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
             }
             return delivered;
         }
