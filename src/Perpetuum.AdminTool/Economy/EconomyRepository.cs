@@ -50,23 +50,23 @@ namespace Perpetuum.AdminTool.Economy
             "FROM (" +
             "  SELECT amount, transactiondate," +
             "    CASE" +
-            "      WHEN transactiontype IN (10,86,78,79)    THEN 'Mission Rewards'" +
-            "      WHEN transactiontype IN (33)             THEN 'Insurance Payouts'" +
-            "      WHEN transactiontype IN (40,39)          THEN 'Intrusion Income'" +
-            "      WHEN transactiontype IN (75,13,91,87,63) THEN 'System Credits & Refunds'" +
+            "      WHEN transactiontype IN (10,86,78,79,29)    THEN 'Mission Rewards'" +
+            "      WHEN transactiontype IN (33)                THEN 'Insurance Payouts'" +
+            "      WHEN transactiontype IN (40,39)             THEN 'Intrusion Income'" +
+            "      WHEN transactiontype IN (75,13,91,87,63,36) THEN 'System Credits & Refunds'" +
             "    END AS category" +
             "  FROM charactertransactions" +
-            "  WHERE transactiontype IN (10,86,78,79,33,40,39,75,13,91,87,63)" +
+            "  WHERE transactiontype IN (10,86,78,79,33,40,39,75,13,91,87,63,29,36)" +
             "  UNION ALL" +
             "  SELECT amount, transactiondate," +
             "    CASE" +
-            "      WHEN transactiontype IN (10,86,78,79)    THEN 'Mission Rewards'" +
-            "      WHEN transactiontype IN (33)             THEN 'Insurance Payouts'" +
-            "      WHEN transactiontype IN (40,39)          THEN 'Intrusion Income'" +
-            "      WHEN transactiontype IN (75,13,91,87,63) THEN 'System Credits & Refunds'" +
+            "      WHEN transactiontype IN (10,86,78,79,29)    THEN 'Mission Rewards'" +
+            "      WHEN transactiontype IN (33)                THEN 'Insurance Payouts'" +
+            "      WHEN transactiontype IN (40,39)             THEN 'Intrusion Income'" +
+            "      WHEN transactiontype IN (75,13,91,87,63,36) THEN 'System Credits & Refunds'" +
             "    END AS category" +
             "  FROM corporationtransactions" +
-            "  WHERE transactiontype IN (10,86,78,79,33,40,39,75,13,91,87,63)" +
+            "  WHERE transactiontype IN (10,86,78,79,33,40,39,75,13,91,87,63,29,36)" +
             ") t WHERE category IS NOT NULL" +
             " GROUP BY category";
 
@@ -80,7 +80,7 @@ namespace Perpetuum.AdminTool.Economy
             "FROM (" +
             "  SELECT amount, transactiondate," +
             "    CASE" +
-            "      WHEN transactiontype IN (6,35,29,43)                THEN 'Market Fees & Taxes'" +
+            "      WHEN transactiontype IN (6,35,43)                   THEN 'Market Fees & Taxes'" +
             "      WHEN transactiontype IN (18,25,27,28,71,19,20,21,22) THEN 'Production Costs'" +
             "      WHEN transactiontype IN (15,26)                     THEN 'Repair Costs'" +
             "      WHEN transactiontype IN (32)                        THEN 'Insurance Fees'" +
@@ -88,14 +88,14 @@ namespace Perpetuum.AdminTool.Economy
             "      WHEN transactiontype IN (14)                        THEN 'Extension Learning'" +
             "      WHEN transactiontype IN (64,65,83,84)               THEN 'Spark Costs'" +
             "      WHEN transactiontype IN (12,11,2)                   THEN 'Corporate & Alliance Fees'" +
-            "      WHEN transactiontype IN (34,70,88,73,36)            THEN 'Other Fees'" +
+            "      WHEN transactiontype IN (34,70,88,73)               THEN 'Other Fees'" +
             "    END AS category" +
             "  FROM charactertransactions" +
-            "  WHERE transactiontype IN (6,35,29,43,18,25,27,28,71,19,20,21,22,15,26,32,0,4,68,69,14,64,65,83,84,12,11,2,34,70,88,73,36)" +
+            "  WHERE transactiontype IN (6,35,43,18,25,27,28,71,19,20,21,22,15,26,32,0,4,68,69,14,64,65,83,84,12,11,2,34,70,88,73)" +
             "  UNION ALL" +
             "  SELECT amount, transactiondate," +
             "    CASE" +
-            "      WHEN transactiontype IN (6,35,29,43)                THEN 'Market Fees & Taxes'" +
+            "      WHEN transactiontype IN (6,35,43)                   THEN 'Market Fees & Taxes'" +
             "      WHEN transactiontype IN (18,25,27,28,71,19,20,21,22) THEN 'Production Costs'" +
             "      WHEN transactiontype IN (15,26)                     THEN 'Repair Costs'" +
             "      WHEN transactiontype IN (32)                        THEN 'Insurance Fees'" +
@@ -103,10 +103,10 @@ namespace Perpetuum.AdminTool.Economy
             "      WHEN transactiontype IN (14)                        THEN 'Extension Learning'" +
             "      WHEN transactiontype IN (64,65,83,84)               THEN 'Spark Costs'" +
             "      WHEN transactiontype IN (12,11,2)                   THEN 'Corporate & Alliance Fees'" +
-            "      WHEN transactiontype IN (34,70,88,73,36)            THEN 'Other Fees'" +
+            "      WHEN transactiontype IN (34,70,88,73)               THEN 'Other Fees'" +
             "    END AS category" +
             "  FROM corporationtransactions" +
-            "  WHERE transactiontype IN (6,35,29,43,18,25,27,28,71,19,20,21,22,15,26,32,0,4,68,69,14,64,65,83,84,12,11,2,34,70,88,73,36)" +
+            "  WHERE transactiontype IN (6,35,43,18,25,27,28,71,19,20,21,22,15,26,32,0,4,68,69,14,64,65,83,84,12,11,2,34,70,88,73)" +
             ") t WHERE category IS NOT NULL" +
             " GROUP BY category";
 
