@@ -1,6 +1,155 @@
 # Last ID used
 
-035
+039
+
+## IMPROVEMENT-039 - Add economy health statistics beyond NIC flow reporting
+
+Status: DONE
+Priority: HIGH
+Area: Admin Tool / Economy
+
+### Description
+The current economy report (IMPROVEMENT-034) tracks NIC flows (injections and sinks) but flow data alone is insufficient to evaluate true economy health. NIC flows show the rate of money creation and destruction — they do not show whether that money is circulating, concentrating, or causing real price inflation. Additional statistics are needed to give operators a complete diagnostic picture.
+
+### Impact
+Without supplementary statistics, operators cannot distinguish between a healthy growing economy and a stagnating inflationary one with the same NIC flow numbers. These metrics close the gap between "what is happening to NIC" and "what is happening to the economy."
+
+### Proposed Statistics
+
+#### Money Supply
+- **Total NIC in circulation** — sum of all player and corporation wallet balances. Without this, the net surplus figures have no denominator; a +7.5B monthly surplus means something very different on a 10B vs 1T money supply.
+- **Money supply trend** — total NIC in circulation over time (daily/weekly snapshots), the clearest single indicator of inflation pressure.
+
+#### Wealth Distribution
+- **Top 10 / top 1% wealth share** — what fraction of total NIC is held by the wealthiest players. High concentration means most players feel poor even if aggregate NIC is growing.
+- **Median player wallet balance** — more representative than mean; large outliers skew mean heavily.
+- **Idle NIC** — NIC held in wallets untouched for 30+ days. High idle NIC suggests players have nothing to spend it on.
+
+#### Market Health
+- **Market price index** — average transaction price for a basket of common goods (raw materials, common robot parts, basic consumables) tracked over time. This is the direct inflation indicator — rising prices confirm what NIC flow data only implies.
+- **Market velocity** — total NIC value of completed market transactions per day. Low velocity with high money supply = hoarding, not circulation.
+- **Unsold listing age distribution** — how long goods sit on the market before selling or expiring. Aging listings indicate insufficient demand.
+- **AutoMarket vs player market share** — what percentage of economic activity is AutoMarket-driven vs player-driven. High AutoMarket share on a low-pop server is expected; a declining player share over time signals disengagement.
+
+#### Sink Effectiveness
+- **NIC sink breakdown per activity type** — how much each sink category contributes per active player, normalized by session count or login days. Reveals which sinks are load-bearing vs cosmetic.
+- **Insurance coverage rate** — percentage of active robots that currently have insurance. Near-zero confirms the insurance system is effectively unused.
+
+### Notes
+- Cross-reference IMPROVEMENT-034 (NIC flow report) — these statistics extend that panel, not replace it
+- Total NIC in circulation is the highest-priority addition; without it, all flow data lacks context
+- Market price index requires selecting a representative basket of goods — coordinate with game design intent
+- Some of these (wealth distribution, idle NIC) may have privacy/fairness implications if exposed to players; restrict to admin view only
+
+### Implementation
+
+Implemented as four tabs in the Economy Admin Tool panel (branch p36.5, commits 930c727 → f9a5cc1):
+
+**Tab 1 — NIC Flow:** Existing panel extracted to `EconomyNicFlowViewModel` / `EconomyNicFlowView`.
+
+**Tab 2 — Money Supply & Wealth:** Total NIC in circulation (characters.credit + corporations.wallet), 90-day trend from `economy_daily_snapshot` (written daily by `EconomySnapshotService`), top-10 wealth leaderboard, median wallet, top-1% share, idle NIC (≥30 days inactive).
+
+**Tab 3 — Market Health:** Market velocity (daily NIC transacted from `marketaverageprices`), weighted price index for a configurable basket of items (`economy_price_index_basket`), live listing age distribution, AutoMarket vs player order mix. Basket items are editable via the global ChangeQueue.
+
+**Tab 4 — Sink Effectiveness:** NIC-out per category normalized by 30-day active player count, insurance coverage rate.
+
+**Server:** `EconomySnapshotService : IProcess` fires `usp_RecordEconomySnapshot` on startup and daily (idempotent MERGE on snapshot_date).
+
+**DB migration required:** `docs/db_structure/migrations/IMPROVEMENT-039-economy-health.sql`
+
+Design spec: `docs/superpowers/specs/2026-06-03-economy-health-stats-design.md`
+Implementation plan: `docs/superpowers/plans/2026-06-03-economy-health-stats.md`
+
+---
+
+## IMPROVEMENT-038 - Explore and expand AutoMarket Plasma rate tuning tools
+
+Status: TODO
+Priority: HIGH
+Area: AutoMarket / Economy / Admin Tool
+
+### Description
+AutoMarket Plasma is the single largest NIC injection source (~3.99B NIC in the last 30 days, ~46% of all injections). Operators currently have no confirmed tooling to tune plasma buy rates. Existing tools must be audited and, if insufficient, new admin controls must be added to allow safe, incremental rate adjustment without code deployments.
+
+### Impact
+Without operator control over plasma rates, the server has no practical lever to reduce the dominant inflation driver short of a code change and redeployment. Tunable rates would allow economy balancing to happen at runtime in response to observed NIC flow data.
+
+### Investigation Scope
+1. Audit existing admin tools and configuration for any plasma rate controls (rate multipliers, price floors/ceilings, per-item overrides)
+2. Check whether plasma rates are hardcoded, database-driven, or formula-based
+3. Determine what inputs drive the current rate (supply/demand history, fixed table, dynamic calculation)
+4. Assess whether existing controls are sufficient for meaningful economy tuning
+
+### Proposed additions (if controls are missing or insufficient)
+- Admin Tool UI controls to adjust plasma rate multiplier or absolute price per commodity
+- Per-item or per-category rate overrides stored in the database (not hardcoded)
+- Rate change audit log so operators can track adjustments and correlate with economy report data
+- Guardrails: min/max clamps to prevent accidental zero-rate or runaway injection
+
+### Notes
+- Cross-reference IMPROVEMENT-034 (economy report) — plasma NIC flows are already visible there; rate controls would close the loop from observation to action
+- Cross-reference IMPROVEMENT-035 (AutoMarket supply/demand) — any rate tuning should remain consistent with the existing ds_min/ds_max clamping architecture
+- Changes to plasma rates have direct, immediate impact on the largest injection source — changes should be incremental and monitored
+
+---
+
+## IMPROVEMENT-037 - Investigate System Credits & Refunds NIC injection source
+
+Status: TODO
+Priority: HIGH
+Area: Economy / NIC Flows
+
+### Description
+The economy report shows System Credits & Refunds injected ~2.87B NIC in the last 30 days — roughly 33% of all server-side NIC injections. This is the second-largest injection source after AutoMarket Plasma, yet its origin and legitimacy are unclear. A full investigation is required.
+
+### Impact
+At ~95M NIC/day, this source alone is a significant inflation driver. If it represents legitimate gameplay mechanics (NPC trade refunds, mission cancellations, system compensations) it should be documented and tuned. If it is a bug, misconfiguration, or exploitable pathway, it must be fixed immediately.
+
+### Investigation Scope
+1. Identify all code paths that record a transaction under the "System Credits & Refunds" category
+2. Determine whether each path is intentional design or a side-effect/bug
+3. Check whether players can trigger refunds repeatedly or artificially (exploit vector)
+4. Assess the expected volume — is 2.87B/month reasonable given current player activity, or anomalously high?
+5. Cross-reference with player activity logs to see if a small number of accounts are responsible for a disproportionate share
+
+### Notes
+- Cross-reference IMPROVEMENT-034 (economy report) — this source is already tracked there
+- If the source is legitimate but oversized, consider capping or rate-limiting refund eligibility
+- If exploit-driven, cross-reference ISSUE backlog for related economy abuse issues
+
+---
+
+## IMPROVEMENT-036 - Investigate and improve the insurance system
+
+Status: TODO
+Priority: HIGH
+Area: Economy / Insurance
+
+### Description
+The economy report shows Insurance Payouts = 0 for the last 30 days while Insurance Fees are near zero (70k/30d). The insurance system is either broken, unused, or being bypassed. This warrants a full investigation into how the system works, whether players can exploit it, and how it can be improved as a meaningful NIC sink.
+
+### Impact
+Insurance was presumably designed as a significant NIC sink (loss recovery funded by premium fees). With it effectively dormant, the economy loses a major pressure valve, contributing to ~7.58B NIC/month surplus and long-term inflation. Restoring or redesigning it could meaningfully reduce inflation without punishing active gameplay.
+
+### Investigation Scope
+1. Trace the full insurance lifecycle: premium charging, policy storage, payout triggering, NIC flow
+2. Determine why payouts are zero — broken trigger, player avoidance, or design gap
+3. Identify exploit vectors: avoiding premiums while still being eligible for payouts, double-claiming, gaming the payout calculation
+4. Assess whether the current payout/fee ratio creates a net NIC sink or net NIC source
+5. Propose rebalancing or redesign to make insurance a reliable and meaningful sink
+
+### Proposed Improvements (to evaluate)
+- Ensure insurance fees are charged consistently on all eligible assets
+- Ensure payout triggers fire correctly on robot destruction
+- Cap payout-to-fee ratio to guarantee insurance is always net-negative for the economy
+- Consider making insurance opt-out rather than opt-in to increase coverage and fee collection
+- Add insurance NIC flows to the economy report for ongoing monitoring
+
+### Notes
+- Cross-reference IMPROVEMENT-034 (economy report) — insurance flows are already surfaced there, confirming the zero-payout anomaly
+- Insurance Fees (NIC Out) and Insurance Payouts (NIC In) must both be audited — a payout exceeding fees collected would make insurance a net injector, worsening inflation
+
+---
 
 ## IMPROVEMENT-035 - Factor player buy/sell orders into AutoMarket supply/demand rate calculation
 
