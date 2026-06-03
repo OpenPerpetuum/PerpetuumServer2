@@ -370,6 +370,41 @@ namespace Perpetuum.Services.Seasons
             }
         }
 
+        /// <summary>
+        /// Re-runs leaderboard reward delivery for a past ended season.
+        /// Only processes participants whose leaderboard_reward_delivered flag is false.
+        /// Returns the number of rewards delivered, or -1 if the season was not found.
+        /// </summary>
+        public int RedeliverLeaderboardRewards(int seasonId)
+        {
+            var season = _repository.GetSeasonById(seasonId);
+            if (season == null) return -1;
+
+            var leaderboard = _repository.GetLeaderboardRewards(seasonId);
+            if (leaderboard.Count == 0) return 0;
+
+            // Load all participants sorted by total_points DESC — index+1 is the player's rank.
+            var rankings = _repository.GetParticipantRankings(seasonId)
+                .Where(r => !Character.Get(r.CharacterId).IsInTraining())
+                .ToList();
+
+            int delivered = 0;
+            for (int rank = 1; rank <= rankings.Count; rank++)
+            {
+                var entry = rankings[rank - 1];
+                if (entry.LeaderboardRewardDelivered) continue;
+
+                var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
+                if (reward != null)
+                {
+                    DeliverLeaderboardReward(entry.CharacterId, reward);
+                    delivered++;
+                }
+                _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
+            }
+            return delivered;
+        }
+
         // ── End-of-season ────────────────────────────────────────────────────
 
         private void ProcessSeasonEnd(Season season)
