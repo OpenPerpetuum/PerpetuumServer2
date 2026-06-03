@@ -42,7 +42,6 @@ namespace Perpetuum.AdminTool.ViewModels
         public EquipmentSetsViewModel EquipmentSets { get; }
         public AutoMarketViewModel AutoMarket { get; }
         public EconomyViewModel Economy { get; }
-        public EconomyMoneySupplyViewModel EconomyMoneySupply { get; }
 
         public MainViewModel(AppSettingsStore store, AppSession session)
         {
@@ -76,8 +75,6 @@ namespace Perpetuum.AdminTool.ViewModels
                 Translations);
             Economy = new EconomyViewModel(
                 new EconomyRepository(store.Settings.Connection));
-            EconomyMoneySupply = new EconomyMoneySupplyViewModel(
-                new EconomyMoneySupplyRepository(store.Settings.Connection));
             UpdateStatus();
 
             _ = InitializeLookupsAsync();
