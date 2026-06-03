@@ -1,0 +1,138 @@
+<UserControl x:Class="Perpetuum.AdminTool.Views.EconomyMarketHealthView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels"
+             xmlns:common="clr-namespace:Perpetuum.AdminTool.Common"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:EconomyMarketHealthViewModel}">
+    <UserControl.Resources>
+        <common:BindingProxy x:Key="VmProxy" Data="{Binding}"/>
+        <Style x:Key="RightAlign" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="8,6"
+                BorderBrush="#DDD" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Refresh" Padding="10,2"
+                        Command="{Binding RefreshCommand}"/>
+                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="DimGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="DarkRed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="8">
+
+                <!-- Market Velocity -->
+                <TextBlock Text="Market Velocity — NIC Transacted per Day (last 30 days)" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <DataGrid ItemsSource="{Binding VelocityRows}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          MaxHeight="200" Margin="0,0,0,16">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Date"           Binding="{Binding Date, StringFormat='yyyy-MM-dd'}"          Width="120"/>
+                        <DataGridTextColumn Header="NIC Transacted" Binding="{Binding NicTraded, StringFormat='{}{0:N0}'}" Width="160" ElementStyle="{StaticResource RightAlign}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Price Index -->
+                <TextBlock Text="Market Price Index — Basket Weighted Average (last 30 days)" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <DataGrid ItemsSource="{Binding PriceIndexRows}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          MaxHeight="200" Margin="0,0,0,16">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Date"        Binding="{Binding Date, StringFormat='yyyy-MM-dd'}"              Width="120"/>
+                        <DataGridTextColumn Header="Index Value" Binding="{Binding IndexValue, StringFormat='{}{0:N2}'}" Width="120" ElementStyle="{StaticResource RightAlign}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Listing Age + Order Mix -->
+                <TextBlock Text="Live Market Snapshot" FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
+                <WrapPanel Margin="0,0,0,16">
+                    <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="3" Margin="0,0,12,4" Padding="10,6">
+                        <StackPanel>
+                            <TextBlock Text="Player Listings by Age" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding AgeBucketToday,   StringFormat='&lt;1 day:    {0}'}" />
+                            <TextBlock Text="{Binding AgeBucketD1To7,   StringFormat='1-7 days:  {0}'}" />
+                            <TextBlock Text="{Binding AgeBucketD7To30,  StringFormat='7-30 days: {0}'}" />
+                            <TextBlock Text="{Binding AgeBucketD30Plus, StringFormat='30+ days:  {0}'}" />
+                        </StackPanel>
+                    </Border>
+                    <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="3" Margin="0,0,0,4" Padding="10,6">
+                        <StackPanel>
+                            <TextBlock Text="Sell Order Mix" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding AutoMarketOrderCount, StringFormat='AutoMarket: {0}'}"/>
+                            <TextBlock Text="{Binding PlayerOrderCount,     StringFormat='Player:     {0}'}"/>
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
+
+                <!-- Basket Config -->
+                <TextBlock Text="Price Index Basket Configuration" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <TextBlock Text="Changes are queued to the global change queue and applied with the Commit button."
+                           Foreground="DimGray" FontSize="11" Margin="0,0,0,8"/>
+
+                <!-- Add row -->
+                <DockPanel Margin="0,0,0,6">
+                    <Button DockPanel.Dock="Right" Content="Add to Basket" Padding="10,2"
+                            Command="{Binding AddBasketItemCommand}" Margin="8,0,0,0"/>
+                    <ComboBox ItemsSource="{Binding AvailableItems}"
+                              SelectedItem="{Binding SelectedNewItem}"
+                              DisplayMemberPath="Name"
+                              IsEditable="True"
+                              IsTextSearchEnabled="True"
+                              TextSearch.TextPath="Name"
+                              VerticalAlignment="Center"/>
+                </DockPanel>
+
+                <DataGrid ItemsSource="{Binding BasketItems}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Definition Name" Binding="{Binding DefinitionName}" Width="*" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Weight" Binding="{Binding Weight, StringFormat='{}{0:F2}', UpdateSourceTrigger=LostFocus}" Width="80"/>
+                        <DataGridTemplateColumn Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="Queue Save" Padding="4,2"
+                                            Command="{Binding Source={StaticResource VmProxy}, Path=Data.QueueSaveBasketItemCommand}"
+                                            CommandParameter="{Binding}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="75">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="Remove" Padding="4,2" Foreground="DarkRed"
+                                            Command="{Binding Source={StaticResource VmProxy}, Path=Data.RemoveBasketItemCommand}"
+                                            CommandParameter="{Binding}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>
