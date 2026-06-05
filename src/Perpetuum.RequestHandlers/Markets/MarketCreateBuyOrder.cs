@@ -94,7 +94,8 @@ namespace Perpetuum.RequestHandlers.Markets
 
                 var lowestSellOrder = _marketOrderRepository.GetLowestSellOrder(itemDefinition, pricePerPiece, buyer.Eid, market, corporationEid);
 
-                if (!forMyCorporation && lowestSellOrder != null)
+                // Match when: public buy against any sell order, OR corp-only buy against corp sell order from the same corp
+                if (lowestSellOrder != null && (!forMyCorporation || lowestSellOrder.forMembersOf == forMembersOf))
                 {
                     // requested item was found on the market, make immediate transaction
                     market.FulfillBuyOrderInstantly(buyer, useBuyerCorporationWallet, lowestSellOrder, pricePerPiece, duration, quantity, publicContainer, forMembersOf);

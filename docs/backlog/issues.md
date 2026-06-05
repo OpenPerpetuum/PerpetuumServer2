@@ -1,6 +1,34 @@
 # Last ID used
 
-026
+027
+
+## ISSUE-027 - Sell orders at matching prices do not auto-fulfill against open buy orders
+
+Status: DONE
+Priority: CRITICAL
+Area: Market / Trading
+
+### Problem
+Players report that creating a sell order at a price equal to or below an existing open buy order does not result in an automatic trade. The sell order is posted as a standing order rather than immediately matching and settling against the best available buy order.
+
+### Impact
+Market trades do not settle when they should. Players placing competitive sell orders experience no fulfillment despite valid counterpart buy orders existing, breaking the fundamental market matching expectation and potentially trapping capital in open orders.
+
+### Root Cause
+The matching condition in both `MarketCreateSellOrder` and `MarketCreateBuyOrder` was:
+```csharp
+if (!forMyCorporation && highestBuyOrder != null)
+```
+This condition completely skips automatic matching whenever the player marks their order as corporation-only (`forMyCorporation = true`), even when a matching corp-only order from the same corporation exists. Players in player corporations are the primary affected group.
+
+Additionally, `GetHighestBuyOrder` had a minor inconsistency: the SQL column reference used `@itemDefinition` (capital D) while `SetParameter` used `@itemdefinition` (lowercase d) — and similarly `submitterEID` vs `submittereid`. These are harmless with SqlClient's case-insensitive parameter matching but were corrected for consistency.
+
+### Fix
+- `MarketCreateSellOrder.HandleRequest`: Changed condition to `highestBuyOrder != null && (!forMyCorporation || highestBuyOrder.forMembersOf == forMembersOf)` — allows corp-only sells to match against corp buy orders from the same corp, while still blocking corp sells against public buy orders.
+- `MarketCreateBuyOrder.HandleRequest`: Same symmetric fix for `lowestSellOrder`.
+- `MarketOrderRepository.GetHighestBuyOrder`: Normalized SQL column/parameter names to lowercase for consistency with `GetLowestSellOrder`.
+
+---
 
 ## ISSUE-026 - AdminTool AutoMarket Orders filters not working as expected
 
