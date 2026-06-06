@@ -640,6 +640,10 @@ namespace Perpetuum.Bootstrapper
             {
                 e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
             });
+            _ = _builder.RegisterType<InsurancePriceRefreshService>().SingleInstance().AutoActivate().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
+            });
         }
 
         private IRegistrationBuilder<TRequestHandler, ConcreteReflectionActivatorData, SingleRegistrationStyle>
