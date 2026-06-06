@@ -190,6 +190,9 @@ namespace Perpetuum.Services.ProductionEngine.Facilities
                     continue;
                 }
 
+                var feeBonus = GetFeeExtensionBonus(character);
+                price = Math.Max(0.0, price * (1.0 - feeBonus));
+
                 var oneRobot = new Dictionary<string, object>
                 {
                     {k.price, price},
