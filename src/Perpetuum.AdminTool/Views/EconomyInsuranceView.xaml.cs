@@ -14,6 +14,7 @@ namespace Perpetuum.AdminTool.Views
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            Loaded -= OnLoaded;
             if (DataContext is EconomyInsuranceViewModel vm)
                 _ = vm.LoadAsync();
         }

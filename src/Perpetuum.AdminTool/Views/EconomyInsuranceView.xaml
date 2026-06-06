@@ -1,19 +1,28 @@
 <UserControl x:Class="Perpetuum.AdminTool.Views.EconomyInsuranceView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Perpetuum.AdminTool.Common"
              xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:EconomyInsuranceViewModel}">
 
+    <UserControl.Resources>
+        <common:BindingProxy x:Key="VmProxy" Data="{Binding}"/>
+    </UserControl.Resources>
+
     <DockPanel>
         <!-- Toolbar -->
         <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="8,6"
                 BorderBrush="#DDD" BorderThickness="0,0,0,1">
             <DockPanel>
-                <Button DockPanel.Dock="Right" Content="Recalculate Now" Padding="10,2"
-                        Command="{Binding RecalculateNowCommand}"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Reload" Padding="10,2" Margin="0,0,4,0"
+                            Command="{Binding ReloadCommand}"/>
+                    <Button Content="Recalculate Now" Padding="10,2"
+                            Command="{Binding RecalculateNowCommand}"/>
+                </StackPanel>
                 <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
@@ -48,14 +57,13 @@
                           Margin="0,0,0,16">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Parameter"   Binding="{Binding Label}"       Width="160" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Value"       Binding="{Binding ParamValue}"  Width="100"/>
+                        <DataGridTextColumn Header="Value"       Binding="{Binding ParamValue, UpdateSourceTrigger=LostFocus}"  Width="100"/>
                         <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"   IsReadOnly="True"/>
                         <DataGridTemplateColumn Header="" Width="100">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Button Content="Queue Save" Padding="6,2"
-                                            Command="{Binding DataContext.QueueSaveCommand,
-                                                RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            Command="{Binding Source={StaticResource VmProxy}, Path=Data.QueueSaveCommand}"
                                             CommandParameter="{Binding}"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>

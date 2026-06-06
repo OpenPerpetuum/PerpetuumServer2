@@ -94,8 +94,15 @@ namespace Perpetuum.AdminTool.ViewModels
 
         private bool CanRecalculate() => !IsRecalculating && !IsLoading;
 
+        [RelayCommand(CanExecute = nameof(CanRecalculate))]
+        private async Task ReloadAsync() => await LoadAsync();
+
         partial void OnIsRecalculatingChanged(bool value) => RecalculateNowCommand.NotifyCanExecuteChanged();
-        partial void OnIsLoadingChanged(bool value)       => RecalculateNowCommand.NotifyCanExecuteChanged();
+        partial void OnIsLoadingChanged(bool value)
+        {
+            RecalculateNowCommand.NotifyCanExecuteChanged();
+            ReloadCommand.NotifyCanExecuteChanged();
+        }
 
         private void UpdateSinkWarning()
         {
