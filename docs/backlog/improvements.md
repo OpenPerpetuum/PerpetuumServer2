@@ -121,7 +121,7 @@ At ~95M NIC/day, this source alone is a significant inflation driver. If it repr
 
 ## IMPROVEMENT-036 - Investigate and improve the insurance system
 
-Status: TODO
+Status: DONE
 Priority: HIGH
 Area: Economy / Insurance
 
@@ -148,6 +148,18 @@ Insurance was presumably designed as a significant NIC sink (loss recovery funde
 ### Notes
 - Cross-reference IMPROVEMENT-034 (economy report) — insurance flows are already surfaced there, confirming the zero-payout anomaly
 - Insurance Fees (NIC Out) and Insurance Payouts (NIC In) must both be audited — a payout exceeding fees collected would make insurance a net injector, worsening inflation
+
+### Implementation
+
+Implemented on branch p36.5 (commits 36cf271 → e0e1dac):
+
+- `insurance_config` table: `fee_pct = 0.10`, `payout_pct = 0.08` (operator-tunable)
+- `usp_RecalculateInsurancePrices`: MERGE from `v_all_production_costs` into `insuranceprices`; guards against `payout_pct >= fee_pct`
+- `InsurancePriceRefreshService`: daily auto-refresh + startup run, flushes in-memory cache after each run
+- `InsuraceFacility`: fee extension bonus (`ext_production_insurance_fee`) now applied at both purchase and quote
+- Dead static multipliers (`InsuranceFeeMultiplier`, `InsurancePayOutMultiplier`) removed from `InsuranceHelper`
+- Migration deletes stale `insurance` policies, then seeds correct prices; apply while server is OFFLINE
+- Admin Tool: "Insurance" tab (5th in Economy panel) with config editor, price table, Reload and Recalculate Now buttons
 
 ---
 
