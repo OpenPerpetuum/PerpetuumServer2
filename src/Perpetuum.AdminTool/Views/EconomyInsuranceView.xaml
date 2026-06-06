@@ -10,6 +10,7 @@
 
     <UserControl.Resources>
         <common:BindingProxy x:Key="VmProxy" Data="{Binding}"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityHidden"/>
     </UserControl.Resources>
 
     <DockPanel>
