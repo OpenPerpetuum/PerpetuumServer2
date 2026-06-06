@@ -11,12 +11,14 @@ namespace Perpetuum.AdminTool.ViewModels
         public EconomyMoneySupplyViewModel       MoneySupply       { get; }
         public EconomyMarketHealthViewModel      MarketHealth      { get; }
         public EconomySinkEffectivenessViewModel SinkEffectiveness { get; }
+        public EconomyInsuranceViewModel         Insurance         { get; }
 
         public EconomyViewModel(
-            EconomyRepository            nicFlowRepo,
+            EconomyRepository             nicFlowRepo,
             EconomyMoneySupplyRepository  moneySupplyRepo,
             EconomyMarketHealthRepository marketHealthRepo,
             EconomySinkRepository         sinkRepo,
+            EconomyInsuranceRepository    insuranceRepo,
             ChangeQueue                   changes,
             LookupCache                   lookups)
         {
@@ -24,6 +26,7 @@ namespace Perpetuum.AdminTool.ViewModels
             MoneySupply       = new EconomyMoneySupplyViewModel(moneySupplyRepo);
             MarketHealth      = new EconomyMarketHealthViewModel(marketHealthRepo, changes, lookups);
             SinkEffectiveness = new EconomySinkEffectivenessViewModel(sinkRepo);
+            Insurance         = new EconomyInsuranceViewModel(insuranceRepo, changes);
         }
     }
 }

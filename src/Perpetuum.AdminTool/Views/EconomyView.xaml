@@ -20,5 +20,8 @@
         <TabItem Header="Sink Effectiveness">
             <views:EconomySinkEffectivenessView DataContext="{Binding SinkEffectiveness}"/>
         </TabItem>
+        <TabItem Header="Insurance">
+            <views:EconomyInsuranceView DataContext="{Binding Insurance}"/>
+        </TabItem>
     </TabControl>
 </UserControl>

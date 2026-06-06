@@ -78,6 +78,7 @@ namespace Perpetuum.AdminTool.ViewModels
                 new EconomyMoneySupplyRepository(store.Settings.Connection),
                 new EconomyMarketHealthRepository(store.Settings.Connection),
                 new EconomySinkRepository(store.Settings.Connection),
+                new EconomyInsuranceRepository(store.Settings.Connection),
                 session.Changes,
                 session.Lookups);
             UpdateStatus();
