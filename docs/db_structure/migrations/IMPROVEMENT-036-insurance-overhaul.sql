@@ -23,10 +23,16 @@ BEGIN
     DECLARE @payout_pct FLOAT = (SELECT param_value FROM dbo.insurance_config WHERE param_name = 'payout_pct');
 
     IF @fee_pct IS NULL OR @payout_pct IS NULL
+    BEGIN
         RAISERROR('insurance_config: fee_pct and payout_pct must both be set.', 16, 1);
+        RETURN;
+    END
 
     IF @payout_pct >= @fee_pct
+    BEGIN
         RAISERROR('insurance_config: payout_pct must be strictly less than fee_pct to keep insurance a NIC sink.', 16, 1);
+        RETURN;
+    END
 
     MERGE dbo.insuranceprices AS t
     USING (
