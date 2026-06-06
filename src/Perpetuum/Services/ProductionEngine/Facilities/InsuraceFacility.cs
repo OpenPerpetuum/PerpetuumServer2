@@ -117,6 +117,9 @@ namespace Perpetuum.Services.ProductionEngine.Facilities
             double insuranceFee, payOut;
             GetInsurancePrice(robot, out insuranceFee, out payOut).ThrowIfError();
 
+            var feeBonus = GetFeeExtensionBonus(character);
+            insuranceFee = Math.Max(0.0, insuranceFee * (1.0 - feeBonus));
+
             wallet.Balance -= insuranceFee;
 
             var b = TransactionLogEvent.Builder()
