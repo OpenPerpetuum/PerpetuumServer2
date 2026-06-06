@@ -1,6 +1,34 @@
 # Last ID used
 
-027
+028
+
+## ISSUE-028 - AdminTool AutoMarket: buyback orders not removed after deleting item from trade list
+
+Status: DONE
+Priority: CRITICAL
+Area: AdminTool / AutoMarket
+
+### Problem
+After deleting an item from the AutoMarket trade list and running "Refresh Now", sell orders for that item were removed correctly but buy (buyback) orders remained on the market.
+
+### Root Cause
+Step 0 of `usp_RefreshAutoMarketOrders` snapshots "unbought resources" using `NOT EXISTS (SELECT 1 FROM market_orders_configuration)` to skip production-item buyback orders. When an item is deleted from `market_orders_configuration` before the SP runs, this check passes for its buyback order — the order is captured into `automarket_unbought_resources` as if it were an unfulfilled raw-material buy order. Step 1 deletes all auto orders, but Step 4 then re-inserts a new buy order for the deleted item from the `Unbought` carry-over, because the item still has a production cost in `v_all_production_costs`.
+
+### Fix
+In Step 0's `automarket_unbought_resources` insert, replaced:
+```sql
+AND NOT EXISTS (SELECT 1 FROM market_orders_configuration moc WHERE moc.definitionname = ed.definitionname)
+```
+with:
+```sql
+AND NOT EXISTS (SELECT 1 FROM production_data pd_check WHERE pd_check.product = ed.definitionname)
+```
+This classifies items by whether they can be manufactured (stable) rather than whether they are currently in the trade list (breaks on deletion).
+
+### Files Changed
+- `docs/db_structure/stored_procedures/dbo.usp_RefreshAutoMarketOrders.StoredProcedure.sql`
+
+---
 
 ## ISSUE-027 - Sell orders at matching prices do not auto-fulfill against open buy orders
 
