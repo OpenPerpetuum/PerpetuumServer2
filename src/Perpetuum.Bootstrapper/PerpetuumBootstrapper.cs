@@ -30,6 +30,7 @@ using Perpetuum.Services.ExtensionService;
 using Perpetuum.Services.HighScores;
 using Perpetuum.Services.Insurance;
 using Perpetuum.Services.Looting;
+using Perpetuum.Services.Economy;
 using Perpetuum.Services.MarketEngine;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionBonusObjects;
@@ -632,6 +633,14 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<EpForActivityLogger>();
 
             _ = _builder.RegisterType<MarketAutoOrdersManager>().SingleInstance().AutoActivate().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
+            });
+            _ = _builder.RegisterType<EconomySnapshotService>().SingleInstance().AutoActivate().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
+            });
+            _ = _builder.RegisterType<InsurancePriceRefreshService>().SingleInstance().AutoActivate().OnActivated(e =>
             {
                 e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
             });

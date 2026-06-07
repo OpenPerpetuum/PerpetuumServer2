@@ -1,0 +1,27 @@
+<UserControl x:Class="Perpetuum.AdminTool.Views.EconomyView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:Perpetuum.AdminTool.Views"
+             xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:EconomyViewModel}">
+    <TabControl>
+        <TabItem Header="NIC Flow">
+            <views:EconomyNicFlowView DataContext="{Binding NicFlow}"/>
+        </TabItem>
+        <TabItem Header="Money Supply">
+            <views:EconomyMoneySupplyView DataContext="{Binding MoneySupply}"/>
+        </TabItem>
+        <TabItem Header="Market Health">
+            <views:EconomyMarketHealthView DataContext="{Binding MarketHealth}"/>
+        </TabItem>
+        <TabItem Header="Sink Effectiveness">
+            <views:EconomySinkEffectivenessView DataContext="{Binding SinkEffectiveness}"/>
+        </TabItem>
+        <TabItem Header="Insurance">
+            <views:EconomyInsuranceView DataContext="{Binding Insurance}"/>
+        </TabItem>
+    </TabControl>
+</UserControl>

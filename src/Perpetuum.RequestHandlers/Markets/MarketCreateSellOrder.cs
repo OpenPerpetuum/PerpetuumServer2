@@ -96,7 +96,8 @@ namespace Perpetuum.RequestHandlers.Markets
                     //try to find a buy order for the currently submitted item, it finds the closest buy order
                     highestBuyOrder = _marketOrderRepository.GetHighestBuyOrder(itemToSell.Definition, pricePerPiece, seller.Eid, market, corporationEid);
 
-                    if (!forMyCorporation && highestBuyOrder != null)
+                    // Match when: public sell against any buy order, OR corp-only sell against corp buy order from the same corp
+                    if (highestBuyOrder != null && (!forMyCorporation || highestBuyOrder.forMembersOf == forMembersOf))
                     {
                         //sell to order
                         market.FulfillSellOrderInstantly(seller, useSellerCorporationWallet, highestBuyOrder, itemToSell, sourceContainer);

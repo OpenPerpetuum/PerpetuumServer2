@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.AutoMarket;
 using Perpetuum.AdminTool.Common;
+using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Packages;
 using Perpetuum.AdminTool.EquipmentSets;
@@ -40,6 +41,7 @@ namespace Perpetuum.AdminTool.ViewModels
         public SeasonsViewModel Seasons { get; }
         public EquipmentSetsViewModel EquipmentSets { get; }
         public AutoMarketViewModel AutoMarket { get; }
+        public EconomyViewModel Economy { get; }
 
         public MainViewModel(AppSettingsStore store, AppSession session)
         {
@@ -71,6 +73,14 @@ namespace Perpetuum.AdminTool.ViewModels
                 session.Changes,
                 session.Lookups,
                 Translations);
+            Economy = new EconomyViewModel(
+                new EconomyRepository(store.Settings.Connection),
+                new EconomyMoneySupplyRepository(store.Settings.Connection),
+                new EconomyMarketHealthRepository(store.Settings.Connection),
+                new EconomySinkRepository(store.Settings.Connection),
+                new EconomyInsuranceRepository(store.Settings.Connection),
+                session.Changes,
+                session.Lookups);
             UpdateStatus();
 
             _ = InitializeLookupsAsync();

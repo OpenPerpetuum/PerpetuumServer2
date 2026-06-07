@@ -244,8 +244,8 @@ namespace Perpetuum.Services.Seasons
                         newTotal = _repository.AddPoints(characterId, season.Id, obj.BonusPoints);
                         SendObjectiveCompleteMail(characterId, obj, newTotal);
 
-                        if (obj.IsDaily && obj.PackageId.HasValue)
-                            DeliverObjectivePackage(characterId, obj.PackageId.Value);
+                        if (obj.IsDaily && (obj.PackageId.HasValue || obj.EquipmentSetId.HasValue))
+                            DeliverObjectiveReward(characterId, obj.PackageId, obj.EquipmentSetId);
                     }
                 }
             }
@@ -257,7 +257,7 @@ namespace Perpetuum.Services.Seasons
                          .OrderBy(t => t.TierNumber))
             {
                 if (_repository.InsertTierClaim(characterId, season.Id, tier.Id))
-                    DeliverTierReward(characterId, season.Id, tier, newTotal);
+                    DeliverTierReward(characterId, tier, newTotal);
             }
         }
 
@@ -278,35 +278,133 @@ namespace Perpetuum.Services.Seasons
 
         // ── Reward delivery ──────────────────────────────────────────────────
 
-        private void DeliverTierReward(int characterId, int seasonId, SeasonTier tier, double currentPoints)
+        private void DeliverTierReward(int characterId, SeasonTier tier, double currentPoints)
         {
-            var items = _repository.GetPackageItems(tier.PackageId);
-            if (items.Count == 0)
-                return;
-
             var character = Character.Get(characterId);
-            _repository.InsertRedeemableItems(character.AccountId, tier.PackageId, items);
-            SendTierUnlockMail(characterId, tier, currentPoints);
+
+            if (tier.EquipmentSetId.HasValue)
+            {
+                var definitions = _repository.GetSetMemberDefinitions(tier.EquipmentSetId.Value);
+                if (definitions.Count == 0)
+                {
+                    System.Diagnostics.Trace.TraceWarning(
+                        $"[SeasonService] Tier {tier.Id} equipment set {tier.EquipmentSetId} has no members; skipping reward.");
+                    return;
+                }
+                var definition = definitions[Random.Shared.Next(definitions.Count)];
+                _repository.InsertRedeemableItem(character.AccountId, definition);
+                SendTierUnlockMail(characterId, tier, currentPoints, new List<SeasonPackageItem>());
+            }
+            else if (tier.PackageId.HasValue)
+            {
+                var items = _repository.GetPackageItems(tier.PackageId.Value);
+                if (items.Count == 0)
+                    return;
+                _repository.InsertRedeemableItems(character.AccountId, tier.PackageId.Value, items);
+                SendTierUnlockMail(characterId, tier, currentPoints, items);
+            }
+            else
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    $"[SeasonService] Tier {tier.Id} has neither package_id nor equipment_set_id; skipping reward.");
+            }
         }
 
-        private void DeliverObjectivePackage(int characterId, int packageId)
+        private void DeliverObjectiveReward(int characterId, int? packageId, int? equipmentSetId)
         {
-            var items = _repository.GetPackageItems(packageId);
-            if (items.Count == 0)
-                return;
-
             var character = Character.Get(characterId);
-            _repository.InsertRedeemableItems(character.AccountId, packageId, items);
+
+            if (equipmentSetId.HasValue)
+            {
+                var definitions = _repository.GetSetMemberDefinitions(equipmentSetId.Value);
+                if (definitions.Count == 0)
+                {
+                    System.Diagnostics.Trace.TraceWarning(
+                        $"[SeasonService] Objective equipment set {equipmentSetId} has no members; skipping reward.");
+                    return;
+                }
+                var definition = definitions[Random.Shared.Next(definitions.Count)];
+                _repository.InsertRedeemableItem(character.AccountId, definition);
+            }
+            else if (packageId.HasValue)
+            {
+                var items = _repository.GetPackageItems(packageId.Value);
+                if (items.Count == 0)
+                    return;
+                _repository.InsertRedeemableItems(character.AccountId, packageId.Value, items);
+            }
+            else
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    $"[SeasonService] Objective reward has neither package_id nor equipment_set_id; skipping.");
+            }
         }
 
-        private void DeliverLeaderboardReward(int characterId, SeasonLeaderboardReward reward)
+        private bool DeliverLeaderboardReward(int characterId, SeasonLeaderboardReward reward)
         {
-            var items = _repository.GetPackageItems(reward.PackageId);
-            if (items.Count == 0)
-                return;
-
             var character = Character.Get(characterId);
-            _repository.InsertRedeemableItems(character.AccountId, reward.PackageId, items);
+
+            if (reward.EquipmentSetId.HasValue)
+            {
+                var definitions = _repository.GetSetMemberDefinitions(reward.EquipmentSetId.Value);
+                if (definitions.Count == 0)
+                {
+                    System.Diagnostics.Trace.TraceWarning(
+                        $"[SeasonService] Leaderboard reward {reward.Id} equipment set {reward.EquipmentSetId} has no members; skipping.");
+                    return false;
+                }
+                var definition = definitions[Random.Shared.Next(definitions.Count)];
+                _repository.InsertRedeemableItem(character.AccountId, definition);
+                return true;
+            }
+            else if (reward.PackageId.HasValue)
+            {
+                var items = _repository.GetPackageItems(reward.PackageId.Value);
+                if (items.Count == 0)
+                    return false;
+                _repository.InsertRedeemableItems(character.AccountId, reward.PackageId.Value, items);
+                return true;
+            }
+            else
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    $"[SeasonService] Leaderboard reward {reward.Id} has neither package_id nor equipment_set_id; skipping.");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Re-runs leaderboard reward delivery for a past ended season.
+        /// Only processes participants whose leaderboard_reward_delivered flag is false.
+        /// Returns the number of rewards delivered, or -1 if the season was not found.
+        /// </summary>
+        public int RedeliverLeaderboardRewards(int seasonId)
+        {
+            var season = _repository.GetSeasonById(seasonId);
+            if (season == null) return -1;
+
+            var leaderboard = _repository.GetLeaderboardRewards(seasonId);
+            if (leaderboard.Count == 0) return 0;
+
+            // Load all participants sorted by total_points DESC — index+1 is the player's rank.
+            var rankings = _repository.GetParticipantRankings(seasonId)
+                .Where(r => !Character.Get(r.CharacterId).IsInTraining())
+                .ToList();
+
+            int delivered = 0;
+            for (int rank = 1; rank <= rankings.Count; rank++)
+            {
+                var entry = rankings[rank - 1];
+                if (entry.LeaderboardRewardDelivered) continue;
+
+                var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
+                if (reward != null && DeliverLeaderboardReward(entry.CharacterId, reward))
+                {
+                    delivered++;
+                    _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
+                }
+            }
+            return delivered;
         }
 
         // ── End-of-season ────────────────────────────────────────────────────
@@ -336,12 +434,11 @@ namespace Perpetuum.Services.Seasons
                     continue;
 
                 var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
-                if (reward != null)
-                    DeliverLeaderboardReward(entry.CharacterId, reward);
+                bool rewardDelivered = reward != null && DeliverLeaderboardReward(entry.CharacterId, reward);
 
                 _repository.MarkLeaderboardDelivered(entry.CharacterId, season.Id);
                 SendFinalStandingsMail(entry.CharacterId, rank, entry.TotalPoints,
-                    reward != null, season.Name);
+                    rewardDelivered, season.Name);
             }
 
             _activeRates = ImmutableList<SeasonActivityRate>.Empty;
@@ -473,7 +570,8 @@ namespace Perpetuum.Services.Seasons
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
         }
 
-        private void SendTierUnlockMail(int characterId, SeasonTier tier, double total)
+        private void SendTierUnlockMail(int characterId, SeasonTier tier, double total,
+            List<SeasonPackageItem> items)
         {
             var character = Character.Get(characterId);
             var dict = _customDictionary.GetDictionary(0);
@@ -492,14 +590,21 @@ namespace Perpetuum.Services.Seasons
             chatMessage.AppendLine($"Points: {total:N2}");
             chatMessage.AppendLine();
             chatMessage.AppendLine("Rewards:");
-            var items = _repository.GetPackageItems(tier.PackageId);
-            foreach (var item in items)
+
+            if (items.Count > 0)
             {
-                var ed = EntityDefault.Reader.Get(item.Definition);
-                string name = (ed != null && ed != EntityDefault.None)
-                    ? Translate(ed.Name, dict)
-                    : item.Definition.ToString();
-                chatMessage.AppendLine($"- {name} x{item.Quantity}");
+                foreach (var item in items)
+                {
+                    var ed = EntityDefault.Reader.Get(item.Definition);
+                    string name = (ed != null && ed != EntityDefault.None)
+                        ? Translate(ed.Name, dict)
+                        : item.Definition.ToString();
+                    chatMessage.AppendLine($"- {name} x{item.Quantity}");
+                }
+            }
+            else
+            {
+                chatMessage.AppendLine("- Equipment set reward (check your Redeemable Items)");
             }
 
             chatMessage.AppendLine();

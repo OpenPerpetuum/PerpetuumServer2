@@ -72,11 +72,11 @@ namespace Perpetuum.AdminTool.Seasons
             return new RawSqlChange(
                 $"season_objectives: insert '{row.Name}' in season {row.SeasonId}",
                 $"INSERT INTO season_objectives (season_id, name, description, activity_type, " +
-                $"target_value, bonus_points, display_order, is_daily, package_id, target_definition_id) VALUES (" +
+                $"target_value, bonus_points, display_order, is_daily, package_id, target_definition_id, equipment_set_id) VALUES (" +
                 $"{row.SeasonId}, {SqlLiteral.Of(row.Name)}, {SqlLiteral.Of(row.Description)}, " +
                 $"{(int)row.ActivityType}, {row.TargetValue}, {row.BonusPoints}, {row.DisplayOrder}, " +
                 $"{(row.IsDaily ? 1 : 0)}, {SqlLiteral.OfNullableInt(row.PackageId)}, " +
-                $"{SqlLiteral.OfNullableInt(row.TargetDefinitionId)})");
+                $"{SqlLiteral.OfNullableInt(row.TargetDefinitionId)}, {SqlLiteral.OfNullableInt(row.EquipmentSetId)})");
         }
 
         public static IPendingChange BuildUpdateObjective(SeasonObjectiveRow row)
@@ -88,7 +88,8 @@ namespace Perpetuum.AdminTool.Seasons
                 $"activity_type = {(int)row.ActivityType}, target_value = {row.TargetValue}, " +
                 $"bonus_points = {row.BonusPoints}, display_order = {row.DisplayOrder}, " +
                 $"is_daily = {(row.IsDaily ? 1 : 0)}, package_id = {SqlLiteral.OfNullableInt(row.PackageId)}, " +
-                $"target_definition_id = {SqlLiteral.OfNullableInt(row.TargetDefinitionId)} " +
+                $"target_definition_id = {SqlLiteral.OfNullableInt(row.TargetDefinitionId)}, " +
+                $"equipment_set_id = {SqlLiteral.OfNullableInt(row.EquipmentSetId)} " +
                 $"WHERE id = {row.Id}");
         }
 
@@ -99,14 +100,16 @@ namespace Perpetuum.AdminTool.Seasons
         public static IPendingChange BuildInsertTier(SeasonTierRow row) =>
             new RawSqlChange(
                 $"season_tiers: insert tier {row.TierNumber} ('{row.TierName}') in season {row.SeasonId}",
-                $"INSERT INTO season_tiers (season_id, tier_number, tier_name, points_required, package_id) VALUES (" +
-                $"{row.SeasonId}, {row.TierNumber}, {SqlLiteral.Of(row.TierName)}, {row.PointsRequired}, {row.PackageId})");
+                $"INSERT INTO season_tiers (season_id, tier_number, tier_name, points_required, package_id, equipment_set_id) VALUES (" +
+                $"{row.SeasonId}, {row.TierNumber}, {SqlLiteral.Of(row.TierName)}, {row.PointsRequired}, " +
+                $"{SqlLiteral.OfNullableInt(row.PackageId)}, {SqlLiteral.OfNullableInt(row.EquipmentSetId)})");
 
         public static IPendingChange BuildUpdateTier(SeasonTierRow row) =>
             new RawSqlChange(
                 $"season_tiers: update id {row.Id}",
                 $"UPDATE season_tiers SET tier_number = {row.TierNumber}, tier_name = {SqlLiteral.Of(row.TierName)}, " +
-                $"points_required = {row.PointsRequired}, package_id = {row.PackageId} WHERE id = {row.Id}");
+                $"points_required = {row.PointsRequired}, package_id = {SqlLiteral.OfNullableInt(row.PackageId)}, " +
+                $"equipment_set_id = {SqlLiteral.OfNullableInt(row.EquipmentSetId)} WHERE id = {row.Id}");
 
         public static IPendingChange BuildDeleteTier(SeasonTierRow row) =>
             new RawSqlChange($"season_tiers: delete id {row.Id}",
@@ -115,14 +118,16 @@ namespace Perpetuum.AdminTool.Seasons
         public static IPendingChange BuildInsertLeaderboardReward(SeasonLeaderboardRewardRow row) =>
             new RawSqlChange(
                 $"season_leaderboard_rewards: insert ranks {row.RankMin}-{row.RankMax} in season {row.SeasonId}",
-                $"INSERT INTO season_leaderboard_rewards (season_id, rank_min, rank_max, package_id) VALUES (" +
-                $"{row.SeasonId}, {row.RankMin}, {row.RankMax}, {row.PackageId})");
+                $"INSERT INTO season_leaderboard_rewards (season_id, rank_min, rank_max, package_id, equipment_set_id) VALUES (" +
+                $"{row.SeasonId}, {row.RankMin}, {row.RankMax}, " +
+                $"{SqlLiteral.OfNullableInt(row.PackageId)}, {SqlLiteral.OfNullableInt(row.EquipmentSetId)})");
 
         public static IPendingChange BuildUpdateLeaderboardReward(SeasonLeaderboardRewardRow row) =>
             new RawSqlChange(
                 $"season_leaderboard_rewards: update id {row.Id}",
                 $"UPDATE season_leaderboard_rewards SET rank_min = {row.RankMin}, rank_max = {row.RankMax}, " +
-                $"package_id = {row.PackageId} WHERE id = {row.Id}");
+                $"package_id = {SqlLiteral.OfNullableInt(row.PackageId)}, " +
+                $"equipment_set_id = {SqlLiteral.OfNullableInt(row.EquipmentSetId)} WHERE id = {row.Id}");
 
         public static IPendingChange BuildDeleteLeaderboardReward(SeasonLeaderboardRewardRow row) =>
             new RawSqlChange($"season_leaderboard_rewards: delete id {row.Id}",

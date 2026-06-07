@@ -31,7 +31,10 @@ BEGIN
         WHERE isAutoOrder = 1 AND isSell = 1
         GROUP BY itemdefinition;
 
-        -- Unbought mats: exclude plasma (3271-3274) AND production items (market_orders_configuration)
+        -- Unbought mats: exclude plasma (3271-3274) and any item that can be manufactured
+        -- (production_data.product). Using market_orders_configuration here would incorrectly
+        -- capture buyback orders for items just removed from the trade list, causing Step 4
+        -- to re-place a buy order for them as if they were raw materials.
         INSERT INTO automarket_unbought_resources (itemdefinition, quantity)
         SELECT mi.itemdefinition, SUM(CAST(mi.quantity AS BIGINT))
         FROM marketitems mi
@@ -39,8 +42,8 @@ BEGIN
         WHERE mi.isAutoOrder = 1 AND mi.isSell = 0
           AND mi.itemdefinition NOT IN (3271, 3272, 3273, 3274)
           AND NOT EXISTS (
-              SELECT 1 FROM market_orders_configuration moc
-              WHERE moc.definitionname = ed.definitionname
+              SELECT 1 FROM production_data pd_check
+              WHERE pd_check.product = ed.definitionname
           )
         GROUP BY mi.itemdefinition;
 

@@ -1,6 +1,234 @@
 # Last ID used
 
-031
+039
+
+## IMPROVEMENT-039 - Add economy health statistics beyond NIC flow reporting
+
+Status: DONE
+Priority: HIGH
+Area: Admin Tool / Economy
+
+### Description
+The current economy report (IMPROVEMENT-034) tracks NIC flows (injections and sinks) but flow data alone is insufficient to evaluate true economy health. NIC flows show the rate of money creation and destruction — they do not show whether that money is circulating, concentrating, or causing real price inflation. Additional statistics are needed to give operators a complete diagnostic picture.
+
+### Impact
+Without supplementary statistics, operators cannot distinguish between a healthy growing economy and a stagnating inflationary one with the same NIC flow numbers. These metrics close the gap between "what is happening to NIC" and "what is happening to the economy."
+
+### Proposed Statistics
+
+#### Money Supply
+- **Total NIC in circulation** — sum of all player and corporation wallet balances. Without this, the net surplus figures have no denominator; a +7.5B monthly surplus means something very different on a 10B vs 1T money supply.
+- **Money supply trend** — total NIC in circulation over time (daily/weekly snapshots), the clearest single indicator of inflation pressure.
+
+#### Wealth Distribution
+- **Top 10 / top 1% wealth share** — what fraction of total NIC is held by the wealthiest players. High concentration means most players feel poor even if aggregate NIC is growing.
+- **Median player wallet balance** — more representative than mean; large outliers skew mean heavily.
+- **Idle NIC** — NIC held in wallets untouched for 30+ days. High idle NIC suggests players have nothing to spend it on.
+
+#### Market Health
+- **Market price index** — average transaction price for a basket of common goods (raw materials, common robot parts, basic consumables) tracked over time. This is the direct inflation indicator — rising prices confirm what NIC flow data only implies.
+- **Market velocity** — total NIC value of completed market transactions per day. Low velocity with high money supply = hoarding, not circulation.
+- **Unsold listing age distribution** — how long goods sit on the market before selling or expiring. Aging listings indicate insufficient demand.
+- **AutoMarket vs player market share** — what percentage of economic activity is AutoMarket-driven vs player-driven. High AutoMarket share on a low-pop server is expected; a declining player share over time signals disengagement.
+
+#### Sink Effectiveness
+- **NIC sink breakdown per activity type** — how much each sink category contributes per active player, normalized by session count or login days. Reveals which sinks are load-bearing vs cosmetic.
+- **Insurance coverage rate** — percentage of active robots that currently have insurance. Near-zero confirms the insurance system is effectively unused.
+
+### Notes
+- Cross-reference IMPROVEMENT-034 (NIC flow report) — these statistics extend that panel, not replace it
+- Total NIC in circulation is the highest-priority addition; without it, all flow data lacks context
+- Market price index requires selecting a representative basket of goods — coordinate with game design intent
+- Some of these (wealth distribution, idle NIC) may have privacy/fairness implications if exposed to players; restrict to admin view only
+
+### Implementation
+
+Implemented as four tabs in the Economy Admin Tool panel (branch p36.5, commits 930c727 → f9a5cc1):
+
+**Tab 1 — NIC Flow:** Existing panel extracted to `EconomyNicFlowViewModel` / `EconomyNicFlowView`.
+
+**Tab 2 — Money Supply & Wealth:** Total NIC in circulation (characters.credit + corporations.wallet), 90-day trend from `economy_daily_snapshot` (written daily by `EconomySnapshotService`), top-10 wealth leaderboard, median wallet, top-1% share, idle NIC (≥30 days inactive).
+
+**Tab 3 — Market Health:** Market velocity (daily NIC transacted from `marketaverageprices`), weighted price index for a configurable basket of items (`economy_price_index_basket`), live listing age distribution, AutoMarket vs player order mix. Basket items are editable via the global ChangeQueue.
+
+**Tab 4 — Sink Effectiveness:** NIC-out per category normalized by 30-day active player count, insurance coverage rate.
+
+**Server:** `EconomySnapshotService : IProcess` fires `usp_RecordEconomySnapshot` on startup and daily (idempotent MERGE on snapshot_date).
+
+**DB migration required:** `docs/db_structure/migrations/IMPROVEMENT-039-economy-health.sql`
+
+Design spec: `docs/superpowers/specs/2026-06-03-economy-health-stats-design.md`
+Implementation plan: `docs/superpowers/plans/2026-06-03-economy-health-stats.md`
+
+---
+
+## IMPROVEMENT-038 - Explore and expand AutoMarket Plasma rate tuning tools
+
+Status: TODO
+Priority: HIGH
+Area: AutoMarket / Economy / Admin Tool
+
+### Description
+AutoMarket Plasma is the single largest NIC injection source (~3.99B NIC in the last 30 days, ~46% of all injections). Operators currently have no confirmed tooling to tune plasma buy rates. Existing tools must be audited and, if insufficient, new admin controls must be added to allow safe, incremental rate adjustment without code deployments.
+
+### Impact
+Without operator control over plasma rates, the server has no practical lever to reduce the dominant inflation driver short of a code change and redeployment. Tunable rates would allow economy balancing to happen at runtime in response to observed NIC flow data.
+
+### Investigation Scope
+1. Audit existing admin tools and configuration for any plasma rate controls (rate multipliers, price floors/ceilings, per-item overrides)
+2. Check whether plasma rates are hardcoded, database-driven, or formula-based
+3. Determine what inputs drive the current rate (supply/demand history, fixed table, dynamic calculation)
+4. Assess whether existing controls are sufficient for meaningful economy tuning
+
+### Proposed additions (if controls are missing or insufficient)
+- Admin Tool UI controls to adjust plasma rate multiplier or absolute price per commodity
+- Per-item or per-category rate overrides stored in the database (not hardcoded)
+- Rate change audit log so operators can track adjustments and correlate with economy report data
+- Guardrails: min/max clamps to prevent accidental zero-rate or runaway injection
+
+### Notes
+- Cross-reference IMPROVEMENT-034 (economy report) — plasma NIC flows are already visible there; rate controls would close the loop from observation to action
+- Cross-reference IMPROVEMENT-035 (AutoMarket supply/demand) — any rate tuning should remain consistent with the existing ds_min/ds_max clamping architecture
+- Changes to plasma rates have direct, immediate impact on the largest injection source — changes should be incremental and monitored
+
+---
+
+## IMPROVEMENT-037 - Investigate System Credits & Refunds NIC injection source
+
+Status: TODO
+Priority: HIGH
+Area: Economy / NIC Flows
+
+### Description
+The economy report shows System Credits & Refunds injected ~2.87B NIC in the last 30 days — roughly 33% of all server-side NIC injections. This is the second-largest injection source after AutoMarket Plasma, yet its origin and legitimacy are unclear. A full investigation is required.
+
+### Impact
+At ~95M NIC/day, this source alone is a significant inflation driver. If it represents legitimate gameplay mechanics (NPC trade refunds, mission cancellations, system compensations) it should be documented and tuned. If it is a bug, misconfiguration, or exploitable pathway, it must be fixed immediately.
+
+### Investigation Scope
+1. Identify all code paths that record a transaction under the "System Credits & Refunds" category
+2. Determine whether each path is intentional design or a side-effect/bug
+3. Check whether players can trigger refunds repeatedly or artificially (exploit vector)
+4. Assess the expected volume — is 2.87B/month reasonable given current player activity, or anomalously high?
+5. Cross-reference with player activity logs to see if a small number of accounts are responsible for a disproportionate share
+
+### Notes
+- Cross-reference IMPROVEMENT-034 (economy report) — this source is already tracked there
+- If the source is legitimate but oversized, consider capping or rate-limiting refund eligibility
+- If exploit-driven, cross-reference ISSUE backlog for related economy abuse issues
+
+---
+
+## IMPROVEMENT-036 - Investigate and improve the insurance system
+
+Status: DONE
+Priority: HIGH
+Area: Economy / Insurance
+
+### Description
+The economy report shows Insurance Payouts = 0 for the last 30 days while Insurance Fees are near zero (70k/30d). The insurance system is either broken, unused, or being bypassed. This warrants a full investigation into how the system works, whether players can exploit it, and how it can be improved as a meaningful NIC sink.
+
+### Impact
+Insurance was presumably designed as a significant NIC sink (loss recovery funded by premium fees). With it effectively dormant, the economy loses a major pressure valve, contributing to ~7.58B NIC/month surplus and long-term inflation. Restoring or redesigning it could meaningfully reduce inflation without punishing active gameplay.
+
+### Investigation Scope
+1. Trace the full insurance lifecycle: premium charging, policy storage, payout triggering, NIC flow
+2. Determine why payouts are zero — broken trigger, player avoidance, or design gap
+3. Identify exploit vectors: avoiding premiums while still being eligible for payouts, double-claiming, gaming the payout calculation
+4. Assess whether the current payout/fee ratio creates a net NIC sink or net NIC source
+5. Propose rebalancing or redesign to make insurance a reliable and meaningful sink
+
+### Proposed Improvements (to evaluate)
+- Ensure insurance fees are charged consistently on all eligible assets
+- Ensure payout triggers fire correctly on robot destruction
+- Cap payout-to-fee ratio to guarantee insurance is always net-negative for the economy
+- Consider making insurance opt-out rather than opt-in to increase coverage and fee collection
+- Add insurance NIC flows to the economy report for ongoing monitoring
+
+### Notes
+- Cross-reference IMPROVEMENT-034 (economy report) — insurance flows are already surfaced there, confirming the zero-payout anomaly
+- Insurance Fees (NIC Out) and Insurance Payouts (NIC In) must both be audited — a payout exceeding fees collected would make insurance a net injector, worsening inflation
+
+### Implementation
+
+Implemented on branch p36.5 (commits 36cf271 → e0e1dac):
+
+- `insurance_config` table: `fee_pct = 0.10`, `payout_pct = 0.08` (operator-tunable)
+- `usp_RecalculateInsurancePrices`: MERGE from `v_all_production_costs` into `insuranceprices`; guards against `payout_pct >= fee_pct`
+- `InsurancePriceRefreshService`: daily auto-refresh + startup run, flushes in-memory cache after each run
+- `InsuraceFacility`: fee extension bonus (`ext_production_insurance_fee`) now applied at both purchase and quote
+- Dead static multipliers (`InsuranceFeeMultiplier`, `InsurancePayOutMultiplier`) removed from `InsuranceHelper`
+- Migration deletes stale `insurance` policies, then seeds correct prices; apply while server is OFFLINE
+- Admin Tool: "Insurance" tab (5th in Economy panel) with config editor, price table, Reload and Recalculate Now buttons
+
+---
+
+## IMPROVEMENT-035 - Factor player buy/sell orders into AutoMarket supply/demand rate calculation
+
+Status: DEFERRED
+Priority: MEDIUM
+Area: AutoMarket / Economy
+
+### Description
+AutoMarket currently calculates supply and demand rates using only its own transaction history. Player-created buy and sell orders on the market represent real demand and supply signals that AutoMarket ignores. Including them in the rate calculation could produce more accurate pricing.
+
+### Analysis Outcome (2026-06-03)
+
+Full brainstorming and economic modelling completed. Decision: **defer**.
+
+**Benefit is small in practice.** On a low-population server, player raw material order volume is thin — the signal would be near-zero most of the time, producing behaviour identical to today. The improvement only matters at population peaks.
+
+**The existing system already captures most of the signal indirectly.** Product sell-through → `automarket_unsold_leftovers` → AutoMarket buys more raw materials next refresh. This indirect loop is slower but manipulation-proof.
+
+**Manipulation guard is structurally weak.** A 30-minute age filter stops rapid pump-cancel cycles but not fake 1-NIC buy orders left open for 24 hours, which cost nothing to place. Closing that hole properly requires either a price floor on counted orders (circular dependency on the price being computed) or per-character quantity caps — roughly doubling implementation complexity.
+
+**Manipulation ceiling:** ds_min/ds_max clamp [0.25, 4.0] and `daily_rawmat_budget_nic` bound the worst-case damage, but a coordinated attack on all raw materials simultaneously is a systemic risk.
+
+### Conditions to Revisit
+
+Reconsider only when:
+1. IMPROVEMENT-034 (NIC flow statistics) is in place and provides operator visibility into raw material price trends.
+2. That data shows a concrete, sustained divergence between AutoMarket raw material prices and player market prices that the existing indirect feedback loop is not correcting.
+3. Population is high enough for player order volume to constitute a meaningful signal (not just noise).
+
+### Notes
+- Cross-reference ISSUE-022 (order placement exploit) — same class of abuse applies here.
+- Cross-reference IMPROVEMENT-034 — prerequisite for gathering the data needed to justify revisiting.
+
+---
+
+## IMPROVEMENT-034 - Expand AutoMarket NIC flow statistics in Admin Tool
+
+Status: DONE
+Priority: MEDIUM
+Area: Admin Tool / Economy
+
+### Description
+The AutoMarket tab in the Admin Tool currently shows limited statistics. It needs a full NIC flow breakdown — both income and outgoing — to give operators a complete picture of the server economy. This includes, but is not limited to: market taxes, transaction fees, mission rewards, crafting costs, repair fees, insurance payouts, and any other server-side NIC sources or sinks.
+
+### Impact
+Without full NIC flow visibility, operators cannot diagnose inflation, NIC sinks underperforming, or unexpected injections. A comprehensive view enables data-driven economy tuning and early detection of exploits or misconfigurations.
+
+### Implementation
+
+Implemented as a new top-level **Economy** panel in the Admin Tool (separate from AutoMarket). Data sourced from existing `charactertransactions` and `corporationtransactions` tables (classified by `transactiontype` into named categories) plus `plasma_sold` and `rawmat_purchased` for AutoMarket flows. No schema changes or server-side code changes required.
+
+**NIC In categories:** Mission Rewards, Insurance Payouts, Intrusion Income, AutoMarket Plasma, System Credits & Refunds.
+
+**NIC Out categories:** Market Fees & Taxes, Production Costs, Repair Costs, Insurance Fees, Infrastructure Costs, Extension Learning, Spark Costs, Corporate & Alliance Fees, Other Fees, AutoMarket Raw Materials.
+
+Time periods: Today / Last 7 Days / Last 30 Days / All Time. Net balance shown with green/red coloring.
+
+Design spec: `docs/superpowers/specs/2026-06-03-economy-nic-flow-design.md`
+Implementation plan: `docs/superpowers/plans/2026-06-03-economy-nic-flow.md`
+Branch: p36.5 (commits 9a3a1b2 → a147494)
+
+### Notes
+- `SiegeFee(37)`, `SiegeFeeRefund(38)`, and `SiegePoolPayback(41)` are unclassified — siege subsystem appears dormant; add to appropriate categories when siege activity resumes.
+- `transactiondate` uses `getdate()` (local server time); queries compare against `GETUTCDATE()`. Accurate as long as SQL Server runs in UTC (standard deployment).
+- Cross-reference IMPROVEMENT-035 — this panel provides the operator visibility prerequisite for revisiting player order signal in AutoMarket pricing.
+
+---
 
 ## IMPROVEMENT-002 - Refactor Hardcoded System Characters and Channels
 
@@ -603,3 +831,71 @@ Pricing Trace data source: query the last computed values from `resource_market_
 Implemented via plan `docs/superpowers/plans/2026-05-28-automarket-admintool.md` (14 tasks, branch p36.4).
 Refresh Now calls SPs directly from AdminTool DB connection (no server-side handler needed).
 `{x:Static}` binding on source-generator types causes MC1000 BAML errors — worked around with instance forwarder properties on `AutoMarketOrdersViewModel`.
+
+---
+
+## IMPROVEMENT-032 - Export: Generate Full SQL Scripts for Seasons, Items, and Robots
+
+Status: DONE
+Priority: MEDIUM
+Area: Admin Tool / Content / Tooling
+
+### Description
+
+Add an **Export** feature to the Admin Tool that generates a complete, self-contained SQL script for a selected entity — a season, an item definition, or a robot definition. The script must capture all dependent data (definitions, extensions, tech tree nodes, effects, module assignments, crafting recipes, etc.) so it can be replayed on a clean database to recreate the entity from scratch.
+
+### Impact
+
+Currently there is no way to extract a game entity as portable SQL. Transferring content between server instances, creating backups of handcrafted entities, or sharing content with other operators requires direct DB access and manual query construction. An export tool reduces this friction significantly and acts as a lightweight content migration mechanism.
+
+### Proposed Implementation
+
+- **Export targets:** Season (full chain: season record, activities, objectives, reward packages, reward items), Item definition (entitydefaults row, extensions, aggregate fields, tech tree nodes, crafting recipe, market config), Robot definition (entitydefaults row, chassis slots, head/leg/chassis component links, extensions, tech tree nodes).
+- **Output format:** Idempotent SQL script using `MERGE` / `IF NOT EXISTS` / `DELETE + INSERT` patterns consistent with the existing content pipeline (see `docs/content/claude_game_content_guide.md`). Scripts must be replayable without manual ID editing — resolve foreign keys dynamically by name where possible, or embed explicit ID resolution CTEs.
+- **UI surface:** Export button/menu entry in each relevant Admin Tool panel (Seasons panel, item editor, robot editor). Opens a dialog showing the generated script with a Copy and a Save As option.
+- **Scope boundary:** Export is read-only and generates SQL text only — it does not execute the script or modify any data.
+
+### Notes
+
+- Never hardcode definition or extension IDs in generated output — resolve via `entitydefaults`/`extensions` name lookups exactly as the manual content guide mandates.
+- The generated script should include a header comment identifying the export source, entity name, and export timestamp.
+- Consult `docs/content/claude_game_content_guide.md` sections 2 and 24 for dependency order before implementing the traversal logic.
+- Consider a shared `SqlExportBuilder` utility class to avoid duplicating script-generation logic across the three entity types.
+
+---
+
+## IMPROVEMENT-033 - Equipment Set Rewards for Seasons
+
+Status: DONE
+Priority: HIGH
+Area: Seasons / Rewards
+
+### Description
+
+At every reward grant point in the Seasons system — tier rewards, objective completion rewards, and leaderboard rewards — add support for specifying an **equipment set** as a reward option. When a reward of this type is granted, the player receives one randomly selected item from the named equipment set instead of a fixed item.
+
+### Impact
+
+Tier rewards, objective rewards, and leaderboard rewards currently support only fixed item grants. Equipment set rewards add designer-controlled randomness: a player is guaranteed an item from a curated pool (a themed set) but does not know which piece they will receive. This increases perceived value, supports set-collection engagement loops, and reduces designer overhead by allowing one reward entry to cover an entire set rather than requiring individual item reward rows.
+
+### Proposed Implementation
+
+**Data layer:**
+- Extend the reward package schema to include an optional `equipment_set_id` column (FK to `equipment_sets`) alongside the existing item definition reference. Exactly one of `item_definition_id` or `equipment_set_id` should be non-null per reward row.
+- On reward grant, if `equipment_set_id` is set: query all module definitions belonging to that set, select one at random, and grant that item via the standard item grant pipeline.
+- If the equipment set has no members at grant time, log a warning and skip the reward (no crash, no silent data corruption).
+
+**Server runtime:**
+- Extend the reward grant path (shared by tier, objective, and leaderboard rewards) to handle the `equipment_set_id` case — keep the branching in the reward delivery layer, not scattered across each reward trigger site.
+- Random selection should be uniform across all set members unless a weighted variant is later requested.
+
+**Admin Tool:**
+- In the reward package editor (used by tier rewards, objective rewards, and leaderboard rewards), add an "Equipment Set" reward type option alongside the existing item picker.
+- When "Equipment Set" is selected, show a dropdown of defined equipment sets; hide the item definition picker.
+
+### Notes
+
+- Reuse the equipment set membership data already introduced by IMPROVEMENT-025 (`equipment_sets` / module-to-set assignment) — do not introduce a parallel set definition mechanism.
+- Consult `docs/content/claude_game_content_guide.md` for reward package SQL patterns before generating migration SQL.
+- Validate that the selected set has at least one member before saving in the Admin Tool (warn, do not hard-block).
+- Random selection occurs at grant time on the server, not at reward package definition time.

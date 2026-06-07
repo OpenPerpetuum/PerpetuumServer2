@@ -1,6 +1,181 @@
 # Last ID used
 
-024
+029
+
+## ISSUE-029 - Insurance price recalculation crashes with SP nesting level exceeded (limit 32)
+
+Status: DONE
+Priority: CRITICAL
+Area: Economy / Insurance
+
+### Problem
+On production, calling `usp_RecalculateInsurancePrices` throws:
+
+> Maximum stored procedure, function, trigger, or view nesting level exceeded (limit 32)
+
+The recalculation fails entirely; insurance prices are not updated.
+
+### Root Cause (Confirmed)
+Both `v_all_production_costs` and `v_required_raw_materials` contain recursive CTEs whose recursive
+member JOINs against `production_data`, which is a VIEW (not a base table). SQL Server increments
+the view nesting counter on every recursive iteration that references an external view. On production
+data with crafting chains deeper than ~28 items the counter exceeds the 32-level limit. Locally,
+sparse data means chains rarely exceed 3–5 levels, so the bug never triggers.
+
+`usp_RecalculateInsurancePrices` executes `v_all_production_costs` inline inside a MERGE statement,
+which exposes the per-iteration view nesting accumulation. `usp_RefreshAutoMarketOrders` is
+unaffected because it materializes the same views into temp tables via a standalone SELECT, where
+the optimizer handles the recursive CTE differently.
+
+### Fix
+Inlined `production_data` as a local CTE (`prod_data`) at the top of both recursive views.
+A CTE reference inside a recursive member does not increment the view nesting counter.
+Semantics are identical (same filter, same columns).
+
+### Files Changed
+- `docs/db_structure/views/v_all_production_costs.sql`
+- `docs/db_structure/views/v_required_raw_materials.sql`
+- `docs/db_structure/migrations/ISSUE-029-fix-view-nesting-in-recursive-cost-views.sql`
+
+### Notes
+- Migration can be applied while the server is running (`CREATE OR ALTER VIEW` is non-blocking).
+- After applying, uncomment and run `EXEC dbo.usp_RecalculateInsurancePrices` to verify.
+
+---
+
+## ISSUE-028 - AdminTool AutoMarket: buyback orders not removed after deleting item from trade list
+
+Status: DONE
+Priority: CRITICAL
+Area: AdminTool / AutoMarket
+
+### Problem
+After deleting an item from the AutoMarket trade list and running "Refresh Now", sell orders for that item were removed correctly but buy (buyback) orders remained on the market.
+
+### Root Cause
+Step 0 of `usp_RefreshAutoMarketOrders` snapshots "unbought resources" using `NOT EXISTS (SELECT 1 FROM market_orders_configuration)` to skip production-item buyback orders. When an item is deleted from `market_orders_configuration` before the SP runs, this check passes for its buyback order — the order is captured into `automarket_unbought_resources` as if it were an unfulfilled raw-material buy order. Step 1 deletes all auto orders, but Step 4 then re-inserts a new buy order for the deleted item from the `Unbought` carry-over, because the item still has a production cost in `v_all_production_costs`.
+
+### Fix
+In Step 0's `automarket_unbought_resources` insert, replaced:
+```sql
+AND NOT EXISTS (SELECT 1 FROM market_orders_configuration moc WHERE moc.definitionname = ed.definitionname)
+```
+with:
+```sql
+AND NOT EXISTS (SELECT 1 FROM production_data pd_check WHERE pd_check.product = ed.definitionname)
+```
+This classifies items by whether they can be manufactured (stable) rather than whether they are currently in the trade list (breaks on deletion).
+
+### Files Changed
+- `docs/db_structure/stored_procedures/dbo.usp_RefreshAutoMarketOrders.StoredProcedure.sql`
+
+---
+
+## ISSUE-027 - Sell orders at matching prices do not auto-fulfill against open buy orders
+
+Status: DONE
+Priority: CRITICAL
+Area: Market / Trading
+
+### Problem
+Players report that creating a sell order at a price equal to or below an existing open buy order does not result in an automatic trade. The sell order is posted as a standing order rather than immediately matching and settling against the best available buy order.
+
+### Impact
+Market trades do not settle when they should. Players placing competitive sell orders experience no fulfillment despite valid counterpart buy orders existing, breaking the fundamental market matching expectation and potentially trapping capital in open orders.
+
+### Root Cause
+The matching condition in both `MarketCreateSellOrder` and `MarketCreateBuyOrder` was:
+```csharp
+if (!forMyCorporation && highestBuyOrder != null)
+```
+This condition completely skips automatic matching whenever the player marks their order as corporation-only (`forMyCorporation = true`), even when a matching corp-only order from the same corporation exists. Players in player corporations are the primary affected group.
+
+Additionally, `GetHighestBuyOrder` had a minor inconsistency: the SQL column reference used `@itemDefinition` (capital D) while `SetParameter` used `@itemdefinition` (lowercase d) — and similarly `submitterEID` vs `submittereid`. These are harmless with SqlClient's case-insensitive parameter matching but were corrected for consistency.
+
+### Fix
+- `MarketCreateSellOrder.HandleRequest`: Changed condition to `highestBuyOrder != null && (!forMyCorporation || highestBuyOrder.forMembersOf == forMembersOf)` — allows corp-only sells to match against corp buy orders from the same corp, while still blocking corp sells against public buy orders.
+- `MarketCreateBuyOrder.HandleRequest`: Same symmetric fix for `lowestSellOrder`.
+- `MarketOrderRepository.GetHighestBuyOrder`: Normalized SQL column/parameter names to lowercase for consistency with `GetLowestSellOrder`.
+
+---
+
+## ISSUE-026 - AdminTool AutoMarket Orders filters not working as expected
+
+Status: TODO
+Priority: MEDIUM
+Area: Admin Tool / AutoMarket
+
+### Problem
+Three distinct filter bugs on the AutoMarket → Orders view in the Admin Tool:
+
+1. **Order type filter returns no results** — selecting a buy or sell order type filter produces an empty list regardless of actual order volume. Likely a binding or query mismatch between the selected enum/value and what the server-side filter expects.
+2. **Category filter excludes child categories** — filtering by a parent category only returns items assigned directly to that category; items in sub-categories are excluded. The filter needs to match the selected category and all of its descendants.
+3. **No way to reset filters** — once a filter is applied, there is no reset or clear button. Users must restart or navigate away to return to the unfiltered list.
+
+### Impact
+Operators cannot meaningfully browse or audit market orders. The broken type and category filters make it impractical to find specific orders; the lack of reset compounds the friction by trapping users in a filtered state.
+
+### Proposed Fix
+1. **Order type filter** — trace the selected value from the UI dropdown through the ViewModel command to the server query. Verify the filter value is correctly mapped to the DB column type and that the query predicate is applied (not silently dropped).
+2. **Category filter** — replace the direct category equality check with a recursive or closure-based lookup that resolves all descendant category IDs for the selected node and filters on the full set (e.g. via a recursive CTE or a pre-loaded category tree walk).
+3. **Reset filters** — add a "Clear Filters" button (or equivalent reset action) to the Orders view that restores all filter fields to their default/unset state and reloads the full order list.
+
+### Notes
+- Investigate whether the type filter bug is a null/default value mismatch (e.g. enum default being passed as the filter even when "All" is selected, or vice versa).
+- The category tree hierarchy is likely already used elsewhere in the Admin Tool or game content — reuse the existing resolution pattern rather than introducing a new one.
+- Fix all three as a single unit since they share the same view; shipping a partial fix leaves the Orders filter UX still broken.
+
+---
+
+## ISSUE-025 - Top leaderboard participants did not receive rewards after Active Season ended
+
+Status: IN_PROGRESS
+Priority: CRITICAL
+Area: Seasons / Rewards / Leaderboard
+
+### Problem
+After "Seasons, oh May!" (end_time 2026-06-01T03:00:00) concluded, top leaderboard participants received no rewards. Root cause confirmed: data configuration error.
+
+### Root Cause (Confirmed)
+All 3 `season_leaderboard_rewards` rows have `rank_min > rank_max` (swapped fields):
+
+| rank_min | rank_max | Package | Intended |
+|---|---|---|---|
+| 3 | 1 | Syndicate_Season1_Leadership1 | min=1, max=3 |
+| 6 | 4 | Syndicate_Season1_Leadership2 | min=4, max=6 |
+| 10 | 7 | Syndicate_Season1_Leadership3 | min=7, max=10 |
+
+Server matching (`SeasonService.cs:399`): `rank >= r.RankMin && rank <= r.RankMax` — impossible to satisfy when min > max. Rewards were never delivered.
+
+Compounded by `MarkLeaderboardDelivered` being called unconditionally (`SeasonService.cs:403`) even when no reward matched. All participants have `leaderboard_reward_delivered = 1`, blocking any automatic re-run.
+
+### Fix
+
+**Operator must apply immediately (SQL):**
+```sql
+-- Reset delivered flag
+UPDATE season_character_points
+SET leaderboard_reward_delivered = 0
+WHERE season_id = (SELECT id FROM seasons WHERE name = N'Seasons, oh May!');
+
+-- Fix swapped rank ranges
+UPDATE season_leaderboard_rewards SET rank_min=1, rank_max=3
+WHERE season_id=(SELECT id FROM seasons WHERE name=N'Seasons, oh May!') AND rank_min=3 AND rank_max=1;
+UPDATE season_leaderboard_rewards SET rank_min=4, rank_max=6
+WHERE season_id=(SELECT id FROM seasons WHERE name=N'Seasons, oh May!') AND rank_min=6 AND rank_max=4;
+UPDATE season_leaderboard_rewards SET rank_min=7, rank_max=10
+WHERE season_id=(SELECT id FROM seasons WHERE name=N'Seasons, oh May!') AND rank_min=10 AND rank_max=7;
+```
+
+**Code changes required:**
+1. New `SeasonRedeliverLeaderboardRewards` admin request handler — re-runs reward delivery for a past ended season by ID, respecting the `leaderboard_reward_delivered` flag.
+2. Admin Tool validation in `SeasonDetailViewModel.QueueSaveLeaderboardReward` — guard `rank_min ≤ rank_max` before queuing the save.
+
+### Notes
+- `DeliverLeaderboardReward` writes to the redeemable items table via `InsertRedeemableItems` — no server restart needed once the command exists.
+- The re-deliver command must load leaderboard reward rows directly from the DB (not the in-memory cache, which is cleared at season end).
+
+---
 
 ## ISSUE-024 - AutoMarket pricing structurally excludes player crafters from the production economy
 

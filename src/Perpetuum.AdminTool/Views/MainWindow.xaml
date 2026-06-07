@@ -72,6 +72,9 @@
             <TabItem Header="AutoMarket">
                 <views:AutoMarketView DataContext="{Binding AutoMarket}"/>
             </TabItem>
+            <TabItem Header="Economy">
+                <views:EconomyView DataContext="{Binding Economy}"/>
+            </TabItem>
             <TabItem Header="Translations">
                 <views:TranslationsView DataContext="{Binding Translations}"/>
             </TabItem>

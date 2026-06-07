@@ -8,6 +8,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Editing;
+using Perpetuum.AdminTool.Export;
+using Perpetuum.AdminTool.Views;
+using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Packages;
 using Perpetuum.AdminTool.Seasons;
 using Perpetuum.AdminTool.Settings;
@@ -40,6 +43,8 @@ namespace Perpetuum.AdminTool.ViewModels
         public ObservableCollection<SeasonLeaderboardRewardRow> LeaderboardRewards { get; } = new();
 
         public ObservableCollection<PackageRow> Packages { get; }
+        public IReadOnlyList<EquipmentSetRow> EquipmentSets { get; private set; } =
+            Array.Empty<EquipmentSetRow>();
         public PackagesViewModel PackagesVm { get; }
         public SeasonStatisticsViewModel StatisticsVm { get; }
 
@@ -194,6 +199,8 @@ namespace Perpetuum.AdminTool.ViewModels
             try
             {
                 BuildMaterialLists(_translations);
+                EquipmentSets = await _repo.LoadEquipmentSetsAsync();
+                OnPropertyChanged(nameof(EquipmentSets));
                 StatusIsError = false;
                 StatusMessage = "Loading season detail...";
 
@@ -228,6 +235,8 @@ namespace Perpetuum.AdminTool.ViewModels
                     {
                         if (o.PackageId.HasValue)
                             o.SelectedPackage = Packages.FirstOrDefault(p => p.Id == o.PackageId);
+                        if (o.EquipmentSetId.HasValue)
+                            o.SelectedEquipmentSet = EquipmentSets.FirstOrDefault(s => s.SetId == o.EquipmentSetId);
                         o.InitializeMaterialLists(_oreAndLiquidMaterials, _organicMaterials);
                         Objectives.Add(o);
                     }
@@ -236,7 +245,10 @@ namespace Perpetuum.AdminTool.ViewModels
                 if (Season.Id > 0)
                     foreach (var t in await _repo.LoadTiersAsync(Season.Id))
                     {
-                        t.SelectedPackage = Packages.FirstOrDefault(p => p.Id == t.PackageId);
+                        if (t.PackageId.HasValue)
+                            t.SelectedPackage = Packages.FirstOrDefault(p => p.Id == t.PackageId);
+                        if (t.EquipmentSetId.HasValue)
+                            t.SelectedEquipmentSet = EquipmentSets.FirstOrDefault(s => s.SetId == t.EquipmentSetId);
                         Tiers.Add(t);
                     }
 
@@ -244,7 +256,10 @@ namespace Perpetuum.AdminTool.ViewModels
                 if (Season.Id > 0)
                     foreach (var l in await _repo.LoadLeaderboardRewardsAsync(Season.Id))
                     {
-                        l.SelectedPackage = Packages.FirstOrDefault(p => p.Id == l.PackageId);
+                        if (l.PackageId.HasValue)
+                            l.SelectedPackage = Packages.FirstOrDefault(p => p.Id == l.PackageId);
+                        if (l.EquipmentSetId.HasValue)
+                            l.SelectedEquipmentSet = EquipmentSets.FirstOrDefault(s => s.SetId == l.EquipmentSetId);
                         LeaderboardRewards.Add(l);
                     }
 
@@ -415,25 +430,17 @@ namespace Perpetuum.AdminTool.ViewModels
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            if (Packages.Count == 0)
-            {
-                MessageBox.Show("No packages exist. Create a package on the Packages tab first.",
-                    "No packages", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
             var row = new SeasonTierRow
             {
                 SeasonId       = Season.Id,
                 TierNumber     = Tiers.Count + 1,
                 TierName       = $"Tier {Tiers.Count + 1}",
                 PointsRequired = (Tiers.Count + 1) * 1000,
-                PackageId      = Packages[0].Id,
                 IsNew          = true
             };
-            row.SelectedPackage = Packages[0];
             Tiers.Add(row);
             StatusIsError = false;
-            StatusMessage = "Added tier row. Edit fields, then click 'Queue Save' on the row.";
+            StatusMessage = "Added tier row. Set a Package or Equipment Set reward, then click 'Queue Save'.";
         }
 
         [RelayCommand]
@@ -485,25 +492,46 @@ namespace Perpetuum.AdminTool.ViewModels
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            if (Packages.Count == 0)
-            {
-                MessageBox.Show("No packages exist. Create a package on the Packages tab first.",
-                    "No packages", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
             var row = new SeasonLeaderboardRewardRow
             {
-                SeasonId  = Season.Id,
-                RankMin   = 1,
-                RankMax   = 1,
-                PackageId = Packages[0].Id,
-                IsNew     = true
+                SeasonId = Season.Id,
+                RankMin  = 1,
+                RankMax  = 1,
+                IsNew    = true
             };
-            row.SelectedPackage = Packages[0];
             LeaderboardRewards.Add(row);
-            _queue.Add(SeasonChanges.BuildInsertLeaderboardReward(row));
             StatusIsError = false;
-            StatusMessage = "Queued INSERT for leaderboard reward.";
+            StatusMessage = "Added leaderboard reward row. Set ranks and a reward, then click 'Queue Save'.";
+        }
+
+        [RelayCommand]
+        private void QueueSaveLeaderboardReward(SeasonLeaderboardRewardRow? row)
+        {
+            if (row == null) return;
+            if (Season.Id <= 0)
+            {
+                MessageBox.Show("Save the season (General tab) first.", "Season unsaved",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (row.RankMin > row.RankMax)
+            {
+                StatusIsError = true;
+                StatusMessage = $"Invalid rank range: min ({row.RankMin}) must not be greater than max ({row.RankMax}).";
+                return;
+            }
+            row.SeasonId = Season.Id;
+            if (row.Id == 0)
+            {
+                _queue.Add(SeasonChanges.BuildInsertLeaderboardReward(row));
+                StatusMessage = $"Queued INSERT for leaderboard reward (ranks {row.RankMin}-{row.RankMax}).";
+            }
+            else
+            {
+                _queue.Add(SeasonChanges.BuildUpdateLeaderboardReward(row));
+                StatusMessage = $"Queued UPDATE for leaderboard reward id {row.Id}.";
+            }
+            StatusIsError = false;
         }
 
         [RelayCommand]
@@ -521,6 +549,36 @@ namespace Perpetuum.AdminTool.ViewModels
                 ? $"Queued DELETE for leaderboard reward id {row.Id}."
                 : "Removed unsaved leaderboard reward.";
         }
+
+        [ObservableProperty] private bool _isExporting;
+        partial void OnIsExportingChanged(bool _) => ExportCommand.NotifyCanExecuteChanged();
+
+        [RelayCommand(CanExecute = nameof(CanExport))]
+        private async Task ExportAsync()
+        {
+            IsExporting   = true;
+            StatusMessage = "Generating export script...";
+            StatusIsError = false;
+            try
+            {
+                var script = await SeasonExporter.ExportAsync(Season.Id, _connection);
+                var vm     = new ExportScriptViewModel($"Season: {Season.Name}", script);
+                var win    = new ExportScriptWindow(vm) { Owner = System.Windows.Application.Current?.MainWindow };
+                win.ShowDialog();
+                StatusMessage = "Export complete.";
+            }
+            catch (Exception ex)
+            {
+                StatusIsError = true;
+                StatusMessage = $"Export failed: {ex.Message}";
+            }
+            finally
+            {
+                IsExporting = false;
+            }
+        }
+
+        private bool CanExport() => !IsExporting;
     }
 
     public record ActivityTypeOption(SeasonActivityType Value, string Label);

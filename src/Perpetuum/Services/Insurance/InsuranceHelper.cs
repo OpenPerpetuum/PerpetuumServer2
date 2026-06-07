@@ -16,8 +16,6 @@ namespace Perpetuum.Services.Insurance
     public class InsuranceHelper
     {
         private readonly InsurancePayOut _insurancePayOut;
-        public static double InsurancePayOutMultiplier = 0.90;
-        public static double InsuranceFeeMultiplier = 1.0;
 
         public InsuranceHelper(InsurancePayOut insurancePayOut)
         {

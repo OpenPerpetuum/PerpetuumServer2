@@ -226,10 +226,10 @@ namespace Perpetuum.Services.MarketEngine
 
         public MarketOrder GetHighestBuyOrder(int itemDefinition, double price, long submitterEid, Market market, long forMembersOf)
         {
-            const string queryText = TOP1_SELECT + @"where marketeid = @marketEID and 
-                                                              itemdefinition = @itemDefinition and 
+            const string queryText = TOP1_SELECT + @"where marketeid = @marketEID and
+                                                              itemdefinition = @itemdefinition and
                                                               price >= @price and
-                                                              submitterEID != @submitterEID and
+                                                              submittereid != @submitterEID and
                                                               isSell = 0 and
                                                               (( formembersof is not null and @fmo=formembersof) or ( formembersof is null ))
                                                               order by price desc";

@@ -11,6 +11,9 @@
                 <Button Content="Reload" Padding="10,2" Margin="0,0,8,0" Click="OnReloadClick"
                         IsEnabled="{Binding IsLoading, Converter={x:Static common:InverseBoolConverter.Instance}}"/>
                 <Button Content="New template..." Padding="10,2" Margin="0,0,8,0" Click="OnNewClick"/>
+                <Button Content="Export SQL..." Padding="10,2" Margin="0,0,8,0"
+                        Command="{Binding ExportTemplateCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={x:Static common:InverseBoolConverter.Instance}}"/>
                 <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,4,0"/>
                 <TextBox Width="240" VerticalAlignment="Center"
                          Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged, Delay=200}"/>

@@ -37,6 +37,7 @@ namespace Perpetuum.Services.Seasons
         public int DisplayOrder { get; set; }
         public bool IsDaily { get; set; }
         public int? PackageId { get; set; }
+        public int? EquipmentSetId { get; set; }
         public int? TargetDefinitionId { get; set; }
     }
 
@@ -47,7 +48,8 @@ namespace Perpetuum.Services.Seasons
         public int TierNumber { get; set; }
         public string TierName { get; set; } = "";
         public int PointsRequired { get; set; }
-        public int PackageId { get; set; }
+        public int? PackageId { get; set; }
+        public int? EquipmentSetId { get; set; }
     }
 
     public class SeasonLeaderboardReward
@@ -56,7 +58,8 @@ namespace Perpetuum.Services.Seasons
         public int SeasonId { get; set; }
         public int RankMin { get; set; }
         public int RankMax { get; set; }
-        public int PackageId { get; set; }
+        public int? PackageId { get; set; }
+        public int? EquipmentSetId { get; set; }
     }
 
     public class SeasonCharacterPoints

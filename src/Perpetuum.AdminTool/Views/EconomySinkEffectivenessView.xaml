@@ -1,0 +1,75 @@
+<UserControl x:Class="Perpetuum.AdminTool.Views.EconomySinkEffectivenessView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:EconomySinkEffectivenessViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="RightAlign" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+        <Style x:Key="TotalRowStyle" TargetType="DataGridRow">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTotal}" Value="True">
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="8,6"
+                BorderBrush="#DDD" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Refresh" Padding="10,2"
+                        Command="{Binding RefreshCommand}"/>
+                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="DimGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="DarkRed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="8">
+
+                <!-- Active players -->
+                <TextBlock Text="Active Players (last 30 days)" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding ActivePlayerCount, StringFormat='{}{0} players'}"
+                           FontSize="18" FontWeight="Bold" Foreground="#1565C0" Margin="0,0,0,16"/>
+
+                <!-- Sink breakdown -->
+                <TextBlock Text="NIC Sink Breakdown (Last 30 Days)" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <DataGrid ItemsSource="{Binding SinkRows}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          RowStyle="{StaticResource TotalRowStyle}"
+                          Margin="0,0,0,16">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Category"            Binding="{Binding Category}"                                   Width="210"/>
+                        <DataGridTextColumn Header="NIC Last 30d"        Binding="{Binding NicLast30Days, StringFormat='{}{0:N0}'}"  Width="150" ElementStyle="{StaticResource RightAlign}"/>
+                        <DataGridTextColumn Header="NIC / Active Player" Binding="{Binding NicPerPlayer,  StringFormat='{}{0:N0}'}"  Width="150" ElementStyle="{StaticResource RightAlign}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Insurance -->
+                <TextBlock Text="Insurance Coverage" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <TextBlock FontSize="14" FontWeight="Bold"
+                           Text="{Binding InsuranceCoveragePct, StringFormat='{}{0:F1}% of active characters have at least one active insurance policy'}"/>
+
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

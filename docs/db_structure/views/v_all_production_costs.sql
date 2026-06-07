@@ -7,12 +7,25 @@ GO
 
 
 ---- Use dynamic resource_market_prices; fallback is max-scarcity formula (no raw_material_prices dependency)
+---- prod_data inlines production_data to avoid view-nesting-level accumulation inside the recursive member.
+---- SQL Server increments the view nesting counter on every recursive iteration that references an external
+---- view; a CTE reference does not count, so chains deeper than ~28 levels no longer hit the 32-level limit.
 
-CREATE   VIEW [dbo].[v_all_production_costs] AS
-WITH all_items AS (
-    SELECT product AS item FROM production_data
+CREATE OR ALTER VIEW [dbo].[v_all_production_costs] AS
+WITH prod_data AS (
+    SELECT
+        ed.definitionname  AS product,
+        ced.definitionname AS components,
+        CAST(c.componentamount AS FLOAT) AS amount
+    FROM dbo.components c
+    INNER JOIN dbo.entitydefaults ed  ON c.definition          = ed.definition
+    INNER JOIN dbo.entitydefaults ced ON c.componentdefinition = ced.definition
+    WHERE ed.purchasable = 1 AND ed.enabled = 1 AND ed.hidden = 0
+),
+all_items AS (
+    SELECT product AS item FROM prod_data
     UNION
-    SELECT components AS item FROM production_data
+    SELECT components AS item FROM prod_data
 ),
 recursive_materials AS (
     SELECT
@@ -20,7 +33,7 @@ recursive_materials AS (
         pd.components AS raw_material,
         CAST(pd.amount * 2.1 AS FLOAT) AS quantity
     FROM all_items base
-    JOIN production_data pd ON pd.product = base.item
+    JOIN prod_data pd ON pd.product = base.item
 
     UNION ALL
 
@@ -29,7 +42,7 @@ recursive_materials AS (
         pd.components AS raw_material,
         rm.quantity * pd.amount * 2.1 AS quantity
     FROM recursive_materials rm
-    JOIN production_data pd ON rm.raw_material = pd.product
+    JOIN prod_data pd ON rm.raw_material = pd.product
 ),
 aggregated_costs AS (
     SELECT
