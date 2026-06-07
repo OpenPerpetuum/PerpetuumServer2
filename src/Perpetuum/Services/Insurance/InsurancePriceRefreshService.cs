@@ -14,7 +14,7 @@ namespace Perpetuum.Services.Insurance
 
         public void Start()
         {
-            Refresh();
+            RefreshAsync();
             _timers.Add(new TimerAction(RefreshAsync, TimeSpan.FromDays(1)));
         }
 
@@ -37,7 +37,7 @@ namespace Perpetuum.Services.Insurance
         private void Refresh()
         {
             using var scope = Db.CreateTransaction();
-            _ = Db.Query().CommandText("exec usp_RecalculateInsurancePrices").ExecuteNonQuery();
+            _ = Db.Query().CommandText("exec usp_RecalculateInsurancePrices").Timeout(120).ExecuteNonQuery();
             scope.Complete();
             InsuranceHelper.LoadInsurancePrices();
             Logger.Info("InsurancePriceRefreshService: prices recalculated and cache reloaded.");
