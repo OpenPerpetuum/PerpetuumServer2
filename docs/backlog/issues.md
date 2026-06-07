@@ -1,6 +1,47 @@
 # Last ID used
 
-028
+029
+
+## ISSUE-029 - Insurance price recalculation crashes with SP nesting level exceeded (limit 32)
+
+Status: DONE
+Priority: CRITICAL
+Area: Economy / Insurance
+
+### Problem
+On production, calling `usp_RecalculateInsurancePrices` throws:
+
+> Maximum stored procedure, function, trigger, or view nesting level exceeded (limit 32)
+
+The recalculation fails entirely; insurance prices are not updated.
+
+### Root Cause (Confirmed)
+Both `v_all_production_costs` and `v_required_raw_materials` contain recursive CTEs whose recursive
+member JOINs against `production_data`, which is a VIEW (not a base table). SQL Server increments
+the view nesting counter on every recursive iteration that references an external view. On production
+data with crafting chains deeper than ~28 items the counter exceeds the 32-level limit. Locally,
+sparse data means chains rarely exceed 3–5 levels, so the bug never triggers.
+
+`usp_RecalculateInsurancePrices` executes `v_all_production_costs` inline inside a MERGE statement,
+which exposes the per-iteration view nesting accumulation. `usp_RefreshAutoMarketOrders` is
+unaffected because it materializes the same views into temp tables via a standalone SELECT, where
+the optimizer handles the recursive CTE differently.
+
+### Fix
+Inlined `production_data` as a local CTE (`prod_data`) at the top of both recursive views.
+A CTE reference inside a recursive member does not increment the view nesting counter.
+Semantics are identical (same filter, same columns).
+
+### Files Changed
+- `docs/db_structure/views/v_all_production_costs.sql`
+- `docs/db_structure/views/v_required_raw_materials.sql`
+- `docs/db_structure/migrations/ISSUE-029-fix-view-nesting-in-recursive-cost-views.sql`
+
+### Notes
+- Migration can be applied while the server is running (`CREATE OR ALTER VIEW` is non-blocking).
+- After applying, uncomment and run `EXEC dbo.usp_RecalculateInsurancePrices` to verify.
+
+---
 
 ## ISSUE-028 - AdminTool AutoMarket: buyback orders not removed after deleting item from trade list
 
