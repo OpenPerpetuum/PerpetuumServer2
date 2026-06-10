@@ -1,6 +1,37 @@
 # Last ID used
 
-041
+042
+
+## IMPROVEMENT-042 - AutoMarket: Per-Item Order Type Control on Trade List
+
+Status: DONE
+Priority: CRITICAL
+Area: AutoMarket / Economy
+
+### Implementation Summary
+
+Implemented on branch `p36.6`.
+
+- **DB migration:** `docs/db_structure/migrations/IMPROVEMENT-042-trade-list-order-type.sql` — adds `create_sell_orders BIT NOT NULL DEFAULT 1` and `create_buyback_orders BIT NOT NULL DEFAULT 1` to `market_orders_configuration` (idempotent, both default to 1 to preserve existing behaviour); updates `usp_RefreshAutoMarketOrders` with `WHERE moc.create_sell_orders = 1` on Step 3 and `WHERE moc.create_buyback_orders = 1` on Step 6.
+- **SP doc snapshot:** `docs/db_structure/stored_procedures/dbo.usp_RefreshAutoMarketOrders.StoredProcedure.sql` updated to match.
+- **`AutoMarketTradeListRow`:** added `CreateSellOrders bool`, `CreateBuybackOrders bool` observable properties; `OriginalCreate*` originals for dirty tracking; `IsDirty` updated to cover all three fields.
+- **`AutoMarketRepository.LoadTradeListAsync`:** SELECT expanded to include both new columns; row construction reads and sets all four new properties.
+- **`AutoMarketTradeListViewModel.QueueSave`:** UPDATE SQL now includes all three SET columns; originals reset after queuing. `AddItem`: new row defaults both flags to `true`.
+- **`AutoMarketTradeListView.xaml`:** two `DataGridTemplateColumn` checkbox columns added between Amount and Queue Save — "Sell Orders" (bound to `CreateSellOrders`) and "Buyback Orders" (bound to `CreateBuybackOrders`).
+
+Design spec: `docs/superpowers/specs/2026-06-10-trade-list-order-type-design.md`
+Implementation plan: `docs/superpowers/plans/2026-06-10-trade-list-order-type.md`
+
+### Problem
+
+The AutoMarket trade list currently creates both buy and sell orders for every configured item. There is no way to control per item whether the system should place a buy order, a sell order, both, or neither. This matters for items where only one direction makes economic sense (e.g. sinks that should only be bought back, or items that should only be sold to players but not repurchased).
+
+### Notes
+
+- Default value must be `Both` so existing trade list entries are unaffected after migration.
+- Similar in spirit to the per-item override pattern introduced in IMPROVEMENT-040 for raw materials.
+
+---
 
 ## IMPROVEMENT-041 - AdminTool Economy: Corporation Tag on Money Supply + Top-10 Wealthiest Corporations
 
