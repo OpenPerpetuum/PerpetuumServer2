@@ -31,6 +31,8 @@ Generated from DBML structure.
 - [artifacttypes](#artifacttypes)
 - [attributeFlags](#attributeflags)
 - [automarket_config](#automarket-config)
+- [automarket_rawmat_overrides](#automarket_rawmat_overrides)
+- [automarket_rawmat_weekly_tracking](#automarket_rawmat_weekly_tracking)
 - [automarket_unbought_resources](#automarket-unbought-resources)
 - [automarket_unsold_leftovers](#automarket-unsold-leftovers)
 - [beams](#beams)
@@ -1014,7 +1016,41 @@ Generated from DBML structure.
 | `product_sell_margin` | `1.2` | Product sell orders priced at production_cost × this value (was 1.0). Creates headroom for player crafters to undercut AutoMarket. |
 | `raw_mat_sell_multiplier` | `1.5` | Raw material sell orders priced at production_cost × this value (was 2.0). Reduces input cost barrier for crafters. |
 | `product_buyback_margin` | `0.80` | AutoMarket buys production items back at production_cost × this value. Guarantees crafters an exit price floor. |
-| `daily_rawmat_budget_nic` | `5000000` | Max NIC paid for raw material buy order fulfillments per UTC calendar day. Caps NIC injection from AutoMarket raw material purchases. |
+| `daily_rawmat_budget_nic` | `5000000` | Max NIC spent on raw material buy orders per UTC calendar day (0 = unlimited). |
+| `weekly_rawmat_cap_default` | `500000000` | Default weekly buy quantity cap per raw material. 0 = unlimited. |
+
+---
+
+## automarket_rawmat_overrides
+
+**Schema:** `dbo`
+
+Per-material overrides for AutoMarket raw material coverage. Materials with no row use global defaults from `automarket_config`.
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `definitionname` | `varchar(100) [not null, pk]` |
+| `weekly_cap_override` | `int [null]` — NULL = use global default; 0 = unlimited |
+| `create_buy_orders` | `bit [not null, default: 1]` |
+| `create_sell_orders` | `bit [not null, default: 1]` |
+
+---
+
+## automarket_rawmat_weekly_tracking
+
+**Schema:** `dbo`
+
+Tracks units of each raw material purchased via AutoMarket buy orders per week. Written by `sp_RecordRawMatWeeklyPurchased`. Rolled up by `usp_RefreshAutoMarketOrders` to enforce the per-material weekly cap. Cleaned up at 90-day rolling window.
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `week_start` | `date [not null, pk]` — Monday of the ISO week |
+| `definitionname` | `varchar(100) [not null, pk]` |
+| `qty_purchased` | `bigint [not null, default: 0]` |
 
 ---
 
