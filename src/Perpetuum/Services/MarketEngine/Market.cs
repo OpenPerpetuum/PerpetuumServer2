@@ -1164,6 +1164,7 @@ namespace Perpetuum.Services.MarketEngine
 
         private void RecordWeeklyRawMatPurchase(string definitionName, int quantity)
         {
+            // No TransactionScope — weekly cap is a soft limit; an undercounted cap is preferable to blocking.
             Db.Query()
                 .CommandText("exec sp_RecordRawMatWeeklyPurchased @week_start, @definitionname, @quantity")
                 .SetParameter("@week_start",     GetWeekStart(DateTime.UtcNow))

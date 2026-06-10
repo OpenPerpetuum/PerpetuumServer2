@@ -2,6 +2,12 @@
 -- IMPROVEMENT-040: AutoMarket Raw Material Decoupling
 -- Run against perpetuumsa while server is ONLINE (no data migration needed).
 -- Apply in order — objects are dependencies of later steps.
+-- DEPLOY ORDER: After running this migration, ALSO apply (in order):
+--   1. docs/db_structure/views/v_trade_list_raw_material_demand.sql (CREATE OR ALTER VIEW)
+--   2. docs/db_structure/views/v_all_production_costs.sql (CREATE OR ALTER VIEW)
+--   3. docs/db_structure/stored_procedures/dbo.recalculate_raw_material_prices.StoredProcedure.sql
+--   4. docs/db_structure/stored_procedures/dbo.usp_RefreshAutoMarketOrders.StoredProcedure.sql
+--   5. docs/db_structure/stored_procedures/dbo.sp_RecordRawMatWeeklyPurchased.StoredProcedure.sql
 
 USE [perpetuumsa];
 GO
