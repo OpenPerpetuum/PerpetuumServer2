@@ -1,6 +1,6 @@
 USE [perpetuumsa]
 GO
-/****** Object:  StoredProcedure [dbo].[usp_RefreshAutoMarketOrders]    Script Date: 28.05.2026 ******/
+/****** Object:  StoredProcedure [dbo].[usp_RefreshAutoMarketOrders]    Script Date: 10.06.2026 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -21,32 +21,6 @@ BEGIN
         DECLARE @marketeid  BIGINT;
         DECLARE @vendoreid  BIGINT;
 
-        -- Step 0: Snapshot unsold and unbought items
-        DELETE FROM [automarket_unsold_leftovers];
-        DELETE FROM [automarket_unbought_resources];
-
-        INSERT INTO [automarket_unsold_leftovers] (itemdefinition, quantity)
-        SELECT itemdefinition, SUM(CAST(quantity AS BIGINT))
-        FROM marketitems
-        WHERE isAutoOrder = 1 AND isSell = 1
-        GROUP BY itemdefinition;
-
-        -- Unbought mats: exclude plasma (3271-3274) and any item that can be manufactured
-        -- (production_data.product). Using market_orders_configuration here would incorrectly
-        -- capture buyback orders for items just removed from the trade list, causing Step 4
-        -- to re-place a buy order for them as if they were raw materials.
-        INSERT INTO automarket_unbought_resources (itemdefinition, quantity)
-        SELECT mi.itemdefinition, SUM(CAST(mi.quantity AS BIGINT))
-        FROM marketitems mi
-        INNER JOIN entitydefaults ed ON ed.definition = mi.itemdefinition
-        WHERE mi.isAutoOrder = 1 AND mi.isSell = 0
-          AND mi.itemdefinition NOT IN (3271, 3272, 3273, 3274)
-          AND NOT EXISTS (
-              SELECT 1 FROM production_data pd_check
-              WHERE pd_check.product = ed.definitionname
-          )
-        GROUP BY mi.itemdefinition;
-
         -- Step 1: Remove old auto orders
         DELETE FROM marketitems WHERE isAutoOrder = 1;
 
@@ -57,12 +31,42 @@ BEGIN
 
         CREATE INDEX IX_pc_product ON #prod_costs (product);
 
-        SELECT product, raw_material, total_quantity
-        INTO #raw_materials
-        FROM v_trade_list_raw_material_demand;
+        -- Week start: Monday of current UTC week (matches recalculate_raw_material_prices formula)
+        DECLARE @week_start DATE = DATEADD(DAY, -DATEPART(WEEKDAY, CAST(GETUTCDATE() AS DATE)) + 2, CAST(GETUTCDATE() AS DATE));
 
-        CREATE INDEX IX_rm_product ON #raw_materials (product);
-        CREATE INDEX IX_rm_raw     ON #raw_materials (raw_material);
+        DECLARE @weekly_cap_default BIGINT = (
+            SELECT CAST(param_value AS BIGINT) FROM automarket_config WHERE param_name = 'weekly_rawmat_cap_default'
+        );
+
+        -- All qualifying raw materials with effective cap and buy/sell flags.
+        -- Materialized once; Steps 4 and 5 both read from this table.
+        SELECT
+            ed.definition,
+            ed.definitionname,
+            CASE
+                WHEN o.weekly_cap_override IS NOT NULL THEN CAST(o.weekly_cap_override AS BIGINT)
+                ELSE @weekly_cap_default
+            END AS effective_weekly_cap,        -- 0 = unlimited
+            ISNULL(o.create_buy_orders,  1) AS create_buy_orders,
+            ISNULL(o.create_sell_orders, 1) AS create_sell_orders
+        INTO #covered_rawmats
+        FROM entitydefaults ed
+        LEFT JOIN automarket_rawmat_overrides o ON o.definitionname = ed.definitionname
+        WHERE (ed.categoryflags & 276) = 276
+          AND ed.enabled = 1
+          AND ed.hidden  = 0;
+
+        CREATE INDEX IX_crm_def  ON #covered_rawmats (definition);
+        CREATE INDEX IX_crm_name ON #covered_rawmats (definitionname);
+
+        -- Weekly purchases so far for the current week, per material.
+        SELECT definitionname, ISNULL(SUM(qty_purchased), 0) AS qty_this_week
+        INTO #weekly_purchased
+        FROM automarket_rawmat_weekly_tracking
+        WHERE week_start >= @week_start
+        GROUP BY definitionname;
+
+        CREATE INDEX IX_wp_name ON #weekly_purchased (definitionname);
 
         -- Budget and config params
         DECLARE @buy_qty_fraction FLOAT = (
@@ -230,76 +234,55 @@ BEGIN
         INNER JOIN entitydefaults ed ON moc.definitionname = ed.definitionname
         INNER JOIN #prod_costs pc    ON moc.definitionname = pc.product;
 
-        -- Step 4: Raw material buy orders — skip all if daily budget exhausted
-        ;WITH NeedProducts AS (
-            SELECT
-                moc.definitionname AS product,
-                CAST(moc.amount - ISNULL(us.quantity, 0) AS BIGINT) AS need_amount
-            FROM market_orders_configuration moc
-            INNER JOIN entitydefaults ed ON moc.definitionname = ed.definitionname
-            LEFT JOIN automarket_unsold_leftovers us ON ed.definition = us.itemdefinition
-        ),
-        RequiredRaw AS (
-            SELECT
-                ed.definition AS raw_material_def,
-                SUM(rm.total_quantity * np.need_amount) AS required_from_products
-            FROM NeedProducts np
-            INNER JOIN #raw_materials rm ON rm.product = np.product
-            INNER JOIN entitydefaults ed ON ed.definitionname = rm.raw_material
-            WHERE np.need_amount > 0
-            GROUP BY ed.definition
-        ),
-        Unbought AS (
-            SELECT
-                ub.itemdefinition AS raw_material_def,
-                SUM(ub.quantity)  AS required_from_unbought
-            FROM automarket_unbought_resources ub
-            GROUP BY ub.itemdefinition
-        ),
-        Combined AS (
-            SELECT
-                COALESCE(r.raw_material_def, u.raw_material_def) AS combined_def,
-                COALESCE(r.required_from_products, 0) + COALESCE(u.required_from_unbought, 0) AS total_required_quantity
-            FROM RequiredRaw r
-            FULL OUTER JOIN Unbought u ON u.raw_material_def = r.raw_material_def
-        )
+        -- Step 4: Raw material buy orders — weekly-cap sized, daily-budget guarded.
         INSERT INTO marketitems (
             marketeid, itemdefinition, submittereid, duration, isSell, price, quantity, isvendoritem, isAutoorder
         )
         SELECT
             @marketeid,
-            c.combined_def,
+            cr.definition,
             @vendoreid,
-            0,
-            0,
-            apc.production_cost_nic,
-            c.total_required_quantity,
-            1,
-            1
-        FROM Combined c
-        INNER JOIN entitydefaults ed ON ed.definition = c.combined_def
-        INNER JOIN #prod_costs apc  ON ed.definitionname = apc.product
-        WHERE c.total_required_quantity > 0
-          AND @remaining_rawmat_budget > 0;
+            0, 0,
+            pc.production_cost_nic,
+            CASE
+                WHEN @remaining_rawmat_budget <= 0 OR pc.production_cost_nic <= 0 THEN 0
+                WHEN cr.effective_weekly_cap = 0
+                    -- Unlimited cap: bounded only by daily NIC budget
+                    THEN CAST(@remaining_rawmat_budget / pc.production_cost_nic AS BIGINT)
+                WHEN cr.effective_weekly_cap <= ISNULL(wp.qty_this_week, 0) THEN 0
+                WHEN (cr.effective_weekly_cap - ISNULL(wp.qty_this_week, 0))
+                       <= CAST(@remaining_rawmat_budget / pc.production_cost_nic AS BIGINT)
+                    THEN cr.effective_weekly_cap - ISNULL(wp.qty_this_week, 0)
+                ELSE CAST(@remaining_rawmat_budget / pc.production_cost_nic AS BIGINT)
+            END AS order_qty,
+            1, 1
+        FROM #covered_rawmats cr
+        INNER JOIN #prod_costs      pc ON pc.product       = cr.definitionname
+        LEFT  JOIN #weekly_purchased wp ON wp.definitionname = cr.definitionname
+        WHERE cr.create_buy_orders = 1
+          AND pc.production_cost_nic > 0
+          AND @remaining_rawmat_budget > 0
+          AND (
+              cr.effective_weekly_cap = 0
+              OR ISNULL(wp.qty_this_week, 0) < cr.effective_weekly_cap
+          );
 
-        -- Step 5: Raw resource sell orders — price at cost * raw_mat_sell_multiplier
+        -- Step 5: Raw material sell orders — quantity = effective_weekly_cap (0 → fallback 10 000 000).
         INSERT INTO marketitems (
             marketeid, itemdefinition, submittereid, duration, isSell, price, quantity, isvendoritem, isAutoorder
         )
         SELECT
             @marketeid,
-            ed.definition,
+            cr.definition,
             @vendoreid,
-            0,
-            1,
-            apc.production_cost_nic * @raw_mat_sell_multiplier,
-            10000000,
-            1,
-            1
-        FROM #raw_materials rrm
-        INNER JOIN entitydefaults ed ON rrm.raw_material = ed.definitionname
-        INNER JOIN #prod_costs apc  ON rrm.raw_material  = apc.product
-        GROUP BY ed.definition, apc.production_cost_nic;
+            0, 1,
+            pc.production_cost_nic * @raw_mat_sell_multiplier,
+            CASE WHEN cr.effective_weekly_cap = 0 THEN 10000000 ELSE cr.effective_weekly_cap END,
+            1, 1
+        FROM #covered_rawmats cr
+        INNER JOIN #prod_costs pc ON pc.product = cr.definitionname
+        WHERE cr.create_sell_orders = 1
+          AND pc.production_cost_nic > 0;
 
         -- Step 6: Production item buyback buy orders — price at cost * product_buyback_margin
         INSERT INTO marketitems (
@@ -318,6 +301,11 @@ BEGIN
         FROM market_orders_configuration moc
         INNER JOIN entitydefaults ed ON moc.definitionname = ed.definitionname
         INNER JOIN #prod_costs pc    ON moc.definitionname = pc.product;
+
+        -- 90-day rolling cleanup for weekly tracking table
+        DECLARE @today_cleanup DATE = CAST(GETUTCDATE() AS DATE);
+        DELETE FROM automarket_rawmat_weekly_tracking
+        WHERE week_start < DATEADD(DAY, -90, @today_cleanup);
 
     END TRY
     BEGIN CATCH
