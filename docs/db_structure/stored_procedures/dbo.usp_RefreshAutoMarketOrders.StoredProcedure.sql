@@ -232,7 +232,8 @@ BEGIN
             1
         FROM market_orders_configuration moc
         INNER JOIN entitydefaults ed ON moc.definitionname = ed.definitionname
-        INNER JOIN #prod_costs pc    ON moc.definitionname = pc.product;
+        INNER JOIN #prod_costs pc    ON moc.definitionname = pc.product
+        WHERE moc.create_sell_orders = 1;
 
         -- Step 4: Raw material buy orders — weekly-cap sized, daily-budget guarded.
         INSERT INTO marketitems (
@@ -300,7 +301,8 @@ BEGIN
             1
         FROM market_orders_configuration moc
         INNER JOIN entitydefaults ed ON moc.definitionname = ed.definitionname
-        INNER JOIN #prod_costs pc    ON moc.definitionname = pc.product;
+        INNER JOIN #prod_costs pc    ON moc.definitionname = pc.product
+        WHERE moc.create_buyback_orders = 1;
 
         -- 90-day rolling cleanup for weekly tracking table
         DECLARE @today_cleanup DATE = CAST(GETUTCDATE() AS DATE);
