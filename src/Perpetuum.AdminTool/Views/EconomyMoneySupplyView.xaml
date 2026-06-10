@@ -91,7 +91,8 @@
                 <DataGrid ItemsSource="{Binding Top10CorpRows}"
                           AutoGenerateColumns="False" IsReadOnly="True"
                           CanUserAddRows="False" CanUserDeleteRows="False"
-                          HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          Margin="0,0,0,16">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#"            Binding="{Binding Rank}"                                         Width="40"/>
                         <DataGridTextColumn Header="Name"         Binding="{Binding Name}"                                         Width="200"/>
