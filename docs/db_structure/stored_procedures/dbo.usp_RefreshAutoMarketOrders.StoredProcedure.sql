@@ -52,7 +52,7 @@ BEGIN
         INTO #covered_rawmats
         FROM entitydefaults ed
         LEFT JOIN automarket_rawmat_overrides o ON o.definitionname = ed.definitionname
-        WHERE (ed.categoryflags & 276) = 276
+        WHERE ed.categoryflags IN (0x10114, 0x20114, 0x40114)   -- cf_organic, cf_ore, cf_liquid
           AND ed.enabled = 1
           AND ed.hidden  = 0;
 

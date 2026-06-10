@@ -87,7 +87,7 @@ raw_resources AS (
     FROM (
         SELECT definitionname
         FROM dbo.entitydefaults
-        WHERE (categoryflags & 276) = 276   -- cf_raw_material bitmask (0x114)
+        WHERE categoryflags IN (0x10114, 0x20114, 0x40114)   -- cf_organic, cf_ore, cf_liquid
           AND enabled = 1
           AND hidden  = 0
     ) base

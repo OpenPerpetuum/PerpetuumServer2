@@ -216,13 +216,13 @@ namespace Perpetuum.AdminTool.AutoMarket
                 while (await r.ReadAsync()) demand[r.GetString(0)] = (double)r.GetDecimal(1);
             }
 
-            // 5. Materials list — all cf_raw_material items (categoryflags & 276 = 276)
+            // 5. Materials list — cf_organic (0x10114), cf_ore (0x20114), cf_liquid (0x40114)
             var materials = new List<string>();
             await using (var cmd = cn.CreateCommand())
             {
                 cmd.CommandText =
                     "SELECT definitionname FROM entitydefaults " +
-                    "WHERE (categoryflags & 276) = 276 AND enabled = 1 AND hidden = 0 " +
+                    "WHERE categoryflags IN (0x10114, 0x20114, 0x40114) AND enabled = 1 AND hidden = 0 " +
                     "ORDER BY definitionname";
                 await using var r = await cmd.ExecuteReaderAsync();
                 while (await r.ReadAsync()) materials.Add(r.GetString(0));
@@ -325,7 +325,7 @@ namespace Perpetuum.AdminTool.AutoMarket
                 "    GROUP BY definitionname " +
                 ") wt ON wt.definitionname = ed.definitionname " +
                 "CROSS JOIN (SELECT param_value FROM automarket_config WHERE param_name = 'weekly_rawmat_cap_default') cfg " +
-                "WHERE (ed.categoryflags & 276) = 276 AND ed.enabled = 1 AND ed.hidden = 0 " +
+                "WHERE ed.categoryflags IN (0x10114, 0x20114, 0x40114) AND ed.enabled = 1 AND ed.hidden = 0 " +
                 "ORDER BY ed.definitionname";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
