@@ -1,6 +1,95 @@
 # Last ID used
 
-039
+040
+
+## IMPROVEMENT-040 - AutoMarket: Decouple Raw Material Coverage from Trade List
+
+Status: DONE
+Priority: CRITICAL
+Area: AutoMarket / Economy
+
+### Implementation Summary
+
+Implemented on branch `p36.6` (commits `715a43d`–`1d1dfa9`).
+
+- **DB migration:** `docs/db_structure/migrations/IMPROVEMENT-040-rawmat-decoupling.sql` — creates `automarket_rawmat_overrides`, `automarket_rawmat_weekly_tracking`, inserts `weekly_rawmat_cap_default = 500000000`, adds `IX_rmp_on_name`, renames view, creates `sp_RecordRawMatWeeklyPurchased`
+- **View rename:** `v_required_raw_materials` → `v_trade_list_raw_material_demand` (demand signal only)
+- **`v_all_production_costs`:** `raw_resources` CTE now scans entitydefaults directly (cf_raw_material bitmask)
+- **`recalculate_raw_material_prices`:** material enumeration expanded to all cf_raw_material items
+- **`usp_RefreshAutoMarketOrders`:** `#covered_rawmats` replaces `#raw_materials`; Steps 4+5 are cap-driven
+- **`Market.cs`:** `sp_RecordRawMatWeeklyPurchased` called at 3 `FulfillSellOrderInstantly` sites
+- **AdminTool:** Raw Materials tab (VM + View), Statistics Pricing Trace columns, repository updates
+- **Recipe-graph demand signal:** analysed and rejected — C-only approach (gather-volume proxy) chosen; max scarcity for ungathered materials is self-correcting on a low-population server
+
+### Problem
+
+The current AutoMarket system identifies raw materials exclusively by recursively exploding items in `market_orders_configuration` (the trade list). This creates tight coupling: materials for items outside the trade list get no market support, and any newly added craftable item requires a manual trade list update before its raw material supply chain becomes active. The trade list's role is also overloaded — it currently drives both finished product orders and raw material demand calculations.
+
+### Proposed Architecture
+
+Decouple raw material coverage from the trade list:
+
+- **Raw materials** — identified from `entitydefaults` (not from the trade list). Prices calculated independently. Infinite-style buy/sell orders placed for all qualifying materials with a **configurable weekly cap per material** (see Impact Analysis below).
+- **Trade list** — scoped to finished product buy/sell/buyback orders only. Product prices derived from raw material prices (cost-plus), not set independently.
+
+This inverts the current dependency:
+
+```
+Current:   trade list → raw material identification → raw material prices → orders
+Proposed:  entitydefaults → raw material prices → orders (capped)
+           trade list + raw material prices → product prices → orders
+```
+
+### Raw Material Coverage Filter
+
+Use `entitydefaults` to enumerate qualifying raw materials. Filter criteria (exact requirements TBD during implementation):
+
+- `enabled = 1`
+- `hidden = 0`
+- Category matches raw material category flag(s) — filtered by category ID exact match or category tree traversal (children of raw material category nodes)
+
+Avoids coverage explosion from legacy/unobtainable items while automatically including newly added materials that meet the criteria.
+
+### Price Calculation
+
+Retain and extend the existing formula from IMPROVEMENT-030:
+
+```
+price = plasma_anchor × supply_demand_ratio × pvp_risk_multiplier
+```
+
+**PvP risk multiplier:** Preserved as-is. Materials gathered predominantly in PvP zones retain their risk premium.
+
+**Supply/demand ratio:** Retain the existing formula (`daily_demand / daily_supply_avg`, clamped to `[ds_ratio_min, ds_ratio_max]`). Investigate whether adding recipe-graph-derived demand (from the `components` table) as a supplementary signal to the S/D ratio improves pricing accuracy. If the analysis shows negligible benefit (e.g. because recipe demand is already implicit in gather volume on a functioning server), this addition may be skipped. Document the decision.
+
+**Recalculation cadence:** Daily, same as the existing 24-hour refresh cycle introduced in IMPROVEMENT-030. Startup-only recalculation was considered and rejected — prices must track the live economy between restarts.
+
+### Weekly Cap Per Material — Impact Analysis Required
+
+Replace the current arrangement (fixed 10,000,000 quantity for sell orders; budget-capped buy orders) with a **configurable weekly quantity cap per material**. Before implementation, analyze:
+
+1. **NIC injection bound** — what weekly cap value keeps raw material buy-side NIC injection comparable to or lower than the current `daily_rawmat_budget_nic` regime?
+2. **Supply adequacy** — does a weekly cap prevent the market from running dry for high-demand materials during active play periods?
+3. **Per-material vs global cap** — whether a single global cap or per-category/per-material overrides are needed for balance.
+4. **Interaction with daily budget** — determine whether the weekly cap replaces or works alongside the existing daily NIC budget guard.
+
+The daily NIC budget cap must remain as a hard guardrail until the impact analysis confirms the weekly cap is safe.
+
+### Affected Systems
+
+- `recalculate_raw_material_prices` stored procedure — extend material enumeration to use `entitydefaults` filter
+- `usp_RefreshAutoMarketOrders` — step 4 (raw material buy orders) and step 5 (raw material sell orders) reworked
+- `v_required_raw_materials` view — may be retired or repurposed as a product-cost calculation helper
+- `automarket_config` table — add `weekly_rawmat_cap_per_material` and category filter parameters
+- AdminTool AutoMarket panel (IMPROVEMENT-031) — expose new cap config and coverage filter parameters
+
+### Notes
+
+- Cross-reference IMPROVEMENT-030 (AutoMarket overhaul) — builds on its pricing formula and config table.
+- Cross-reference IMPROVEMENT-031 (AutoMarket AdminTool) — Config tab and Statistics tab need updates for new parameters.
+- Cross-reference IMPROVEMENT-035 (player order signal) — raw material coverage expansion increases the surface area where player orders could manipulate S/D ratios; revisit IMPROVEMENT-035 deferral conditions after this is shipped.
+- The recipe-graph demand signal analysis (S/D ratio extension) should be done before coding the pricing procedure — if the analysis is inconclusive or shows risk, skip it and document why.
+- Category flag filter criteria (exact category IDs and whether to include children) must be confirmed against `entitydefaults` live data before generating the SQL filter.
 
 ## IMPROVEMENT-039 - Add economy health statistics beyond NIC flow reporting
 
