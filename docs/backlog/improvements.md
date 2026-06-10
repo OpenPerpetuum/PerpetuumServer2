@@ -1,6 +1,41 @@
 # Last ID used
 
-040
+041
+
+## IMPROVEMENT-041 - AdminTool Economy: Corporation Tag on Money Supply + Top-10 Wealthiest Corporations
+
+Status: DONE
+Priority: HIGH
+Area: AdminTool / Economy
+
+### Implementation Summary
+
+Implemented on branch `p36.6`.
+
+- **`EconomyWealthRow`:** added `CorpTag` property (empty string for unguilded/default-corp characters).
+- **`EconomyCorporationWealthRow`:** new model with `Rank`, `Name`, `Tag`, `MemberCount`, `CorpWallet`, `MemberAggregate`, `Combined` (computed).
+- **`EconomyMoneySupplyData`:** added `Top10CorpRows`.
+- **`EconomyMoneySupplyRepository`:** `LoadTop10Async` updated to use a correlated subquery for corp tag (avoids row duplication from non-unique `corporationmembers.memberid`); new `LoadTop10CorpAsync` queries all non-default active corps, ordered by combined wealth.
+- **`EconomyMoneySupplyViewModel`:** added `Top10CorpRows` collection, populated in `RefreshAsync`.
+- **`EconomyMoneySupplyView.xaml`:** `Corp` column added to character DataGrid; new Top-10 Corporations DataGrid appended.
+- No schema changes. No server-side code touched.
+
+### Problem
+
+The Money Supply panel shows top-10 wealthiest characters but lacks context about their corporation membership. Additionally, there is no equivalent view for corporations — the wealthiest corporations and their composition are invisible.
+
+### Proposed Fix
+
+1. **Character money supply table** — add a `Corporation Tag` column showing the 4-character corp tag (or blank if NPC/unguilded) next to each character row.
+2. **New top-10 wealthiest corporations section** — query the sum of all member wallets (and/or the corp wallet itself) per corporation; display corporation name, tag, and member count.
+
+### Notes
+
+- Confirm whether "wealthiest corporation" means the corporate wallet balance, the aggregate of member wallets, or both.
+- Identify the relevant DB tables/views (`corporations`, `characters`, `wallet` or equivalent) before writing queries.
+- Keep to existing AdminTool MVVM patterns — thin VM, no business logic leakage.
+
+---
 
 ## IMPROVEMENT-040 - AutoMarket: Decouple Raw Material Coverage from Trade List
 
