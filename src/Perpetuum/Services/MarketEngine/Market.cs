@@ -805,6 +805,9 @@ namespace Perpetuum.Services.MarketEngine
                         }
                     }
 
+                    if (buyOrder.isVendorItem && itemToSell.ED.CategoryFlags.IsCategory(CategoryFlags.cf_raw_material))
+                        RecordWeeklyRawMatPurchase(itemToSell.ED.Name, buyOrder.quantity);
+
                     quantity = buyOrder.quantity;
                     buyOrder.quantity = 0; //signal to client
 
@@ -845,6 +848,9 @@ namespace Perpetuum.Services.MarketEngine
                         scope.Complete();
                     }
                 }
+
+                if (buyOrder.isVendorItem && itemToSell.ED.CategoryFlags.IsCategory(CategoryFlags.cf_raw_material))
+                    RecordWeeklyRawMatPurchase(itemToSell.ED.Name, quantity);
 
                 return;
             }
@@ -896,6 +902,9 @@ namespace Perpetuum.Services.MarketEngine
                     scope.Complete();
                 }
             }
+
+            if (buyOrder.isVendorItem && itemToSell.ED.CategoryFlags.IsCategory(CategoryFlags.cf_raw_material))
+                RecordWeeklyRawMatPurchase(itemToSell.ED.Name, itemToSell.Quantity);
         }
 
         /// <summary>
@@ -1143,6 +1152,24 @@ namespace Perpetuum.Services.MarketEngine
         public static int GetMaxBuyOrderCount(Character character)
         {
             return (int)(character.GetExtensionBonusWithPrerequiredExtensions(ExtensionNames.TRADING_MARKET_BUYORDERCOUNT_EXPERT) + 1);
+        }
+
+        private static DateTime GetWeekStart(DateTime utcNow)
+        {
+            // SQL DATEFIRST=7: Sunday=1, Monday=2, ..., Saturday=7
+            // DATEADD(DAY, -DATEPART(WEEKDAY, @today) + 2, @today) gives Monday of the current week.
+            var sqlWeekday = (int)utcNow.DayOfWeek + 1;
+            return utcNow.Date.AddDays(-sqlWeekday + 2);
+        }
+
+        private void RecordWeeklyRawMatPurchase(string definitionName, int quantity)
+        {
+            Db.Query()
+                .CommandText("exec sp_RecordRawMatWeeklyPurchased @week_start, @definitionname, @quantity")
+                .SetParameter("@week_start",     GetWeekStart(DateTime.UtcNow))
+                .SetParameter("@definitionname", definitionName)
+                .SetParameter("@quantity",       quantity)
+                .ExecuteNonQuery();
         }
     }
 
