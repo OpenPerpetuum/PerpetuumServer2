@@ -63,6 +63,8 @@
                         <DataGridTextColumn Header="Risk Mult"      Binding="{Binding RiskMultiplier, StringFormat='{}{0:F4}'}" Width="90"/>
                         <DataGridTextColumn Header="Computed Price" Binding="{Binding ComputedPrice,  StringFormat='{}{0:N2}'}" Width="110"/>
                         <DataGridTextColumn Header="Stored Price"   Binding="{Binding StoredPrice,    StringFormat='{}{0:N2}'}" Width="110"/>
+                        <DataGridTextColumn Header="Bought/Week"   Binding="{Binding BoughtThisWeek, StringFormat='{}{0:N0}'}" Width="110"/>
+                        <DataGridTextColumn Header="Weekly Cap"    Binding="{Binding EffectiveCap,   StringFormat='{}{0:N0}'}" Width="110"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
