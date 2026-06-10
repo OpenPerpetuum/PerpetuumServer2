@@ -59,7 +59,7 @@ BEGIN
 
         SELECT product, raw_material, total_quantity
         INTO #raw_materials
-        FROM v_required_raw_materials;
+        FROM v_trade_list_raw_material_demand;
 
         CREATE INDEX IX_rm_product ON #raw_materials (product);
         CREATE INDEX IX_rm_raw     ON #raw_materials (raw_material);
