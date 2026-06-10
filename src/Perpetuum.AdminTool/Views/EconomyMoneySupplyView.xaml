@@ -71,16 +71,36 @@
                     <TextBlock Grid.Column="4" Grid.Row="1" Text="{Binding IdleNic,      StringFormat='{}{0:N0}'}" FontSize="14" FontWeight="Bold" Foreground="#555"/>
                 </Grid>
 
-                <!-- Top 10 -->
+                <!-- Top 10 Characters -->
                 <TextBlock Text="Top 10 Wealthiest Characters" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
                 <DataGrid ItemsSource="{Binding Top10Rows}"
                           AutoGenerateColumns="False" IsReadOnly="True"
                           CanUserAddRows="False" CanUserDeleteRows="False"
-                          HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          Margin="0,0,0,16">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="#"      Binding="{Binding Rank}"   Width="40"/>
-                        <DataGridTextColumn Header="Nick"   Binding="{Binding Nick}"   Width="200"/>
-                        <DataGridTextColumn Header="Balance (NIC)" Binding="{Binding Credit, StringFormat='{}{0:N0}'}" Width="160"/>
+                        <DataGridTextColumn Header="#"             Binding="{Binding Rank}"                                        Width="40"/>
+                        <DataGridTextColumn Header="Nick"          Binding="{Binding Nick}"                                        Width="200"/>
+                        <DataGridTextColumn Header="Corp"          Binding="{Binding CorpTag}"                                     Width="60"/>
+                        <DataGridTextColumn Header="Balance (NIC)" Binding="{Binding Credit, StringFormat='{}{0:N0}'}"             Width="160"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Top 10 Corporations -->
+                <TextBlock Text="Top 10 Wealthiest Corporations" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                <DataGrid ItemsSource="{Binding Top10CorpRows}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          Margin="0,0,0,16">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="#"            Binding="{Binding Rank}"                                         Width="40"/>
+                        <DataGridTextColumn Header="Name"         Binding="{Binding Name}"                                         Width="200"/>
+                        <DataGridTextColumn Header="Tag"          Binding="{Binding Tag}"                                          Width="60"/>
+                        <DataGridTextColumn Header="Members"      Binding="{Binding MemberCount}"                                  Width="70"/>
+                        <DataGridTextColumn Header="Corp Wallet"  Binding="{Binding CorpWallet,      StringFormat='{}{0:N0}'}"     Width="140"/>
+                        <DataGridTextColumn Header="Member Total" Binding="{Binding MemberAggregate, StringFormat='{}{0:N0}'}"     Width="140"/>
+                        <DataGridTextColumn Header="Combined"     Binding="{Binding Combined,        StringFormat='{}{0:N0}'}"     Width="140"/>
                     </DataGrid.Columns>
                 </DataGrid>
 

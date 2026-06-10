@@ -9,5 +9,7 @@ namespace Perpetuum.AdminTool.AutoMarket
         public double  RiskMultiplier { get; init; }
         public double  ComputedPrice  { get; init; }
         public double? StoredPrice    { get; init; }
+        public long    BoughtThisWeek { get; init; }
+        public long    EffectiveCap   { get; init; }
     }
 }

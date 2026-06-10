@@ -1,17 +1,29 @@
-USE [perpetuumsa]
-GO
-/****** Object:  StoredProcedure [dbo].[usp_RefreshAutoMarketOrders]    Script Date: 10.06.2026 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
+-- IMPROVEMENT-042: Add per-item order type control to market_orders_configuration.
+-- Apply while server is ONLINE (column addition with defaults is non-blocking).
+-- Apply BEFORE deploying AdminTool changes.
+
+USE [perpetuumsa];
 GO
 
----- Place auto market orders: plasma buy orders with daily budget cap; raw material orders with
----- daily NIC budget cap; product sell orders at margin; raw material sell orders at multiplier;
----- product buyback buy orders at backstop price.
----- Cursors replaced with set-based INSERTs. Views materialised into temp tables to avoid
----- recursive-CTE re-evaluation.
+-- 1. Add columns (idempotent)
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.market_orders_configuration')
+      AND name = 'create_sell_orders'
+)
+    ALTER TABLE dbo.market_orders_configuration
+        ADD create_sell_orders BIT NOT NULL DEFAULT 1;
 
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.market_orders_configuration')
+      AND name = 'create_buyback_orders'
+)
+    ALTER TABLE dbo.market_orders_configuration
+        ADD create_buyback_orders BIT NOT NULL DEFAULT 1;
+GO
+
+-- 2. Update stored procedure (idempotent — CREATE OR ALTER)
 CREATE OR ALTER PROCEDURE [dbo].[usp_RefreshAutoMarketOrders]
 AS
 BEGIN

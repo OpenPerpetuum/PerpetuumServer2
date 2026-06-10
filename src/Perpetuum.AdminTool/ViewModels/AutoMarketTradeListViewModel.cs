@@ -89,9 +89,14 @@ namespace Perpetuum.AdminTool.ViewModels
             if (existing != null) _queue.Items.Remove(existing);
             _queue.Add(new RawSqlChange(
                 description,
-                $"UPDATE market_orders_configuration SET amount = {SqlLiteral.Of(row.Amount)} " +
+                $"UPDATE market_orders_configuration " +
+                $"SET amount = {SqlLiteral.Of(row.Amount)}, " +
+                $"create_sell_orders = {SqlLiteral.Of(row.CreateSellOrders)}, " +
+                $"create_buyback_orders = {SqlLiteral.Of(row.CreateBuybackOrders)} " +
                 $"WHERE definitionname = {SqlLiteral.Of(row.DefinitionName)}"));
-            row.OriginalAmount = row.Amount;
+            row.OriginalAmount              = row.Amount;
+            row.OriginalCreateSellOrders    = row.CreateSellOrders;
+            row.OriginalCreateBuybackOrders = row.CreateBuybackOrders;
             StatusMessage = $"{row.DisplayName} amount queued.";
         }
 
@@ -132,10 +137,14 @@ namespace Perpetuum.AdminTool.ViewModels
 
             Rows.Add(new AutoMarketTradeListRow
             {
-                DefinitionName = item.DefinitionName,
-                DisplayName    = item.DisplayName,
-                Amount         = 1,
-                OriginalAmount = 1,
+                DefinitionName              = item.DefinitionName,
+                DisplayName                 = item.DisplayName,
+                Amount                      = 1,
+                OriginalAmount              = 1,
+                CreateSellOrders            = true,
+                OriginalCreateSellOrders    = true,
+                CreateBuybackOrders         = true,
+                OriginalCreateBuybackOrders = true,
             });
             StatusMessage = $"'{item.DisplayName}' queued for insert.";
         }

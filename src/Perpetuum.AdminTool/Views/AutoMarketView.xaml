@@ -47,6 +47,9 @@
             <TabItem Header="Trade List">
                 <views:AutoMarketTradeListView DataContext="{Binding TradeList}"/>
             </TabItem>
+            <TabItem Header="Raw Materials">
+                <views:AutoMarketRawMaterialsView DataContext="{Binding RawMaterials}"/>
+            </TabItem>
             <TabItem Header="Statistics">
                 <views:AutoMarketStatisticsView DataContext="{Binding Statistics}"/>
             </TabItem>

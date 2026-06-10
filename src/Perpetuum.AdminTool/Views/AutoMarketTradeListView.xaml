@@ -55,6 +55,22 @@
                 <DataGridTextColumn Header="Item"            Binding="{Binding DisplayName}"    Width="*"   IsReadOnly="True"/>
                 <DataGridTextColumn Header="Definition name" Binding="{Binding DefinitionName}" Width="200" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Amount"          Binding="{Binding Amount, UpdateSourceTrigger=LostFocus}" Width="80"/>
+                <DataGridTemplateColumn Header="Sell Orders" Width="80">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding CreateSellOrders, UpdateSourceTrigger=PropertyChanged}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Buyback Orders" Width="95">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding CreateBuybackOrders, UpdateSourceTrigger=PropertyChanged}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Width="95">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>

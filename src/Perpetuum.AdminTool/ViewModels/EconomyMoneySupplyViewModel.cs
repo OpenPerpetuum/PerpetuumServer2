@@ -19,8 +19,9 @@ namespace Perpetuum.AdminTool.ViewModels
         [ObservableProperty] private double _top1PctShare;
         [ObservableProperty] private long   _idleNic;
 
-        public ObservableCollection<EconomySnapshotRow> SnapshotRows { get; } = new();
-        public ObservableCollection<EconomyWealthRow>   Top10Rows    { get; } = new();
+        public ObservableCollection<EconomySnapshotRow>          SnapshotRows  { get; } = new();
+        public ObservableCollection<EconomyWealthRow>            Top10Rows     { get; } = new();
+        public ObservableCollection<EconomyCorporationWealthRow> Top10CorpRows { get; } = new();
 
         public EconomyMoneySupplyViewModel(EconomyMoneySupplyRepository repo) => _repo = repo;
 
@@ -44,6 +45,9 @@ namespace Perpetuum.AdminTool.ViewModels
 
                 Top10Rows.Clear();
                 foreach (var r in data.Top10Rows) Top10Rows.Add(r);
+
+                Top10CorpRows.Clear();
+                foreach (var r in data.Top10CorpRows) Top10CorpRows.Add(r);
 
                 StatusMessage = $"Loaded at {DateTime.UtcNow:HH:mm:ss} UTC.";
             }

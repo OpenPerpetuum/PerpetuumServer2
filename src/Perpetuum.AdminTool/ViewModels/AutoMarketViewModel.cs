@@ -17,10 +17,11 @@ namespace Perpetuum.AdminTool.ViewModels
         [ObservableProperty] private string _statusMessage = "";
         [ObservableProperty] private bool   _statusIsError;
 
-        public AutoMarketConfigViewModel     Config     { get; }
-        public AutoMarketTradeListViewModel  TradeList  { get; }
-        public AutoMarketStatisticsViewModel Statistics { get; }
-        public AutoMarketOrdersViewModel     Orders     { get; }
+        public AutoMarketConfigViewModel          Config      { get; }
+        public AutoMarketTradeListViewModel       TradeList   { get; }
+        public AutoMarketRawMaterialsViewModel    RawMaterials { get; }
+        public AutoMarketStatisticsViewModel      Statistics  { get; }
+        public AutoMarketOrdersViewModel          Orders      { get; }
 
         public AutoMarketViewModel(
             AutoMarketRepository repo,
@@ -28,11 +29,12 @@ namespace Perpetuum.AdminTool.ViewModels
             LookupCache lookups,
             TranslationsViewModel? translations = null)
         {
-            _repo      = repo;
-            Config     = new AutoMarketConfigViewModel(repo, queue);
-            TradeList  = new AutoMarketTradeListViewModel(repo, queue, lookups, translations);
-            Statistics = new AutoMarketStatisticsViewModel(repo, translations);
-            Orders     = new AutoMarketOrdersViewModel(repo, translations);
+            _repo        = repo;
+            Config       = new AutoMarketConfigViewModel(repo, queue);
+            TradeList    = new AutoMarketTradeListViewModel(repo, queue, lookups, translations);
+            RawMaterials = new AutoMarketRawMaterialsViewModel(repo, queue, translations);
+            Statistics   = new AutoMarketStatisticsViewModel(repo, translations);
+            Orders       = new AutoMarketOrdersViewModel(repo, translations);
         }
 
         public async Task LoadAsync()

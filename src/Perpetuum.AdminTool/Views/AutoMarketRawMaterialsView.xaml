@@ -1,0 +1,60 @@
+<UserControl x:Class="Perpetuum.AdminTool.Views.AutoMarketRawMaterialsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:AutoMarketRawMaterialsViewModel}">
+    <DockPanel>
+
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="8,6"
+                BorderBrush="#DDD" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Refresh" Padding="10,2"
+                        Command="{Binding RefreshCommand}"/>
+                <CheckBox DockPanel.Dock="Right" Content="Overrides only"
+                          VerticalAlignment="Center" Margin="0,0,12,0"
+                          IsChecked="{Binding ShowOverridesOnly}"/>
+                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="DimGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="DarkRed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <!-- Grid -->
+        <DataGrid ItemsSource="{Binding FilteredRows}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False" CanUserDeleteRows="False"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name"          Binding="{Binding DisplayName}"                              Width="200" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Price"         Binding="{Binding CurrentPrice,      StringFormat='{}{0:N2}'}" Width="100" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Eff. Cap"      Binding="{Binding EffectiveCap,      StringFormat='{}{0:N0}'}" Width="110" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Cap Override"  Binding="{Binding WeeklyCapOverride, StringFormat='{}{0:N0}'}" Width="110"/>
+                <DataGridTextColumn Header="Bought/Week"   Binding="{Binding BoughtThisWeek,    StringFormat='{}{0:N0}'}" Width="110" IsReadOnly="True"/>
+                <DataGridCheckBoxColumn Header="Buy"       Binding="{Binding CreateBuyOrders}"                           Width="50"/>
+                <DataGridCheckBoxColumn Header="Sell"      Binding="{Binding CreateSellOrders}"                          Width="50"/>
+                <DataGridTemplateColumn Width="80">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Queue Save" Padding="4,1" FontSize="10"
+                                    Command="{Binding DataContext.QueueSaveCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</UserControl>
