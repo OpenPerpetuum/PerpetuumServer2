@@ -1,4 +1,4 @@
-/****** Object:  View [dbo].[v_all_production_costs]    Script Date: 28.05.2026 ******/
+/****** Object:  View [dbo].[v_all_production_costs]    Script Date: 10.06.2026 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -82,11 +82,17 @@ computed_costs AS (
 ),
 raw_resources AS (
     SELECT
-        base.raw_material AS product,
+        base.definitionname AS product,
         ISNULL(mp.unit_price, msp.price) AS production_cost_nic
-    FROM (SELECT DISTINCT raw_material FROM v_required_raw_materials) base
+    FROM (
+        SELECT definitionname
+        FROM dbo.entitydefaults
+        WHERE (categoryflags & 276) = 276   -- cf_raw_material bitmask (0x114)
+          AND enabled = 1
+          AND hidden  = 0
+    ) base
     LEFT JOIN latest_market_prices mp
-        ON base.raw_material COLLATE DATABASE_DEFAULT = mp.resource_name COLLATE DATABASE_DEFAULT
+        ON base.definitionname COLLATE DATABASE_DEFAULT = mp.resource_name COLLATE DATABASE_DEFAULT
     CROSS JOIN max_scarcity_price msp
 ),
 final_costs AS (

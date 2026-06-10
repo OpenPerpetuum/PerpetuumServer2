@@ -1,4 +1,4 @@
-/****** Object:  View [dbo].[v_required_raw_materials]    Script Date: 10.05.2026 7:26:34 ******/
+/****** Object:  View [dbo].[v_trade_list_raw_material_demand]    Script Date: 10.06.2026 7:26:34 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -6,10 +6,13 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
+-- Returns the raw materials (and quantities) required to fulfil the AutoMarket trade list.
+-- Used exclusively as a demand signal in recalculate_raw_material_prices.
+-- Material ENUMERATION is now driven by entitydefaults (cf_raw_material flag) — not this view.
 -- prod_data inlines production_data to avoid view-nesting-level accumulation inside the recursive member.
 -- SQL Server increments the view nesting counter on every recursive iteration that references an external
 -- view; a CTE reference does not count, so chains deeper than ~28 levels no longer hit the 32-level limit.
-CREATE OR ALTER VIEW [dbo].[v_required_raw_materials] AS
+CREATE OR ALTER VIEW [dbo].[v_trade_list_raw_material_demand] AS
     WITH prod_data AS (
         SELECT
             ed.definitionname  AS product,
