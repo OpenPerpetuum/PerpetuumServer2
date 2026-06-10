@@ -45,18 +45,25 @@ namespace Perpetuum.AdminTool.AutoMarket
             await using var cn = new SqlConnection(_connection.BuildConnectionString());
             await cn.OpenAsync();
             await using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT definitionname, amount FROM market_orders_configuration ORDER BY definitionname";
+            cmd.CommandText = "SELECT definitionname, amount, create_sell_orders, create_buyback_orders " +
+                              "FROM market_orders_configuration ORDER BY definitionname";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                var name   = reader.GetString(0);
-                var amount = reader.GetInt32(1);
+                var name          = reader.GetString(0);
+                var amount        = reader.GetInt32(1);
+                var createSell    = reader.GetBoolean(2);
+                var createBuyback = reader.GetBoolean(3);
                 result.Add(new AutoMarketTradeListRow
                 {
-                    DefinitionName = name,
-                    DisplayName    = name,
-                    Amount         = amount,
-                    OriginalAmount = amount,
+                    DefinitionName              = name,
+                    DisplayName                 = name,
+                    Amount                      = amount,
+                    OriginalAmount              = amount,
+                    CreateSellOrders            = createSell,
+                    OriginalCreateSellOrders    = createSell,
+                    CreateBuybackOrders         = createBuyback,
+                    OriginalCreateBuybackOrders = createBuyback,
                 });
             }
             return result;
