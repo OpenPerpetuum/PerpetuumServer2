@@ -12,7 +12,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_RecordRawMatWeeklyPurchased]
 AS
 BEGIN
     SET NOCOUNT ON;
-    MERGE dbo.automarket_rawmat_weekly_tracking AS target
+    MERGE dbo.automarket_rawmat_weekly_tracking WITH (HOLDLOCK) AS target
     USING (SELECT @week_start, @definitionname, @quantity)
           AS source(week_start, definitionname, qty_purchased)
     ON  target.week_start     = source.week_start

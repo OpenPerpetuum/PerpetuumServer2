@@ -40,9 +40,9 @@ GO
 --------------------------------------------------------------------
 -- 3. New automarket_config row: weekly_rawmat_cap_default
 --------------------------------------------------------------------
-IF NOT EXISTS (SELECT 1 FROM automarket_config WHERE param_name = 'weekly_rawmat_cap_default')
+IF NOT EXISTS (SELECT 1 FROM dbo.automarket_config WHERE param_name = 'weekly_rawmat_cap_default')
 BEGIN
-    INSERT INTO automarket_config (param_name, param_value)
+    INSERT INTO dbo.automarket_config (param_name, param_value)
     VALUES ('weekly_rawmat_cap_default', 500000000);
     PRINT 'Inserted weekly_rawmat_cap_default into automarket_config';
 END
@@ -86,7 +86,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_RecordRawMatWeeklyPurchased]
 AS
 BEGIN
     SET NOCOUNT ON;
-    MERGE dbo.automarket_rawmat_weekly_tracking AS target
+    MERGE dbo.automarket_rawmat_weekly_tracking WITH (HOLDLOCK) AS target
     USING (SELECT @week_start, @definitionname, @quantity)
           AS source(week_start, definitionname, qty_purchased)
     ON  target.week_start     = source.week_start
