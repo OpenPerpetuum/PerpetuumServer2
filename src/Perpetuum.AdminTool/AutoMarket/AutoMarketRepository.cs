@@ -70,7 +70,7 @@ namespace Perpetuum.AdminTool.AutoMarket
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
                 "SELECT raw_material, SUM(total_quantity) " +
-                "FROM v_required_raw_materials " +
+                "FROM v_trade_list_raw_material_demand " +
                 "GROUP BY raw_material " +
                 "ORDER BY raw_material";
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -167,26 +167,28 @@ namespace Perpetuum.AdminTool.AutoMarket
 
             // 2. Config params
             double anchorFraction = 0.15, dsMin = 0.25, dsMax = 4.0;
+            long   weeklyCapDefault = 500_000_000;
             await using (var cmd = cn.CreateCommand())
             {
                 cmd.CommandText =
                     "SELECT param_name, param_value FROM automarket_config " +
-                    "WHERE param_name IN ('plasma_anchor_fraction','resource_ds_ratio_min','resource_ds_ratio_max')";
+                    "WHERE param_name IN ('plasma_anchor_fraction','resource_ds_ratio_min','resource_ds_ratio_max','weekly_rawmat_cap_default')";
                 await using var r = await cmd.ExecuteReaderAsync();
                 while (await r.ReadAsync())
                 {
                     switch (r.GetString(0))
                     {
-                        case "plasma_anchor_fraction": anchorFraction = r.GetDouble(1); break;
-                        case "resource_ds_ratio_min":  dsMin          = r.GetDouble(1); break;
-                        case "resource_ds_ratio_max":  dsMax          = r.GetDouble(1); break;
+                        case "plasma_anchor_fraction":    anchorFraction   = r.GetDouble(1); break;
+                        case "resource_ds_ratio_min":     dsMin            = r.GetDouble(1); break;
+                        case "resource_ds_ratio_max":     dsMax            = r.GetDouble(1); break;
+                        case "weekly_rawmat_cap_default": weeklyCapDefault = (long)r.GetDouble(1); break;
                     }
                 }
             }
 
             var plasmaAnchor = alphaPlasmaPrice * anchorFraction;
 
-            // 3. Supply data (last 7 days from resources_gathered)
+            // 3. Supply data (last 7 days)
             var supply = new Dictionary<string, (double DailyAvg, long PvpQty, long TotalQty)>(StringComparer.OrdinalIgnoreCase);
             await using (var cmd = cn.CreateCommand())
             {
@@ -200,27 +202,28 @@ namespace Perpetuum.AdminTool.AutoMarket
                     "GROUP BY resource_name";
                 await using var r = await cmd.ExecuteReaderAsync();
                 while (await r.ReadAsync())
-                {
                     supply[r.GetString(0)] = ((double)r.GetDecimal(3), r.GetInt64(1), r.GetInt64(2));
-                }
             }
 
-            // 4. Demand data
+            // 4. Demand data (from trade-list BOM — demand signal only)
             var demand = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             await using (var cmd = cn.CreateCommand())
             {
                 cmd.CommandText =
                     "SELECT raw_material, SUM(total_quantity) / 7.0 " +
-                    "FROM v_required_raw_materials GROUP BY raw_material";
+                    "FROM v_trade_list_raw_material_demand GROUP BY raw_material";
                 await using var r = await cmd.ExecuteReaderAsync();
                 while (await r.ReadAsync()) demand[r.GetString(0)] = (double)r.GetDecimal(1);
             }
 
-            // 5. Materials list
+            // 5. Materials list — all cf_raw_material items (categoryflags & 276 = 276)
             var materials = new List<string>();
             await using (var cmd = cn.CreateCommand())
             {
-                cmd.CommandText = "SELECT DISTINCT raw_material FROM v_required_raw_materials ORDER BY raw_material";
+                cmd.CommandText =
+                    "SELECT definitionname FROM entitydefaults " +
+                    "WHERE (categoryflags & 276) = 276 AND enabled = 1 AND hidden = 0 " +
+                    "ORDER BY definitionname";
                 await using var r = await cmd.ExecuteReaderAsync();
                 while (await r.ReadAsync()) materials.Add(r.GetString(0));
             }
@@ -236,7 +239,29 @@ namespace Perpetuum.AdminTool.AutoMarket
                 while (await r.ReadAsync()) storedPrices[r.GetString(0)] = (double)r.GetDecimal(1);
             }
 
-            // Compute
+            // 7. Weekly purchases this week per material
+            var weeklyPurchased = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandText =
+                    "DECLARE @ws DATE = DATEADD(DAY, -DATEPART(WEEKDAY, CAST(GETUTCDATE() AS DATE)) + 2, CAST(GETUTCDATE() AS DATE)); " +
+                    "SELECT definitionname, ISNULL(SUM(qty_purchased),0) " +
+                    "FROM automarket_rawmat_weekly_tracking WHERE week_start >= @ws " +
+                    "GROUP BY definitionname";
+                await using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync()) weeklyPurchased[r.GetString(0)] = r.GetInt64(1);
+            }
+
+            // 8. Per-material cap overrides
+            var capOverrides = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            await using (var cmd = cn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT definitionname, weekly_cap_override FROM automarket_rawmat_overrides WHERE weekly_cap_override IS NOT NULL";
+                await using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync()) capOverrides[r.GetString(0)] = r.GetInt32(1);
+            }
+
+            // Compute rows
             var result = new List<AutoMarketPricingTraceRow>();
             foreach (var name in materials)
             {
@@ -254,6 +279,7 @@ namespace Perpetuum.AdminTool.AutoMarket
 
                 var riskMultiplier = 1.0 + pvpFraction;
                 var computedPrice  = Math.Round(plasmaAnchor * sdRatio * riskMultiplier, 2);
+                var effectiveCap   = capOverrides.TryGetValue(name, out var ov) ? ov : weeklyCapDefault;
 
                 result.Add(new AutoMarketPricingTraceRow
                 {
@@ -263,6 +289,62 @@ namespace Perpetuum.AdminTool.AutoMarket
                     RiskMultiplier = Math.Round(riskMultiplier, 4),
                     ComputedPrice  = computedPrice,
                     StoredPrice    = storedPrices.TryGetValue(name, out var sp) ? sp : null,
+                    BoughtThisWeek = weeklyPurchased.TryGetValue(name, out var bw) ? bw : 0,
+                    EffectiveCap   = effectiveCap,
+                });
+            }
+            return result;
+        }
+
+        public async Task<List<AutoMarketCoveredMaterialRow>> LoadCoveredMaterialsAsync()
+        {
+            var result = new List<AutoMarketCoveredMaterialRow>();
+            await using var cn = new SqlConnection(_connection.BuildConnectionString());
+            await cn.OpenAsync();
+            await using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = 30;
+            cmd.CommandText =
+                "DECLARE @ws DATE = DATEADD(DAY, -DATEPART(WEEKDAY, CAST(GETUTCDATE() AS DATE)) + 2, CAST(GETUTCDATE() AS DATE)); " +
+                "SELECT " +
+                "  ed.definitionname, " +
+                "  ISNULL(rmp.unit_price, 0)                                       AS current_price, " +
+                "  COALESCE(o.weekly_cap_override, CAST(cfg.param_value AS BIGINT)) AS effective_cap, " +
+                "  o.weekly_cap_override, " +
+                "  ISNULL(o.create_buy_orders,  1)                                 AS create_buy_orders, " +
+                "  ISNULL(o.create_sell_orders, 1)                                 AS create_sell_orders, " +
+                "  ISNULL(wt.qty_purchased, 0)                                     AS bought_this_week " +
+                "FROM entitydefaults ed " +
+                "LEFT JOIN automarket_rawmat_overrides o ON o.definitionname = ed.definitionname " +
+                "LEFT JOIN ( " +
+                "    SELECT resource_name, unit_price FROM resource_market_prices " +
+                "    WHERE calculated_on = (SELECT MAX(calculated_on) FROM resource_market_prices) " +
+                ") rmp ON rmp.resource_name = ed.definitionname " +
+                "LEFT JOIN ( " +
+                "    SELECT definitionname, SUM(qty_purchased) AS qty_purchased " +
+                "    FROM automarket_rawmat_weekly_tracking WHERE week_start >= @ws " +
+                "    GROUP BY definitionname " +
+                ") wt ON wt.definitionname = ed.definitionname " +
+                "CROSS JOIN (SELECT param_value FROM automarket_config WHERE param_name = 'weekly_rawmat_cap_default') cfg " +
+                "WHERE (ed.categoryflags & 276) = 276 AND ed.enabled = 1 AND ed.hidden = 0 " +
+                "ORDER BY ed.definitionname";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var capOverride = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3);
+                var buy  = reader.GetBoolean(4);
+                var sell = reader.GetBoolean(5);
+                result.Add(new AutoMarketCoveredMaterialRow
+                {
+                    DefinitionName      = reader.GetString(0),
+                    CurrentPrice        = reader.IsDBNull(1) ? 0.0 : (double)reader.GetDecimal(1),
+                    EffectiveCap        = reader.GetInt64(2),
+                    WeeklyCapOverride   = capOverride,
+                    CreateBuyOrders     = buy,
+                    CreateSellOrders    = sell,
+                    BoughtThisWeek      = reader.GetInt64(6),
+                    OriginalCapOverride = capOverride,
+                    OriginalBuyOrders   = buy,
+                    OriginalSellOrders  = sell,
                 });
             }
             return result;
