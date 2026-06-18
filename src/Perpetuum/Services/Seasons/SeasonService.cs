@@ -402,11 +402,19 @@ namespace Perpetuum.Services.Seasons
                 var entry = rankings[rank - 1];
                 if (entry.LeaderboardRewardDelivered) continue;
 
-                var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
-                if (reward != null && DeliverLeaderboardReward(entry.CharacterId, reward))
+                try
                 {
-                    delivered++;
-                    _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
+                    var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
+                    if (reward != null && DeliverLeaderboardReward(entry.CharacterId, reward))
+                    {
+                        delivered++;
+                        _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceError(
+                        $"[SeasonService] Failed to redeliver leaderboard reward for character {entry.CharacterId} (rank {rank}): {ex}");
                 }
             }
             return delivered;
@@ -438,13 +446,21 @@ namespace Perpetuum.Services.Seasons
                 if (entry.LeaderboardRewardDelivered)
                     continue;
 
-                var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
-                bool rewardDelivered = reward != null && DeliverLeaderboardReward(entry.CharacterId, reward);
+                try
+                {
+                    var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
+                    bool rewardDelivered = reward != null && DeliverLeaderboardReward(entry.CharacterId, reward);
 
-                if (reward == null || rewardDelivered)
-                    _repository.MarkLeaderboardDelivered(entry.CharacterId, season.Id);
-                SendFinalStandingsMail(entry.CharacterId, rank, entry.TotalPoints,
-                    rewardDelivered, season.Name);
+                    if (reward == null || rewardDelivered)
+                        _repository.MarkLeaderboardDelivered(entry.CharacterId, season.Id);
+                    SendFinalStandingsMail(entry.CharacterId, rank, entry.TotalPoints,
+                        rewardDelivered, season.Name);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceError(
+                        $"[SeasonService] Failed to deliver leaderboard reward for character {entry.CharacterId} (rank {rank}): {ex}");
+                }
             }
 
             _activeRates = ImmutableList<SeasonActivityRate>.Empty;
