@@ -441,7 +441,8 @@ namespace Perpetuum.Services.Seasons
                 var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
                 bool rewardDelivered = reward != null && DeliverLeaderboardReward(entry.CharacterId, reward);
 
-                _repository.MarkLeaderboardDelivered(entry.CharacterId, season.Id);
+                if (reward == null || rewardDelivered)
+                    _repository.MarkLeaderboardDelivered(entry.CharacterId, season.Id);
                 SendFinalStandingsMail(entry.CharacterId, rank, entry.TotalPoints,
                     rewardDelivered, season.Name);
             }

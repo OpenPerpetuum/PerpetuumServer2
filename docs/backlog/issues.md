@@ -4,7 +4,7 @@
 
 ## ISSUE-031 - Season leaderboard rewards not delivered automatically or via admin command
 
-Status: TODO
+Status: DONE
 Priority: CRITICAL
 Area: Seasons / Rewards / Leaderboard
 
