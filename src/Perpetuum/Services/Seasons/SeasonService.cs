@@ -113,6 +113,11 @@ namespace Perpetuum.Services.Seasons
             var previous = _activeSeason;
             var season = _repository.GetActiveSeason();
 
+            // Defence-in-depth: reject any season whose start_time has not yet arrived
+            // (DB guard already handles this; this backstop covers clock skew / in-flight state).
+            if (season != null && DateTime.UtcNow < season.StartTime)
+                season = null;
+
             if (season == null)
             {
                 // If admin deactivated before natural end, trigger end processing now
@@ -185,7 +190,7 @@ namespace Perpetuum.Services.Seasons
         public void RecordActivity(int characterId, SeasonActivityType activityType, ActivityEvent evt)
         {
             var season = _activeSeason;
-            if (season == null || DateTime.UtcNow > season.EndTime)
+            if (season == null || DateTime.UtcNow < season.StartTime || DateTime.UtcNow > season.EndTime)
                 return;
 
             var rates = _activeRates.Where(r => r.ActivityType == activityType).ToList();
@@ -270,7 +275,7 @@ namespace Perpetuum.Services.Seasons
                 _pendingIntroChars.Enqueue(character);
                 return;
             }
-            if (DateTime.UtcNow > season.EndTime)
+            if (DateTime.UtcNow < season.StartTime || DateTime.UtcNow > season.EndTime)
                 return;
             if (_repository.TryMarkIntroMailSent(character.Id, season.Id))
                 SendIntroMail(character, season);

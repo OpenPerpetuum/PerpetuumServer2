@@ -12,7 +12,7 @@ namespace Perpetuum.Services.Seasons
                 "SELECT id, name, description, start_time, end_time, is_active, " +
                 "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode, " +
                 "daily_objectives_per_day " +
-                "FROM seasons WHERE is_active = 1")
+                "FROM seasons WHERE is_active = 1 AND start_time <= GETUTCDATE()")
                 .ExecuteSingleRow();
 
             if (record == null) return null;

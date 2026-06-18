@@ -170,7 +170,7 @@ Operators cannot meaningfully browse or audit market orders. The broken type and
 
 ## ISSUE-030 - SeasonService ignores season start time, activating seasons before they should begin
 
-Status: TODO
+Status: DONE
 Priority: CRITICAL
 Area: Seasons
 
