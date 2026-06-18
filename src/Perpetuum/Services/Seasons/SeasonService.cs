@@ -414,7 +414,7 @@ namespace Perpetuum.Services.Seasons
             var seasonChannel = _channelManager.Value.GetChannelByName(SeasonChannelName);
             if (seasonChannel != null)
             {
-                seasonChannel.SetTopic("No active seasons");
+                _channelManager.Value.SetTopic(SeasonChannelName, _announcer.Value, "No active seasons");
             }
 
             // Null the cache immediately so no further activity is recorded
@@ -635,7 +635,7 @@ namespace Perpetuum.Services.Seasons
             var seasonChannel = _channelManager.Value.GetChannelByName(SeasonChannelName);
             if (seasonChannel != null)
             {
-                seasonChannel.SetTopic($"Season {season.Name}: {season.StartTime} - {season.EndTime}");
+                _channelManager.Value.SetTopic(SeasonChannelName, _announcer.Value, $"Season {season.Name}: {season.StartTime} - {season.EndTime}");
             }
 
             foreach (var character in _sessionManager.SelectedCharacters)
@@ -669,7 +669,7 @@ namespace Perpetuum.Services.Seasons
             foreach (var obj in _activeObjectives.OrderBy(o => o.DisplayOrder))
             {
                 chatMessage.AppendLine($"  {obj.Name}: {obj.Description} (Bonus: {obj.BonusPoints} pts)");
-                chatMessage.AppendLine($"    Progress by performing {ActivityTypeName(obj.ActivityType)}. Target: {obj.TargetValue:N0}");
+                //chatMessage.AppendLine($"    Progress by performing {ActivityTypeName(obj.ActivityType)}. Target: {obj.TargetValue:N0}");
             }
 
             chatMessage.AppendLine();

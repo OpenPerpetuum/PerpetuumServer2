@@ -1,6 +1,47 @@
 # Last ID used
 
-029
+031
+
+## ISSUE-031 - Season leaderboard rewards not delivered automatically or via admin command
+
+Status: TODO
+Priority: CRITICAL
+Area: Seasons / Rewards / Leaderboard
+
+### Problem
+Participants of a season are not receiving leaderboard rewards, neither automatically when the season ends nor when an admin manually triggers the reward delivery command.
+
+### Related Error
+The following exception fires in `SeasonService.Update` on every tick, which may block the reward delivery path:
+
+```
+System.InvalidCastException: Unable to cast object of type 'System.Byte' to type 'System.Int32'.
+   at Perpetuum.Data.DataRecordExtensions.GetValue[T](IDataRecord record, Int32 index)
+   at Perpetuum.Data.DataRecordExtensions.GetValue[T](IDataRecord record, String name)
+   at Perpetuum.Services.Seasons.SeasonRepository.GetPendingRecurringSeason()
+   at Perpetuum.Services.Seasons.SeasonService.RefreshCache()
+   at Perpetuum.Services.Seasons.SeasonService.Update(TimeSpan time)
+```
+
+A column returned by the `GetPendingRecurringSeason` query is typed as `tinyint` (or similar `BYTE`-width type) in the DB but is read as `int` in C#. The exception throws every update tick, causing `RefreshCache()` to abort. This may be preventing the service from ever seeing the active season — and therefore from running leaderboard reward delivery.
+
+### Impact
+- Leaderboard rewards are silently not delivered to top season participants.
+- `SeasonService.RefreshCache()` crashes on every update tick due to the type mismatch.
+- Admin re-deliver command has no effect if the service cannot load season state.
+- Players expect rewards after season end; silent failure erodes trust.
+
+### Proposed Fix
+1. **Fix the type mismatch** — identify which column in the `GetPendingRecurringSeason` result set is a `tinyint`/`smallint`/`byte` in SQL but is read as `int` in C#. Change the C# read to use the correct numeric type, or `CAST` the column to `int` in the query.
+2. **Verify reward delivery path** — once `RefreshCache()` no longer throws, confirm that leaderboard reward delivery runs for the ended season. If not, trace the delivery trigger separately.
+3. **Investigate admin command** — check whether the admin re-deliver command (`SeasonRedeliverLeaderboardRewards`, if implemented per ISSUE-025) also depends on `RefreshCache()` or uses a separate repository path that may have its own bug.
+
+### Notes
+- Stack trace points to `SeasonRepository.cs:511` inside `GetPendingRecurringSeason()`.
+- Cross-reference ISSUE-025 (leaderboard rewards not delivered — root cause was swapped `rank_min`/`rank_max`). Verify those DB rows are correctly set before concluding the reward path itself is broken.
+- The exception is non-fatal to the process but fires on every tick — investigate whether it swallows the exception or propagates to the caller and aborts the season update loop.
+
+---
 
 ## ISSUE-029 - Insurance price recalculation crashes with SP nesting level exceeded (limit 32)
 
@@ -124,6 +165,37 @@ Operators cannot meaningfully browse or audit market orders. The broken type and
 - Investigate whether the type filter bug is a null/default value mismatch (e.g. enum default being passed as the filter even when "All" is selected, or vice versa).
 - The category tree hierarchy is likely already used elsewhere in the Admin Tool or game content — reuse the existing resolution pattern rather than introducing a new one.
 - Fix all three as a single unit since they share the same view; shipping a partial fix leaves the Orders filter UX still broken.
+
+---
+
+## ISSUE-030 - SeasonService ignores season start time, activating seasons before they should begin
+
+Status: TODO
+Priority: CRITICAL
+Area: Seasons
+
+### Problem
+`SeasonService` does not enforce `start_time` anywhere. A season marked `is_active = 1` with a future `start_time` is immediately treated as live: `GetActiveSeason()` queries only `WHERE is_active = 1` with no `start_time <= GETUTCDATE()` guard, and `RefreshCache()`, `RecordActivity()`, and `OnCharacterLogin()` all check only `EndTime` — `StartTime` is never compared against `DateTime.UtcNow` at runtime.
+
+### Impact
+- Activity points accumulate before the season is intended to start.
+- Players receive intro mails and leaderboard announcements prematurely.
+- Recurring season clones (whose `start_time` is set to a future date) go live immediately after the previous season ends instead of waiting for their scheduled start.
+
+### Proposed Fix
+Two-layer enforcement:
+
+1. **DB layer** — add `AND start_time <= GETUTCDATE()` to the `GetActiveSeason()` query in `SeasonRepository` so a future-dated active season is invisible to the service until its start time arrives.
+2. **Service layer** — in `RefreshCache()`, after loading the season, assert `DateTime.UtcNow >= season.StartTime`; if not, treat as no active season (clear cache, do not notify).  Guard `RecordActivity()` and `OnCharacterLogin()` with the same check so the in-memory `_activeSeason` cannot process activity before start even if the cache is stale.
+
+The DB guard is the primary fix. The service-layer check is a defence-in-depth backstop.
+
+### Notes
+- `SeasonService.cs` line 114: `_repository.GetActiveSeason()` — fix in repository query.
+- `SeasonRepository.cs` lines 11-15: the `WHERE is_active = 1` query needs the `start_time` predicate.
+- `RecordActivity()` line 188: only guards `EndTime`; add `DateTime.UtcNow < season.StartTime` early return.
+- `OnCharacterLogin()` line 273: same pattern.
+- The recurring season clone path (`CloneSeasonForNextIteration`) already sets a future `start_time`, so the DB fix automatically gates the clone.
 
 ---
 
