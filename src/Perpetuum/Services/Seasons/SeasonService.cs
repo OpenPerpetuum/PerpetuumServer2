@@ -490,7 +490,7 @@ namespace Perpetuum.Services.Seasons
 
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
 
-            if (season.IsRecurring)
+            if (season.IsRecurring && !_repository.HasFutureClone(season))
                 _repository.CloneSeasonForNextIteration(season);
         }
 

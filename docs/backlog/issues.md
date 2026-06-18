@@ -1,6 +1,37 @@
 # Last ID used
 
-031
+032
+
+## ISSUE-032 - Recurring season creates duplicate next-run on each cache refresh before new run starts
+
+Status: DONE
+Priority: CRITICAL
+Area: Seasons / Recurring
+
+### Problem
+After a recurring season ends and a new run is cloned (but not yet started — its `start_time` is in the future), `SeasonService` keeps creating additional clones on every subsequent `RefreshCache()` call, producing duplicate season rows.
+
+### Root Cause (Confirmed)
+`GetPendingRecurringSeason()` lacked a filter on `end_time`. Its query:
+```sql
+WHERE is_active = 0 AND is_recurring = 1 AND start_time <= GETUTCDATE()
+```
+matches the already-completed previous season (S1) because S1 has `is_active = 0`, `is_recurring = 1`, and `start_time` in the past — even though it has already ended. The future clone (S2) is excluded by the `start_time <= now` predicate until its own start time arrives.
+
+This caused `RefreshCache()` to re-activate S1 every 5 minutes → S1 ends immediately → `ProcessSeasonEnd(S1)` runs again → another clone is created → indefinitely.
+
+### Fix
+1. **Primary** — Added `AND end_time > GETUTCDATE()` to `GetPendingRecurringSeason()`. Ended seasons are no longer candidates, so only truly future pending runs are returned.
+2. **Defense-in-depth** — Added `HasFutureClone(Season)` repository method that checks for any existing future inactive clone in the same recurring chain. `ProcessSeasonEnd` now guards `CloneSeasonForNextIteration` with this check, preventing a second clone even if the method fires twice.
+
+### Files Changed
+- `src/Perpetuum/Services/Seasons/SeasonRepository.cs` — fixed query in `GetPendingRecurringSeason()`; added `HasFutureClone()`
+- `src/Perpetuum/Services/Seasons/SeasonService.cs` — guarded clone call in `ProcessSeasonEnd`
+
+### Notes
+- Any orphan clone rows already accumulated in the DB (`start_time` in the future, `is_active = 0`) are harmless and will be correctly activated when their `start_time` arrives. Duplicates with the same `start_time` should be deleted manually.
+
+---
 
 ## ISSUE-031 - Season leaderboard rewards not delivered automatically or via admin command
 
