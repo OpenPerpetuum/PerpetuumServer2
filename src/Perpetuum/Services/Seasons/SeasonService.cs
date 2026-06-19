@@ -113,6 +113,11 @@ namespace Perpetuum.Services.Seasons
             var previous = _activeSeason;
             var season = _repository.GetActiveSeason();
 
+            // Defence-in-depth: reject any season whose start_time has not yet arrived
+            // (DB guard already handles this; this backstop covers clock skew / in-flight state).
+            if (season != null && DateTime.UtcNow < season.StartTime)
+                season = null;
+
             if (season == null)
             {
                 // If admin deactivated before natural end, trigger end processing now
@@ -185,7 +190,7 @@ namespace Perpetuum.Services.Seasons
         public void RecordActivity(int characterId, SeasonActivityType activityType, ActivityEvent evt)
         {
             var season = _activeSeason;
-            if (season == null || DateTime.UtcNow > season.EndTime)
+            if (season == null || DateTime.UtcNow < season.StartTime || DateTime.UtcNow > season.EndTime)
                 return;
 
             var rates = _activeRates.Where(r => r.ActivityType == activityType).ToList();
@@ -270,7 +275,7 @@ namespace Perpetuum.Services.Seasons
                 _pendingIntroChars.Enqueue(character);
                 return;
             }
-            if (DateTime.UtcNow > season.EndTime)
+            if (DateTime.UtcNow < season.StartTime || DateTime.UtcNow > season.EndTime)
                 return;
             if (_repository.TryMarkIntroMailSent(character.Id, season.Id))
                 SendIntroMail(character, season);
@@ -397,11 +402,19 @@ namespace Perpetuum.Services.Seasons
                 var entry = rankings[rank - 1];
                 if (entry.LeaderboardRewardDelivered) continue;
 
-                var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
-                if (reward != null && DeliverLeaderboardReward(entry.CharacterId, reward))
+                try
                 {
-                    delivered++;
-                    _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
+                    var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
+                    if (reward != null && DeliverLeaderboardReward(entry.CharacterId, reward))
+                    {
+                        delivered++;
+                        _repository.MarkLeaderboardDelivered(entry.CharacterId, seasonId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceError(
+                        $"[SeasonService] Failed to redeliver leaderboard reward for character {entry.CharacterId} (rank {rank}): {ex}");
                 }
             }
             return delivered;
@@ -414,7 +427,7 @@ namespace Perpetuum.Services.Seasons
             var seasonChannel = _channelManager.Value.GetChannelByName(SeasonChannelName);
             if (seasonChannel != null)
             {
-                seasonChannel.SetTopic("No active seasons");
+                _channelManager.Value.SetTopic(SeasonChannelName, _announcer.Value, "No active seasons");
             }
 
             // Null the cache immediately so no further activity is recorded
@@ -433,12 +446,21 @@ namespace Perpetuum.Services.Seasons
                 if (entry.LeaderboardRewardDelivered)
                     continue;
 
-                var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
-                bool rewardDelivered = reward != null && DeliverLeaderboardReward(entry.CharacterId, reward);
+                try
+                {
+                    var reward = leaderboard.FirstOrDefault(r => rank >= r.RankMin && rank <= r.RankMax);
+                    bool rewardDelivered = reward != null && DeliverLeaderboardReward(entry.CharacterId, reward);
 
-                _repository.MarkLeaderboardDelivered(entry.CharacterId, season.Id);
-                SendFinalStandingsMail(entry.CharacterId, rank, entry.TotalPoints,
-                    rewardDelivered, season.Name);
+                    if (reward == null || rewardDelivered)
+                        _repository.MarkLeaderboardDelivered(entry.CharacterId, season.Id);
+                    SendFinalStandingsMail(entry.CharacterId, rank, entry.TotalPoints,
+                        rewardDelivered, season.Name);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceError(
+                        $"[SeasonService] Failed to deliver leaderboard reward for character {entry.CharacterId} (rank {rank}): {ex}");
+                }
             }
 
             _activeRates = ImmutableList<SeasonActivityRate>.Empty;
@@ -468,7 +490,7 @@ namespace Perpetuum.Services.Seasons
 
             _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
 
-            if (season.IsRecurring)
+            if (season.IsRecurring && !_repository.HasFutureClone(season))
                 _repository.CloneSeasonForNextIteration(season);
         }
 
@@ -635,7 +657,7 @@ namespace Perpetuum.Services.Seasons
             var seasonChannel = _channelManager.Value.GetChannelByName(SeasonChannelName);
             if (seasonChannel != null)
             {
-                seasonChannel.SetTopic($"Season {season.Name}: {season.StartTime} - {season.EndTime}");
+                _channelManager.Value.SetTopic(SeasonChannelName, _announcer.Value, $"Season {season.Name}: {season.StartTime} - {season.EndTime}");
             }
 
             foreach (var character in _sessionManager.SelectedCharacters)
@@ -669,7 +691,7 @@ namespace Perpetuum.Services.Seasons
             foreach (var obj in _activeObjectives.OrderBy(o => o.DisplayOrder))
             {
                 chatMessage.AppendLine($"  {obj.Name}: {obj.Description} (Bonus: {obj.BonusPoints} pts)");
-                chatMessage.AppendLine($"    Progress by performing {ActivityTypeName(obj.ActivityType)}. Target: {obj.TargetValue:N0}");
+                //chatMessage.AppendLine($"    Progress by performing {ActivityTypeName(obj.ActivityType)}. Target: {obj.TargetValue:N0}");
             }
 
             chatMessage.AppendLine();

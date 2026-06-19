@@ -12,7 +12,7 @@ namespace Perpetuum.Services.Seasons
                 "SELECT id, name, description, start_time, end_time, is_active, " +
                 "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode, " +
                 "daily_objectives_per_day " +
-                "FROM seasons WHERE is_active = 1")
+                "FROM seasons WHERE is_active = 1 AND start_time <= GETUTCDATE()")
                 .ExecuteSingleRow();
 
             if (record == null) return null;
@@ -490,7 +490,7 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
-                ScoringMode = (SeasonScoringMode)record.GetValue<int>("scoring_mode"),
+                ScoringMode = (SeasonScoringMode)record.GetValue<byte>("scoring_mode"),
                 DailyObjectivesPerDay = (int?)record.GetValue<short?>("daily_objectives_per_day"),
             };
         }
@@ -502,7 +502,8 @@ namespace Perpetuum.Services.Seasons
                 "is_recurring, recurrence_gap_days, recurrence_iteration, recurrence_base_name, scoring_mode, " +
                 "daily_objectives_per_day " +
                 "FROM seasons " +
-                "WHERE is_active = 0 AND is_recurring = 1 AND start_time <= GETUTCDATE() " +
+                "WHERE is_active = 0 AND is_recurring = 1 " +
+                "AND start_time <= GETUTCDATE() AND end_time > GETUTCDATE() " +
                 "ORDER BY start_time ASC")
                 .ExecuteSingleRow();
 
@@ -520,9 +521,26 @@ namespace Perpetuum.Services.Seasons
                 RecurrenceGapDays = record.GetValue<int?>("recurrence_gap_days"),
                 RecurrenceIteration = record.GetValue<int>("recurrence_iteration"),
                 RecurrenceBaseName = record.GetValue<string?>("recurrence_base_name"),
-                ScoringMode = (SeasonScoringMode)record.GetValue<int>("scoring_mode"),
+                ScoringMode = (SeasonScoringMode)record.GetValue<byte>("scoring_mode"),
                 DailyObjectivesPerDay = (int?)record.GetValue<short?>("daily_objectives_per_day"),
             };
+        }
+
+        /// <summary>
+        /// Returns true if any future (not yet started) inactive clone already exists for this recurring season chain.
+        /// Used to prevent duplicate clones when ProcessSeasonEnd fires more than once.
+        /// </summary>
+        public bool HasFutureClone(Season season)
+        {
+            string baseName = season.RecurrenceBaseName ?? season.Name;
+            var count = Db.Query(
+                "SELECT COUNT(1) FROM seasons " +
+                "WHERE is_recurring = 1 AND is_active = 0 " +
+                "AND start_time > GETUTCDATE() " +
+                "AND recurrence_base_name = @baseName")
+                .SetParameter("@baseName", baseName)
+                .ExecuteScalar<int>();
+            return count > 0;
         }
 
         public Season CloneSeasonForNextIteration(Season previous)
