@@ -1,6 +1,149 @@
 # Last ID used
 
-042
+043
+
+## IMPROVEMENT-043 - Hunter Drones with Self-Destruct Module
+
+Status: DONE
+Priority: HIGH
+Area: Drones / AI / Combat / Modules
+
+### Implementation Note
+
+This entry's "Proposed Architecture"/"Content Required" sections below are the original brainstorm and
+are superseded in several places by `docs/superpowers/specs/2026-07-18-improvement-043-hunter-drones-self-destruct-design.md`
+(the approved design spec) and by real implementation decisions made during the 7-task build (e.g. a
+single `TurretType.HunterDrone` value instead of `HunterDronePvE`/`HunterDronePvP`, a single shared
+`HunterDrone` chassis + RCU ammo item instead of separate PvE/PvP chassis, and `AggregateField.detection_range`
+instead of a non-existent `item_work_range` aggregate field). Content SQL (entity definitions, category
+flags, aggregate values) lives in
+`docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql` — generated but **not yet
+applied to any database**. Tech tree placement / production recipes / market listing were explicitly left
+out of scope (see that migration file's closing comment) and remain a follow-up if these items are meant
+to be craftable/researchable rather than GM-granted.
+
+### Problem
+
+No kamikaze-style autonomous drone exists. Players need a fire-and-forget drone that independently hunts targets within its operational range and destroys itself (and the target) on contact. Two variants are needed: PvE (hunts Niani NPCs) and PvP (hunts players by standings). A standalone self-destruct module should also be available for kamikaze piloting.
+
+### System Exploration Findings
+
+Performed before writing this entry. Key anchors:
+
+**Drone / remote controller pattern:**
+- `RemoteControllerModule.OnAction()` (src/Perpetuum/Modules/RemoteControl/RemoteControllerModule.cs:115–165): spawns the unit, applies bandwidth, sets operational range. Each controller subclass overrides `CreateAndConfigureRcu()` to produce its specific drone type.
+- `TurretType` enum (src/Perpetuum/Zones/RemoteControl/TurretType.cs): `Sentry, Mining, Harvesting, CombatDrone, IndustrialDrone, SupportDrone` — two new values needed: `HunterDronePvE`, `HunterDronePvP`.
+- `RemoteControlledCreature.IsReceivedRetreatCommand` (RemoteControlledCreature.cs:33–44): retreat effect is already wired; checking it in the AI loop is the only control signal hunter drones should honour.
+
+**Autonomous targeting (vs. current combat drone behaviour):**
+- `CombatDrone.HasCommandBotPrimaryLock()` (CombatDrone.cs:45–50): existing combat drones require the command robot to have a primary lock. Hunter drones must scan autonomously instead — this is the core divergence.
+- PvP standing check already implemented in `RemoteControlledCreature.IsHostilePlayer()` (RemoteControlledCreature.cs:102–139): standing ≤ 0.0 = hostile. Corporation standing checked first, then personal standing.
+- `Faction` enum (src/Perpetuum/Zones/NpcSystem/Faction.cs:3–9) — `Niani` value exists. PvE hunter drones filter NPCs by `Npc.Faction == Faction.Niani`.
+
+**Sentry turret as auto-attack reference:**
+- `SentryTurretIdleAI` → `SentryTurretCombatAI` (src/Perpetuum/Zones/NpcSystem/AI/): properly wired, stationary auto-attack. Hunter drone AI mirrors this state machine but adds a Patrol state and a SelfDestruct state instead of a stationary combat state.
+
+**Retreat command translator:**
+- `RemoteCommandTranslatorModule` (src/Perpetuum/Modules/RemoteControl/RemoteCommandTranslatorModule.cs:13–130): applies six modifiers to all active drones. `drone_remote_command_translation_retreat` (line 20) is the one hunter drones respond to.
+- `RetreatCombatDroneAI` (src/Perpetuum/Zones/NpcSystem/AI/CombatDrones/RetreatCombatDroneAI.cs): A* path back to command robot; scoops drone on arrival.
+
+**Self-destruct / delayed kill pattern:**
+- `AreaBomb.cs` (src/Perpetuum/Zones/Eggs/AreaBomb.cs:39–59): activation beam → `Task.Delay(ED.Config.ActionDelay)` → explosion beam + `zone.DoAoeDamageAsync()`. This is the canonical delayed-detonation pattern.
+- `AttributeFlags.delayed_modul = 25` exists (src/Perpetuum.ExportedTypes/AttributeFlags.cs:35) but is not enforced by any module machinery; use `ED.Config.ActionDelay` for delay duration, same as AreaBomb.
+
+**AoE safety:**
+- `ZoneExtensions.DoAoeDamage()` (src/Perpetuum/Zones/ZoneExtensions.cs:226–228): remote-controlled creatures are **always immune to AoE**. Hunter drones cannot hurt each other via self-destruct AoE, regardless of zone — no special logic needed for this.
+- Players on Alpha (PvE) zones without PvP effect are also AoE-immune (line 231–233).
+- For the PvE drone on a protected island, AoE would still hit Niani NPCs (not immune). The user asked to bypass this. Cleanest solution: in the self-destruct module, check `zone.Configuration.Protected`; if true, apply single-target direct damage to the locked target instead of `DoAoeDamageAsync`.
+- Landmines (src/Perpetuum/Zones/LandMines/LandMine.cs:79–85) confirm the pattern: they already gate player detection on `!zone.Configuration.Protected`. Use the same zone guard for AoE.
+
+### Proposed Architecture
+
+#### 1. `SelfDestructModule` (new, head-slot module)
+
+- On `OnAction()`:
+  1. Start a visible activation beam (reuse AreaBomb beam pattern).
+  2. `Task.Delay(ED.Config.ActionDelay)` — delay sourced from entity definition, so it is tunable per item.
+  3. After delay: resolve primary locked target from the owner's lock handler.
+  4. If `zone.Configuration.Protected` (PvE island): apply single-target direct damage to the locked target. Otherwise: `zone.DoAoeDamageAsync()` with `explosion_radius` from entity definition.
+  5. Kill the owner robot (not just remove HP — trigger the normal kill/loot pipeline so the drone counts as destroyed).
+- Works as a standalone player module (kamikaze). The drone AI triggers it by activating it programmatically.
+- Damage mix: Chemical / Explosive / Kinetic / Thermal (same as AreaBomb). Values tunable via entity definition.
+
+#### 2. `HunterDrone` (new, extends `RemoteControlledCreature`)
+
+- Carries a `SelfDestructModule` instance in its head slot (set at spawn time by the controller module).
+- Exposes `TargetFaction` property (null = PvP, `Faction.Niani` = PvE) set by the spawning controller.
+- `FindTarget(zone)`: scans units in operational range; filters by `TargetFaction` (PvE) or `IsHostilePlayer()` (PvP). Returns closest qualifying target, or null.
+- Ignores command robot's primary lock entirely.
+- Only responds to `IsReceivedRetreatCommand` (existing mechanic).
+- AoE immunity: inherited from `RemoteControlledCreature` base class — no changes needed.
+
+#### 3. `HunterDroneAI` (new AI state machine, 4 states)
+
+- **Patrol**: random walk within operational range (similar to NPC roaming). Every N seconds call `FindTarget()`. On target found → Approach.
+- **Approach**: A* path toward target. On arrival within trigger range → SelfDestruct. On target lost (dead / out of range) → Patrol. On `IsReceivedRetreatCommand` → Retreat.
+- **SelfDestruct**: programmatically activate `SelfDestructModule` on the drone. Lock the drone from further state transitions (the Task.Delay handles the rest).
+- **Retreat**: mirrors `RetreatCombatDroneAI`; A* back to command robot; scoop on arrival.
+- Detection range: `item_work_range` from entity definition (separate from operational range).
+- Trigger range for self-destruct: melee / adjacent tiles (≤ 2 tiles).
+
+#### 4. `HunterRemoteControllerModule` (new, two subclasses: PvE / PvP)
+
+- Extends `RemoteControllerModule`; overrides `CreateAndConfigureRcu()`:
+  - PvE variant: creates `HunterDrone` with `TargetFaction = Faction.Niani`.
+  - PvP variant: creates `HunterDrone` with `TargetFaction = null` (standings-based).
+  - Both: attach a `SelfDestructModule` to the drone's head slot at spawn time.
+- After spawning, controller does **not** relay targeting commands to the drone. The existing command translator (`RemoteCommandTranslatorModule`) already handles retreat-only relay — no additional gating needed since hunter drones ignore lock-based commands at the AI level.
+- Bandwidth, operational range, lifetime: sourced from entity definition attributes as with existing controllers.
+
+#### 5. New `TurretType` values
+
+Add `HunterDronePvE = 6` and `HunterDronePvP = 7` to `TurretType.cs`. Used wherever the codebase switches on turret type (spawn logic, client protocol, etc.).
+
+### Content Required
+
+- Entity definitions for `HunterDronePvE`, `HunterDronePvP`, `HunterRemoteControllerPvE`, `HunterRemoteControllerPvP`, `SelfDestructModule`.
+- Aggregate fields: `item_work_range` (detection), `explosion_radius`, `ActionDelay` (self-destruct timer).
+- Tech tree nodes if the items are researchable/craftable.
+- Consult `docs/content/claude_game_content_guide.md` for full content pipeline.
+
+### Implementation Order
+
+1. `SelfDestructModule` — standalone, testable as a player kamikaze item.
+2. `TurretType` enum extension + `HunterDrone` class (targeting logic, no AI yet).
+3. `HunterDroneAI` state machine (Patrol → Approach → SelfDestruct → Retreat).
+4. `HunterRemoteControllerModule` PvE variant — wire spawn, attach self-destruct, validate PvE targeting.
+5. `HunterRemoteControllerModule` PvP variant — validate standings-based targeting.
+6. Content SQL for all new entity definitions.
+
+### Risks & Constraints
+
+- **Task.Delay in zone context**: follow AreaBomb pattern; do not block the zone update loop. Capture zone reference before delay; guard against drone already dead when delay completes.
+- **Standing check on Alpha zones**: `IsHostilePlayer()` already short-circuits if both players lack PvP effect on Alpha (line 114–116). PvP hunter drones will find no valid targets on protected islands — expected behaviour.
+- **Niani targeting scope**: if Niani NPCs are ever replaced or renamed, `Faction.Niani` must remain aligned with the live NPC faction values.
+- **Self-destruct on retreat**: if the drone receives a retreat command while in Approach state, it must transition to Retreat and NOT trigger self-destruct. Guard the SelfDestruct state entry with `!IsReceivedRetreatCommand`.
+- **Kill pipeline**: self-destruct must go through the normal kill/loot pipeline (`RemoveFromZone` via death), not a silent `Destroy()`, so kill events fire correctly (season activities, loot drops, etc.).
+- **Head slot conflict**: if players equip `SelfDestructModule` standalone, it occupies the head slot. Verify slot validation allows this as a head module in entity definition.
+- **Bandwidth**: hunter drones consume bandwidth like other drones; controller module must expose appropriate `remote_control_bandwidth_usage` on the drone entity definition.
+
+### Manual Validation Steps
+
+1. Spawn PvP hunter drone in PvP zone — verify it patrols, detects a standing ≤ 0 player, approaches, and triggers self-destruct with visible delay.
+2. Spawn PvE hunter drone in alpha zone — verify it targets only Niani NPCs, ignores players, AoE does not fire (single-target path used).
+3. Equip self-destruct module on a player robot — verify activation delay and kill pipeline fires.
+4. Send retreat command while drone is approaching — verify it transitions to Retreat without detonating.
+5. Verify AoE from self-destruct does NOT damage other hunter drones (RemoteControlledCreature AoE immunity).
+6. Verify hunter drone cannot be commanded via target lock relay — only retreat command is honoured.
+
+### Notes
+
+- `RemoteControlledCreature` AoE immunity (ZoneExtensions.cs:226–228) naturally solves drone-on-drone friendly fire with no code changes.
+- PvE alpha zone player AoE immunity (line 231–233) means PvP hunter drones self-detonating near players on protected islands will cause no AoE damage to those players regardless — no special case needed.
+- Sentry turrets are a valid reference for the auto-attack idle→combat transition but hunter drones need movement (Patrol/Approach), so they cannot reuse `SentryTurretCombatAI` directly.
+- AreaBomb (src/Perpetuum/Zones/Eggs/AreaBomb.cs) is the closest existing self-destruct reference; reuse its beam + Task.Delay + DoAoeDamage pattern.
+
+---
 
 ## IMPROVEMENT-042 - AutoMarket: Per-Item Order Type Control on Trade List
 
