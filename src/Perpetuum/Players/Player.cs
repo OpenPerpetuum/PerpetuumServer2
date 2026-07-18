@@ -276,6 +276,11 @@ namespace Perpetuum.Players
 
         public void ApplyInvulnerableEffect()
         {
+            if (Perpetuum.Zones.Effects.SelfDestructDetonation.IsArmed(this))
+            {
+                return;
+            }
+
             RemoveInvulnerableEffect(); // Remove existing effect, set new
             EffectBuilder builder = NewEffectBuilder().SetType(EffectType.effect_invulnerable);
             _ = builder.WithDurationModifier(0.75); //Reduce span of syndicate protection
