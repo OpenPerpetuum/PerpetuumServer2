@@ -505,6 +505,7 @@ namespace Perpetuum.Bootstrapper.Modules
                 ByCategoryFlags<StealthModule>(CategoryFlags.cf_stealth_modules);
                 ByCategoryFlags<DetectionModule>(CategoryFlags.cf_detection_modules);
                 ByCategoryFlags<MineDetectorModule>(CategoryFlags.cf_landmine_detectors);
+                ByCategoryFlags<SelfDestructModule>(CategoryFlags.cf_self_destruct_modules);
                 ByCategoryFlags<Perpetuum.Modules.Module>(CategoryFlags.cf_armor_plates);
                 ByCategoryFlags<Perpetuum.Modules.Module>(CategoryFlags.cf_core_batteries);
                 ByCategoryFlags<Perpetuum.Modules.Module>(CategoryFlags.cf_core_rechargers);

@@ -337,6 +337,7 @@ namespace Perpetuum.ExportedTypes
         cf_robot_enhancements = 0x0000000000000C0F,
         cf_dreadnought_modules = 0x0000000000010C0F,
         cf_excavator_modules = 0x0000000000020C0F,
+        cf_self_destruct_modules = 0x0000000000000D0F,
 
         cf_material = 0x0000000000000014,
         cf_raw_material = 0x0000000000000114,
