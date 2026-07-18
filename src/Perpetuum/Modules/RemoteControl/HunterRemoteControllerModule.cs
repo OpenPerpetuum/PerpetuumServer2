@@ -1,6 +1,7 @@
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Modules.ModuleProperties;
+using Perpetuum.Zones.Effects;
 using Perpetuum.Zones.NpcSystem;
 using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.RemoteControl;
@@ -18,6 +19,14 @@ namespace Perpetuum.Modules
         }
 
         protected abstract Faction? GetTargetFaction();
+
+        protected override void SetupEffect(EffectBuilder effectBuilder)
+        {
+            // Deliberately empty: hunter drones have no amplifiable combat stats (their only
+            // mechanic is contact self-destruct via SelfDestructDetonation), so no drone_amplification
+            // -style effect is needed. Left as an explicit override to document this as a deliberate
+            // decision, not an accidental EffectType.undefined effect application.
+        }
 
         public override RemoteControlledCreature CreateAndConfigureRcu(RemoteControlledUnit ammo)
         {
