@@ -94,6 +94,7 @@ namespace Perpetuum.Bootstrapper.Modules
             RegisterRobot<SentryTurret>(builder).OnActivated(e => e.Instance.SetCoreRecharger(e.Context.Resolve<ICoreRecharger>()));
             RegisterRobot<IndustrialTurret>(builder).OnActivated(e => e.Instance.SetCoreRecharger(e.Context.Resolve<ICoreRecharger>()));
             RegisterRobot<CombatDrone>(builder).OnActivated(e => e.Instance.SetCoreRecharger(e.Context.Resolve<ICoreRecharger>()));
+            RegisterRobot<HunterDrone>(builder).OnActivated(e => e.Instance.SetCoreRecharger(e.Context.Resolve<ICoreRecharger>()));
             RegisterRobot<IndustrialDrone>(builder).OnActivated(e => e.Instance.SetCoreRecharger(e.Context.Resolve<ICoreRecharger>()));
             RegisterRobot<SupportDrone>(builder).OnActivated(e => e.Instance.SetCoreRecharger(e.Context.Resolve<ICoreRecharger>()));
             RegisterRobot<PBSTurret>(builder);
@@ -237,6 +238,8 @@ namespace Perpetuum.Bootstrapper.Modules
             RegisterModule<AssaultRemoteControllerModule>(builder);
             RegisterModule<IndustrialRemoteControllerModule>(builder);
             RegisterModule<SupportRemoteControllerModule>(builder);
+            RegisterModule<HunterRemoteControllerModulePvE>(builder);
+            RegisterModule<HunterRemoteControllerModulePvP>(builder);
             RegisterModule<TerraformMultiModule>(builder);
             RegisterModule<WallBuilderModule>(builder);
             RegisterModule<ConstructionModule>(builder);
@@ -396,6 +399,7 @@ namespace Perpetuum.Bootstrapper.Modules
                 ByCategoryFlags<RemoteControlledUnit>(CategoryFlags.cf_attack_drones_units);
                 ByCategoryFlags<RemoteControlledUnit>(CategoryFlags.cf_industrial_drones_units);
                 ByCategoryFlags<RemoteControlledUnit>(CategoryFlags.cf_support_drones_units);
+                ByCategoryFlags<RemoteControlledUnit>(CategoryFlags.cf_hunter_drones_units);
                 ByCategoryFlags<RemoteCommand>(CategoryFlags.cf_remote_commands);
                 ByCategoryFlags<TileScannerAmmo>(CategoryFlags.cf_mining_probe_ammo_tile);
                 ByCategoryFlags<OneTileScannerAmmo>(CategoryFlags.cf_mining_probe_ammo_one_tile);
@@ -496,6 +500,8 @@ namespace Perpetuum.Bootstrapper.Modules
                 ByCategoryFlags<AssaultRemoteControllerModule>(CategoryFlags.cf_assault_remote_controllers, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_assault_drones_units));
                 ByCategoryFlags<IndustrialRemoteControllerModule>(CategoryFlags.cf_industrial_remote_controllers, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_industrial_drones_units));
                 ByCategoryFlags<SupportRemoteControllerModule>(CategoryFlags.cf_support_remote_controllers, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_support_drones_units));
+                ByCategoryFlags<HunterRemoteControllerModulePvE>(CategoryFlags.cf_hunter_remote_controllers_pve, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_hunter_drones_units));
+                ByCategoryFlags<HunterRemoteControllerModulePvP>(CategoryFlags.cf_hunter_remote_controllers_pvp, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_hunter_drones_units));
                 ByCategoryFlags<WebberModule>(CategoryFlags.cf_webber);
                 ByCategoryFlags<SensorDampenerModule>(CategoryFlags.cf_sensor_dampeners);
                 ByCategoryFlags<RemoteSensorBoosterModule>(CategoryFlags.cf_remote_sensor_boosters);
@@ -560,6 +566,7 @@ namespace Perpetuum.Bootstrapper.Modules
                 ByCategoryFlags<CombatDrone>(CategoryFlags.cf_combat_drones);
                 ByCategoryFlags<CombatDrone>(CategoryFlags.cf_assault_drones);
                 ByCategoryFlags<CombatDrone>(CategoryFlags.cf_attack_drones);
+                ByCategoryFlags<HunterDrone>(CategoryFlags.cf_hunter_drones);
                 ByCategoryFlags<SupportDrone>(CategoryFlags.cf_support_drones);
                 ByCategoryFlags<IndustrialDrone>(CategoryFlags.cf_industrial_drones);
                 ByCategoryFlags<Item>(CategoryFlags.cf_reactor_cores);
