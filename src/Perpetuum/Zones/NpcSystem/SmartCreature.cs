@@ -14,6 +14,7 @@ using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.NpcSystem.AI;
 using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.NpcSystem.AI.CombatDrones;
+using Perpetuum.Zones.NpcSystem.AI.HunterDrones;
 using Perpetuum.Zones.NpcSystem.AI.IndustrialDrones;
 using Perpetuum.Zones.NpcSystem.Flocks;
 using Perpetuum.Zones.NpcSystem.IndustrialTargetsManagement;
@@ -540,6 +541,10 @@ namespace Perpetuum.Zones.NpcSystem
                 {
                     AI.Push(new HarvestingIndustrialTurretAI(this));
                 }
+            }
+            else if (this is HunterDrone)
+            {
+                AI.Push(new HunterPatrolAI(this));
             }
             else if (this is CombatDrone or SupportDrone)
             {
