@@ -21,6 +21,7 @@ namespace Perpetuum.Bootstrapper.Modules
             });
 
             _ = builder.RegisterType<InvulnerableEffect>().Keyed<Effect>(EffectType.effect_invulnerable);
+            _ = builder.RegisterType<SelfDestructCountdownEffect>().Keyed<Effect>(EffectType.effect_self_destruct_countdown);
             _ = builder.RegisterType<CoTEffect>().Keyed<Effect>(EffectType.effect_eccm);
             _ = builder.RegisterType<CoTEffect>().Keyed<Effect>(EffectType.effect_stealth);
 
