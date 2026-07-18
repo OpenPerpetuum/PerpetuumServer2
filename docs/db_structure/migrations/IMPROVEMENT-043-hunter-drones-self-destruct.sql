@@ -136,7 +136,7 @@ BEGIN
          (SELECT value FROM categoryFlags WHERE name = 'cf_self_destruct_modules'),
          '#moduleFlag=i909#tier=$tierlevel_t1',
          N'Kamikaze self-destruct module: arms an un-cancellable delayed AoE detonation that kills the owner.',
-         1, 100, 500, 0, 100, N'def_standard_self_destruct_module', 1, 'standard', 1);
+         1, 100, 500, 0, 100, N'def_standard_self_destruct_module', 1, 1 -- TierType.Normal = 1 (was incorrectly 'standard', a varchar, in the int tiertype column), 1);
 END;
 
 IF NOT EXISTS (
