@@ -48,14 +48,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.HunterDrones
                 delay = FallbackActionDelay;
             }
 
-            SelfDestructDetonation.Arm(
-                smartCreature,
-                delay,
-                Drone.ED.Config.explosion_radius ?? 0.0,
-                Drone.ED.Config.damage_chemical ?? 0.0,
-                Drone.ED.Config.damage_explosive ?? 0.0,
-                Drone.ED.Config.damage_kinetic ?? 0.0,
-                Drone.ED.Config.damage_thermal ?? 0.0);
+            SelfDestructDetonation.Arm(smartCreature, delay);
 
             RepathToTarget();
             base.Enter();

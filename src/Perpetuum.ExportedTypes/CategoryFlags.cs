@@ -222,8 +222,7 @@ namespace Perpetuum.ExportedTypes
         cf_support_remote_controllers = 0x00000000040C040F,
 
         cf_remote_command_translators = 0x00000000050C040F,
-        cf_hunter_remote_controllers_pve = 0x00000000060C040F,
-        cf_hunter_remote_controllers_pvp = 0x00000000070C040F,
+        cf_hunter_remote_controllers = 0x00000000060C040F,
 
         cf_electronic_warfare_equipment = 0x000000000000050F,
         cf_webber = 0x000000000001050F,

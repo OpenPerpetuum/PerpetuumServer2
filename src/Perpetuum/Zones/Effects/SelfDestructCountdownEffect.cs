@@ -1,6 +1,3 @@
-using System.Linq;
-using Perpetuum.ExportedTypes;
-
 namespace Perpetuum.Zones.Effects
 {
     /// <summary>
@@ -16,20 +13,7 @@ namespace Perpetuum.Zones.Effects
         {
             base.OnRemoved();
 
-            double explosionRadius = GetConfigValue(AggregateField.self_destruct_config_explosion_radius);
-            double damageChemical = GetConfigValue(AggregateField.self_destruct_config_damage_chemical);
-            double damageExplosive = GetConfigValue(AggregateField.self_destruct_config_damage_explosive);
-            double damageKinetic = GetConfigValue(AggregateField.self_destruct_config_damage_kinetic);
-            double damageThermal = GetConfigValue(AggregateField.self_destruct_config_damage_thermal);
-
-            SelfDestructDetonation.Detonate(Owner, explosionRadius, damageChemical, damageExplosive, damageKinetic, damageThermal);
-        }
-
-        private double GetConfigValue(AggregateField field)
-        {
-            // ItemPropertyModifier is a struct, so FirstOrDefault's "not found" result is
-            // default(ItemPropertyModifier), whose Value is already 0.0 — no null-coalescing needed.
-            return PropertyModifiers.FirstOrDefault(m => m.Field == field).Value;
+            SelfDestructDetonation.Detonate(Owner);
         }
     }
 }

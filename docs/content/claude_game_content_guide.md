@@ -376,7 +376,35 @@ VALUES (...)
 | tiertype | Tier family |
 | tierlevel | Tier number |
 
+## attributeflags
+
+`attributeflags` is a bitmask over `AttributeFlags` (`src/Perpetuum.ExportedTypes/AttributeFlags.cs`,
+`long`-backed), not a set of independent single-purpose columns — the same "verify against a sibling,
+don't guess/increment" rule from Options Metadata below applies here too. Notable bits for content
+creation:
+
+| Bit | Name | Notes |
+|---|---|---|
+| 3 | `onePerRobot` | Not read anywhere in `src/Perpetuum` as of this writing — a declarative/data-side flag carried for consistency with sibling items, not (currently) enforced by server logic. |
+| 4 | `activeModule` | Required for any module with an `OnAction()` cycle. |
+| 18 | `ammo_required` | **Authoritative "this module needs ammo" signal for `Perpetuum.AdminTool`** (`RobotTemplateEditorEntity.IsAmmoable`, `DECISIONS.md` #1) — the tool trusts this bit, not `options.ammoCapacity`/`ammoType`. Server-side ammo behavior is separately driven by `ActiveModule.Ammo.cs`'s `IsAmmoable => ammoCategoryFlags > 0 && AmmoCapacity > 0`, so a module can be functionally ammoable at runtime while still needing this bit set for the AdminTool to recognize it. Set on every ammo-consuming module. |
+| 21 | `forceOneCycle` | Forces every activation into `ModuleStateType.Oneshot` (`ActiveModule.States.cs`'s `IdleState.SwitchTo`) regardless of client AutoRepeat request — does not prevent repeated player-initiated activations or conflict with a nonzero `cycle_time` aggregatevalue (`cycle_time` still governs the cooldown between activations). Confirmed (via live DB) present on `def_standard_assault_remote_controller` and all sibling `RemoteControllerModule`s alongside a real `cycle_time` value — do not assume the two are mutually exclusive. |
+
+Example verified sibling value: `def_standard_assault_remote_controller` = `2359320` =
+`onePerRobot | activeModule | ammo_required | forceOneCycle`.
+
 ## Options Metadata
+
+`options` is a GenXY-encoded string (`src/Perpetuum/GenXY/`): `#key=TOKENvalue#key2=TOKENvalue2...`.
+The token prefix determines both the C# type and the number base used to parse `value`
+(`GenxyReader`/`GenxyConverter`):
+
+| Token | Meaning | Number base |
+|---|---|---|
+| `i` | `int` | hex (`NumberStyles.HexNumber`, no `0x` prefix) |
+| `L` | `long` | hex |
+| `f` | `float`/`double` | decimal |
+| `$` | `string` | n/a |
 
 Example:
 
@@ -384,7 +412,45 @@ Example:
 #moduleFlag=i908#tier=$tierlevel_t1
 ```
 
-Claude should preserve existing metadata syntax.
+**`moduleFlag` is a bitmask, not an ID.** It is read as `Module.ModuleFlag` (`ED.Options.ModuleFlag`)
+and checked against a robot slot's `slotFlags` bitmask in
+`RobotComponent.IsValidSlotTo` (`src/Perpetuum/Robots/RobotComponent.cs`):
+
+```csharp
+return (moduleFlagMask & slotFlagMask) == moduleFlagMask &&
+    (!specializedSlot || specializedModule);
+```
+
+Every bit set in the module's `moduleFlag` must also be set in the target slot's mask (subset test), and
+the `specialized` bit is an extra gate on top of that. Bit positions come from the `SlotFlags` enum
+(`src/Perpetuum/Modules/SlotFlags.cs`): `turret=0, missile=1, melee=2, head=3, chassis=4, leg=5, small=6,
+medium=7, large=8, industrial=9, ew_and_engineering=10, specialized=11`.
+
+**Never invent a `moduleFlag` value by incrementing a prior one** (e.g. treating the `i908` example above
+as a counter and producing `i909`, `i90a`, ...) — that flips arbitrary low bits on and almost always
+produces a bit combination (e.g. `turret|head` together) no real slot satisfies, making the item
+unequippable everywhere. Instead, find an existing sibling item of the same equipment kind (same
+`RegisterModule<T>`/head-vs-turret-vs-chassis-vs-leg family) and reuse its exact `moduleFlag` value —
+query `SELECT definitionname, options FROM entitydefaults WHERE definitionname IN (...)` for known
+sibling names, or ask the user for that query's output if no DB access is available. As of this
+writing, every plain (non-size-classed) head-slot module — all four
+`def_standard_*_remote_controller` modules and `def_standard_neuralyzer` — uses `moduleFlag=i8` (`0x8` =
+`SlotFlags.head` only, no size or specialized bit).
+
+**`ammoType` is the ammo item's `categoryFlags` value**, hex-encoded with no leading zeroes and
+`L`-prefixed (long token), not a free-form tag. Every ammoable module's `options` sets it to match the
+ammo category the module is built to consume, e.g. `def_standard_assault_remote_controller` uses
+`ammoType=L4120a` for `cf_assault_drones_units = 0x000000000004120A`
+(`src/Perpetuum.ExportedTypes/CategoryFlags.cs`). Cross-check this against the same
+`ammoCategoryFlags`/`CategoryFlags` value passed to the module's `ByCategoryFlags<T>(...)` registration
+in `src/Perpetuum.Bootstrapper/Modules/EntitiesModule.cs` — they must be the same categoryFlags value.
+`ammoType` isn't read by server-side code, but `Perpetuum.AdminTool`'s `RobotTemplateSlotViewModel` parses
+it to filter valid ammo candidates via a categoryFlags hierarchy match, so omitting or mis-encoding it
+silently breaks that tooling rather than throwing at runtime.
+
+Beyond `moduleFlag`/`ammoType`, Claude should preserve existing metadata syntax in general — treat any
+option value that "looks like an ID" as a candidate bitmask/enum/categoryFlags value first, and verify
+against a sibling row before assuming otherwise.
 
 ---
 
@@ -1053,6 +1119,16 @@ Before considering content complete, Claude should validate:
 - All parts exist
 - Template linked correctly
 
+## Modules / Ammoable Equipment
+
+- `moduleFlag` matches a verified sibling item of the same slot family (not a guessed/incremented value)
+- `ammoType` (if ammoable) matches the ammo's actual `categoryFlags` value, hex with no leading zeroes,
+  `L`-prefixed, and agrees with the `ammoCategoryFlags` passed in `EntitiesModule.cs`
+- `attributeflags` includes `ammo_required` (bit 18) on every ammo-consuming module (required for
+  `Perpetuum.AdminTool`'s ammo detection, independent of the server-side `ammoCapacity`/`ammoType` check)
+- `attributeflags` otherwise matches a verified sibling item of the same module family, not just the
+  bits the server is known to read (e.g. `onePerRobot`, `forceOneCycle`)
+
 ---
 
 # 27. Common Pitfalls
@@ -1082,6 +1158,15 @@ Breaks production progression.
 ## Missing Research Entries
 
 Item becomes inaccessible.
+
+## Guessed or Incremented Bitmask Values
+
+`moduleFlag` (SlotFlags bitmask), `ammoType` (categoryFlags value), and `attributeflags` (AttributeFlags
+bitmask) are not IDs — see the "attributeflags" and "Options Metadata" sections above. Incrementing an
+example/prior value, or omitting a bit that "doesn't obviously do anything" (e.g. `ammo_required`,
+which only `Perpetuum.AdminTool` reads), produces an unequippable module, a broken ammo dropdown, or a
+silent tooling mismatch instead of a server-side error. Always match a verified sibling item's
+`attributeflags`/`options` values exactly, or ask the user to run a lookup query against the target DB.
 
 ---
 

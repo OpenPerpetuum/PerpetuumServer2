@@ -19,6 +19,13 @@ namespace Perpetuum.Zones.RemoteControl
 
         public double DetectionRange { get; set; }
 
+        // The kamikaze detonation (DoExplosion, triggered via SelfDestructDetonation.Detonate -> Kill)
+        // is this drone's only attack — PvE variants must still damage Niani NPCs on Protected (Alpha)
+        // islands, unlike an ordinary unit's incidental death explosion, which is deliberately
+        // suppressed there. PvP variants only find targets via IsQualifyingTarget/IsHostilePlayer, which
+        // already refuses hostile players on Alpha zones without an active PvP flag.
+        protected override bool BypassZoneProtectionOnExplosion => true;
+
         public HunterDrone(IStandingHandler standingHandler) : base(standingHandler)
         {
         }

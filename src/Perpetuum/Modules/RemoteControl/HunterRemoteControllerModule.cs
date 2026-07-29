@@ -8,17 +8,20 @@ using Perpetuum.Zones.RemoteControl;
 
 namespace Perpetuum.Modules
 {
-    public abstract class HunterRemoteControllerModule : RemoteControllerModule
+    /// <summary>
+    /// Single controller for both hunter drone variants — mirrors IndustrialRemoteControllerModule's
+    /// shape (one controller class, one shared ammo categoryflags registration, drone variant picked
+    /// per-ammo via TurretType) rather than one controller subclass per variant.
+    /// </summary>
+    public class HunterRemoteControllerModule : RemoteControllerModule
     {
         private readonly ModuleProperty detectionRange;
 
-        protected HunterRemoteControllerModule(CategoryFlags ammoCategoryFlags) : base(ammoCategoryFlags)
+        public HunterRemoteControllerModule(CategoryFlags ammoCategoryFlags) : base(ammoCategoryFlags)
         {
             detectionRange = new ModuleProperty(this, AggregateField.detection_range);
             AddProperty(detectionRange);
         }
-
-        protected abstract Faction? GetTargetFaction();
 
         protected override void SetupEffect(EffectBuilder effectBuilder)
         {
@@ -30,41 +33,20 @@ namespace Perpetuum.Modules
 
         public override RemoteControlledCreature CreateAndConfigureRcu(RemoteControlledUnit ammo)
         {
-            RemoteControlledCreature remoteControlledCreature;
-
-            if (ammo.ED.Options.TurretType == TurretType.HunterDrone)
+            Faction? targetFaction = ammo.ED.Options.TurretType switch
             {
-                HunterDrone hunterDrone = (HunterDrone)Factory.CreateWithRandomEID(ammo.ED.Options.TurretId);
-                hunterDrone.Behavior = Behavior.Create(BehaviorType.RemoteControlledDrone);
-                hunterDrone.GuardRange = 5;
-                hunterDrone.TargetFaction = GetTargetFaction();
-                hunterDrone.DetectionRange = detectionRange.Value;
-                remoteControlledCreature = hunterDrone;
-            }
-            else
-            {
-                throw PerpetuumException.Create(ErrorCodes.InvalidAmmoDefinition);
-            }
+                TurretType.HunterDronePvE => Faction.Niani,
+                TurretType.HunterDronePvP => null,
+                _ => throw PerpetuumException.Create(ErrorCodes.InvalidAmmoDefinition)
+            };
 
-            return remoteControlledCreature;
+            HunterDrone hunterDrone = (HunterDrone)Factory.CreateWithRandomEID(ammo.ED.Options.TurretId);
+            hunterDrone.Behavior = Behavior.Create(BehaviorType.RemoteControlledDrone);
+            hunterDrone.GuardRange = 5;
+            hunterDrone.TargetFaction = targetFaction;
+            hunterDrone.DetectionRange = detectionRange.Value;
+
+            return hunterDrone;
         }
-    }
-
-    public class HunterRemoteControllerModulePvE : HunterRemoteControllerModule
-    {
-        public HunterRemoteControllerModulePvE(CategoryFlags ammoCategoryFlags) : base(ammoCategoryFlags)
-        {
-        }
-
-        protected override Faction? GetTargetFaction() => Faction.Niani;
-    }
-
-    public class HunterRemoteControllerModulePvP : HunterRemoteControllerModule
-    {
-        public HunterRemoteControllerModulePvP(CategoryFlags ammoCategoryFlags) : base(ammoCategoryFlags)
-        {
-        }
-
-        protected override Faction? GetTargetFaction() => null;
     }
 }

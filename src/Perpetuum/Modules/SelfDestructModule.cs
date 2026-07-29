@@ -48,12 +48,12 @@ namespace Perpetuum.Modules
             {
                 return;
             }
-
+            /* We don't need this
             ParentRobot.Zone.CreateBeam(BeamType.timebomb_activation, builder => builder
                 .WithPosition(ParentRobot.CurrentPosition)
                 .WithVisibility(BeamVisibility)
                 .WithDuration(100));
-
+            */
             TimeSpan delay = ED.Config.ActionDelay;
 
             if (delay <= TimeSpan.Zero)
@@ -62,14 +62,7 @@ namespace Perpetuum.Modules
                 delay = FallbackActionDelay;
             }
 
-            SelfDestructDetonation.Arm(
-                ParentRobot,
-                delay,
-                ED.Config.explosion_radius ?? 0.0,
-                ED.Config.damage_chemical ?? 0.0,
-                ED.Config.damage_explosive ?? 0.0,
-                ED.Config.damage_kinetic ?? 0.0,
-                ED.Config.damage_thermal ?? 0.0);
+            SelfDestructDetonation.Arm(ParentRobot, delay);
         }
     }
 }
