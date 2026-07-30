@@ -726,3 +726,52 @@ WHEN NOT MATCHED BY TARGET THEN
     INSERT (definition, componentdefinition, componentamount)
     VALUES (Source.definition, Source.componentdefinition, Source.componentamount);
 GO
+
+-- ============================================================================
+-- Part 6: Research levels.
+--
+-- Self-destruct module & hunter remote controller: standard tier researches directly on itself;
+-- named1/2/3 research on their _pr prototype -- matches def_standard/named1/2/3_remote_command_
+-- translator and _industrial_remote_controller exactly (researchlevel 5/6/7/8).
+-- Hunter Drone RCU ammo: single-tier, researches directly on itself (researchlevel 5) -- matches
+-- def_mining_industrial_drone_unit / def_syndicate_attack_drone_unit.
+-- ============================================================================
+
+DECLARE @tempResearch TABLE (definition INT, researchlevel INT, calibrationprogram INT, enabled BIT);
+
+INSERT INTO @tempResearch (definition, researchlevel, calibrationprogram, enabled) VALUES
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), 5,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module_cprg'), 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_pr'), 6,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_cprg'), 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), 7,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_cprg'), 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), 8,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_cprg'), 1),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), 5,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller_cprg'), 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr'), 6,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_cprg'), 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), 7,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_cprg'), 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), 8,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_cprg'), 1),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), 5,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve_cprg'), 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), 5,
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp_cprg'), 1);
+
+MERGE itemresearchlevels AS Target
+USING (SELECT definition, researchlevel, calibrationprogram, enabled FROM @tempResearch) AS Source
+ON (Target.definition = Source.definition)
+WHEN MATCHED THEN
+    UPDATE SET
+        Target.researchlevel = Source.researchlevel,
+        Target.calibrationprogram = Source.calibrationprogram,
+        Target.enabled = Source.enabled
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (definition, researchlevel, calibrationprogram, enabled)
+    VALUES (Source.definition, Source.researchlevel, Source.calibrationprogram, Source.enabled);
+GO
