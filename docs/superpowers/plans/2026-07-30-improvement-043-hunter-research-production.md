@@ -25,11 +25,13 @@ hardcoded), per `docs/content/claude_game_content_guide.md`.
   user applies it manually.
 - Test DB connection: `sqlcmd -S "DESKTOP-8LUE5OF\MSSQLSERVER2019" -d perpetuumsa -E -C -W -s"|" -Q "..."`
   (from `src/Perpetuum.ServerService2/data/perpetuum.ini`'s `ConnectionString`).
-- Every INSERT must be idempotent: `IF NOT EXISTS (...) BEGIN INSERT ... END` for `entitydefaults` and
-  calibration templates; `MERGE` for `components`, `aggregatevalues`, `itemresearchlevels`, `techtree`,
-  `prototypes` (matching `20_Command_Translators.sql` and the existing hunter migration's own style);
-  plain `IF NOT EXISTS ... INSERT` for `techtreenodeprices`, `productiondecalibration`, `productionduration`
-  (matching `20_Command_Translators.sql` exactly).
+- Every INSERT must be idempotent: `IF NOT EXISTS (...) BEGIN INSERT ... END` for `entitydefaults`,
+  calibration templates, and `aggregatevalues` (corrected 2026-07-30 after Task 1 review: the real
+  `20_Command_Translators.sql` convention uses `IF NOT EXISTS`/`ELSE UPDATE` for `aggregatevalues`, not
+  `MERGE` — matches the existing hunter migration's own style too); `MERGE` for `components`,
+  `itemresearchlevels`, `techtree`, `prototypes`; plain `IF NOT EXISTS ... INSERT` for
+  `techtreenodeprices`, `productiondecalibration`, `productionduration` (matching
+  `20_Command_Translators.sql` exactly).
 - Never hardcode a `definition`/`categoryflags`/`aggregatefields` id — always resolve via
   `(SELECT ... FROM entitydefaults/categoryFlags/aggregatefields WHERE name = '...')` subqueries.
 - Do not commit anything to git during this work (per `CLAUDE.md`: "Do not make commits unless explicitly
