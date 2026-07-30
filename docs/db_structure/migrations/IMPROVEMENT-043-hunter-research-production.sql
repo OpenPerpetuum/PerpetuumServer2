@@ -538,3 +538,30 @@ BEGIN
          '#tier=$tierlevel_t1', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 1);
 END;
 GO
+
+-- ============================================================================
+-- Part 4: Hunter Drone RCU ammo (PvE/PvP) -- calibration templates. These stay single-tier, matching
+-- def_mining_industrial_drone_unit / def_syndicate_attack_drone_unit (single-tier ammo behind a tiered
+-- controller).
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve_cprg')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_standard_hunter_drone_rcu_pve_cprg', 1, 1024,
+         (SELECT value FROM categoryflags WHERE name = 'cf_module_calibration_programs'),
+         '#tier=$tierlevel_t1', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 1);
+END;
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp_cprg')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_standard_hunter_drone_rcu_pvp_cprg', 1, 1024,
+         (SELECT value FROM categoryflags WHERE name = 'cf_module_calibration_programs'),
+         '#tier=$tierlevel_t1', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 1);
+END;
+GO
