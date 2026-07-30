@@ -775,3 +775,57 @@ WHEN NOT MATCHED BY TARGET THEN
     INSERT (definition, researchlevel, calibrationprogram, enabled)
     VALUES (Source.definition, Source.researchlevel, Source.calibrationprogram, Source.enabled);
 GO
+
+-- ============================================================================
+-- Part 7: Tech tree placement.
+--
+-- Group 'common2' -- same group as remote_command_translator/industrial/support controller chains.
+-- Verified live: techtree rows at y=36-45 in this group were empty before this migration.
+-- Self-destruct module sits at y=36 (one row below remote_command_translator's y=35), same x positions
+-- (1-4) as that chain. Hunter remote controller continues the branch at y=37, parented off the standard
+-- self-destruct module node. Both Hunter Drone RCU ammo items hang off the standard hunter remote
+-- controller node as siblings at x=2 (matching how mining/harvesting drone units both hang off
+-- def_standard_industrial_remote_controller), at y=38/39 respectively.
+-- ============================================================================
+
+DECLARE @ttGroup INT = (SELECT TOP 1 id FROM [techtreegroups] WHERE name = 'common2');
+
+DECLARE @tempTechtree TABLE (parentdefinition INT, childdefinition INT, groupID INT, x INT, y INT, enablerextensionid INT);
+
+INSERT INTO @tempTechtree (parentdefinition, childdefinition, groupID, x, y, enablerextensionid) VALUES
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_cpu_upgrade'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @ttGroup, 1, 36, NULL),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @ttGroup, 2, 36, NULL),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'), @ttGroup, 3, 36, NULL),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'), @ttGroup, 4, 36, NULL),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @ttGroup, 1, 37, NULL),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @ttGroup, 2, 37, NULL),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'), @ttGroup, 3, 37, NULL),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'), @ttGroup, 4, 37, NULL),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), @ttGroup, 2, 38, NULL),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), @ttGroup, 2, 39, NULL);
+
+MERGE techtree AS Target
+USING (SELECT parentdefinition, childdefinition, groupID, x, y, enablerextensionid FROM @tempTechtree) AS Source
+ON (Target.childdefinition = Source.childdefinition AND Target.groupID = Source.groupID)
+WHEN MATCHED THEN
+    UPDATE SET
+        Target.parentdefinition = Source.parentdefinition,
+        Target.x = Source.x,
+        Target.y = Source.y,
+        Target.enablerextensionid = Source.enablerextensionid
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (parentdefinition, childdefinition, groupID, x, y, enablerextensionid)
+    VALUES (Source.parentdefinition, Source.childdefinition, Source.groupID, Source.x, Source.y, Source.enablerextensionid);
+GO
