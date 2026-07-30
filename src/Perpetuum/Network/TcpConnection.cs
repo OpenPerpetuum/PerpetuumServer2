@@ -29,7 +29,7 @@ namespace Perpetuum.Network
             _socket.NoDelay = true;
             _socket.ReceiveBufferSize = RECEIVE_BUFFER_SIZE;
             _socket.SendBufferSize = SEND_BUFFER_SIZE;
-            _socket.SetKeepAlive(true, 1000 * 60 * 60 * 24, 5000);
+            _socket.SetKeepAlive(true, 1000 * 60 * 60 * 2, 5000);
 
             RemoteEndPoint = (IPEndPoint)_socket.RemoteEndPoint;
         }
