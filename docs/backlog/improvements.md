@@ -1,6 +1,42 @@
 # Last ID used
 
-043
+044
+
+## IMPROVEMENT-044 - Disable NPC flee behavior (player complaints)
+
+Status: DONE
+Priority: CRITICAL
+Area: NPC AI / Combat
+
+### Problem
+
+Players report that the NPC flee behavior (NPCs disengaging and retreating below an armor/core
+threshold, see [[IMPROVEMENT-011]] / [[ISSUE-021]]) is frustrating and annoying, and are asking for
+it to be removed.
+
+### Impact
+
+Negative player sentiment around NPC combat encounters. Chasing down a fleeing NPC that repeatedly
+kites away (and can call for help / repair while retreating) is perceived as tedious rather than
+tactically interesting.
+
+### Proposed Fix
+
+Disable flee triggering at the source rather than deleting the mechanic, so `FleeAI` and its
+supporting logic remain intact for later rework or reuse elsewhere:
+- Gate `SmartCreature.ShouldFlee()` behind a `FleeBehaviorEnabled = false` constant so it always
+  returns `false` while disabled.
+- Leave `FleeAI`, the `Flee*Threshold` constants, and the `AggressorAI`/`CoveringAI`/`SupportAI`
+  call sites untouched (they become dead code paths, not deleted code).
+
+### Notes
+
+Implemented: `SmartCreature.ShouldFlee()` in `src/Perpetuum/Zones/NpcSystem/SmartCreature.cs` now
+short-circuits to `false` via a `private const bool FleeBehaviorEnabled = false;` guard. `Npc.ShouldFlee()`
+overrides `base.ShouldFlee()` and is therefore also disabled transitively. To re-enable or rework flee
+behavior later, flip the constant (or replace the guard with new logic) — no other changes needed.
+
+---
 
 ## IMPROVEMENT-043 - Hunter Drones with Self-Destruct Module
 
