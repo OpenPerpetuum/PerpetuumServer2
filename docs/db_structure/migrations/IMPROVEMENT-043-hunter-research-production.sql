@@ -565,3 +565,164 @@ BEGIN
          '#tier=$tierlevel_t1', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 1);
 END;
 GO
+
+-- ============================================================================
+-- Part 5: Production/prototyping materials.
+--
+-- Self-destruct module and hunter remote controller reuse def_standard/named1/2/3_remote_command_
+-- translator's own recipe verbatim (same material family, same head-slot RemoteControl-class module),
+-- applied independently to each chain. Hunter Drone RCU ammo reuses def_syndicate_attack_drone_unit's
+-- recipe (closest combat-drone analog).
+-- ============================================================================
+
+DECLARE @titanium INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_titanium');
+DECLARE @axicol INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_axicol');
+DECLARE @axicoline INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_axicoline');
+DECLARE @espitium INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_espitium');
+DECLARE @hydrobenol INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_hydrobenol');
+DECLARE @unimetal INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_unimetal');
+DECLARE @polynitrocol INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_polynitrocol');
+DECLARE @polynucleit INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_polynucleit');
+DECLARE @phlobotil INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_phlobotil');
+DECLARE @robotshardBasic INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_robotshard_common_basic');
+DECLARE @robotshardAdvanced INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_robotshard_common_advanced');
+DECLARE @robotshardExpert INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_robotshard_common_expert');
+
+DECLARE @sdT1 INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module');
+DECLARE @sdT2 INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module');
+DECLARE @sdT3 INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module');
+
+DECLARE @hrcT1 INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller');
+DECLARE @hrcT2 INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller');
+DECLARE @hrcT3 INT = (SELECT TOP 1 definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller');
+
+DECLARE @tempComponents TABLE (definition INT, componentdefinition INT, componentamount INT);
+
+-- Self-Destruct Module
+
+INSERT INTO @tempComponents (definition, componentdefinition, componentamount) VALUES
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @espitium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @sdT1, 1),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_pr'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_pr'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_pr'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_pr'), @espitium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_pr'), @sdT1, 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_pr'), @robotshardBasic, 120),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'), @titanium, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'), @axicol, 125),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'), @axicoline, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'), @espitium, 300),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'), @hydrobenol, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'), @sdT2, 1),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), @titanium, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), @axicol, 125),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), @axicoline, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), @espitium, 300),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), @hydrobenol, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), @sdT2, 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), @robotshardBasic, 80),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr'), @robotshardAdvanced, 80),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'), @espitium, 400),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'), @hydrobenol, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'), @unimetal, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'), @sdT3, 1),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @espitium, 400),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @hydrobenol, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @unimetal, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @sdT3, 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @robotshardBasic, 60),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @robotshardAdvanced, 120),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @robotshardExpert, 180),
+
+-- Hunter Remote Controller (identical recipe shape, own tier chain)
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @espitium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @hrcT1, 1),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr'), @espitium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr'), @hrcT1, 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr'), @robotshardBasic, 120),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'), @titanium, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'), @axicol, 125),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'), @axicoline, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'), @espitium, 300),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'), @hydrobenol, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'), @hrcT2, 1),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), @titanium, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), @axicol, 125),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), @axicoline, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), @espitium, 300),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), @hydrobenol, 100),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), @hrcT2, 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), @robotshardBasic, 80),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr'), @robotshardAdvanced, 80),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'), @espitium, 400),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'), @hydrobenol, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'), @unimetal, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'), @hrcT3, 1),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @espitium, 400),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @hydrobenol, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @unimetal, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @hrcT3, 1),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @robotshardBasic, 60),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @robotshardAdvanced, 120),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'), @robotshardExpert, 180),
+
+-- Hunter Drone RCU ammo (PvE/PvP), each independently, def_syndicate_attack_drone_unit's recipe
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), @titanium, 500),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), @unimetal, 25),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), @axicoline, 500),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), @espitium, 50),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), @polynitrocol, 500),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), @polynucleit, 500),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve'), @phlobotil, 500),
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), @titanium, 500),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), @unimetal, 25),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), @axicoline, 500),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), @espitium, 50),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), @polynitrocol, 500),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), @polynucleit, 500),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp'), @phlobotil, 500);
+
+MERGE components AS Target
+USING (SELECT definition, componentdefinition, componentamount FROM @tempComponents) AS Source
+ON (Target.definition = Source.definition AND Target.componentdefinition = Source.componentdefinition)
+WHEN MATCHED THEN
+    UPDATE SET Target.componentamount = Source.componentamount
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (definition, componentdefinition, componentamount)
+    VALUES (Source.definition, Source.componentdefinition, Source.componentamount);
+GO
