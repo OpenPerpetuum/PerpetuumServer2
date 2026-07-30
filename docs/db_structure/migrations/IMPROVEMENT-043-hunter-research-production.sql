@@ -551,7 +551,7 @@ BEGIN
         (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
     VALUES
         ('def_standard_hunter_drone_rcu_pve_cprg', 1, 1024,
-         (SELECT value FROM categoryflags WHERE name = 'cf_module_calibration_programs'),
+         (SELECT value FROM categoryflags WHERE name = 'cf_ammo_rcu_calibration_programs'),
          '#tier=$tierlevel_t1', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 1);
 END;
 
@@ -561,7 +561,7 @@ BEGIN
         (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
     VALUES
         ('def_standard_hunter_drone_rcu_pvp_cprg', 1, 1024,
-         (SELECT value FROM categoryflags WHERE name = 'cf_module_calibration_programs'),
+         (SELECT value FROM categoryflags WHERE name = 'cf_ammo_rcu_calibration_programs'),
          '#tier=$tierlevel_t1', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 1);
 END;
 GO
