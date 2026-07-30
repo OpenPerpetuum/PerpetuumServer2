@@ -96,7 +96,7 @@ No specific subsystem, reproduction steps, or timeframe confirmed yet — this i
 
 ## ISSUE-037 - Mission target NPCs sometimes fail to spawn — InvalidCastException casting Player to Npc in Flock.CreateMemberInZone
 
-Status: TODO
+Status: IN_PROGRESS
 Priority: CRITICAL
 Area: Missions / NPC Spawning
 
@@ -128,8 +128,16 @@ var npc = (Npc)EntityService.Factory.Create(Configuration.EntityDefault, EntityI
 2. **Fix the root data/config issue** — correct the offending definition reference in the mission/presence content so it points to a valid NPC entity default.
 3. **Add defensive handling regardless of the data fix** — `Flock.CreateMemberInZone()` should not let a bad `EntityDefault` throw an unhandled cast exception deep in a background task. Consider validating the entity type before/after `Factory.Create` and logging a clear, actionable error (including `Configuration.EntityDefault`/flock/presence identifying info) instead of an opaque `InvalidCastException`, so future misconfigurations are diagnosable without a stack trace alone.
 
+### Progress
+- **Bullet 3 DONE**: `Flock.CreateMemberInZone()` (`src/Perpetuum/Zones/NpcSystem/Flocks/Flock.cs`) no longer unconditionally casts the factory result to `Npc`. It now checks the resolved entity type; on mismatch it logs an actionable `Logger.Error` (EntityDefault definition id + name, resolved CLR type, flock/presence name, zone id) and returns without spawning that member, instead of throwing an opaque `InvalidCastException` on a background task. The flock is left with fewer/zero members exactly as before (no behavior regression for the working case), but the failure is now diagnosable from the log line alone.
+- **Bullets 1/2 NOT DONE — traced but not reproduced.** `SpawnNpcOnSuccess`'s strict-definition path (`DirectPresence.DoStrictDefinitionFlocks`, used when `MyTarget.useQuantityOnly == false`) is only reachable from two callers: `PopNpcZoneTarget.OnTargetComplete` (targettype 20, `pop_npc`) and `FindArtifactZoneTarget.OnTargetComplete` when `FindArtifactSpawnsNpcs` (targettype 11, `find_artifact`, gated on the `spawnnpcs` column). Queried the local dev DB (`perpetuumsa`) directly:
+  - Every `pop_npc` target has `usequantityonly = 1`, i.e. none of them take the strict-definition path — they all go through `DoSelectNpcsFromPool`, which sources NPCs from `robottemplaterelations` (already NPC-safe).
+  - Every `find_artifact` target with `spawnnpcs = 1` has `definition IS NULL`, which resolves to `EntityDefault.None` (definition 0) — traced through `EntityFactory`'s keyed-container fallback (`EntitiesModule.cs:680`, `!c.IsRegisteredWithKey<Entity>(ed.Definition) ? ctx.Resolve<Entity>() : ...`) and confirmed this yields a plain `Entity`, not `Player` — so it would produce a *different* cast exception message than the one in the reported stack trace, ruling this out as the match.
+  - Category-flag resolution itself (`EntitiesModule.cs` `ByCategoryFlags<Player>(cf_robots)` / `ByCategoryFlags<Npc>(cf_npc)`) is exact-match on the low byte (`cf_robots` low byte `0x01` vs `cf_npc` low byte `0x8F` — see `CategoryFlagsExtensions.IsCategory`), and mutually exclusive, so this isn't a registration-ordering bug in code either.
+  - Conclusion: the misconfigured content that produced the production stack trace is not present in this local dev DB snapshot — it's very likely prod-only content (or has since been edited/removed there). Root identification still requires production log correlation (mission id / target id / definition id at the moment of the exception), same blocker as noted below.
+
 ### Notes
-- Exact affected assignment(s) are unknown — needs log correlation (mission ID / target ID / definition ID at time of the exception) to narrow down. Search production logs around each occurrence for the mission/target context that isn't captured in the current log line.
+- Exact affected assignment(s) are unknown — needs log correlation (mission ID / target ID / definition ID at time of the exception) to narrow down. Search production logs around each occurrence for the mission/target context that isn't captured in the current log line. Once identified, run: `SELECT mt.*, ed.definitionname, ed.categoryflags & 0xFF AS low_byte FROM missiontargets mt JOIN entitydefaults ed ON ed.definition = mt.definition WHERE mt.id = <target id>` against production/prod-mirrored content to confirm the low_byte is `0x01` (cf_robots/Player) instead of `0x8F` (cf_npc/Npc), then correct `missiontargets.definition` for that row to a valid NPC entity default.
 - `SpawnNpcOnSuccess` (`ZoneMissionTarget.cs:344-375`) and `AddDirectPresenceToPosition` (`ZoneMissionTarget.cs:379-400`) are shared by `ZoneMissionTarget<T>`, so this is not scoped to one mission target subtype — any assignment using direct-presence NPC pop-on-success is a candidate.
 
 ---
