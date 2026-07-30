@@ -897,3 +897,63 @@ IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND poin
 IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttHitech)
     INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttHitech, 40000);
 GO
+
+-- ============================================================================
+-- Part 9: Prototype linkage.
+-- ============================================================================
+
+DECLARE @tempPrototypes TABLE (definition INT, prototype INT);
+
+INSERT INTO @tempPrototypes (definition, prototype) VALUES
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module_pr')),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module_pr')),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr')),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr')),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr')),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller'),
+ (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr'));
+
+MERGE prototypes AS Target
+USING (SELECT definition, prototype FROM @tempPrototypes) AS Source
+ON (Target.definition = Source.definition)
+WHEN MATCHED THEN
+    UPDATE SET Target.prototype = Source.prototype
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (definition, prototype)
+    VALUES (Source.definition, Source.prototype);
+GO
+
+-- ============================================================================
+-- Part 10: Decalibration / production duration, keyed by category (whole-category rows).
+--
+-- cf_self_destruct_modules / cf_hunter_remote_controllers: identical to every controller-family category
+-- (cf_remote_controllers, cf_industrial_remote_controllers, cf_support_remote_controllers,
+-- cf_tactical_remote_controllers, cf_assault_remote_controllers) in the live DB.
+-- cf_hunter_drones_units: identical to every other cf_*_drones_units category.
+-- ============================================================================
+
+DECLARE @catFlags BIGINT;
+
+SET @catFlags = (SELECT TOP 1 value FROM categoryFlags WHERE name = 'cf_self_destruct_modules');
+IF NOT EXISTS (SELECT 1 FROM productiondecalibration WHERE categoryflag = @catFlags)
+    INSERT INTO productiondecalibration (categoryflag, distorsionmin, distorsionmax, decrease) VALUES (@catFlags, 0.003, 0.005, 1);
+IF NOT EXISTS (SELECT 1 FROM productionduration WHERE category = @catFlags)
+    INSERT INTO productionduration (category, durationmodifier) VALUES (@catFlags, 2);
+
+SET @catFlags = (SELECT TOP 1 value FROM categoryFlags WHERE name = 'cf_hunter_remote_controllers');
+IF NOT EXISTS (SELECT 1 FROM productiondecalibration WHERE categoryflag = @catFlags)
+    INSERT INTO productiondecalibration (categoryflag, distorsionmin, distorsionmax, decrease) VALUES (@catFlags, 0.003, 0.005, 1);
+IF NOT EXISTS (SELECT 1 FROM productionduration WHERE category = @catFlags)
+    INSERT INTO productionduration (category, durationmodifier) VALUES (@catFlags, 2);
+
+SET @catFlags = (SELECT TOP 1 value FROM categoryFlags WHERE name = 'cf_hunter_drones_units');
+IF NOT EXISTS (SELECT 1 FROM productiondecalibration WHERE categoryflag = @catFlags)
+    INSERT INTO productiondecalibration (categoryflag, distorsionmin, distorsionmax, decrease) VALUES (@catFlags, 0.001, 0.0015, 0.3);
+IF NOT EXISTS (SELECT 1 FROM productionduration WHERE category = @catFlags)
+    INSERT INTO productionduration (category, durationmodifier) VALUES (@catFlags, 0.2);
+GO
