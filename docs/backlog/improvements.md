@@ -228,6 +228,20 @@ out of scope for a pure SQL consolidation). Verified via a full `BEGIN TRAN`/`RO
 correctly no-op'd, and post-run row counts matched expectations exactly (10 `entitydefaults`, 4
 `categoryFlags`, 2 `robottemplates`).
 
+**Research/production follow-up:** Added named T2-T4 tiers, prototypes, and calibration templates for
+both `def_standard_self_destruct_module` and `def_standard_hunter_remote_controller` (previously
+standard-tier-only), plus calibration templates, research levels, and production materials for the two
+existing Hunter Drone RCU ammo items -- all via a new migration,
+`docs/db_structure/migrations/IMPROVEMENT-043-hunter-research-production.sql` (still unapplied to any
+DB, per standing practice). Tech tree branch placed in the `common2` group: self-destruct module chain at
+(x=1-4, y=36), directly under `remote_command_translator` (y=35) at the same x positions; hunter remote
+controller chain at y=37, parented off the standard self-destruct module node; both Hunter Drone RCU ammo
+items as siblings at (x=2, y=38/39) off the standard hunter remote controller node. Design:
+`docs/superpowers/specs/2026-07-30-improvement-043-hunter-research-production-design.md`. T1 of both
+modules also gained `cpu_usage`/`core_usage`/`powergrid_usage` aggregatevalues they were previously
+missing entirely. Verified via a full-file `BEGIN TRAN`/`ROLLBACK` dry run against the live test DB
+(0 errors, idempotent on a second run) -- not applied.
+
 ### Problem
 
 No kamikaze-style autonomous drone exists. Players need a fire-and-forget drone that independently hunts targets within its operational range and destroys itself (and the target) on contact. Two variants are needed: PvE (hunts Niani NPCs) and PvP (hunts players by standings). A standalone self-destruct module should also be available for kamikaze piloting.
