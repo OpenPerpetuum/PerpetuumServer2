@@ -829,3 +829,71 @@ WHEN NOT MATCHED BY TARGET THEN
     INSERT (parentdefinition, childdefinition, groupID, x, y, enablerextensionid)
     VALUES (Source.parentdefinition, Source.childdefinition, Source.groupID, Source.x, Source.y, Source.enablerextensionid);
 GO
+
+-- ============================================================================
+-- Part 8: Research cost.
+--
+-- Self-destruct module & hunter remote controller reuse the universal T1-T4 controller-chain scheme,
+-- identical across remote_command_translator/industrial/support_remote_controller in the live DB.
+-- Hunter Drone RCU ammo (PvE/PvP, independently) reuses def_syndicate_attack_drone_unit's cost.
+-- ============================================================================
+
+DECLARE @ttCommon INT = (SELECT TOP 1 id FROM techtreepointtypes WHERE name = 'common');
+DECLARE @ttHitech INT = (SELECT TOP 1 id FROM techtreepointtypes WHERE name = 'hitech');
+
+DECLARE @def INT;
+
+-- Self-Destruct Module
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 25000);
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 50000);
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_self_destruct_module');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 75000);
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 100000);
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttHitech)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttHitech, 50000);
+
+-- Hunter Remote Controller
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 25000);
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 50000);
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 75000);
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 100000);
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttHitech)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttHitech, 50000);
+
+-- Hunter Drone RCU ammo
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pve');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 50000);
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttHitech)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttHitech, 40000);
+
+SET @def = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_drone_rcu_pvp');
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttCommon)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttCommon, 50000);
+IF NOT EXISTS (SELECT 1 FROM techtreenodeprices WHERE definition = @def AND pointtype = @ttHitech)
+    INSERT INTO techtreenodeprices (definition, pointtype, amount) VALUES (@def, @ttHitech, 40000);
+GO
