@@ -49,6 +49,7 @@ BEGIN
     WHEN MATCHED THEN
         UPDATE SET t.fee = s.fee, t.payout = s.payout;
 END
+GO
 
 -- 3. Clear all stale insurance policies (payout values are outdated; players repurchase at new rates)
 DELETE FROM dbo.insurance;

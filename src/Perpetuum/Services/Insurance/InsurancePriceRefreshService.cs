@@ -11,6 +11,7 @@ namespace Perpetuum.Services.Insurance
     {
         private readonly TimerList _timers = new TimerList();
         private volatile bool _refreshing;
+        private int _consecutiveFailures;
 
         public void Start()
         {
@@ -28,8 +29,17 @@ namespace Perpetuum.Services.Insurance
             _refreshing = true;
             _ = Task.Run(() =>
             {
-                try   { Refresh(); }
-                catch (Exception ex) { Logger.Exception(ex); }
+                try
+                {
+                    Refresh();
+                    _consecutiveFailures = 0;
+                }
+                catch (Exception ex)
+                {
+                    _consecutiveFailures++;
+                    Logger.Exception(ex);
+                    Logger.Error($"InsurancePriceRefreshService: refresh failed ({_consecutiveFailures} consecutive failure(s)). dbo.insuranceprices is stale as of the last successful run.");
+                }
                 finally { _refreshing = false; }
             });
         }

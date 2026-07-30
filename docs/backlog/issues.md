@@ -1,6 +1,6 @@
 # Last ID used
 
-035
+038
 
 ## ISSUE-035 - Server fails to start with the perpetuum.ini produced by the official installer
 
@@ -68,6 +68,128 @@ Project the value and use `DefaultIfEmpty` so the empty case yields the fallback
 
 ### Notes
 Observed during startup against a P36 database. Existing behaviour must be preserved: empty flocks yield `10` after `Clamp(10, 40)`, and empty members yield `ZoneExtensions.MIN_SLOPE`.
+
+---
+
+## ISSUE-038 - Server RAM usage grows over time — possible memory leak
+
+Status: TODO
+Priority: CRITICAL
+Area: Server / Runtime / Performance
+
+### Problem
+Over time, the running server process shows steadily growing RAM consumption. No specific subsystem has been identified yet. Needs investigation both in general (long-lived caches, event handler leaks, undisposed resources, static collections that only grow) and specifically in terms of recent changes to the codebase, since a regression introduced by recent work is a plausible contributor.
+
+### Impact
+Unchecked growth risks eventual OOM crashes or degraded performance (GC pressure) on long-running server instances, affecting all players connected at the time of a crash/restart.
+
+### Proposed Fix
+1. **Establish a baseline** — capture memory growth rate under normal load (e.g. dotnet-counters / dotnet-gcdump / dotnet-trace snapshots over time) to characterize the leak (steady linear growth vs. growth tied to specific events like zone transitions, missions, or NPC spawns).
+2. **Diff heap snapshots** — take two or more `dotnet-gcdump` snapshots hours apart and diff retained object counts/types to identify what's accumulating (e.g. event subscriptions never unsubscribed, collections indexed by entity/session that are never cleaned up, timers/tasks not disposed).
+3. **Audit recent changes** — review recently merged work (e.g. IMPROVEMENT-043 Hunter Drones: drone spawning/despawning, controller wiring, effect setup) for undisposed handlers, static/singleton collections growing per-spawn without corresponding cleanup on despawn/disconnect, or event subscriptions added without matching unsubscription.
+4. **Check known high-churn subsystems** — zone updates, NPC AI/spawning, mission engine, market processing, season activity tracking — for per-tick or per-entity allocations that aren't being released (per repo-wide "High-risk hot paths" list in CLAUDE.md).
+
+### Notes
+No specific subsystem, reproduction steps, or timeframe confirmed yet — this issue covers the investigation itself. Update with findings (implicated subsystem, root cause, fix) once identified; split out a follow-up issue if the root cause is unrelated to recent changes.
+
+---
+
+## ISSUE-037 - Mission target NPCs sometimes fail to spawn — InvalidCastException casting Player to Npc in Flock.CreateMemberInZone
+
+Status: TODO
+Priority: CRITICAL
+Area: Missions / NPC Spawning
+
+### Problem
+Players report that on some assignments, target NPCs sometimes fail to spawn at all. No specific assignment/mission has been identified yet — reports are inconsistent about which mission triggers it. Production logs show a matching exception on the NPC-spawn-on-success path:
+
+```
+System.InvalidCastException: Unable to cast object of type 'Perpetuum.Players.Player' to type 'Perpetuum.Zones.NpcSystem.Npc'.
+   at Perpetuum.Zones.NpcSystem.Flocks.Flock.CreateMemberInZone() in Flock.cs:line 112
+   at Perpetuum.Zones.NpcSystem.Flocks.Flock.SpawnAllMembers() in Flock.cs:line 81
+   at Perpetuum.Zones.NpcSystem.Flocks.FlockExtensions.SpawnAllMembers(IEnumerable`1 flocks) in FlockExtensions.cs:line 10
+   at Perpetuum.Services.MissionEngine.MissionTargets.ZoneMissionTarget`1.AddDirectPresenceToPosition(IPresenceManager presenceManager, Position successPosition) in ZoneMissionTarget.cs:line 396
+   at Perpetuum.Services.MissionEngine.MissionTargets.ZoneMissionTarget`1.<>c__DisplayClass38_0.<SpawnNpcOnSuccess>b__0() in ZoneMissionTarget.cs:line 353
+```
+
+`Flock.CreateMemberInZone()` (`src/Perpetuum/Zones/NpcSystem/Flocks/Flock.cs:112`) does:
+```csharp
+var npc = (Npc)EntityService.Factory.Create(Configuration.EntityDefault, EntityIDGenerator.Random);
+```
+`EntityService.Factory.Create` builds a concrete entity type based on the `EntityDefault`'s configured entity class, and the result is unconditionally cast to `Npc`. The exception means that for the flock's `Configuration.EntityDefault` used in this failing case, the factory produced a `Player` instance instead — i.e. the entity default resolved by that flock/presence configuration is not actually an NPC-class entity default. This is called from `ZoneMissionTarget.AddDirectPresenceToPosition` → `SpawnNpcOnSuccess`, which runs on a background `Task.Run` (`ZoneMissionTarget.cs:351`) with `.LogExceptions()` — the exception is logged but swallowed, so the mission's success/spawn flow does not surface a player-facing error; the target presence/flock is simply left without its NPC(s).
+
+### Impact
+- Assignments that spawn NPCs on success (random-pop / direct-presence style targets, `ZoneMissionTarget.SpawnNpcOnSuccess`) can silently fail to populate their target NPC(s), leaving the mission target impossible to complete.
+- Failure is silent to the player — no error is shown, the beam/teleport-storm effect may still fire (it runs regardless, after the spawn loop), but the flock has zero or partial members.
+- Since the failure happens on a fire-and-forget background task, it does not crash the mission engine or zone loop, which makes it easy to miss without log monitoring — consistent with reports being vague about which assignment is affected.
+
+### Proposed Fix
+1. **Identify the misconfigured EntityDefault** — determine which mission target(s)/`DirectPresenceConfiguration`/flock `EntityDefault` combination resolves to a non-NPC entity class. Check `entitydefaults`/related content tables for the definition(s) used by affected mission targets' presence/flock configs, and verify their configured entity type actually maps to an `Npc`-derived class in `EntityService.Factory`, not `Player` or another type.
+2. **Fix the root data/config issue** — correct the offending definition reference in the mission/presence content so it points to a valid NPC entity default.
+3. **Add defensive handling regardless of the data fix** — `Flock.CreateMemberInZone()` should not let a bad `EntityDefault` throw an unhandled cast exception deep in a background task. Consider validating the entity type before/after `Factory.Create` and logging a clear, actionable error (including `Configuration.EntityDefault`/flock/presence identifying info) instead of an opaque `InvalidCastException`, so future misconfigurations are diagnosable without a stack trace alone.
+
+### Notes
+- Exact affected assignment(s) are unknown — needs log correlation (mission ID / target ID / definition ID at time of the exception) to narrow down. Search production logs around each occurrence for the mission/target context that isn't captured in the current log line.
+- `SpawnNpcOnSuccess` (`ZoneMissionTarget.cs:344-375`) and `AddDirectPresenceToPosition` (`ZoneMissionTarget.cs:379-400`) are shared by `ZoneMissionTarget<T>`, so this is not scoped to one mission target subtype — any assignment using direct-presence NPC pop-on-success is a candidate.
+
+---
+
+## ISSUE-036 - Insurance payouts stale/too high — usp_RecalculateInsurancePrices recurring "nesting level exceeded" failure
+
+Status: IN_PROGRESS
+Priority: CRITICAL
+Area: Economy / Insurance
+
+### Problem
+Players report insurance payouts are too high and don't reflect current market state. Production logs show `InsurancePriceRefreshService.Refresh()` failing on every scheduled run with:
+
+```
+Microsoft.Data.SqlClient.SqlException: Maximum stored procedure, function, trigger, or view nesting level exceeded (limit 32).
+   at Perpetuum.Data.DbQuery.ExecuteHelper[T](Func`2 execute) in DbQuery.cs:line 54
+   at Perpetuum.Services.Insurance.InsurancePriceRefreshService.Refresh() in InsurancePriceRefreshService.cs:line 40
+```
+
+`Refresh()` (`src/Perpetuum/Services/Insurance/InsurancePriceRefreshService.cs:37-44`) wraps `EXEC usp_RecalculateInsurancePrices` in a `TransactionScope` that is never completed when the exception is thrown — `scope.Complete()` at line 41 is skipped, so the MERGE never commits. `InsuranceHelper.LoadInsurancePrices()` also never runs. `dbo.insuranceprices` is therefore frozen at its last successfully computed values while raw material prices keep moving, so payouts drift out of sync with the market (upward, since fees/payouts are proportional to production cost which has likely risen since the last successful run).
+
+### Impact
+- Insurance payout/fee values do not track current production cost — a direct economic/balance bug affecting every insured loss payout.
+- The failure is silent: only `Logger.Exception(ex)` fires (`InsurancePriceRefreshService.cs:32`), with no alerting, so this can persist for a long time before being noticed via player reports.
+- Insurance is designed as a NIC sink (payout_pct < fee_pct); stale/inflated payouts erode that sink and can flip it toward a net NIC faucet if payout no longer reflects current (lower) production costs.
+
+### Cross-Reference — ISSUE-029 (DONE)
+Same exception signature as ISSUE-029, fixed there by inlining `production_data` as a local CTE (`prod_data`) inside `v_all_production_costs` (and the now-renamed `v_required_raw_materials`) so the recursive CTE stops incrementing SQL Server's view-nesting counter each iteration. **The ISSUE-029 fix was confirmed correctly deployed** (view text in the test DB matches docs exactly) — it is not the cause of this recurrence.
+
+### Root Cause (Confirmed)
+Not chain depth, not a missing ISSUE-029 deployment. `IMPROVEMENT-036-insurance-overhaul.sql` created `usp_RecalculateInsurancePrices` with the `CREATE OR ALTER PROCEDURE ... END` block immediately followed, **in the same batch (no `GO`)**, by:
+```sql
+DELETE FROM dbo.insurance;
+EXEC dbo.usp_RecalculateInsurancePrices;
+```
+SQL Server's deferred-name-resolution dependency parser captured that trailing `EXEC` as belonging to the module itself, recording a bogus self-referencing row in `sys.sql_expression_dependencies` (the procedure listed as depending on itself):
+```sql
+SELECT referenced_entity_name FROM sys.sql_expression_dependencies
+WHERE referencing_id = OBJECT_ID('dbo.usp_RecalculateInsurancePrices');
+-- returned usp_RecalculateInsurancePrices itself, alongside the real dependencies
+```
+`v_all_production_costs` already sits close to SQL Server's 32-level nesting ceiling even after the ISSUE-029 fix (per that issue's ~28-level headroom note). The bogus self-dependency adds just enough extra nesting accounting to push execution over the limit — error 217 on every run. `sp_recompile` does **not** clear this (verified); only re-issuing `CREATE OR ALTER PROCEDURE` as the sole statement in its own batch recalculates the dependency list and removes the self-reference.
+
+Reproduced and verified against the local up-to-date-with-live test DB:
+- `EXEC usp_RecalculateInsurancePrices` reliably failed with error 217 in the DB's existing (as-deployed) state.
+- Re-creating the exact same procedure body in isolation (own batch, no trailing statements) immediately fixed it — `sys.sql_expression_dependencies` dropped to the 4 legitimate dependencies and the procedure ran cleanly.
+- Re-deploying the buggy form (proc + trailing `DELETE`/`EXEC` in one batch, mirroring the original migration) reproduced the failure again on demand, confirming the mechanism.
+
+### Fix
+1. **`docs/db_structure/migrations/ISSUE-036-fix-insurance-proc-self-dependency.sql`** (new) — re-issues `usp_RecalculateInsurancePrices` alone in its own batch (`GO`-terminated) with byte-identical logic to `docs/db_structure/stored_procedures/dbo.usp_RecalculateInsurancePrices.sql`, purging the bogus self-dependency. Idempotent (`CREATE OR ALTER`). **Needs to be applied manually to the live production DB by the operator** — not yet applied there.
+2. **`docs/db_structure/migrations/IMPROVEMENT-036-insurance-overhaul.sql`** — added the missing `GO` after the procedure's `END` so this script can't reintroduce the same bogus self-dependency if it's ever re-run against a fresh environment.
+3. **`src/Perpetuum/Services/Insurance/InsurancePriceRefreshService.cs`** — added consecutive-failure tracking; each failure now also logs via `Logger.Error` with a running consecutive-failure count and an explicit "prices are stale" note, so a persistent refresh failure is loud in logs rather than only visible via a single `Logger.Exception` call. Reset to 0 on the next successful run. (No external alert/paging integration exists for this service yet — wiring one up was judged out of scope for this fix.)
+
+Other proc-creating migrations were spot-checked (`IMPROVEMENT-039`, `-040`, `-042`) — none have trailing statements sharing a batch with a `CREATE PROCEDURE` block the way `IMPROVEMENT-036` did, so this is not believed to be a systemic pattern elsewhere.
+
+### Notes
+- Status is `IN_PROGRESS`, not `DONE`: the code fix is in and build-verified, and the corrective migration is generated and verified against the local test DB, but per project convention DB migrations are never applied directly by the agent — **the operator must run `ISSUE-036-fix-insurance-proc-self-dependency.sql` against production** before this is fully resolved live.
+- Once applied, confirm on production: `SELECT referenced_entity_name FROM sys.sql_expression_dependencies WHERE referencing_id = OBJECT_ID('dbo.usp_RecalculateInsurancePrices');` returns exactly 4 rows (no self-reference), `EXEC dbo.usp_RecalculateInsurancePrices` succeeds, and `dbo.insuranceprices` values update to match current `v_all_production_costs` output.
+
+---
 
 ## ISSUE-032 - Recurring season creates duplicate next-run on each cache refresh before new run starts
 
