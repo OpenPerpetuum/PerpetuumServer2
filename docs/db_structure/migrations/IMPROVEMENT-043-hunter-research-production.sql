@@ -294,3 +294,247 @@ BEGIN
          '#tier=$tierlevel_t1', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 1);
 END;
 GO
+
+-- ============================================================================
+-- Part 3: Hunter Remote Controller -- T1 fitting-cost fix + T2-T4 tiers, prototypes, calibration templates.
+--
+-- cpu/core/powergrid baseline reused from def_standard_assault_remote_controller (closest real
+-- combat-role controller sibling): cpu 250 / core 150 / powergrid 65.
+-- ============================================================================
+
+IF NOT EXISTS (
+    SELECT 1 FROM aggregatevalues av JOIN aggregatefields af ON af.id = av.field
+    WHERE av.definition = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller')
+      AND af.name = 'cpu_usage'
+)
+BEGIN
+    DECLARE @hrcT1Def INT = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller');
+    INSERT INTO aggregatevalues (definition, field, value)
+    SELECT @hrcT1Def, id, v.value FROM aggregatefields af
+    CROSS APPLY (VALUES ('cpu_usage', 250.0), ('core_usage', 150.0), ('powergrid_usage', 65.0)) AS v(name, value)
+    WHERE af.name = v.name;
+END;
+GO
+
+-- T2 (named1)
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named1_hunter_remote_controller', 1,
+         2359320,
+         (SELECT value FROM categoryFlags WHERE name = 'cf_hunter_remote_controllers'),
+         '#moduleFlag=i8#tier=$tierlevel_t2#ammoCapacity=i1#ammoType=L8120a',
+         N'Deploys an autonomous hunter drone -- PvE ammo hunts Niani NPCs, PvP ammo hunts hostile-standing players.',
+         1, 100, 450, 0, 100, N'def_standard_hunter_remote_controller', 1, 1, 2);
+END;
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named1_hunter_remote_controller_pr', 1,
+         2359320,
+         (SELECT value FROM categoryFlags WHERE name = 'cf_hunter_remote_controllers'),
+         '#moduleFlag=i8#tier=$tierlevel_t2_pr#ammoCapacity=i1#ammoType=L8120a',
+         N'Deploys an autonomous hunter drone -- PvE ammo hunts Niani NPCs, PvP ammo hunts hostile-standing players.',
+         1, 100, 400, 0, 100, N'def_standard_hunter_remote_controller', 1, 2, 2);
+END;
+
+IF NOT EXISTS (
+    SELECT 1 FROM aggregatevalues av JOIN aggregatefields af ON af.id = av.field
+    WHERE av.definition = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller') AND af.name = 'detection_range'
+)
+BEGIN
+    DECLARE @hrcT2Def INT = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller');
+    INSERT INTO aggregatevalues (definition, field, value)
+    SELECT @hrcT2Def, id, v.value FROM aggregatefields af
+    CROSS APPLY (VALUES
+        ('detection_range', 110.0), ('remote_control_bandwidth_max', 1.0),
+        ('remote_control_operational_range', 165.0), ('remote_control_lifetime', 1980000.0),
+        ('cycle_time', 4500.0), ('cpu_usage', 260.0), ('core_usage', 155.0), ('powergrid_usage', 67.0)
+    ) AS v(name, value)
+    WHERE af.name = v.name;
+END;
+
+IF NOT EXISTS (
+    SELECT 1 FROM aggregatevalues av JOIN aggregatefields af ON af.id = av.field
+    WHERE av.definition = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr') AND af.name = 'detection_range'
+)
+BEGIN
+    DECLARE @hrcT2PrDef INT = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_pr');
+    INSERT INTO aggregatevalues (definition, field, value)
+    SELECT @hrcT2PrDef, id, v.value FROM aggregatefields af
+    CROSS APPLY (VALUES
+        ('detection_range', 110.0), ('remote_control_bandwidth_max', 1.0),
+        ('remote_control_operational_range', 180.0), ('remote_control_lifetime', 2160000.0),
+        ('cycle_time', 4500.0), ('cpu_usage', 255.0), ('core_usage', 155.0), ('powergrid_usage', 66.0)
+    ) AS v(name, value)
+    WHERE af.name = v.name;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller_cprg')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named1_hunter_remote_controller_cprg', 1, 1024,
+         (SELECT value FROM categoryflags WHERE name = 'cf_module_calibration_programs'),
+         '#tier=$tierlevel_t2', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 2);
+END;
+
+-- T3 (named2)
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named2_hunter_remote_controller', 1,
+         2359320,
+         (SELECT value FROM categoryFlags WHERE name = 'cf_hunter_remote_controllers'),
+         '#moduleFlag=i8#tier=$tierlevel_t3#ammoCapacity=i1#ammoType=L8120a',
+         N'Deploys an autonomous hunter drone -- PvE ammo hunts Niani NPCs, PvP ammo hunts hostile-standing players.',
+         1, 100, 450, 0, 100, N'def_standard_hunter_remote_controller', 1, 1, 3);
+END;
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named2_hunter_remote_controller_pr', 1,
+         2359320,
+         (SELECT value FROM categoryFlags WHERE name = 'cf_hunter_remote_controllers'),
+         '#moduleFlag=i8#tier=$tierlevel_t3_pr#ammoCapacity=i1#ammoType=L8120a',
+         N'Deploys an autonomous hunter drone -- PvE ammo hunts Niani NPCs, PvP ammo hunts hostile-standing players.',
+         1, 100, 400, 0, 100, N'def_standard_hunter_remote_controller', 1, 2, 3);
+END;
+
+IF NOT EXISTS (
+    SELECT 1 FROM aggregatevalues av JOIN aggregatefields af ON af.id = av.field
+    WHERE av.definition = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller') AND af.name = 'detection_range'
+)
+BEGIN
+    DECLARE @hrcT3Def INT = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller');
+    INSERT INTO aggregatevalues (definition, field, value)
+    SELECT @hrcT3Def, id, v.value FROM aggregatefields af
+    CROSS APPLY (VALUES
+        ('detection_range', 120.0), ('remote_control_bandwidth_max', 1.0),
+        ('remote_control_operational_range', 180.0), ('remote_control_lifetime', 2160000.0),
+        ('cycle_time', 4000.0), ('cpu_usage', 270.0), ('core_usage', 160.0), ('powergrid_usage', 69.0)
+    ) AS v(name, value)
+    WHERE af.name = v.name;
+END;
+
+IF NOT EXISTS (
+    SELECT 1 FROM aggregatevalues av JOIN aggregatefields af ON af.id = av.field
+    WHERE av.definition = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr') AND af.name = 'detection_range'
+)
+BEGIN
+    DECLARE @hrcT3PrDef INT = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_pr');
+    INSERT INTO aggregatevalues (definition, field, value)
+    SELECT @hrcT3PrDef, id, v.value FROM aggregatefields af
+    CROSS APPLY (VALUES
+        ('detection_range', 120.0), ('remote_control_bandwidth_max', 1.0),
+        ('remote_control_operational_range', 195.0), ('remote_control_lifetime', 2340000.0),
+        ('cycle_time', 4000.0), ('cpu_usage', 265.0), ('core_usage', 160.0), ('powergrid_usage', 68.0)
+    ) AS v(name, value)
+    WHERE af.name = v.name;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named2_hunter_remote_controller_cprg')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named2_hunter_remote_controller_cprg', 1, 1024,
+         (SELECT value FROM categoryflags WHERE name = 'cf_module_calibration_programs'),
+         '#tier=$tierlevel_t3', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 3);
+END;
+
+-- T4 (named3)
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named3_hunter_remote_controller', 1,
+         2359320,
+         (SELECT value FROM categoryFlags WHERE name = 'cf_hunter_remote_controllers'),
+         '#moduleFlag=i8#tier=$tierlevel_t4#ammoCapacity=i1#ammoType=L8120a',
+         N'Deploys an autonomous hunter drone -- PvE ammo hunts Niani NPCs, PvP ammo hunts hostile-standing players.',
+         1, 100, 450, 0, 100, N'def_standard_hunter_remote_controller', 1, 1, 4);
+END;
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named3_hunter_remote_controller_pr', 1,
+         2359320,
+         (SELECT value FROM categoryFlags WHERE name = 'cf_hunter_remote_controllers'),
+         '#moduleFlag=i8#tier=$tierlevel_t4_pr#ammoCapacity=i1#ammoType=L8120a',
+         N'Deploys an autonomous hunter drone -- PvE ammo hunts Niani NPCs, PvP ammo hunts hostile-standing players.',
+         1, 100, 400, 0, 100, N'def_standard_hunter_remote_controller', 1, 2, 4);
+END;
+
+IF NOT EXISTS (
+    SELECT 1 FROM aggregatevalues av JOIN aggregatefields af ON af.id = av.field
+    WHERE av.definition = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller') AND af.name = 'detection_range'
+)
+BEGIN
+    DECLARE @hrcT4Def INT = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller');
+    INSERT INTO aggregatevalues (definition, field, value)
+    SELECT @hrcT4Def, id, v.value FROM aggregatefields af
+    CROSS APPLY (VALUES
+        ('detection_range', 130.0), ('remote_control_bandwidth_max', 1.0),
+        ('remote_control_operational_range', 195.0), ('remote_control_lifetime', 2340000.0),
+        ('cycle_time', 3500.0), ('cpu_usage', 280.0), ('core_usage', 165.0), ('powergrid_usage', 71.0)
+    ) AS v(name, value)
+    WHERE af.name = v.name;
+END;
+
+IF NOT EXISTS (
+    SELECT 1 FROM aggregatevalues av JOIN aggregatefields af ON af.id = av.field
+    WHERE av.definition = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr') AND af.name = 'detection_range'
+)
+BEGIN
+    DECLARE @hrcT4PrDef INT = (SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_pr');
+    INSERT INTO aggregatevalues (definition, field, value)
+    SELECT @hrcT4PrDef, id, v.value FROM aggregatefields af
+    CROSS APPLY (VALUES
+        ('detection_range', 130.0), ('remote_control_bandwidth_max', 1.0),
+        ('remote_control_operational_range', 210.0), ('remote_control_lifetime', 2520000.0),
+        ('cycle_time', 3500.0), ('cpu_usage', 275.0), ('core_usage', 165.0), ('powergrid_usage', 70.0)
+    ) AS v(name, value)
+    WHERE af.name = v.name;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_named3_hunter_remote_controller_cprg')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_named3_hunter_remote_controller_cprg', 1, 1024,
+         (SELECT value FROM categoryflags WHERE name = 'cf_module_calibration_programs'),
+         '#tier=$tierlevel_t4', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 4);
+END;
+
+-- Standard (T1) calibration template -- did not exist before this migration.
+
+IF NOT EXISTS (SELECT 1 FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller_cprg')
+BEGIN
+    INSERT INTO entitydefaults
+        (definitionname, quantity, attributeflags, categoryflags, options, note, enabled, volume, mass, hidden, health, descriptiontoken, purchasable, tiertype, tierlevel)
+    VALUES
+        ('def_standard_hunter_remote_controller_cprg', 1, 1024,
+         (SELECT value FROM categoryflags WHERE name = 'cf_module_calibration_programs'),
+         '#tier=$tierlevel_t1', '', 1, 0.01, 0.1, 0, 100, N'calibration_program_desc', 0, 1, 1);
+END;
+GO
