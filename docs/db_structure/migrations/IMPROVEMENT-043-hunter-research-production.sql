@@ -9,12 +9,17 @@
 -- All INSERTs are idempotent and every definition/category/aggregatefield id is resolved dynamically by
 -- name, per docs/content/claude_game_content_guide.md. Not applied to any DB by this commit -- generated
 -- for manual review/application per standing project practice.
+--
+-- PREREQUISITE: apply IMPROVEMENT-043-hunter-drones-self-destruct.sql first. This migration resolves
+-- definitions, category flags, and items that only that migration creates.
 
 USE perpetuumsa
 GO
 
 -- ============================================================================
 -- Part 1: Self-Destruct Module -- T1 fitting-cost fix + T2-T4 tiers, prototypes, calibration templates.
+--
+-- (Part 2 of the original plan was merged into Part 1 above -- see plan doc for the original split.)
 --
 -- T1 (def_standard_self_destruct_module) currently has no cpu/core/powergrid_usage at all (missing from
 -- the original migration). Baseline values below are a fresh starting-balance estimate for a simple
@@ -601,6 +606,11 @@ DECLARE @tempComponents TABLE (definition INT, componentdefinition INT, componen
 -- Self-Destruct Module
 
 INSERT INTO @tempComponents (definition, componentdefinition, componentamount) VALUES
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @espitium, 200),
+
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @titanium, 200),
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @axicol, 250),
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @axicoline, 200),
@@ -650,6 +660,11 @@ INSERT INTO @tempComponents (definition, componentdefinition, componentamount) V
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @robotshardExpert, 180),
 
 -- Hunter Remote Controller (identical recipe shape, own tier chain)
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @espitium, 200),
 
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @titanium, 200),
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @axicol, 250),

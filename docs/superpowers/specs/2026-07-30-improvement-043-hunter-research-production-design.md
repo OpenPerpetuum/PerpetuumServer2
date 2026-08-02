@@ -1,6 +1,6 @@
 # IMPROVEMENT-043 follow-up: named-tier variants, research, production for Self-Destruct Module & Hunter Remote Controller
 
-Status: DRAFT (awaiting user review)
+Status: Implemented -- see docs/db_structure/migrations/IMPROVEMENT-043-hunter-research-production.sql (not yet applied to any database; requires manual DBA action per project practice)
 
 ## Scope
 
@@ -183,3 +183,4 @@ common 50,000 + hitech 40,000.
 4. Confirm production/calibration screens show the expected material costs and calibration templates for
    all new tiers and both Hunter Drone RCU ammo items.
 5. Confirm `prototypes` linkage lets a researched prototype get produced into its named-tier module.
+6. Visually verify in the game client tech-tree UI that the def_standard_self_destruct_module -> def_standard_hunter_remote_controller edge (a same-x vertical connector, unlike the diagonal edges used elsewhere in this tree) renders cleanly with no overlap or crossing lines.

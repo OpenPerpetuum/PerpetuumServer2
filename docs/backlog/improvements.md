@@ -239,8 +239,10 @@ controller chain at y=37, parented off the standard self-destruct module node; b
 items as siblings at (x=2, y=38/39) off the standard hunter remote controller node. Design:
 `docs/superpowers/specs/2026-07-30-improvement-043-hunter-research-production-design.md`. T1 of both
 modules also gained `cpu_usage`/`core_usage`/`powergrid_usage` aggregatevalues they were previously
-missing entirely. Verified via a full-file `BEGIN TRAN`/`ROLLBACK` dry run against the live test DB
-(0 errors, idempotent on a second run) -- not applied.
+missing entirely, plus (fixed in final-review pass) their own production/components recipe
+(titanium 200, axicol 250, axicoline 200, espitium 200) -- without it T1 and everything downstream of it
+would have been uncraftable. Verified via a full-file `BEGIN TRAN`/`ROLLBACK` dry run against the live
+test DB (0 errors, idempotent on a second run) -- not applied.
 
 ### Problem
 

@@ -759,6 +759,11 @@ DECLARE @tempComponents TABLE (definition INT, componentdefinition INT, componen
 -- Self-Destruct Module
 
 INSERT INTO @tempComponents (definition, componentdefinition, componentamount) VALUES
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_self_destruct_module'), @espitium, 200),
+
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @titanium, 200),
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @axicol, 250),
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_self_destruct_module'), @axicoline, 200),
@@ -808,6 +813,11 @@ INSERT INTO @tempComponents (definition, componentdefinition, componentamount) V
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named3_self_destruct_module_pr'), @robotshardExpert, 180),
 
 -- Hunter Remote Controller (identical recipe shape, own tier chain)
+
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @titanium, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @axicol, 250),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @axicoline, 200),
+((SELECT definition FROM entitydefaults WHERE definitionname = 'def_standard_hunter_remote_controller'), @espitium, 200),
 
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @titanium, 200),
 ((SELECT definition FROM entitydefaults WHERE definitionname = 'def_named1_hunter_remote_controller'), @axicol, 250),
@@ -1302,9 +1312,9 @@ Run via: `sqlcmd -S "DESKTOP-8LUE5OF\MSSQLSERVER2019" -d perpetuumsa -E -C -i "<
 
 Expected: 0 errors end-to-end (running the whole file top-to-bottom, not just isolated sections —
 catches any cross-section dependency ordering mistakes); `entitydefaults_added = 22`;
-`components_rows = 98` (self-destruct chain: named1 5 + named1_pr 6 + named2 6 + named2_pr 8 + named3 7 +
-named3_pr 10 = 42; hunter RC chain: identical shape = 42; RCU ammo: pve 7 + pvp 7 = 14; total
-42+42+14 = 98 — recount against the actual `@tempComponents` literal list in Task 4 if this doesn't
+`components_rows = 106` (self-destruct chain: T1 4 + named1 5 + named1_pr 6 + named2 6 + named2_pr 8 +
+named3 7 + named3_pr 10 = 46; hunter RC chain: identical shape = 46; RCU ammo: pve 7 + pvp 7 = 14; total
+46+46+14 = 106 — recount against the actual `@tempComponents` literal list in Task 4 if this doesn't
 match); `research_rows = 10`; `techtree_rows = 10`. `ROLLBACK` confirms nothing was persisted.
 
 - [ ] **Step 2: Re-run the whole file a second time (still rolled back) to confirm idempotency**
