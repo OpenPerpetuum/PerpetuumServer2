@@ -123,5 +123,41 @@ namespace Perpetuum.Tests.Unit
 
             Assert.Equal("select 1", _db.Commands[^1].CommandText);
         }
+
+        [Theory]
+        [InlineData("usp_RecalculateInsurancePrices", CommandType.StoredProcedure)]
+        [InlineData("select 1 from characters", CommandType.Text)]
+        public void The_command_type_is_inferred_from_whether_the_text_contains_a_space(
+            string commandText,
+            CommandType expected)
+        {
+            // DbQuery.ExecuteHelper decides this with _commandText.Contains(' '), which is what
+            // makes a spaceless command run as a stored procedure. Breaking that heuristic changes
+            // how every parameterless proc call is dispatched, silently.
+            _db.When(commandText, FakeResultSet.Empty("x"));
+
+            _ = Db.Query().CommandText(commandText).Execute();
+
+            RecordedCommand? recorded = _db.LastCommandMatching(commandText);
+            Assert.NotNull(recorded);
+            Assert.Equal(expected, recorded!.CommandType);
+        }
+
+        [Fact]
+        public void ExecuteSingleRow_returns_the_first_row_and_null_when_there_are_none()
+        {
+            _db.When("select top 2 id from characters",
+                FakeResultSet.FromRows(["id"], [1], [2]));
+            _db.When("select id from nothing", FakeResultSet.Empty("id"));
+
+            IDataRecord? first = Db.Query()
+                .CommandText("select top 2 id from characters")
+                .ExecuteSingleRow();
+
+            Assert.NotNull(first);
+            Assert.Equal(1, first!.GetValue<int>(0));
+
+            Assert.Null(Db.Query().CommandText("select id from nothing").ExecuteSingleRow());
+        }
     }
 }

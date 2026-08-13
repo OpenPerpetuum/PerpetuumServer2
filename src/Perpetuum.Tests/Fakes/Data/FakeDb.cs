@@ -7,6 +7,7 @@ namespace Perpetuum.Tests.Fakes.Data
     public sealed record RecordedCommand
     {
         public required string CommandText { get; init; }
+        public required CommandType CommandType { get; init; }
         public required IReadOnlyDictionary<string, object?> Parameters { get; init; }
         public required int CommandTimeout { get; init; }
         public required bool HadAmbientTransaction { get; init; }
@@ -71,6 +72,7 @@ namespace Perpetuum.Tests.Fakes.Data
                 _commands.Add(new RecordedCommand
                 {
                     CommandText = command.CommandText,
+                    CommandType = command.CommandType,
                     Parameters = parameters,
                     CommandTimeout = command.CommandTimeout,
                     HadAmbientTransaction = ambient != null,
