@@ -1,6 +1,54 @@
 # Last ID used
 
-038
+039
+
+## ISSUE-039 - Insurance price cache never reloads — LoadInsurancePrices runs inside a completed TransactionScope
+
+Status: IN_PROGRESS
+Priority: HIGH
+Area: Economy / Insurance
+
+### Problem
+`InsurancePriceRefreshService.Refresh()` opens a `TransactionScope` with a `using` declaration, calls `scope.Complete()`, and then calls `InsuranceHelper.LoadInsurancePrices()` while still inside the scope's lifetime (`src/Perpetuum/Services/Insurance/InsurancePriceRefreshService.cs:49-52` at `f9ddac2`):
+
+```csharp
+using var scope = Db.CreateTransaction();
+_ = Db.Query().CommandText("exec usp_RecalculateInsurancePrices").Timeout(120).ExecuteNonQuery();
+scope.Complete();
+InsuranceHelper.LoadInsurancePrices();
+```
+
+A `using` declaration disposes at the end of the method, not at `Complete()`. `Complete()` only casts the commit vote — the scope stays the ambient transaction until `Dispose()`. `LoadInsurancePrices()` therefore issues its query with `Transaction.Current` pointing at a scope that is already complete, and `DbQuery.ExecuteHelper` calls `connection.Open()` (`src/Perpetuum/Data/DbQuery.cs:55`), which reads `Transaction.Current` for transacted connection pooling and throws:
+
+```
+System.InvalidOperationException: The current TransactionScope is already complete.
+   at System.Transactions.Transaction.get_Current()
+   at Microsoft.Data.ProviderBase.DbConnectionPool.GetFromTransactedPool(Transaction& transaction)
+   at Microsoft.Data.SqlClient.SqlConnection.Open(SqlConnectionOverrides overrides)
+   at Perpetuum.Data.DbQuery.ExecuteHelper[T](Func`2 execute) in DbQuery.cs:line 55
+   at Perpetuum.Services.Insurance.InsuranceHelper.LoadInsurancePrices() in InsuranceHelper.cs:line 447
+   at Perpetuum.Services.Insurance.InsurancePriceRefreshService.Refresh() in InsurancePriceRefreshService.cs:line 52
+```
+
+The exception propagates to the `catch` in `RefreshAsync`, so every run — the startup run and each daily run — is counted as a failure and logs `refresh failed (N consecutive failure(s))`. The success line at `InsurancePriceRefreshService.cs:53` never runs.
+
+### Impact
+`_insurancePrices` (`src/Perpetuum/Services/Insurance/InsuranceHelper.cs:401`) is a static cache populated lazily: on a miss, `GetInsurancePrice` reads `dbo.insuranceprices` once and keeps that value for the definition for the rest of the process lifetime. `LoadInsurancePrices()` is the only path that refreshes an already-cached definition during normal operation — the sole other caller is the `ProductionSetInsurance` request handler.
+
+With `Refresh()` throwing before that call, the daily recalculation updates `dbo.insuranceprices` but the running server keeps quoting the values it cached earlier. Fees and payouts drift from the recalculated table for as long as the process stays up, and a restart is the only thing that clears it. This is the same player-visible symptom ISSUE-036 reports, so applying that issue's migration alone does not restore correct prices on a long-running server.
+
+The `MERGE` itself is not lost: `Complete()` has already been called when the exception unwinds, so `Dispose()` still commits.
+
+### Cross-Reference — ISSUE-036 (IN_PROGRESS)
+This defect sat behind ISSUE-036. Until `usp_RecalculateInsurancePrices` was fixed, the `ExecuteNonQuery` on the previous line always threw error 217, so execution never reached `LoadInsurancePrices()`. Applying `docs/db_structure/migrations/ISSUE-036-fix-insurance-proc-self-dependency.sql` to a local P36.8 database removed the `nesting level exceeded` exception from the startup log and exposed this one in its place, at the next line of the same method.
+
+ISSUE-036's production verification list should gain one step: after applying the migration, confirm the log carries `InsurancePriceRefreshService: prices recalculated and cache reloaded.` rather than another `refresh failed` line.
+
+### Fix
+`src/Perpetuum/Services/Insurance/InsurancePriceRefreshService.cs` — replace the `using` declaration with a `using` block that closes immediately after `scope.Complete()`, so the transaction is disposed and `Transaction.Current` is null again before `LoadInsurancePrices()` runs. This matches the `using (var scope = Db.CreateTransaction())` form used throughout `Perpetuum.RequestHandlers`. No logic, no SQL and no transaction boundary changes: the `EXEC` remains the only statement inside the transaction, which is what the original code already intended.
+
+### Notes
+Reproduced on a local P36.8 database (`develop` at `f9ddac2`) with the ISSUE-036 migration applied. Status is `IN_PROGRESS` rather than `DONE` because production still has the ISSUE-036 migration pending — until it is applied there, the SQL error masks this code path and the fix cannot be observed live.
 
 ## ISSUE-035 - Server fails to start with the perpetuum.ini produced by the official installer
 
