@@ -31,7 +31,7 @@ The team tests by running the server locally against a configured `GameRoot`:
 
 ```bash
 cd src/Perpetuum.Server
-dotnet run -- --GameRoot "E:\PerpetuumServer2\data"
+dotnet run -- "E:\PerpetuumServer2\data"
 ```
 
 Manual verification involves:

@@ -77,45 +77,7 @@ Reproduced against SQL Server 2022 Express, named instance, Windows integrated a
 
 `TrustServerCertificate=True` disables server certificate validation. It is appropriate for a local development instance only and must not be carried into a deployment where the connection leaves the machine.
 
-## ISSUE-034 - CLAUDE.md contains stale references that misdirect contributors
-
-Status: TODO
-Priority: MEDIUM
-Area: Documentation
-
-### Problem
-Three sets of references in `CLAUDE.md` do not match the repository:
-
-1. Build & Run documents `dotnet run -- --GameRoot "<path>"`. `src/Perpetuum.Server/Program.cs` declares the game root as a positional argument via `app.Argument("<GAMEROOT>", ...)`, so the option does not exist and the run fails with `Unrecognized option '--GameRoot'`. The working form is `dotnet run -- "<path>"`.
-2. Eight `docs/` references point at files that do not exist. Authoritative Documentation links `docs/CONCERNS.md` (line 77), `docs/CONVENTIONS.md` (80), `docs/INTEGRATIONS.md` (83), `docs/STACK.md` (86), `docs/STRUCTURE.md` (89) and `docs/TESTING.md` (92); Technical Debt Rules links `docs/CONCERNS.md` again (222) and Code Placement links `docs/STRUCTURE.md` again (316). All six files live under `docs/codebase/`. Only the `ARCHITECTURE.md` entry (74) already points there.
-3. `.claude/knowledge/architecture.md` does not exist and is referenced twice: as the file to update when introducing major architectural changes (line 44), and as the architecture deep-dive in the Where to Edit table (331). `.claude/knowledge/` contains only `codebase-graph.md`.
-
-### Impact
-`CLAUDE.md` is the instruction file for agent-assisted work, so a wrong path or command is followed rather than questioned. The documented run command cannot succeed, and ten path references resolve to nothing — eight under `docs/` and two under `.claude/knowledge/`.
-
-### Proposed Fix
-Correct the run command to the positional form and prefix the eight `docs/` paths with `codebase/`. The two `.claude/knowledge/architecture.md` references need a maintainer decision: repoint them at `docs/codebase/ARCHITECTURE.md`, which already holds the architecture documentation, or create the missing file.
-
-### Notes
-`--GameRoot` remains valid for `Perpetuum.ServerService2`, which reads `GameRoot` from `appsettings.json`; only the `Perpetuum.Server` console entry point takes it positionally. Line numbers are against `CLAUDE.md` at `b8d2ec2` (P36.7). `Commands.cs` and `completed.md` also appear in the file, but as bare filenames in prose rather than paths.
-
-## ISSUE-033 - FreeRoamingPathFinder throws on presences with no flocks
-
-Status: TODO
-Priority: LOW
-Area: NPC AI / Logging
-
-### Problem
-`FreeRoamingPathFinder.TryGetMaxHomeRange` calls `presence.Flocks.Max(f => f.HomeRange)` and `TryGetMinSlope` calls `presence.Flocks.GetMembers().Min(m => m.Slope)`. When the sequence is empty, LINQ raises `InvalidOperationException: Sequence contains no elements`. The surrounding `try/catch` swallows it, writes a full stack trace through `Logger.Exception`, and returns the fallback value.
-
-### Impact
-A presence with no flocks is a normal state, not a fault, so each one emits a stack trace during zone startup. Exception handling is used as ordinary control flow on a per-presence path, and the resulting traces make genuine faults harder to spot in the log.
-
-### Proposed Fix
-Project the value and use `DefaultIfEmpty` so the empty case yields the fallback without throwing, keeping the `try/catch` for genuinely unexpected failures.
-
-### Notes
-Observed during startup against a P36 database. Existing behaviour must be preserved: empty flocks yield `10` after `Clamp(10, 40)`, and empty members yield `ZoneExtensions.MIN_SLOPE`.
+---
 
 ---
 
