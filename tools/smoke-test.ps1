@@ -11,6 +11,7 @@
       4  timed out waiting for the server to come online
       5  a forbidden pattern was found in the log
       6  the server did not shut down gracefully
+      7  unexpected error
 #>
 [CmdletBinding()]
 param(
@@ -25,6 +26,15 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Any terminating error that no phase handles leaves through a documented code rather than
+# PowerShell's own. Without this, a missing dotnet, an unreadable log, or a failed P/Invoke
+# would exit with a code the script never documented.
+trap {
+    Write-Host "Unexpected error: $_" -ForegroundColor Red
+    Write-Host $_.ScriptStackTrace -ForegroundColor DarkGray
+    exit 7
+}
 
 # Patterns that must appear. Absence fails the run.
 $RequiredOnline   = 'State : \[Online\]'
@@ -96,9 +106,12 @@ $proc = Start-Process -FilePath $serverExe -ArgumentList "`"$GameRoot`"" `
     -PassThru -WindowStyle Hidden
 
 # Start-Process -PassThru combined with output redirection returns a Process object whose
-# ExitCode (and Handle) cannot be read later, in this PowerShell version -- confirmed with an
-# isolated cmd.exe repro. Open our own handle now, while the process is guaranteed to still be
-# running, so Phase 5 can read the real exit code via GetExitCodeProcess instead.
+# ExitCode (and Handle) cannot be read later, in this PowerShell version. Open our own handle
+# now, while the process is guaranteed to still be running, so Phase 5 can read the real exit
+# code via GetExitCodeProcess. Both Win32 return values are checked below: an unchecked failure
+# here would silently leave the exit-code variable at its default and report a graceful
+# shutdown that never happened. Either failure is a failed P/Invoke, which is exactly what the
+# trap above exists to turn into a documented exit 7 instead of a default PowerShell exit.
 $procApiSignature = @'
 [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
 [DllImport("kernel32.dll", SetLastError = true)] public static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
@@ -106,6 +119,10 @@ $procApiSignature = @'
 $procApi = Add-Type -MemberDefinition $procApiSignature -Name 'SmokeProcess' -Namespace 'Perpetuum' -PassThru
 $PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 $procHandle = $procApi::OpenProcess($PROCESS_QUERY_LIMITED_INFORMATION, $false, [uint32] $proc.Id)
+if ($procHandle -eq [IntPtr]::Zero) {
+    $lastError = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    throw "OpenProcess failed for PID $($proc.Id) (Win32 error $lastError). Cannot verify the server's exit code later."
+}
 
 # --- Phase 3: wait for online --------------------------------------------
 Write-Section 'Waiting for [Online]'
@@ -221,7 +238,11 @@ if ($finalLog -notmatch $RequiredOffline) {
     exit 6
 }
 [uint32] $serverExitCode = 0
-[void] $procApi::GetExitCodeProcess($procHandle, [ref] $serverExitCode)
+$gotExitCode = $procApi::GetExitCodeProcess($procHandle, [ref] $serverExitCode)
+if (-not $gotExitCode) {
+    $lastError = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    throw "GetExitCodeProcess failed for PID $($proc.Id) (Win32 error $lastError). Cannot verify the server's exit code."
+}
 if ($serverExitCode -ne 0) {
     Write-Host "Server exit code was $serverExitCode, expected 0." -ForegroundColor Red
     Write-Host "Log kept for inspection: $logPath" -ForegroundColor Yellow
