@@ -41,7 +41,7 @@ When instructions conflict, prioritize:
 - Do not make commits unless explicitly asked.
 
 Update:
-- `.claude/knowledge/architecture.md`
+- `docs/codebase/ARCHITECTURE.md`
 
 when introducing major architectural changes.
 
@@ -53,7 +53,7 @@ when introducing major architectural changes.
 dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64
 
 cd src/Perpetuum.Server
-dotnet run -- --GameRoot "E:\PerpetuumServer2\data"
+dotnet run -- "E:\PerpetuumServer2\data"
 ```
 
 CI:
@@ -74,22 +74,22 @@ The `docs/` directory is the authoritative source of truth.
 - `docs/codebase/ARCHITECTURE.md`
 
 ## Technical Concerns
-- `docs/CONCERNS.md`
+- `docs/codebase/CONCERNS.md`
 
 ## Coding Conventions
-- `docs/CONVENTIONS.md`
+- `docs/codebase/CONVENTIONS.md`
 
 ## Integrations
-- `docs/INTEGRATIONS.md`
+- `docs/codebase/INTEGRATIONS.md`
 
 ## Technology Stack
-- `docs/STACK.md`
+- `docs/codebase/STACK.md`
 
 ## Project Structure
-- `docs/STRUCTURE.md`
+- `docs/codebase/STRUCTURE.md`
 
 ## Testing Constraints
-- `docs/TESTING.md`
+- `docs/codebase/TESTING.md`
 
 ---
 
@@ -219,7 +219,7 @@ Use existing patterns:
 # Technical Debt Rules
 
 Avoid worsening known technical debt documented in:
-- `docs/CONCERNS.md`
+- `docs/codebase/CONCERNS.md`
 
 Avoid:
 - new static service locators
@@ -313,7 +313,7 @@ Avoid generating code before analysis.
 # Code Placement
 
 Before creating files:
-- verify correct subsystem placement in `docs/STRUCTURE.md`
+- verify correct subsystem placement in `docs/codebase/STRUCTURE.md`
 - follow existing namespace patterns
 - follow existing folder organization
 
@@ -328,7 +328,7 @@ Avoid parallel abstractions unless justified.
 | Purpose | File |
 |---|---|
 | Main AI instructions | `CLAUDE.md` |
-| Architecture deep-dive | `.claude/knowledge/architecture.md` |
+| Architecture deep-dive | `docs/codebase/ARCHITECTURE.md` |
 | Codebase graph & impact analysis | `.claude/knowledge/codebase-graph.md` |
 | Specialist agents | `.claude/agents/<name>.md` |
 
