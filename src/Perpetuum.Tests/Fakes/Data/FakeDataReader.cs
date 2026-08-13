@@ -7,7 +7,14 @@ namespace Perpetuum.Tests.Fakes.Data
         private readonly FakeResultSet _resultSet = resultSet;
         private int _index = -1;
 
-        private object?[] Current => _resultSet.Rows[_index];
+        // System.Data.Common.DbEnumerator (behind DataReaderExtensions.ToEnumerable, which
+        // DbQuery.Execute()/ExecuteSingleRow() use) calls GetFieldType for every column once,
+        // before the first Read(), to build its schema info — while _index is still -1. Treat
+        // that unpositioned state as an all-null row instead of indexing Rows[-1]; a real reader
+        // has no per-row values to report at that point either.
+        private object?[] Current => _index < 0
+            ? new object?[_resultSet.ColumnNames.Count]
+            : _resultSet.Rows[_index];
 
         public bool Read()
         {
