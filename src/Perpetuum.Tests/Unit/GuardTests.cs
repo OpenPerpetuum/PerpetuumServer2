@@ -214,5 +214,29 @@ namespace Perpetuum.Tests.Unit
 
             Assert.True(invoked);
         }
+
+        [Fact]
+        public void ThrowIfEqual_throws_on_equality_and_returns_the_value_otherwise()
+        {
+            // Guard.cs:110 is a separate implementation from the Func<Exception> overload at
+            // Guard.cs:216 — it does not delegate to it, and nothing else in Guard reaches it.
+            // Without this test the overload has no coverage, direct or transitive, despite being
+            // used across EntityRepository, ZoneSession and EntityDefault.
+            _ = Assert.Throws<PerpetuumException>(
+                () => 7.ThrowIfEqual(7, ErrorCodes.WTFErrorMedicalAttentionSuggested));
+
+            Assert.Equal(7, 7.ThrowIfEqual(3, ErrorCodes.WTFErrorMedicalAttentionSuggested));
+        }
+
+        [Fact]
+        public void ThrowIfEqual_invokes_the_exception_action_before_throwing()
+        {
+            bool invoked = false;
+
+            _ = Assert.Throws<PerpetuumException>(
+                () => 7.ThrowIfEqual(7, ErrorCodes.WTFErrorMedicalAttentionSuggested, _ => invoked = true));
+
+            Assert.True(invoked);
+        }
     }
 }
