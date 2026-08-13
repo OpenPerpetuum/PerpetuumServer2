@@ -27,7 +27,7 @@ namespace Perpetuum.Units
         private BeamType GetWreckBeamType()
         {
             var robot = _unit as Robot;
-            var definition = robot?.GetRobotComponent(RobotComponentType.Leg).Definition ?? _unit.Definition;
+            var definition = robot?.GetRobotComponent(RobotComponentType.Leg)?.Definition ?? _unit.Definition;
             return BeamHelper.GetBeamByDefinition(definition);
         }
     }

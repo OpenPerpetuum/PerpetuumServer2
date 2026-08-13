@@ -517,5 +517,10 @@ namespace Perpetuum.ExportedTypes
         effect_excavator_enhancer_harvesting_amount_modifier = 757,
         effect_field_sensor_strength_modifier = 758,
         effect_field_reactor_radiation_modifier = 759,
+        self_destruct_config_explosion_radius = 760,
+        self_destruct_config_damage_chemical = 761,
+        self_destruct_config_damage_explosive = 762,
+        self_destruct_config_damage_kinetic = 763,
+        self_destruct_config_damage_thermal = 764,
     }
 }

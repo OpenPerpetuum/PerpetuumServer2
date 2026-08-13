@@ -8,5 +8,7 @@
         CombatDrone,
         IndustrialDrone,
         SupportDrone,
+        HunterDronePvE,
+        HunterDronePvP,
     }
 }

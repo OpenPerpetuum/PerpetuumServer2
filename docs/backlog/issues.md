@@ -1,6 +1,6 @@
 # Last ID used
 
-035
+038
 
 ## ISSUE-035 - Server fails to start with the perpetuum.ini produced by the official installer
 
@@ -68,6 +68,162 @@ Project the value and use `DefaultIfEmpty` so the empty case yields the fallback
 
 ### Notes
 Observed during startup against a P36 database. Existing behaviour must be preserved: empty flocks yield `10` after `Clamp(10, 40)`, and empty members yield `ZoneExtensions.MIN_SLOPE`.
+
+---
+
+## ISSUE-038 - Server RAM usage grows over time — possible memory leak
+
+Status: IN_PROGRESS
+Priority: CRITICAL
+Area: Server / Runtime / Performance
+
+### Problem
+Over time, the running server process shows steadily growing RAM consumption. No specific subsystem has been identified yet. Needs investigation both in general (long-lived caches, event handler leaks, undisposed resources, static collections that only grow) and specifically in terms of recent changes to the codebase, since a regression introduced by recent work is a plausible contributor.
+
+### Impact
+Unchecked growth risks eventual OOM crashes or degraded performance (GC pressure) on long-running server instances, affecting all players connected at the time of a crash/restart.
+
+### Proposed Fix
+1. **Establish a baseline** — capture memory growth rate under normal load (e.g. dotnet-counters / dotnet-gcdump / dotnet-trace snapshots over time) to characterize the leak (steady linear growth vs. growth tied to specific events like zone transitions, missions, or NPC spawns).
+2. **Diff heap snapshots** — take two or more `dotnet-gcdump` snapshots hours apart and diff retained object counts/types to identify what's accumulating (e.g. event subscriptions never unsubscribed, collections indexed by entity/session that are never cleaned up, timers/tasks not disposed).
+3. **Audit recent changes** — review recently merged work (e.g. IMPROVEMENT-043 Hunter Drones: drone spawning/despawning, controller wiring, effect setup) for undisposed handlers, static/singleton collections growing per-spawn without corresponding cleanup on despawn/disconnect, or event subscriptions added without matching unsubscription.
+4. **Check known high-churn subsystems** — zone updates, NPC AI/spawning, mission engine, market processing, season activity tracking — for per-tick or per-entity allocations that aren't being released (per repo-wide "High-risk hot paths" list in CLAUDE.md).
+
+### Progress
+
+**Static code audit (bullets 3/4) — no leak found, several candidates cleared:**
+- IMPROVEMENT-043 (Hunter Drones/Self-Destruct) full diff reviewed: `BandwidthHandler.OnRemoteChannelDeactivated` correctly unsubscribes itself, no new static collections, `SelfDestructDetonation.IsArmed` reads per-unit effect state rather than a static tracker. Clean.
+- `Flock.AddMember`'s `npc.Dead += OnMemberDead` is never unsubscribed in `RemoveMember`, but traced the reference direction: the short-lived `Npc` holds the reference to the long-lived `Flock`, not the reverse, so this does not keep flocks (or anything they own) alive — not a leak, just untidy.
+- `SessionManager._charactersIndex` (candidate: stale sessions retained past abrupt disconnect) — traced the full disconnect chain (`Session.OnDisconnected → SignOut → DeselectCharacter → CharacterDeselected event → SessionManager` removes the entry). Wired correctly, not a leak.
+- Swept static `Dictionary`/`ConcurrentDictionary` fields repo-wide (`NpcEp`, `InsuranceHelper._insurancePrices`, `TransportAssignment.Helpers._baseToTransportStorages`, etc.) — all keyed by a small bounded universe (definition id, base eid), not per-session/per-request. `CorporationDocumentHelper._corporationDocumentViewers` can retain an empty `CorporationDocumentViewer` per distinct viewed (not just registered) `documentId` — a very slow, bounded-by-total-documents accumulation, not a strong match for "grows over time" but noted as a minor cleanup opportunity if anyone revisits that file.
+
+**Live profiling (bullets 1/2) — idle baseline established, no growth observed at idle:**
+- Ran `Perpetuum.Server` locally against the dev DB (`perpetuumsa`) with all zones loaded, no players connected, using `dotnet-counters`/`dotnet-gcdump` (both installed as global tools).
+- **Baseline** (t0, right after zone load settled): Working Set ~6.58 GB, GC Heap ~5.1 GB (LOH ~4.58 GB / 90% of heap, Gen2 ~970 MB, dominated by per-zone terrain arrays `PlantInfo[]`/`BarrierInfo[]`/`TerrainControlInfo[]`/`BlockingInfo[]` and static content like 6,415 `Npc` and 8,243 `RandomPointMissionTarget` instances — all one-time world/content load, not obviously leaked). Idle allocation rate was ~266 MB/s (see Perf note below).
+- **Second snapshot ~50 minutes later, still idle, no players**: GC Heap total was **4,301,091,381 bytes vs. baseline's 4,300,626,679** (+0.01%, noise) with object count actually *down* slightly (8,790,784 vs 8,792,588). Per-type diff across the full heap found exactly one type crossing a 100KB delta threshold — a single transient `System.Byte[]` buffer, ~131KB — i.e. no meaningful growth anywhere in the heap.
+- **Conclusion: the server does not leak memory merely from being alive with background zone/AI ticks running.** The reported production growth is very likely tied to actual player-driven activity/session churn (logins/logouts, missions, PBS, market, combat) rather than passive uptime, or accumulates far more slowly than a 50-minute window can detect above GC noise.
+- **Recommended next step for whoever continues this**: reproduce with real load — either an automated test client looping through session connect/disconnect + mission accept/complete + PBS facility use + NPC kill cycles while re-sampling `dotnet-gcdump` every 15-30 min, or (lower effort) add a scheduled `dotnet-gcdump` capture against the **production** process during real play hours and diff those, since that's where the growth was actually observed. Compare object counts for session/character/mission-target/NPC-adjacent types between snapshots taken hours apart under real traffic.
+
+**Unrelated finding worth a look regardless of the leak:** idle allocation rate of ~266 MB/s (no players) is unexpectedly high for a supposedly idle loop — Gen0/1 collections keep up fine so this isn't the leak, but it suggests something in the zone tick / PBS energy-network reconciliation path (log showed continuous `facility enabler received` / `++CONNECT++` churn even with nobody online) is allocating far more than expected per tick. Could be worth a separate perf-focused look, not filed as its own issue yet.
+
+**Root cause found and fixed: stale/ghost client connections from a 24-hour TCP keepalive.** Following up on the "needs real player activity/session churn" conclusion above:
+- `TcpConnection` (`src/Perpetuum/Network/TcpConnection.cs:32`) set the OS-level TCP keepalive to `time=24 hours`, `interval=5s` before the first probe. Both `Session`'s connection (`SessionConnection : EncryptedTcpConnection : TcpConnection`, the lobby/login/character-select connection) and `ZoneSession`'s connection (`EncryptedTcpConnection : TcpConnection`, the actual gameplay connection) inherit this from the same base class — i.e. every client socket the server ever opens.
+- This keepalive is the *only* backstop for a peer that disappears without a clean TCP close. Confirmed there's no app-level heartbeat/idle-timeout anywhere: `ZoneSession` already tracks `_lastReceivedPacketTime`/`InactiveTime`, but it's only read once, by `Player.cs:1305`, for the "was this player AFK at time of death" trash/loot calculation — never checked against a threshold to force a disconnect.
+- Net effect: a client that vanishes without sending a TCP FIN or the app-level "closing socket" command (crash, force-kill, WiFi/network drop, laptop sleep/lid-close, mobile network handover, power loss — all common, everyday occurrences for any real player base) leaves a fully-resident ghost session on the server for **up to 24 hours** before the OS keepalive even starts probing. Until then: `SessionManager._sessions`/`_charactersIndex` keep the entry, `Character.IsOnline` stays `true`, and — critically for the "constant load" half of the user's question — the ghost's `Player` robot stays `InZone`, meaning the zone's `ProcessManager` tick loop keeps processing it every frame (nearby NPC/player targeting checks, regen, etc.), not just holding memory.
+- This fully explains why the earlier idle-server profiling (zero players, 50 min, flat heap) found nothing: ghost sessions can only be created by real client churn, which a zero-player idle test can't produce. A live server with a real population would accumulate ghosts throughout the day at whatever rate players disconnect ungracefully, consistent with "RAM usage grows over time."
+- **Fix applied**: `TcpConnection.cs:32` keepalive time changed from `1000 * 60 * 60 * 24` (24h) to `1000 * 60 * 60 * 2` (2h), per explicit user direction (a more conservative value than the 30-60s initially proposed, to avoid false-positives from ordinary short-lived network hiccups while still bounding worst-case ghost lifetime to 2h instead of 24h). Interval left at 5s. Build verified (`Perpetuum.csproj` Release/x64, 0 errors/warnings).
+- **Deliberately not done**: an application-level idle-timeout/heartbeat enforcement (using the existing but currently-unused `InactiveTime`) as a more robust backstop independent of OS keepalive behavior (which some NATs/firewalls can interfere with) — user was offered this as an option and did not request it. Worth reconsidering if 2h keepalive still isn't tight enough after real-world observation.
+
+### Notes
+- No specific subsystem, reproduction steps, or timeframe confirmed yet for the actual leak *magnitude* — the idle-server hypothesis was ruled out by direct measurement, and the stale-connection root cause above is a strong, confirmed mechanism, but its actual contribution to the originally-reported growth hasn't been measured against production (no way to do that from this dev environment). Recommend monitoring production RAM/session-count trends after this fix ships to confirm impact before closing this issue.
+- Tooling installed for this investigation (both global dotnet tools, reusable next time): `dotnet-counters`, `dotnet-gcdump`.
+
+---
+
+## ISSUE-037 - Mission target NPCs sometimes fail to spawn — InvalidCastException casting Player to Npc in Flock.CreateMemberInZone
+
+Status: IN_PROGRESS
+Priority: CRITICAL
+Area: Missions / NPC Spawning
+
+### Problem
+Players report that on some assignments, target NPCs sometimes fail to spawn at all. No specific assignment/mission has been identified yet — reports are inconsistent about which mission triggers it. Production logs show a matching exception on the NPC-spawn-on-success path:
+
+```
+System.InvalidCastException: Unable to cast object of type 'Perpetuum.Players.Player' to type 'Perpetuum.Zones.NpcSystem.Npc'.
+   at Perpetuum.Zones.NpcSystem.Flocks.Flock.CreateMemberInZone() in Flock.cs:line 112
+   at Perpetuum.Zones.NpcSystem.Flocks.Flock.SpawnAllMembers() in Flock.cs:line 81
+   at Perpetuum.Zones.NpcSystem.Flocks.FlockExtensions.SpawnAllMembers(IEnumerable`1 flocks) in FlockExtensions.cs:line 10
+   at Perpetuum.Services.MissionEngine.MissionTargets.ZoneMissionTarget`1.AddDirectPresenceToPosition(IPresenceManager presenceManager, Position successPosition) in ZoneMissionTarget.cs:line 396
+   at Perpetuum.Services.MissionEngine.MissionTargets.ZoneMissionTarget`1.<>c__DisplayClass38_0.<SpawnNpcOnSuccess>b__0() in ZoneMissionTarget.cs:line 353
+```
+
+`Flock.CreateMemberInZone()` (`src/Perpetuum/Zones/NpcSystem/Flocks/Flock.cs:112`) does:
+```csharp
+var npc = (Npc)EntityService.Factory.Create(Configuration.EntityDefault, EntityIDGenerator.Random);
+```
+`EntityService.Factory.Create` builds a concrete entity type based on the `EntityDefault`'s configured entity class, and the result is unconditionally cast to `Npc`. The exception means that for the flock's `Configuration.EntityDefault` used in this failing case, the factory produced a `Player` instance instead — i.e. the entity default resolved by that flock/presence configuration is not actually an NPC-class entity default. This is called from `ZoneMissionTarget.AddDirectPresenceToPosition` → `SpawnNpcOnSuccess`, which runs on a background `Task.Run` (`ZoneMissionTarget.cs:351`) with `.LogExceptions()` — the exception is logged but swallowed, so the mission's success/spawn flow does not surface a player-facing error; the target presence/flock is simply left without its NPC(s).
+
+### Impact
+- Assignments that spawn NPCs on success (random-pop / direct-presence style targets, `ZoneMissionTarget.SpawnNpcOnSuccess`) can silently fail to populate their target NPC(s), leaving the mission target impossible to complete.
+- Failure is silent to the player — no error is shown, the beam/teleport-storm effect may still fire (it runs regardless, after the spawn loop), but the flock has zero or partial members.
+- Since the failure happens on a fire-and-forget background task, it does not crash the mission engine or zone loop, which makes it easy to miss without log monitoring — consistent with reports being vague about which assignment is affected.
+
+### Proposed Fix
+1. **Identify the misconfigured EntityDefault** — determine which mission target(s)/`DirectPresenceConfiguration`/flock `EntityDefault` combination resolves to a non-NPC entity class. Check `entitydefaults`/related content tables for the definition(s) used by affected mission targets' presence/flock configs, and verify their configured entity type actually maps to an `Npc`-derived class in `EntityService.Factory`, not `Player` or another type.
+2. **Fix the root data/config issue** — correct the offending definition reference in the mission/presence content so it points to a valid NPC entity default.
+3. **Add defensive handling regardless of the data fix** — `Flock.CreateMemberInZone()` should not let a bad `EntityDefault` throw an unhandled cast exception deep in a background task. Consider validating the entity type before/after `Factory.Create` and logging a clear, actionable error (including `Configuration.EntityDefault`/flock/presence identifying info) instead of an opaque `InvalidCastException`, so future misconfigurations are diagnosable without a stack trace alone.
+
+### Progress
+- **Bullet 3 DONE**: `Flock.CreateMemberInZone()` (`src/Perpetuum/Zones/NpcSystem/Flocks/Flock.cs`) no longer unconditionally casts the factory result to `Npc`. It now checks the resolved entity type; on mismatch it logs an actionable `Logger.Error` (EntityDefault definition id + name, resolved CLR type, flock/presence name, zone id) and returns without spawning that member, instead of throwing an opaque `InvalidCastException` on a background task. The flock is left with fewer/zero members exactly as before (no behavior regression for the working case), but the failure is now diagnosable from the log line alone.
+- **Bullets 1/2 NOT DONE — traced but not reproduced.** `SpawnNpcOnSuccess`'s strict-definition path (`DirectPresence.DoStrictDefinitionFlocks`, used when `MyTarget.useQuantityOnly == false`) is only reachable from two callers: `PopNpcZoneTarget.OnTargetComplete` (targettype 20, `pop_npc`) and `FindArtifactZoneTarget.OnTargetComplete` when `FindArtifactSpawnsNpcs` (targettype 11, `find_artifact`, gated on the `spawnnpcs` column). Queried the local dev DB (`perpetuumsa`) directly:
+  - Every `pop_npc` target has `usequantityonly = 1`, i.e. none of them take the strict-definition path — they all go through `DoSelectNpcsFromPool`, which sources NPCs from `robottemplaterelations` (already NPC-safe).
+  - Every `find_artifact` target with `spawnnpcs = 1` has `definition IS NULL`, which resolves to `EntityDefault.None` (definition 0) — traced through `EntityFactory`'s keyed-container fallback (`EntitiesModule.cs:680`, `!c.IsRegisteredWithKey<Entity>(ed.Definition) ? ctx.Resolve<Entity>() : ...`) and confirmed this yields a plain `Entity`, not `Player` — so it would produce a *different* cast exception message than the one in the reported stack trace, ruling this out as the match.
+  - Category-flag resolution itself (`EntitiesModule.cs` `ByCategoryFlags<Player>(cf_robots)` / `ByCategoryFlags<Npc>(cf_npc)`) is exact-match on the low byte (`cf_robots` low byte `0x01` vs `cf_npc` low byte `0x8F` — see `CategoryFlagsExtensions.IsCategory`), and mutually exclusive, so this isn't a registration-ordering bug in code either.
+  - Conclusion: the misconfigured content that produced the production stack trace is not present in this local dev DB snapshot — it's very likely prod-only content (or has since been edited/removed there). Root identification still requires production log correlation (mission id / target id / definition id at the moment of the exception), same blocker as noted below.
+
+### Notes
+- Exact affected assignment(s) are unknown — needs log correlation (mission ID / target ID / definition ID at time of the exception) to narrow down. Search production logs around each occurrence for the mission/target context that isn't captured in the current log line. Once identified, run: `SELECT mt.*, ed.definitionname, ed.categoryflags & 0xFF AS low_byte FROM missiontargets mt JOIN entitydefaults ed ON ed.definition = mt.definition WHERE mt.id = <target id>` against production/prod-mirrored content to confirm the low_byte is `0x01` (cf_robots/Player) instead of `0x8F` (cf_npc/Npc), then correct `missiontargets.definition` for that row to a valid NPC entity default.
+- `SpawnNpcOnSuccess` (`ZoneMissionTarget.cs:344-375`) and `AddDirectPresenceToPosition` (`ZoneMissionTarget.cs:379-400`) are shared by `ZoneMissionTarget<T>`, so this is not scoped to one mission target subtype — any assignment using direct-presence NPC pop-on-success is a candidate.
+
+---
+
+## ISSUE-036 - Insurance payouts stale/too high — usp_RecalculateInsurancePrices recurring "nesting level exceeded" failure
+
+Status: IN_PROGRESS
+Priority: CRITICAL
+Area: Economy / Insurance
+
+### Problem
+Players report insurance payouts are too high and don't reflect current market state. Production logs show `InsurancePriceRefreshService.Refresh()` failing on every scheduled run with:
+
+```
+Microsoft.Data.SqlClient.SqlException: Maximum stored procedure, function, trigger, or view nesting level exceeded (limit 32).
+   at Perpetuum.Data.DbQuery.ExecuteHelper[T](Func`2 execute) in DbQuery.cs:line 54
+   at Perpetuum.Services.Insurance.InsurancePriceRefreshService.Refresh() in InsurancePriceRefreshService.cs:line 40
+```
+
+`Refresh()` (`src/Perpetuum/Services/Insurance/InsurancePriceRefreshService.cs:37-44`) wraps `EXEC usp_RecalculateInsurancePrices` in a `TransactionScope` that is never completed when the exception is thrown — `scope.Complete()` at line 41 is skipped, so the MERGE never commits. `InsuranceHelper.LoadInsurancePrices()` also never runs. `dbo.insuranceprices` is therefore frozen at its last successfully computed values while raw material prices keep moving, so payouts drift out of sync with the market (upward, since fees/payouts are proportional to production cost which has likely risen since the last successful run).
+
+### Impact
+- Insurance payout/fee values do not track current production cost — a direct economic/balance bug affecting every insured loss payout.
+- The failure is silent: only `Logger.Exception(ex)` fires (`InsurancePriceRefreshService.cs:32`), with no alerting, so this can persist for a long time before being noticed via player reports.
+- Insurance is designed as a NIC sink (payout_pct < fee_pct); stale/inflated payouts erode that sink and can flip it toward a net NIC faucet if payout no longer reflects current (lower) production costs.
+
+### Cross-Reference — ISSUE-029 (DONE)
+Same exception signature as ISSUE-029, fixed there by inlining `production_data` as a local CTE (`prod_data`) inside `v_all_production_costs` (and the now-renamed `v_required_raw_materials`) so the recursive CTE stops incrementing SQL Server's view-nesting counter each iteration. **The ISSUE-029 fix was confirmed correctly deployed** (view text in the test DB matches docs exactly) — it is not the cause of this recurrence.
+
+### Root Cause (Confirmed)
+Not chain depth, not a missing ISSUE-029 deployment. `IMPROVEMENT-036-insurance-overhaul.sql` created `usp_RecalculateInsurancePrices` with the `CREATE OR ALTER PROCEDURE ... END` block immediately followed, **in the same batch (no `GO`)**, by:
+```sql
+DELETE FROM dbo.insurance;
+EXEC dbo.usp_RecalculateInsurancePrices;
+```
+SQL Server's deferred-name-resolution dependency parser captured that trailing `EXEC` as belonging to the module itself, recording a bogus self-referencing row in `sys.sql_expression_dependencies` (the procedure listed as depending on itself):
+```sql
+SELECT referenced_entity_name FROM sys.sql_expression_dependencies
+WHERE referencing_id = OBJECT_ID('dbo.usp_RecalculateInsurancePrices');
+-- returned usp_RecalculateInsurancePrices itself, alongside the real dependencies
+```
+`v_all_production_costs` already sits close to SQL Server's 32-level nesting ceiling even after the ISSUE-029 fix (per that issue's ~28-level headroom note). The bogus self-dependency adds just enough extra nesting accounting to push execution over the limit — error 217 on every run. `sp_recompile` does **not** clear this (verified); only re-issuing `CREATE OR ALTER PROCEDURE` as the sole statement in its own batch recalculates the dependency list and removes the self-reference.
+
+Reproduced and verified against the local up-to-date-with-live test DB:
+- `EXEC usp_RecalculateInsurancePrices` reliably failed with error 217 in the DB's existing (as-deployed) state.
+- Re-creating the exact same procedure body in isolation (own batch, no trailing statements) immediately fixed it — `sys.sql_expression_dependencies` dropped to the 4 legitimate dependencies and the procedure ran cleanly.
+- Re-deploying the buggy form (proc + trailing `DELETE`/`EXEC` in one batch, mirroring the original migration) reproduced the failure again on demand, confirming the mechanism.
+
+### Fix
+1. **`docs/db_structure/migrations/ISSUE-036-fix-insurance-proc-self-dependency.sql`** (new) — re-issues `usp_RecalculateInsurancePrices` alone in its own batch (`GO`-terminated) with byte-identical logic to `docs/db_structure/stored_procedures/dbo.usp_RecalculateInsurancePrices.sql`, purging the bogus self-dependency. Idempotent (`CREATE OR ALTER`). **Needs to be applied manually to the live production DB by the operator** — not yet applied there.
+2. **`docs/db_structure/migrations/IMPROVEMENT-036-insurance-overhaul.sql`** — added the missing `GO` after the procedure's `END` so this script can't reintroduce the same bogus self-dependency if it's ever re-run against a fresh environment.
+3. **`src/Perpetuum/Services/Insurance/InsurancePriceRefreshService.cs`** — added consecutive-failure tracking; each failure now also logs via `Logger.Error` with a running consecutive-failure count and an explicit "prices are stale" note, so a persistent refresh failure is loud in logs rather than only visible via a single `Logger.Exception` call. Reset to 0 on the next successful run. (No external alert/paging integration exists for this service yet — wiring one up was judged out of scope for this fix.)
+
+Other proc-creating migrations were spot-checked (`IMPROVEMENT-039`, `-040`, `-042`) — none have trailing statements sharing a batch with a `CREATE PROCEDURE` block the way `IMPROVEMENT-036` did, so this is not believed to be a systemic pattern elsewhere.
+
+### Notes
+- Status is `IN_PROGRESS`, not `DONE`: the code fix is in and build-verified, and the corrective migration is generated and verified against the local test DB, but per project convention DB migrations are never applied directly by the agent — **the operator must run `ISSUE-036-fix-insurance-proc-self-dependency.sql` against production** before this is fully resolved live.
+- Once applied, confirm on production: `SELECT referenced_entity_name FROM sys.sql_expression_dependencies WHERE referencing_id = OBJECT_ID('dbo.usp_RecalculateInsurancePrices');` returns exactly 4 rows (no self-reference), `EXEC dbo.usp_RecalculateInsurancePrices` succeeds, and `dbo.insuranceprices` values update to match current `v_all_production_costs` output.
+
+---
 
 ## ISSUE-032 - Recurring season creates duplicate next-run on each cache refresh before new run starts
 

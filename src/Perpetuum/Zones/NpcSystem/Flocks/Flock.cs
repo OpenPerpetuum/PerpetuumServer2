@@ -109,7 +109,14 @@ namespace Perpetuum.Zones.NpcSystem.Flocks
 
         protected virtual void CreateMemberInZone()
         {
-            var npc = (Npc)EntityService.Factory.Create(Configuration.EntityDefault, EntityIDGenerator.Random);
+            var entity = EntityService.Factory.Create(Configuration.EntityDefault, EntityIDGenerator.Random);
+
+            if (entity is not Npc npc)
+            {
+                Logger.Error($"[Flock] ({ToString()}) - CreateMemberInZone failed: EntityDefault {Configuration.EntityDefault.Definition} ({Configuration.EntityDefault.Name}) resolved to {entity.GetType().Name} instead of Npc. presence:{Presence.Configuration.Name} zone:{Presence.Zone.Id}");
+                return;
+            }
+
             var zone = Presence.Zone;
             var spawnPosition = GetSpawnPosition(SpawnOrigin);
             var finder = new ClosestWalkablePositionFinder(zone, spawnPosition, npc);

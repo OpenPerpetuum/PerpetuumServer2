@@ -1,6 +1,371 @@
 # Last ID used
 
-042
+044
+
+## IMPROVEMENT-044 - Disable NPC flee behavior (player complaints)
+
+Status: DONE
+Priority: CRITICAL
+Area: NPC AI / Combat
+
+### Problem
+
+Players report that the NPC flee behavior (NPCs disengaging and retreating below an armor/core
+threshold, see [[IMPROVEMENT-011]] / [[ISSUE-021]]) is frustrating and annoying, and are asking for
+it to be removed.
+
+### Impact
+
+Negative player sentiment around NPC combat encounters. Chasing down a fleeing NPC that repeatedly
+kites away (and can call for help / repair while retreating) is perceived as tedious rather than
+tactically interesting.
+
+### Proposed Fix
+
+Disable flee triggering at the source rather than deleting the mechanic, so `FleeAI` and its
+supporting logic remain intact for later rework or reuse elsewhere:
+- Gate `SmartCreature.ShouldFlee()` behind a `FleeBehaviorEnabled = false` constant so it always
+  returns `false` while disabled.
+- Leave `FleeAI`, the `Flee*Threshold` constants, and the `AggressorAI`/`CoveringAI`/`SupportAI`
+  call sites untouched (they become dead code paths, not deleted code).
+
+### Notes
+
+Implemented: `SmartCreature.ShouldFlee()` in `src/Perpetuum/Zones/NpcSystem/SmartCreature.cs` now
+short-circuits to `false` via a `private const bool FleeBehaviorEnabled = false;` guard. `Npc.ShouldFlee()`
+overrides `base.ShouldFlee()` and is therefore also disabled transitively. To re-enable or rework flee
+behavior later, flip the constant (or replace the guard with new logic) — no other changes needed.
+
+---
+
+## IMPROVEMENT-043 - Hunter Drones with Self-Destruct Module
+
+Status: DONE
+Priority: HIGH
+Area: Drones / AI / Combat / Modules
+
+### Implementation Note
+
+This entry's "Proposed Architecture"/"Content Required" sections below are the original brainstorm and
+are superseded in several places by `docs/superpowers/specs/2026-07-18-improvement-043-hunter-drones-self-destruct-design.md`
+(the approved design spec) and by real implementation decisions made during the 7-task build (e.g. a
+single `TurretType.HunterDrone` value instead of `HunterDronePvE`/`HunterDronePvP`, a single shared
+`HunterDrone` chassis + RCU ammo item instead of separate PvE/PvP chassis, and `AggregateField.detection_range`
+instead of a non-existent `item_work_range` aggregate field). Content SQL (entity definitions, category
+flags, aggregate values) lives in
+`docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql` — generated but **not yet
+applied to any database**. Tech tree placement / production recipes / market listing were explicitly left
+out of scope (see that migration file's closing comment) and remain a follow-up if these items are meant
+to be craftable/researchable rather than GM-granted.
+
+**Post-DONE fix:** After migration was applied to a test DB, login hung with
+`Autofac.Core.Registration.ComponentNotRegisteredException` for `Perpetuum.Modules.SelfDestructModule`.
+Root cause: `SelfDestructModule` was used in `EntitiesModule.cs`'s `ByCategoryFlags<SelfDestructModule>(CategoryFlags.cf_self_destruct_modules)`
+call but was missing the corresponding `RegisterModule<SelfDestructModule>(builder)` DI registration that
+every other module type needs. Fixed by adding the registration alongside the other `RegisterModule<...>`
+calls in `src/Perpetuum.Bootstrapper/Modules/EntitiesModule.cs`.
+
+**Post-DONE fix 2:** The three new modules (`def_standard_self_destruct_module`,
+`def_standard_hunter_remote_controller_pve`, `def_standard_hunter_remote_controller_pvp`) were equippable
+on no robot. Root cause: `moduleFlag` is a `SlotFlags` bitmask (`src/Perpetuum/Modules/SlotFlags.cs`), not
+an incrementing ID — `RobotComponent.IsValidSlotTo` requires every bit set in a module's `moduleFlag` to
+also be set in the target slot's `slotFlags` mask. The migration seeded `moduleFlag=i909`/`i90a`/`i90b`,
+a naive increment of the illustrative `moduleFlag=i908` example in
+`docs/content/claude_game_content_guide.md`; those hex values decode to combinations of
+turret|missile|head|large|specialized bits that no real robot slot satisfies. Confirmed against the live
+DB that every existing head-slot module with no size class (`def_standard_neuralyzer` and all four
+`def_standard_*_remote_controller` modules) uses `moduleFlag=i8` (SlotFlags.head only). Fixed the values
+in `docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql` and added
+`docs/db_structure/migrations/IMPROVEMENT-043-fix-moduleflag.sql` to correct already-applied test DBs
+(the original migration's `IF NOT EXISTS` guards mean re-running the corrected file alone won't fix
+already-inserted rows).
+
+**Post-DONE fix 3:** `def_standard_hunter_remote_controller_pve`/`_pvp` were also missing `ammoType`.
+Every ammoable module's `options` must set `ammoType` to its ammo's `categoryFlags` value (hex, no
+leading zeroes, `L`-prefixed) — confirmed via `def_standard_assault_remote_controller`'s
+`ammoType=L4120a` for `cf_assault_drones_units`. Added `ammoType=L8120a` for `cf_hunter_drones_units =
+0x000000000008120A` (matching the `ammoCategoryFlags` already passed in `EntitiesModule.cs`'s
+`ByCategoryFlags<HunterRemoteControllerModulePvE/PvP>` calls) to both definitions in the same two files
+as fix 2. Not read by server-side code, but breaks `Perpetuum.AdminTool`'s ammo-compatibility filtering
+when missing. Documented the general `moduleFlag`/`ammoType` encoding rules in
+`docs/content/claude_game_content_guide.md` (§7 Options Metadata, §26/27) to prevent recurrence.
+
+**Post-DONE fix 4:** `attributeflags` on all three modules were wrong too. A live DB lookup of
+`def_standard_assault_remote_controller` (a real sibling `RemoteControllerModule`) returned
+`attributeflags=2359320 = onePerRobot(3) | activeModule(4) | ammo_required(18) | forceOneCycle(21)`.
+The two Hunter RCU definitions had `attributeflags=16` (`activeModule` only) — missing all three other
+bits, including `ammo_required`, which `Perpetuum.AdminTool`'s `RobotTemplateEditorEntity.IsAmmoable`
+treats as the authoritative "needs ammo" signal (not `options.ammoCapacity`/`ammoType`), so they still
+wouldn't have shown an ammo dropdown in the editor even after fix 3. Updated both to `2359320`.
+`def_standard_self_destruct_module` had `attributeflags=2097168` (`activeModule | forceOneCycle`,
+already correct per its own logic) but per the user's request also gained `onePerRobot` for consistency
+with the RCU modules, giving `2097176` (no `ammo_required` — it doesn't consume ammo). This also
+corrected a wrong assumption in the migration's own "deviation #5" comment, which had guessed
+`forceOneCycle` wasn't used by sibling `RemoteControllerModule`s and reasoned it conflicts with a
+repeating `cycle_time` — the live sibling row disproves both. Fixed in
+`docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql` and
+`docs/db_structure/migrations/IMPROVEMENT-043-fix-moduleflag.sql` (still unapplied — now fixes
+`moduleFlag`, `ammoType`, and `attributeflags` together for the already-migrated test DB). Broadened
+`docs/content/claude_game_content_guide.md`'s §7 and the auto-memory content-values note to cover
+`attributeflags` alongside `moduleFlag`/`ammoType`.
+
+**Post-DONE fix 5:** Live playtesting found two bugs: (1) spawned Hunter Drones never moved or hunted;
+(2) docking with an active Hunter Drone threw a `NullReferenceException` in `WreckBeamBuilder.cs:30`.
+Root cause (verified live via DB connection, not guesswork): `def_standard_hunter_drone` (definition
+8971) was created with no head/chassis/leg/inventory component `entitydefaults`, no `robottemplates`
+row, and no `robottemplaterelation` row — unlike every other spawnable combat drone (e.g.
+`def_syndicate_assault_drone` → `robottemplaterelation` → `robottemplates.id=947` →
+`#robot=i2195#head=i2191#chassis=i2192#leg=i2193#container=i2194`, plus four real component
+`entitydefaults` rows). `EntityFactory.Create` (`src/Perpetuum/EntityFramework/EntityFactory.cs:54-62`)
+resolves a robot's template via `RobotTemplateRelationsExtensions.GetRelatedTemplateOrDefault`
+(`src/Perpetuum/Items/Templates/RobotTemplateRelationsExtensions.cs:67-76`), which silently falls back
+to the **player** `starter_master` (Arkhe) template — logging only a warning — when no
+`robottemplaterelation` row exists for a definition. Every Hunter Drone was therefore built from
+mismatched player-starter-robot parts instead of drone parts, with zero drone-appropriate
+`speed_max`/`armor_max`/etc., consistent with both symptoms. Fixed by adding
+`docs/db_structure/migrations/IMPROVEMENT-043-hunter-drone-robot-parts.sql`, which creates
+`def_standard_hunter_drone_head`/`_chassis`/`_leg`/`_inventory` (categoryflags/options/aggregatevalues
+copied verbatim from `def_syndicate_assault_drone`'s four parts as starting-balance numbers — flag for
+playtesting — with no `chassisModules`, since `HunterDrone` kills only via `SelfDestructDetonation`, never
+an equipped weapon) plus a `robottemplates`/`robottemplaterelation` row linking them to definition 8971,
+and corrects `def_standard_hunter_drone`'s `attributeflags` (0 → 1024, `nonStackable`, matching every
+sibling assembled drone entity). Verified correct via a `BEGIN TRAN`/`ROLLBACK` dry run against the live
+DB (not applied — per standing practice, generated for the user to review and apply manually). Also
+hardened `src/Perpetuum/Units/WreckBeamBuilder.cs:30` defensively
+(`GetRobotComponent(...).Definition` → `GetRobotComponent(...)?.Definition`) — `robot?.` only guarded
+`robot` being null, not the component lookup itself, so any robot with no Leg component (this bug, or
+any future one) would still throw instead of falling back to `_unit.Definition`.
+
+**Post-DONE redesign:** After playtesting fix 5, the user directed three deliberate design changes
+(not bug fixes):
+
+1. **Detonation damage now comes entirely from the engine's existing on-death explosion.**
+   `Unit.OnDead` (`src/Perpetuum/Units/Unit.cs:581-589`) already calls `DoExplosion()` on every death,
+   dealing AoE damage scaled by the unit's own `ArmorMax` and current `Core` ratio
+   (`damage = (sin(coreRatio * pi) + 1) * (armorMax * 0.1)`, peaking at `coreRatio == 0.5`) — the
+   custom `SelfDestructDetonation.Detonate` AoE damage was stacking on top of this unconditionally,
+   a real double-damage bug independent of the redesign ask. `SelfDestructDetonation.Arm` now drains
+   `Core` to exactly 50% of `CoreMax` (robot-size-agnostic, per the user's explicit ask) and applies a
+   large `effect_core_recharge_time_modifier` debuff (`AggregateFormula.Modifier`, raw value 999 →
+   ×1000 recharge time) for the countdown's duration so passive core regen can't drift the ratio away
+   from the 2× peak before detonation. `Detonate` is now just `owner.Kill(owner)`. `moduleFlag`/damage
+   params were dropped end-to-end: `SelfDestructCountdownEffect.OnRemoved`, `SelfDestructModule.OnAction`,
+   `HunterSelfDestructAI.Enter` all simplified accordingly, and the new hunter drone chassis'
+   `definitionconfig` rows carry only `action_delay` (no `damage_*`/`explosion_radius`). The five
+   `self_destruct_config_*` `AggregateField` enum members (760-764) and the `def_standard_self_destruct_module`
+   definitionconfig row's now-unread damage values were left in place (harmless, out of scope).
+
+2. **Hunter drone chassis rebuilt on `def_syndicate_attack_drone`'s stats instead of
+   `def_syndicate_assault_drone`'s** (faster: `speed_max` 3.083 vs 1.847). Stock attack drone `armor_max`
+   (1500) would produce a much weaker `DoExplosion()` than the old fixed damage, so `armor_max` was
+   bumped to 4400 (matching assault drone) on the new chassis part; `core_max` was deliberately left at
+   attack drone's stock 240 since the Core-drain-to-50%-of-`CoreMax` design in (1) makes the damage
+   multiplier independent of `core_max`'s absolute size. All other part stats copied verbatim from
+   `def_syndicate_attack_drone`'s parts.
+
+3. **Restructured to the industrial-drone pattern**: "one hunter remote controller and two drone types,
+   same way industrial drones work." Confirmed via `IndustrialRemoteControllerModule.cs` that industrial
+   drones use one controller class + one shared `ammoCategoryFlags`, with variation selected per-ammo via
+   `TurretType`/`TurretId` — not one controller subclass per variant. Replaced
+   `HunterRemoteControllerModulePvE`/`PvP` with a single `HunterRemoteControllerModule`
+   (`src/Perpetuum/Modules/RemoteControl/HunterRemoteControllerModule.cs`) that switches on
+   `ammo.ED.Options.TurretType` to pick `TargetFaction`; `TurretType.HunterDrone` replaced with
+   `HunterDronePvE`/`HunterDronePvP`; `CategoryFlags.cf_hunter_remote_controllers_pve`/`_pvp` collapsed
+   into one `cf_hunter_remote_controllers` (same hex value as the old `_pve`, `_pvp` freed).
+   `EntitiesModule.cs` now registers one `HunterRemoteControllerModule` against one category.
+
+New migration `docs/db_structure/migrations/IMPROVEMENT-043-hunter-drone-redesign.sql` supersedes
+`IMPROVEMENT-043-hunter-drone-robot-parts.sql`: removes the single-chassis/split-controller content that
+migration created (chassis, 4 parts, template, relation, ammo, both controller rows — all confirmed
+already live in the test DB), collapses the `cf_hunter_remote_controllers_pve`/`_pvp` categoryflags rows
+into one, and creates two chassis (PvE/PvP) sharing one set of head/chassis/leg/inventory parts, one
+merged controller row, and two ammo rows (PvE/PvP) sharing `cf_hunter_drones_units` — mirroring how the
+four `def_*_attack_drone_unit` race variants share one category. Verified correct via a
+`BEGIN TRAN`/`ROLLBACK` dry run against the live DB (not applied). All C# changes build clean (0 errors).
+
+**Post-redesign fix:** playtesting the redesign found two more issues.
+
+1. **Reloading the hunter remote controller from cargo threw at `Container.cs:236`.**
+   `Container.RemoveItemByDefinition` (the reload path) requires
+   `ed.AttributeFlags.AlwaysStackable` (bit 11, value 2048) on the ammo item, or it throws
+   `DefinitionNotSupported`. Both new ammo items (`def_standard_hunter_drone_rcu_pve`/`_pvp`) were
+   seeded with `attributeflags=0` — confirmed live against three independent sibling RCU ammo items
+   (`def_mining_industrial_drone_unit`, `def_harvesting_industrial_drone_unit`,
+   `def_syndicate_attack_drone_unit`) that all use `2048`. Fixed the values in
+   `IMPROVEMENT-043-hunter-drone-redesign.sql` and added
+   `docs/db_structure/migrations/IMPROVEMENT-043-fix-hunter-ammo-stackable.sql` to correct the
+   already-applied test DB.
+
+2. **PvE hunter drones dealt no damage to NPCs on the PvE (Alpha/`Protected`) island.**
+   Root cause: `Unit.DoExplosion()` (`src/Perpetuum/Units/Unit.cs`) deliberately no-ops in
+   `zone.Configuration.Protected` zones (`IsAlpha => Protected`) so incidental deaths don't splash
+   damage in what's meant to be a safe zone — but for `HunterDrone`, `DoExplosion()` (via the redesign's
+   reliance on it, see above) *is* the drone's entire attack mechanic, not incidental splash, so it must
+   still fire on PvE/Alpha islands. Added a minimal opt-out point rather than touching the shared
+   Protected-zone behavior for every other unit: `Unit.cs` gained
+   `protected virtual bool BypassZoneProtectionOnExplosion => false;`, checked alongside the existing
+   `Protected` gate; `HunterDrone` overrides it to `true`. Verified `HunterDrone.IsQualifyingTarget` /
+   `RemoteControlledCreature.IsHostilePlayer` (the PvP-variant targeting path) already correctly excludes
+   the drone's own commander and gates Alpha-zone hostility on either player having an active PvP flag
+   (`player.HasPvpEffect`/`targetPlayer.HasPvpEffect`) — no change needed there, this was already
+   correct. Build verified clean (0 errors).
+
+**Migration consolidation:** at the user's request, all SQL fixes from the DB-side history above were
+baked into one clean, from-scratch migration:
+`docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql` (the original filename,
+content fully replaced). It supersedes and replaces `IMPROVEMENT-043-fix-moduleflag.sql`,
+`IMPROVEMENT-043-hunter-drone-robot-parts.sql`, `IMPROVEMENT-043-hunter-drone-redesign.sql`, and
+`IMPROVEMENT-043-fix-hunter-ammo-stackable.sql` — all four deleted. The consolidated file has no
+`DELETE`/cleanup section (nothing to clean up on a fresh DB) and every value already reflects the final,
+playtested-correct state: `moduleFlag=i8`, `attributeflags=2359320`/`2097176` (with `onePerRobot`),
+`ammoType=L8120a`, attack-drone-based parts with `armor_max=4400`, the single merged controller +
+two PvE/PvP chassis/ammo, and `attributeflags=2048` (`alwaysStackable`) on both ammo items. The five
+`self_destruct_config_*` `aggregatefields` (760-764) are kept for schema/enum consistency with a note
+that they're currently unread by any code path (candidates for removal alongside the matching
+`AggregateField` C# enum members if this feature's damage design is considered final — not done here,
+out of scope for a pure SQL consolidation). Verified via a full `BEGIN TRAN`/`ROLLBACK` execution (not
+`NOEXEC` — the real statements ran) against the live, fully-populated test DB: 0 errors, every guard
+correctly no-op'd, and post-run row counts matched expectations exactly (10 `entitydefaults`, 4
+`categoryFlags`, 2 `robottemplates`).
+
+**Research/production follow-up:** Added named T2-T4 tiers, prototypes, and calibration templates for
+both `def_standard_self_destruct_module` and `def_standard_hunter_remote_controller` (previously
+standard-tier-only), plus calibration templates, research levels, and production materials for the two
+existing Hunter Drone RCU ammo items -- all via a new migration,
+`docs/db_structure/migrations/IMPROVEMENT-043-hunter-research-production.sql` (still unapplied to any
+DB, per standing practice). Tech tree branch placed in the `common2` group: self-destruct module chain at
+(x=1-4, y=36), directly under `remote_command_translator` (y=35) at the same x positions; hunter remote
+controller chain at y=37, parented off the standard self-destruct module node; both Hunter Drone RCU ammo
+items as siblings at (x=2, y=38/39) off the standard hunter remote controller node. Design:
+`docs/superpowers/specs/2026-07-30-improvement-043-hunter-research-production-design.md`. T1 of both
+modules also gained `cpu_usage`/`core_usage`/`powergrid_usage` aggregatevalues they were previously
+missing entirely, plus (fixed in final-review pass) their own production/components recipe
+(titanium 200, axicol 250, axicoline 200, espitium 200) -- without it T1 and everything downstream of it
+would have been uncraftable. Verified via a full-file `BEGIN TRAN`/`ROLLBACK` dry run against the live
+test DB (0 errors, idempotent on a second run) -- not applied.
+
+### Problem
+
+No kamikaze-style autonomous drone exists. Players need a fire-and-forget drone that independently hunts targets within its operational range and destroys itself (and the target) on contact. Two variants are needed: PvE (hunts Niani NPCs) and PvP (hunts players by standings). A standalone self-destruct module should also be available for kamikaze piloting.
+
+### System Exploration Findings
+
+Performed before writing this entry. Key anchors:
+
+**Drone / remote controller pattern:**
+- `RemoteControllerModule.OnAction()` (src/Perpetuum/Modules/RemoteControl/RemoteControllerModule.cs:115–165): spawns the unit, applies bandwidth, sets operational range. Each controller subclass overrides `CreateAndConfigureRcu()` to produce its specific drone type.
+- `TurretType` enum (src/Perpetuum/Zones/RemoteControl/TurretType.cs): `Sentry, Mining, Harvesting, CombatDrone, IndustrialDrone, SupportDrone` — two new values needed: `HunterDronePvE`, `HunterDronePvP`.
+- `RemoteControlledCreature.IsReceivedRetreatCommand` (RemoteControlledCreature.cs:33–44): retreat effect is already wired; checking it in the AI loop is the only control signal hunter drones should honour.
+
+**Autonomous targeting (vs. current combat drone behaviour):**
+- `CombatDrone.HasCommandBotPrimaryLock()` (CombatDrone.cs:45–50): existing combat drones require the command robot to have a primary lock. Hunter drones must scan autonomously instead — this is the core divergence.
+- PvP standing check already implemented in `RemoteControlledCreature.IsHostilePlayer()` (RemoteControlledCreature.cs:102–139): standing ≤ 0.0 = hostile. Corporation standing checked first, then personal standing.
+- `Faction` enum (src/Perpetuum/Zones/NpcSystem/Faction.cs:3–9) — `Niani` value exists. PvE hunter drones filter NPCs by `Npc.Faction == Faction.Niani`.
+
+**Sentry turret as auto-attack reference:**
+- `SentryTurretIdleAI` → `SentryTurretCombatAI` (src/Perpetuum/Zones/NpcSystem/AI/): properly wired, stationary auto-attack. Hunter drone AI mirrors this state machine but adds a Patrol state and a SelfDestruct state instead of a stationary combat state.
+
+**Retreat command translator:**
+- `RemoteCommandTranslatorModule` (src/Perpetuum/Modules/RemoteControl/RemoteCommandTranslatorModule.cs:13–130): applies six modifiers to all active drones. `drone_remote_command_translation_retreat` (line 20) is the one hunter drones respond to.
+- `RetreatCombatDroneAI` (src/Perpetuum/Zones/NpcSystem/AI/CombatDrones/RetreatCombatDroneAI.cs): A* path back to command robot; scoops drone on arrival.
+
+**Self-destruct / delayed kill pattern:**
+- `AreaBomb.cs` (src/Perpetuum/Zones/Eggs/AreaBomb.cs:39–59): activation beam → `Task.Delay(ED.Config.ActionDelay)` → explosion beam + `zone.DoAoeDamageAsync()`. This is the canonical delayed-detonation pattern.
+- `AttributeFlags.delayed_modul = 25` exists (src/Perpetuum.ExportedTypes/AttributeFlags.cs:35) but is not enforced by any module machinery; use `ED.Config.ActionDelay` for delay duration, same as AreaBomb.
+
+**AoE safety:**
+- `ZoneExtensions.DoAoeDamage()` (src/Perpetuum/Zones/ZoneExtensions.cs:226–228): remote-controlled creatures are **always immune to AoE**. Hunter drones cannot hurt each other via self-destruct AoE, regardless of zone — no special logic needed for this.
+- Players on Alpha (PvE) zones without PvP effect are also AoE-immune (line 231–233).
+- For the PvE drone on a protected island, AoE would still hit Niani NPCs (not immune). The user asked to bypass this. Cleanest solution: in the self-destruct module, check `zone.Configuration.Protected`; if true, apply single-target direct damage to the locked target instead of `DoAoeDamageAsync`.
+- Landmines (src/Perpetuum/Zones/LandMines/LandMine.cs:79–85) confirm the pattern: they already gate player detection on `!zone.Configuration.Protected`. Use the same zone guard for AoE.
+
+### Proposed Architecture
+
+#### 1. `SelfDestructModule` (new, head-slot module)
+
+- On `OnAction()`:
+  1. Start a visible activation beam (reuse AreaBomb beam pattern).
+  2. `Task.Delay(ED.Config.ActionDelay)` — delay sourced from entity definition, so it is tunable per item.
+  3. After delay: resolve primary locked target from the owner's lock handler.
+  4. If `zone.Configuration.Protected` (PvE island): apply single-target direct damage to the locked target. Otherwise: `zone.DoAoeDamageAsync()` with `explosion_radius` from entity definition.
+  5. Kill the owner robot (not just remove HP — trigger the normal kill/loot pipeline so the drone counts as destroyed).
+- Works as a standalone player module (kamikaze). The drone AI triggers it by activating it programmatically.
+- Damage mix: Chemical / Explosive / Kinetic / Thermal (same as AreaBomb). Values tunable via entity definition.
+
+#### 2. `HunterDrone` (new, extends `RemoteControlledCreature`)
+
+- Carries a `SelfDestructModule` instance in its head slot (set at spawn time by the controller module).
+- Exposes `TargetFaction` property (null = PvP, `Faction.Niani` = PvE) set by the spawning controller.
+- `FindTarget(zone)`: scans units in operational range; filters by `TargetFaction` (PvE) or `IsHostilePlayer()` (PvP). Returns closest qualifying target, or null.
+- Ignores command robot's primary lock entirely.
+- Only responds to `IsReceivedRetreatCommand` (existing mechanic).
+- AoE immunity: inherited from `RemoteControlledCreature` base class — no changes needed.
+
+#### 3. `HunterDroneAI` (new AI state machine, 4 states)
+
+- **Patrol**: random walk within operational range (similar to NPC roaming). Every N seconds call `FindTarget()`. On target found → Approach.
+- **Approach**: A* path toward target. On arrival within trigger range → SelfDestruct. On target lost (dead / out of range) → Patrol. On `IsReceivedRetreatCommand` → Retreat.
+- **SelfDestruct**: programmatically activate `SelfDestructModule` on the drone. Lock the drone from further state transitions (the Task.Delay handles the rest).
+- **Retreat**: mirrors `RetreatCombatDroneAI`; A* back to command robot; scoop on arrival.
+- Detection range: `item_work_range` from entity definition (separate from operational range).
+- Trigger range for self-destruct: melee / adjacent tiles (≤ 2 tiles).
+
+#### 4. `HunterRemoteControllerModule` (new, two subclasses: PvE / PvP)
+
+- Extends `RemoteControllerModule`; overrides `CreateAndConfigureRcu()`:
+  - PvE variant: creates `HunterDrone` with `TargetFaction = Faction.Niani`.
+  - PvP variant: creates `HunterDrone` with `TargetFaction = null` (standings-based).
+  - Both: attach a `SelfDestructModule` to the drone's head slot at spawn time.
+- After spawning, controller does **not** relay targeting commands to the drone. The existing command translator (`RemoteCommandTranslatorModule`) already handles retreat-only relay — no additional gating needed since hunter drones ignore lock-based commands at the AI level.
+- Bandwidth, operational range, lifetime: sourced from entity definition attributes as with existing controllers.
+
+#### 5. New `TurretType` values
+
+Add `HunterDronePvE = 6` and `HunterDronePvP = 7` to `TurretType.cs`. Used wherever the codebase switches on turret type (spawn logic, client protocol, etc.).
+
+### Content Required
+
+- Entity definitions for `HunterDronePvE`, `HunterDronePvP`, `HunterRemoteControllerPvE`, `HunterRemoteControllerPvP`, `SelfDestructModule`.
+- Aggregate fields: `item_work_range` (detection), `explosion_radius`, `ActionDelay` (self-destruct timer).
+- Tech tree nodes if the items are researchable/craftable.
+- Consult `docs/content/claude_game_content_guide.md` for full content pipeline.
+
+### Implementation Order
+
+1. `SelfDestructModule` — standalone, testable as a player kamikaze item.
+2. `TurretType` enum extension + `HunterDrone` class (targeting logic, no AI yet).
+3. `HunterDroneAI` state machine (Patrol → Approach → SelfDestruct → Retreat).
+4. `HunterRemoteControllerModule` PvE variant — wire spawn, attach self-destruct, validate PvE targeting.
+5. `HunterRemoteControllerModule` PvP variant — validate standings-based targeting.
+6. Content SQL for all new entity definitions.
+
+### Risks & Constraints
+
+- **Task.Delay in zone context**: follow AreaBomb pattern; do not block the zone update loop. Capture zone reference before delay; guard against drone already dead when delay completes.
+- **Standing check on Alpha zones**: `IsHostilePlayer()` already short-circuits if both players lack PvP effect on Alpha (line 114–116). PvP hunter drones will find no valid targets on protected islands — expected behaviour.
+- **Niani targeting scope**: if Niani NPCs are ever replaced or renamed, `Faction.Niani` must remain aligned with the live NPC faction values.
+- **Self-destruct on retreat**: if the drone receives a retreat command while in Approach state, it must transition to Retreat and NOT trigger self-destruct. Guard the SelfDestruct state entry with `!IsReceivedRetreatCommand`.
+- **Kill pipeline**: self-destruct must go through the normal kill/loot pipeline (`RemoveFromZone` via death), not a silent `Destroy()`, so kill events fire correctly (season activities, loot drops, etc.).
+- **Head slot conflict**: if players equip `SelfDestructModule` standalone, it occupies the head slot. Verify slot validation allows this as a head module in entity definition.
+- **Bandwidth**: hunter drones consume bandwidth like other drones; controller module must expose appropriate `remote_control_bandwidth_usage` on the drone entity definition.
+
+### Manual Validation Steps
+
+1. Spawn PvP hunter drone in PvP zone — verify it patrols, detects a standing ≤ 0 player, approaches, and triggers self-destruct with visible delay.
+2. Spawn PvE hunter drone in alpha zone — verify it targets only Niani NPCs, ignores players, AoE does not fire (single-target path used).
+3. Equip self-destruct module on a player robot — verify activation delay and kill pipeline fires.
+4. Send retreat command while drone is approaching — verify it transitions to Retreat without detonating.
+5. Verify AoE from self-destruct does NOT damage other hunter drones (RemoteControlledCreature AoE immunity).
+6. Verify hunter drone cannot be commanded via target lock relay — only retreat command is honoured.
+
+### Notes
+
+- `RemoteControlledCreature` AoE immunity (ZoneExtensions.cs:226–228) naturally solves drone-on-drone friendly fire with no code changes.
+- PvE alpha zone player AoE immunity (line 231–233) means PvP hunter drones self-detonating near players on protected islands will cause no AoE damage to those players regardless — no special case needed.
+- Sentry turrets are a valid reference for the auto-attack idle→combat transition but hunter drones need movement (Patrol/Approach), so they cannot reuse `SentryTurretCombatAI` directly.
+- AreaBomb (src/Perpetuum/Zones/Eggs/AreaBomb.cs) is the closest existing self-destruct reference; reuse its beam + Task.Delay + DoAoeDamage pattern.
+
+---
 
 ## IMPROVEMENT-042 - AutoMarket: Per-Item Order Type Control on Trade List
 

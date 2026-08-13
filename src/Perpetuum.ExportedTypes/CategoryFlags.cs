@@ -58,6 +58,7 @@ namespace Perpetuum.ExportedTypes
         cf_industrial_drones = 0x0000000000021101,
         cf_support_drones = 0x0000000000031101,
         cf_attack_drones = 0x0000000000041101,
+        cf_hunter_drones = 0x0000000000051101,
 
         cf_ammo = 0x000000000000000A,
         cf_railgun_ammo = 0x000000000000010A,
@@ -135,6 +136,7 @@ namespace Perpetuum.ExportedTypes
         cf_support_drones_units = 0x000000000006120A,
 
         cf_remote_commands = 0x000000000007120A,
+        cf_hunter_drones_units = 0x000000000008120A,
 
         cf_robot_equipment = 0x000000000000000F,
         cf_armor_equipment = 0x000000000000010F,
@@ -220,6 +222,7 @@ namespace Perpetuum.ExportedTypes
         cf_support_remote_controllers = 0x00000000040C040F,
 
         cf_remote_command_translators = 0x00000000050C040F,
+        cf_hunter_remote_controllers = 0x00000000060C040F,
 
         cf_electronic_warfare_equipment = 0x000000000000050F,
         cf_webber = 0x000000000001050F,
@@ -337,6 +340,7 @@ namespace Perpetuum.ExportedTypes
         cf_robot_enhancements = 0x0000000000000C0F,
         cf_dreadnought_modules = 0x0000000000010C0F,
         cf_excavator_modules = 0x0000000000020C0F,
+        cf_self_destruct_modules = 0x0000000000000D0F,
 
         cf_material = 0x0000000000000014,
         cf_raw_material = 0x0000000000000114,

@@ -465,6 +465,12 @@ Generated from DBML structure.
 - `definition` → `techlinemember.definition`
 - `definition` → `vendorpresetvalues.definition`
 
+> **IMPROVEMENT-043:** Adds `def_standard_self_destruct_module` (player-equippable kamikaze module),
+> `def_standard_hunter_drone` (shared PvE/PvP hunter drone chassis), `def_standard_hunter_drone_rcu`
+> (shared RCU ammo charge), `def_standard_hunter_remote_controller_pve`, and
+> `def_standard_hunter_remote_controller_pvp`. See
+> `docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql`.
+
 ---
 
 ## extensioncategories
@@ -801,6 +807,13 @@ Generated from DBML structure.
 
 - Referenced by `aggregatefields.id`
 - Referenced by `entitydefaults.definition`
+
+> **IMPROVEMENT-043:** Adds `detection_range` / `remote_control_bandwidth_max` /
+> `remote_control_operational_range` / `remote_control_lifetime` / `cycle_time` rows for each of
+> `def_standard_hunter_remote_controller_pve` and `def_standard_hunter_remote_controller_pvp`, and a
+> `remote_control_bandwidth_usage` row for `def_standard_hunter_drone_rcu`. All five field ids are
+> pre-existing legacy `aggregatefields` rows (not created by this migration) resolved by name at insert
+> time. See `docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql`.
 
 ---
 
@@ -1282,6 +1295,12 @@ Tracks units of each raw material purchased via AutoMarket buy orders per week. 
 
 - `[value]` → `productiondecalibration.categoryflag`
 - `[value]` → `productionduration.category`
+
+> **IMPROVEMENT-043:** Adds `cf_self_destruct_modules` (`0x0000000000000D0F`), `cf_hunter_drones`
+> (`0x0000000000051101`), `cf_hunter_drones_units` (`0x000000000008120A`),
+> `cf_hunter_remote_controllers_pve` (`0x00000000060C040F`), and `cf_hunter_remote_controllers_pvp`
+> (`0x00000000070C040F`) — values copied verbatim from `src/Perpetuum.ExportedTypes/CategoryFlags.cs`.
+> See `docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql`.
 
 ---
 
@@ -2503,6 +2522,13 @@ Stores the Discord channel ID and message ID of the currently pinned message per
 ### Relations
 
 - Referenced by `entitydefaults.definition`
+
+> **IMPROVEMENT-043:** Adds a row for `def_standard_self_destruct_module` and one for
+> `def_standard_hunter_drone`, both carrying `explosion_radius`/`damage_chemical`/`damage_explosive`/
+> `damage_kinetic`/`damage_thermal`/`action_delay`. The hunter drone chassis reads its row directly via
+> `Drone.ED.Config.*` from `HunterSelfDestructAI`, independent of (and with the same-shaped values as)
+> the player module's own row. See
+> `docs/db_structure/migrations/IMPROVEMENT-043-hunter-drones-self-destruct.sql`.
 
 ---
 
