@@ -50,7 +50,7 @@
 - `System.Text.RegularExpressions` 4.3.1 — regex utilities (referenced in all projects)
 
 **CLI:**
-- `McMaster.Extensions.CommandLineUtils` 4.1.1 — `--GameRoot` argument parsing in `src/Perpetuum.Server/Program.cs`
+- `McMaster.Extensions.CommandLineUtils` 4.1.1 — positional `<GAMEROOT>` argument parsing in `src/Perpetuum.Server/Program.cs`
 
 **Crypto:**
 - RC4 stream cipher: custom implementation at `src/Perpetuum/Rc4.cs`

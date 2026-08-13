@@ -191,7 +191,7 @@ src/Perpetuum.RequestHandlers/
 ## Key Files
 
 **Entry Points:**
-- `src/Perpetuum.Server/Program.cs` — console entry; parses `--GameRoot`, calls `bootstrapper.Init/Start`
+- `src/Perpetuum.Server/Program.cs` — console entry; takes the game root as a positional `<GAMEROOT>` argument, calls `bootstrapper.Init/Start`
 - `src/Perpetuum.ServerService2/` — Windows service wrapper for the same bootstrapper
 
 **Bootstrap:**

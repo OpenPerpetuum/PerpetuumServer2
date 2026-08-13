@@ -839,7 +839,7 @@ Vendor market fills (no player counterparty) record without gate. `buyOrderPayBa
 
 ---
 
-## ISSUE-034 - CLAUDE.md contains stale references that misdirect contributors
+## ISSUE-034 - Stale references in CLAUDE.md and docs/codebase misdirect contributors
 
 Status: DONE
 Priority: MEDIUM
@@ -848,19 +848,31 @@ Area: Documentation
 ### Problem
 Three sets of references in `CLAUDE.md` did not match the repository: the documented run command used a `--GameRoot` option that `Program.cs` does not define, eight `docs/` paths pointed at files that live under `docs/codebase/`, and `.claude/knowledge/architecture.md` was referenced twice but does not exist.
 
+The same `--GameRoot` mistake also appeared in three files under `docs/codebase/`, which the original entry did not cover: the manual-testing command in `TESTING.md`, the CLI description in `STACK.md`, and the entry-point description in `STRUCTURE.md`.
+
 ### Impact
 `CLAUDE.md` is the instruction file for agent-assisted work, so a wrong path or command is followed rather than questioned. The documented run command could not succeed, and ten path references resolved to nothing.
+
+`docs/codebase/` is the authoritative documentation set, and `TESTING.md` is where a contributor looks for how to validate a change — with no automated test suite in the repository, running the server by hand is the only validation path there is, and the command given for it did not work.
 
 ### Fix
 1. Run command changed to the positional form, `dotnet run -- "<path>"`, matching `app.Argument("<GAMEROOT>", ...)` in `src/Perpetuum.Server/Program.cs`.
 2. The eight `docs/` paths prefixed with `codebase/` — six in Authoritative Documentation plus the repeats under Technical Debt Rules and Code Placement.
 3. Both `.claude/knowledge/architecture.md` references repointed at `docs/codebase/ARCHITECTURE.md` rather than creating the missing file, so the architecture documentation keeps a single source of truth.
+4. The three `docs/codebase/` occurrences corrected: `TESTING.md` now shows the positional command, and `STACK.md` and `STRUCTURE.md` describe the argument as positional `<GAMEROOT>` instead of an option.
 
 ### Files Changed
 - `CLAUDE.md` — lines 44, 56, 77, 80, 83, 86, 89, 92, 222, 316, 331 as of `b8d2ec2`
+- `docs/codebase/TESTING.md` — line 34 as of `f9ddac2`
+- `docs/codebase/STACK.md` — line 53 as of `f9ddac2`
+- `docs/codebase/STRUCTURE.md` — line 194 as of `f9ddac2`
 
 ### Notes
-Merged in PR #20. `--GameRoot` remains valid for `Perpetuum.ServerService2`, which reads `GameRoot` from `appsettings.json`, and was left alone. Every backticked path in the file was resolved against the working tree afterwards; `Commands.cs`, `completed.md` and `graph.json` still do not resolve because they are bare filenames used in prose, not paths.
+The `CLAUDE.md` part merged in PR #20; the three `docs/codebase/` files were corrected afterwards, in the same change that moved this entry here.
+
+`--GameRoot` remains valid for `Perpetuum.ServerService2`, which reads `GameRoot` from `appsettings.json`, and was left alone. Every backticked path in `CLAUDE.md` was resolved against the working tree afterwards; `Commands.cs`, `completed.md` and `graph.json` still do not resolve because they are bare filenames used in prose, not paths.
+
+Five further occurrences of the old command survive under `docs/superpowers/plans/`. Those are dated records of plans that were already carried out, so they were left untouched rather than rewritten after the fact.
 
 ---
 
