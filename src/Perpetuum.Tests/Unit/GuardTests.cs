@@ -126,5 +126,93 @@ namespace Perpetuum.Tests.Unit
             _ = Assert.Throws<PerpetuumException>(
                 () => value.ThrowIfNotType<int>(ErrorCodes.WTFErrorMedicalAttentionSuggested));
         }
+
+        [Fact]
+        public void ThrowIfType_rejects_the_named_type_and_passes_anything_else()
+        {
+            object value = "text";
+
+            _ = Assert.Throws<PerpetuumException>(
+                () => value.ThrowIfType<string>(ErrorCodes.WTFErrorMedicalAttentionSuggested));
+
+            value.ThrowIfType<int>(ErrorCodes.WTFErrorMedicalAttentionSuggested);
+        }
+
+        [Fact]
+        public void ThrowIfZero_long_throws_on_zero()
+        {
+            // Not an extension method: Guard.ThrowIfZero(long, Func<Exception>) takes its source
+            // as a plain parameter, unlike the int overload above it.
+            _ = Assert.Throws<PerpetuumException>(
+                () => Guard.ThrowIfZero(0L, () => PerpetuumException.Create(ErrorCodes.WTFErrorMedicalAttentionSuggested)));
+
+            Guard.ThrowIfZero(1L, () => PerpetuumException.Create(ErrorCodes.WTFErrorMedicalAttentionSuggested));
+        }
+
+        [Fact]
+        public void ThrowIfZero_double_rejects_values_within_epsilon_of_zero()
+        {
+            _ = Assert.Throws<PerpetuumException>(
+                () => 0.0d.ThrowIfZero(() => PerpetuumException.Create(ErrorCodes.WTFErrorMedicalAttentionSuggested)));
+
+            Assert.Equal(
+                2.5d,
+                2.5d.ThrowIfZero(() => PerpetuumException.Create(ErrorCodes.WTFErrorMedicalAttentionSuggested)));
+        }
+
+        [Theory]
+        [InlineData(5, 3, true)]
+        [InlineData(3, 3, true)]
+        [InlineData(1, 3, false)]
+        public void ThrowIfGreaterOrEqual_throws_at_and_above_the_comparer(int source, int comparer, bool shouldThrow)
+        {
+            if (shouldThrow)
+            {
+                _ = Assert.Throws<PerpetuumException>(
+                    () => source.ThrowIfGreaterOrEqual(comparer, ErrorCodes.WTFErrorMedicalAttentionSuggested));
+            }
+            else
+            {
+                Assert.Equal(source, source.ThrowIfGreaterOrEqual(comparer, ErrorCodes.WTFErrorMedicalAttentionSuggested));
+            }
+        }
+
+        [Theory]
+        [InlineData(1, 3, true)]
+        [InlineData(3, 3, false)]
+        [InlineData(5, 3, false)]
+        public void ThrowIfLess_throws_only_when_strictly_less(int source, int comparer, bool shouldThrow)
+        {
+            if (shouldThrow)
+            {
+                _ = Assert.Throws<PerpetuumException>(
+                    () => source.ThrowIfLess(comparer, ErrorCodes.WTFErrorMedicalAttentionSuggested));
+            }
+            else
+            {
+                Assert.Equal(source, source.ThrowIfLess(comparer, ErrorCodes.WTFErrorMedicalAttentionSuggested));
+            }
+        }
+
+        [Fact]
+        public void ThrowIfNotNull_throws_when_the_value_is_present()
+        {
+            object? nothing = null;
+            nothing.ThrowIfNotNull(ErrorCodes.WTFErrorMedicalAttentionSuggested);
+
+            _ = Assert.Throws<PerpetuumException>(
+                () => new object().ThrowIfNotNull(ErrorCodes.WTFErrorMedicalAttentionSuggested));
+        }
+
+        [Fact]
+        public void ThrowIfNotNull_invokes_the_exception_action_before_throwing()
+        {
+            bool invoked = false;
+
+            _ = Assert.Throws<PerpetuumException>(
+                () => new object().ThrowIfNotNull(ErrorCodes.WTFErrorMedicalAttentionSuggested, _ => invoked = true));
+
+            Assert.True(invoked);
+        }
     }
 }
