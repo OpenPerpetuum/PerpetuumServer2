@@ -36,19 +36,20 @@ Priority: MEDIUM
 Area: Documentation
 
 ### Problem
-Two sets of references in `CLAUDE.md` do not match the repository:
+Three sets of references in `CLAUDE.md` do not match the repository:
 
 1. Build & Run documents `dotnet run -- --GameRoot "<path>"`. `src/Perpetuum.Server/Program.cs` declares the game root as a positional argument via `app.Argument("<GAMEROOT>", ...)`, so the option does not exist and the run fails with `Unrecognized option '--GameRoot'`. The working form is `dotnet run -- "<path>"`.
-2. Authoritative Documentation links `docs/CONCERNS.md`, `docs/CONVENTIONS.md`, `docs/INTEGRATIONS.md`, `docs/STACK.md`, `docs/STRUCTURE.md` and `docs/TESTING.md`. None of those paths exist; all six files live under `docs/codebase/`. Only the `ARCHITECTURE.md` entry already points at `docs/codebase/`.
+2. Eight `docs/` references point at files that do not exist. Authoritative Documentation links `docs/CONCERNS.md` (line 77), `docs/CONVENTIONS.md` (80), `docs/INTEGRATIONS.md` (83), `docs/STACK.md` (86), `docs/STRUCTURE.md` (89) and `docs/TESTING.md` (92); Technical Debt Rules links `docs/CONCERNS.md` again (222) and Code Placement links `docs/STRUCTURE.md` again (316). All six files live under `docs/codebase/`. Only the `ARCHITECTURE.md` entry (74) already points there.
+3. `.claude/knowledge/architecture.md` does not exist and is referenced twice: as the file to update when introducing major architectural changes (line 44), and as the architecture deep-dive in the Where to Edit table (331). `.claude/knowledge/` contains only `codebase-graph.md`.
 
 ### Impact
-`CLAUDE.md` is the instruction file for agent-assisted work, so a wrong path or command is followed rather than questioned. The documented run command cannot succeed, and six of seven documentation pointers resolve to nothing.
+`CLAUDE.md` is the instruction file for agent-assisted work, so a wrong path or command is followed rather than questioned. The documented run command cannot succeed, and ten path references resolve to nothing — eight under `docs/` and two under `.claude/knowledge/`.
 
 ### Proposed Fix
-Correct the run command to the positional form and prefix the six documentation paths with `docs/codebase/`.
+Correct the run command to the positional form and prefix the eight `docs/` paths with `codebase/`. The two `.claude/knowledge/architecture.md` references need a maintainer decision: repoint them at `docs/codebase/ARCHITECTURE.md`, which already holds the architecture documentation, or create the missing file.
 
 ### Notes
-`--GameRoot` remains valid for `Perpetuum.ServerService2`, which reads `GameRoot` from `appsettings.json`; only the `Perpetuum.Server` console entry point takes it positionally.
+`--GameRoot` remains valid for `Perpetuum.ServerService2`, which reads `GameRoot` from `appsettings.json`; only the `Perpetuum.Server` console entry point takes it positionally. Line numbers are against `CLAUDE.md` at `b8d2ec2` (P36.7). `Commands.cs` and `completed.md` also appear in the file, but as bare filenames in prose rather than paths.
 
 ## ISSUE-033 - FreeRoamingPathFinder throws on presences with no flocks
 
