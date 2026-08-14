@@ -22,19 +22,16 @@ window lifetime, and presentation-only collection views.
 ## Current native milestone
 
 The Avalonia application provides connection settings, a live database probe,
-normal AdminTool account authentication, and the first real native module: a
-read-only NIC-flow economy dashboard. It also includes the shared pending-change
-review, transactional SQL preview/export, and guarded direct-apply workflow that
-future editing modules use. The Entities module can browse/filter definitions,
-edit the main `entitydefaults` fields, and queue their generated SQL; aggregate
-stats are visible but remain read-only in this slice. Robot templates and their
-definition-to-template relations can be browsed, created, edited, or queued for
-deletion. Template descriptions support both raw Genxy and the structured
-robot/part/module editor, including slot and ammo compatibility filtering.
-Equipment sets, members, and bonus thresholds are also available through the
-same guarded queue, along with NPC loot rule editing. This establishes the
-complete Linux path from desktop UI through `Microsoft.Data.SqlClient` to live
-Perpetuum data.
+normal AdminTool account authentication, and a tabbed native workspace. It
+includes shared pending-change review, transactional SQL preview/export, and a
+guarded direct-apply workflow. The development-focused tabs cover entities,
+structured robot templates, definition-to-template relations, equipment sets,
+NPC loot, presences, flocks, and presence-to-flock relationships. The NIC-flow
+economy dashboard is also native. Template descriptions support both raw Genxy
+and the structured robot/part/module editor, including slot and ammo
+compatibility filtering. Entity aggregate stats are visible but remain
+read-only. This establishes the complete Linux path from desktop UI through
+`Microsoft.Data.SqlClient` to live Perpetuum data for bot and content work.
 
 Run from a machine with the .NET 8 SDK:
 
@@ -100,9 +97,27 @@ dotnet test src/Perpetuum.AdminTool.Core.Tests
 
 The database integration test is skipped when those variables are absent.
 
+### Human smoke test
+
+Automated tests cover compiled XAML, authentication state, live read queries,
+generated SQL, transaction handling, and the Linux publish. Before relying on a
+new build for content work, a person should perform the parts that cannot be
+meaningfully judged headlessly:
+
+1. launch the self-contained executable and confirm the window, text, and all
+   nine module tabs render at the workstation's actual DPI;
+2. sign in and reload each development tab, checking that long names and the
+   structured template editor remain usable at the chosen window size;
+3. edit one loaded row, queue it, review the SQL in **Pending changes**, then
+   clear the queue and confirm the editor still shows the database baseline;
+4. create one unsaved row, queue its insert, inspect the SQL, and clear it
+   without applying; and
+5. on a disposable database or after a backup, apply one reviewed change and
+   reload to confirm the end-to-end write path.
+
 ## Native feature sequence
 
-The port is organized as vertical modules so every stage remains usable:
+The port is organized as tabbed modules so every stage remains usable:
 
 1. connection, secure local settings, database probe, and admin authentication;
 2. pending-change review, SQL-script export, and explicit commit safeguards

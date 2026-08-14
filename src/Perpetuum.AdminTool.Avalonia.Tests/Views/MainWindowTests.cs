@@ -13,6 +13,9 @@ public sealed class MainWindowTests
 
         Assert.Equal("Perpetuum AdminTool", window.Title);
         Assert.IsType<ScrollViewer>(window.Content);
+        TabControl tabs = window.FindControl<TabControl>("ModulesTabs")!;
+        Assert.NotNull(tabs);
+        Assert.Equal(9, tabs.ItemCount);
 
         window.Close();
     }

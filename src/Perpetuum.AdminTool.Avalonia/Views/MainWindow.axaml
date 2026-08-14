@@ -96,41 +96,35 @@
         <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
       </Border>
 
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:EntityCatalogView DataContext="{Binding Entities}" />
-      </Border>
-
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:RobotTemplateCatalogView DataContext="{Binding RobotTemplates}" />
-      </Border>
-
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:RobotTemplateRelationsCatalogView DataContext="{Binding RobotTemplateRelations}" />
-      </Border>
-
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:EquipmentSetsCatalogView DataContext="{Binding EquipmentSets}" />
-      </Border>
-
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:NpcLootCatalogView DataContext="{Binding NpcLoot}" />
-      </Border>
-
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:PresenceCatalogView DataContext="{Binding Presences}" />
-      </Border>
-
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:FlockCatalogView DataContext="{Binding Flocks}" />
-      </Border>
-
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:EconomyNicFlowView DataContext="{Binding Economy}" />
-      </Border>
-
-      <Border IsVisible="{Binding IsAuthenticated}">
-        <views:PendingChangesView DataContext="{Binding PendingChanges}" />
-      </Border>
+      <TabControl x:Name="ModulesTabs" IsVisible="{Binding IsAuthenticated}" MinHeight="520">
+        <TabItem Header="Entities">
+          <views:EntityCatalogView DataContext="{Binding Entities}" />
+        </TabItem>
+        <TabItem Header="Robot templates">
+          <views:RobotTemplateCatalogView DataContext="{Binding RobotTemplates}" />
+        </TabItem>
+        <TabItem Header="Template relations">
+          <views:RobotTemplateRelationsCatalogView DataContext="{Binding RobotTemplateRelations}" />
+        </TabItem>
+        <TabItem Header="Equipment sets">
+          <views:EquipmentSetsCatalogView DataContext="{Binding EquipmentSets}" />
+        </TabItem>
+        <TabItem Header="NPC loot">
+          <views:NpcLootCatalogView DataContext="{Binding NpcLoot}" />
+        </TabItem>
+        <TabItem Header="NPC presences">
+          <views:PresenceCatalogView DataContext="{Binding Presences}" />
+        </TabItem>
+        <TabItem Header="NPC flocks">
+          <views:FlockCatalogView DataContext="{Binding Flocks}" />
+        </TabItem>
+        <TabItem Header="Economy">
+          <views:EconomyNicFlowView DataContext="{Binding Economy}" />
+        </TabItem>
+        <TabItem Header="Pending changes">
+          <views:PendingChangesView DataContext="{Binding PendingChanges}" />
+        </TabItem>
+      </TabControl>
     </StackPanel>
   </ScrollViewer>
 </Window>
