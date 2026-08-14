@@ -101,6 +101,9 @@
       </Border>
 
       <TabControl x:Name="ModulesTabs" IsVisible="{Binding IsAuthenticated}" MinHeight="520">
+        <TabItem Header="New item">
+          <views:NewItemWizardView DataContext="{Binding NewItemWizard}" />
+        </TabItem>
         <TabItem Header="Entities">
           <views:EntityCatalogView DataContext="{Binding Entities}" />
         </TabItem>

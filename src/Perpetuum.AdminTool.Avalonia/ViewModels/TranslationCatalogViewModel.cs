@@ -29,6 +29,34 @@ public partial class TranslationCatalogViewModel : ObservableObject
     public string GameRootPath => _settingsStore.Settings.GameRootPath;
     public bool IsNotLoading => !IsLoading;
 
+    public string? SeedKeys(IReadOnlyList<string> keys)
+    {
+        string gameRoot = _settingsStore.Settings.GameRootPath.Trim();
+        if (string.IsNullOrEmpty(gameRoot))
+            return "Translation keys were not seeded because the game root is not configured.";
+
+        _store ??= new TranslationStore(gameRoot);
+        if (_store.Rows.Count == 0 && _store.Languages.Count == 0)
+            _store.Load();
+        if (!_store.Languages.Contains(0) && !_store.TryAddLanguage(0, out string languageError))
+            throw new InvalidOperationException(languageError);
+
+        int added = 0;
+        foreach (string key in keys.Where(key => !string.IsNullOrWhiteSpace(key))
+                     .Distinct(StringComparer.Ordinal))
+        {
+            if (!_store.TryAddKey(key, out _)) continue;
+            _store.Rows[0][0] = key;
+            added++;
+        }
+        _store.Save();
+        _allRows.Clear();
+        _allRows.AddRange(_store.Rows);
+        RebuildAvailableLanguages();
+        RebuildFilteredRows();
+        return added == 0 ? null : $"Seeded {added} translation key(s).";
+    }
+
     partial void OnFilterTextChanged(string value) => RebuildFilteredRows();
     partial void OnSelectedRowChanged(TranslationRow? value) => RebuildValueEditors();
     partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsNotLoading));

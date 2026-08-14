@@ -1,0 +1,194 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:views="using:Perpetuum.AdminTool.Avalonia.Views"
+             xmlns:item="using:Perpetuum.AdminTool.NewItem"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.NewItemWizardView"
+             x:DataType="vm:NewItemWizardViewModel">
+  <Border Padding="12" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
+      <Grid ColumnDefinitions="*,320,Auto,Auto" ColumnSpacing="8">
+        <StackPanel Spacing="2">
+          <TextBlock Text="New Item" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Create from scratch or clone every supported item table into a new definition."
+                     Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+        <ComboBox Grid.Column="1" ItemsSource="{Binding EnabledItems}"
+                  SelectedItem="{Binding CloneSource}" DisplayMemberBinding="{Binding Display}" />
+        <Button Grid.Column="2" Content="Load metadata" Command="{Binding LoadCommand}" />
+        <Button Grid.Column="3" Content="New draft" Command="{Binding NewDraftCommand}" />
+      </Grid>
+
+      <TabControl Grid.Row="1" MinHeight="460">
+        <TabItem Header="Basic">
+          <views:BasicItemPanelView DataContext="{Binding BasicPanel}" />
+        </TabItem>
+        <TabItem Header="Calibration" IsVisible="{Binding IsCraftable}">
+          <views:BasicItemPanelView DataContext="{Binding CalibrationPanel}" />
+        </TabItem>
+        <TabItem Header="Prototype" IsVisible="{Binding HasPrototype}">
+          <views:BasicItemPanelView DataContext="{Binding PrototypePanel}" />
+        </TabItem>
+        <TabItem Header="Stats">
+          <Grid RowDefinitions="Auto,*" RowSpacing="8" Margin="8">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <TextBlock Text="Aggregate field ID and raw value" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Content="Add" Command="{Binding StatsPanel.AddRowCommand}" />
+              <Button Grid.Column="2" Content="Remove selected" Command="{Binding RemoveSelectedStatCommand}" />
+            </Grid>
+            <ListBox Grid.Row="1" ItemsSource="{Binding StatsPanel.Rows}" SelectedItem="{Binding SelectedStat}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="item:NewStatRow">
+                  <Grid ColumnDefinitions="180,*" ColumnSpacing="8" Margin="2">
+                    <TextBox Text="{Binding FieldId}" Watermark="field ID" />
+                    <TextBox Grid.Column="1" Text="{Binding NewValue}" Watermark="value" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Property modifiers">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="8">
+            <Grid RowDefinitions="Auto,*" RowSpacing="6">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                <TextBlock Text="Module property modifiers" />
+                <Button Grid.Column="1" Content="Add" Command="{Binding PropertyModifiersPanel.AddModPropertyRowCommand}" />
+                <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveSelectedModuleModifierCommand}" />
+              </Grid>
+              <ListBox Grid.Row="1" ItemsSource="{Binding PropertyModifiersPanel.ModulePropertyModifierRows}"
+                       SelectedItem="{Binding SelectedModuleModifier}">
+                <ListBox.ItemTemplate><DataTemplate x:DataType="item:PropertyModifierRow">
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="6" Margin="2">
+                    <TextBox Text="{Binding BaseFieldId}" Watermark="base field" />
+                    <TextBox Grid.Column="1" Text="{Binding ModifierFieldId}" Watermark="modifier field" />
+                  </Grid>
+                </DataTemplate></ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+            <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="6">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                <TextBlock Text="Aggregate modifiers" />
+                <Button Grid.Column="1" Content="Add" Command="{Binding PropertyModifiersPanel.AddAggModRowCommand}" />
+                <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveSelectedAggregateModifierCommand}" />
+              </Grid>
+              <ListBox Grid.Row="1" ItemsSource="{Binding PropertyModifiersPanel.AggregateModifierRows}"
+                       SelectedItem="{Binding SelectedAggregateModifier}">
+                <ListBox.ItemTemplate><DataTemplate x:DataType="item:PropertyModifierRow">
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="6" Margin="2">
+                    <TextBox Text="{Binding BaseFieldId}" Watermark="base field" />
+                    <TextBox Grid.Column="1" Text="{Binding ModifierFieldId}" Watermark="modifier field" />
+                  </Grid>
+                </DataTemplate></ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Production" IsVisible="{Binding IsCraftable}">
+          <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8" Margin="8">
+            <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="8">
+              <TextBlock Text="Duration modifier" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding ProductionPanel.DurationModifier}" />
+              <TextBlock Grid.Column="2" Text="Existing category duration is preserved when present."
+                         Opacity="0.7" VerticalAlignment="Center" />
+            </Grid>
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <TextBlock Text="Components: entity definition ID and amount" />
+              <Button Grid.Column="1" Content="Add" Command="{Binding ProductionPanel.AddComponentCommand}" />
+              <Button Grid.Column="2" Content="Remove selected" Command="{Binding RemoveSelectedComponentCommand}" />
+            </Grid>
+            <ListBox Grid.Row="2" ItemsSource="{Binding ProductionPanel.Components}" SelectedItem="{Binding SelectedComponent}">
+              <ListBox.ItemTemplate><DataTemplate x:DataType="item:NewComponentRow">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="2">
+                  <TextBox Text="{Binding IngredientDefinition}" Watermark="ingredient definition" />
+                  <TextBox Grid.Column="1" Text="{Binding Amount}" Watermark="amount" />
+                </Grid>
+              </DataTemplate></ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Research" IsVisible="{Binding IsCraftable}">
+          <ScrollViewer>
+            <StackPanel Margin="8" Spacing="10">
+              <Grid ColumnDefinitions="150,120,Auto,220" ColumnSpacing="8">
+                <TextBlock Text="Research level" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding ResearchPanel.ResearchLevel}" />
+                <CheckBox Grid.Column="2" Content="Enabled" IsChecked="{Binding ResearchPanel.IsEnabled}" />
+                <CheckBox Grid.Column="3" Content="Use generated calibration program"
+                          IsChecked="{Binding ResearchPanel.UseCprgRef}" />
+              </Grid>
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <TextBlock Text="Tech tree: parent definition, group, X, Y, optional enabler extension" />
+                <Button Grid.Column="1" Content="Add" Command="{Binding ResearchPanel.AddTechTreeRowCommand}" />
+                <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveSelectedTechTreeRowCommand}" />
+              </Grid>
+              <ListBox ItemsSource="{Binding ResearchPanel.TechTreeRows}" SelectedItem="{Binding SelectedTechTreeRow}" MaxHeight="120">
+                <ListBox.ItemTemplate><DataTemplate x:DataType="item:TechTreePlacementRow">
+                  <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="5" Margin="2">
+                    <TextBox Text="{Binding ParentDefinition}" Watermark="parent" />
+                    <TextBox Grid.Column="1" Text="{Binding GroupId}" Watermark="group" />
+                    <TextBox Grid.Column="2" Text="{Binding X}" Watermark="x" />
+                    <TextBox Grid.Column="3" Text="{Binding Y}" Watermark="y" />
+                    <TextBox Grid.Column="4" Text="{Binding EnablerExtensionId}" Watermark="extension" />
+                  </Grid>
+                </DataTemplate></ListBox.ItemTemplate>
+              </ListBox>
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <TextBlock Text="Research costs: point type and amount" />
+                <Button Grid.Column="1" Content="Add" Command="{Binding ResearchPanel.AddResearchCostCommand}" />
+                <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveSelectedResearchCostCommand}" />
+              </Grid>
+              <ListBox ItemsSource="{Binding ResearchPanel.ResearchCostRows}" SelectedItem="{Binding SelectedResearchCost}" MaxHeight="110">
+                <ListBox.ItemTemplate><DataTemplate x:DataType="item:ResearchCostRow">
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="2">
+                    <TextBox Text="{Binding PointTypeId}" Watermark="point type" />
+                    <TextBox Grid.Column="1" Text="{Binding Amount}" Watermark="amount" />
+                  </Grid>
+                </DataTemplate></ListBox.ItemTemplate>
+              </ListBox>
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <TextBlock Text="Enabler extensions: extension and level" />
+                <Button Grid.Column="1" Content="Add" Command="{Binding ResearchPanel.AddEnablerExtensionCommand}" />
+                <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveSelectedEnablerExtensionCommand}" />
+              </Grid>
+              <ListBox ItemsSource="{Binding ResearchPanel.EnablerExtensionRows}" SelectedItem="{Binding SelectedEnablerExtension}" MaxHeight="110">
+                <ListBox.ItemTemplate><DataTemplate x:DataType="item:EnablerExtensionRow">
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="2">
+                    <TextBox Text="{Binding ExtensionId}" Watermark="extension" />
+                    <TextBox Grid.Column="1" Text="{Binding ExtensionLevel}" Watermark="level" />
+                  </Grid>
+                </DataTemplate></ListBox.ItemTemplate>
+              </ListBox>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Options &amp; Visual">
+          <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8" Margin="8">
+            <TextBlock Text="Raw GenXY options" />
+            <TextBox Grid.Row="1" Text="{Binding OptionsVisualPanel.OptionsText}" AcceptsReturn="True" MinHeight="90" />
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+              <CheckBox Content="Write definitionconfig" IsChecked="{Binding OptionsVisualPanel.HasDefinitionConfig}" />
+              <TextBlock Grid.Column="1" Text="Column name and raw SQL-compatible value" VerticalAlignment="Center" />
+              <Button Grid.Column="2" Content="Add" Command="{Binding OptionsVisualPanel.AddConfigRowCommand}" />
+              <Button Grid.Column="3" Content="Remove" Command="{Binding RemoveSelectedConfigRowCommand}" />
+            </Grid>
+            <ListBox Grid.Row="3" ItemsSource="{Binding OptionsVisualPanel.DefinitionConfigRows}"
+                     SelectedItem="{Binding SelectedConfigRow}">
+              <ListBox.ItemTemplate><DataTemplate x:DataType="item:DefinitionConfigRow">
+                <Grid ColumnDefinitions="*,2*" ColumnSpacing="8" Margin="2">
+                  <TextBox Text="{Binding ColumnName}" Watermark="column" />
+                  <TextBox Grid.Column="1" Text="{Binding RawValue}" Watermark="value" />
+                </Grid>
+              </DataTemplate></ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </TabItem>
+      </TabControl>
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Content="Queue item creation" Command="{Binding QueueItemCommand}" />
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

@@ -9,7 +9,26 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.NewItem;
 
-public class NewItemRepository
+public interface INewItemRepository
+{
+    Task<NewItemLookups> LoadAsync(
+        IReadOnlyList<AggregateFieldInfo> aggregateFields,
+        IReadOnlyList<EntityPickItem> entities,
+        Dictionary<string, string>? englishNames = null);
+    Task<CloneExtendedData> LoadCloneExtendedAsync(int definition);
+}
+
+public interface INewItemRepositoryFactory
+{
+    INewItemRepository Create(ConnectionSettings connection);
+}
+
+public sealed class NewItemRepositoryFactory : INewItemRepositoryFactory
+{
+    public INewItemRepository Create(ConnectionSettings connection) => new NewItemRepository(connection);
+}
+
+public class NewItemRepository : INewItemRepository
 {
     private readonly ConnectionSettings _connection;
 

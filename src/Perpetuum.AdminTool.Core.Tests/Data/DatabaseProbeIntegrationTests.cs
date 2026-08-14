@@ -1,10 +1,12 @@
 using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
+using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Npc;
+using Perpetuum.AdminTool.NewItem;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -59,6 +61,38 @@ public sealed class DatabaseProbeIntegrationTests
         Assert.NotEmpty(snapshot.Rows);
         Assert.NotEmpty(snapshot.Fields);
         Assert.All(snapshot.Rows, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task NewItemRepository_LoadsCurrentSchemaAndCloneData()
+    {
+        ConnectionSettings settings = LoadConnectionSettings();
+        EntitiesSnapshot snapshot = await new EntityRepository(settings).LoadAsync();
+        List<EntityPickItem> entities = snapshot.Rows.Select(row => new EntityPickItem
+        {
+            Definition = row.Definition,
+            Name = row.DefinitionName,
+            CategoryFlags = row.CategoryFlags,
+            Enabled = row.Enabled,
+            Hidden = row.Hidden,
+            TierType = row.TierType ?? 0,
+            TierLevel = row.TierLevel ?? 0
+        }).ToList();
+        var repository = new NewItemRepository(settings);
+
+        NewItemLookups lookups = await repository.LoadAsync(
+            snapshot.Fields.Values.ToList(), entities);
+
+        Assert.NotEmpty(lookups.AggregateFields);
+        Assert.NotEmpty(lookups.EnabledItems);
+        Assert.NotEmpty(lookups.Extensions);
+        Assert.NotEmpty(lookups.TechTreeGroups);
+        Assert.NotEmpty(lookups.PointTypes);
+        CloneExtendedData clone = await repository.LoadCloneExtendedAsync(
+            lookups.EnabledItems[0].Definition);
+        Assert.NotNull(clone.Components);
+        Assert.NotNull(clone.DefinitionConfig);
     }
 
     [Fact]

@@ -16,7 +16,7 @@ using Perpetuum.AdminTool.Translations;
 
 namespace Perpetuum.AdminTool.ViewModels;
 
-public partial class NewItemDialogViewModel : ObservableObject
+public partial class NewItemDialogViewModel : ObservableObject, INewItemBuildModel
 {
     private readonly ConnectionSettings _connection;
     private readonly ChangeApplier _changeApplier;

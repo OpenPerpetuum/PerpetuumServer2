@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:item="using:Perpetuum.AdminTool.NewItem"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.BasicItemPanelView"
+             x:DataType="item:BasicPanelViewModel">
+  <ScrollViewer>
+    <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+          ColumnSpacing="10" RowSpacing="8" Margin="8">
+      <TextBlock Grid.Row="0" Text="Definition name" />
+      <StackPanel Grid.Row="0" Grid.Column="1" Spacing="2">
+        <TextBox Text="{Binding DefinitionName}" />
+        <TextBlock Text="{Binding DefinitionNameError}" Foreground="#D65B5B" />
+      </StackPanel>
+      <TextBlock Grid.Row="1" Text="Description token" />
+      <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DescriptionToken}" />
+      <TextBlock Grid.Row="2" Text="Category / attribute flags" />
+      <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="8">
+        <TextBox Text="{Binding CategoryFlags}" Watermark="category flags" />
+        <TextBox Grid.Column="1" Text="{Binding AttributeFlags}" Watermark="attribute flags" />
+      </Grid>
+      <TextBlock Grid.Row="3" Text="Mass / volume / health" />
+      <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="*,*,*" ColumnSpacing="8">
+        <TextBox Text="{Binding Mass}" />
+        <TextBox Grid.Column="1" Text="{Binding Volume}" />
+        <TextBox Grid.Column="2" Text="{Binding Health}" />
+      </Grid>
+      <TextBlock Grid.Row="4" Text="Quantity" />
+      <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Quantity}" />
+      <TextBlock Grid.Row="5" Text="Tier type / level" />
+      <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="8">
+        <TextBox Text="{Binding TierType}" Watermark="nullable" />
+        <TextBox Grid.Column="1" Text="{Binding TierLevel}" Watermark="nullable" />
+      </Grid>
+      <TextBlock Grid.Row="6" Text="Availability" />
+      <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+        <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" />
+        <CheckBox Content="Purchasable" IsChecked="{Binding Purchasable}" />
+        <CheckBox Content="Hidden" IsChecked="{Binding Hidden}" />
+      </StackPanel>
+      <TextBlock Grid.Row="7" Text="Note" />
+      <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding Note}" AcceptsReturn="True" MinHeight="54" />
+      <TextBlock Grid.Row="8" Text="Production" />
+      <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+        <CheckBox Content="Craftable" IsChecked="{Binding IsCraftable}" />
+        <CheckBox Content="Has prototype" IsChecked="{Binding HasPrototype}" />
+        <CheckBox Content="Robot" IsChecked="{Binding IsRobot}" />
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+</UserControl>

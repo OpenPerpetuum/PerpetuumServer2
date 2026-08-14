@@ -7,6 +7,7 @@ using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Npc;
+using Perpetuum.AdminTool.NewItem;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -28,6 +29,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly INpcLootRepositoryFactory _npcLootRepositoryFactory;
     private readonly IPresenceRepositoryFactory _presenceRepositoryFactory;
     private readonly IFlockRepositoryFactory _flockRepositoryFactory;
+    private readonly INewItemRepositoryFactory _newItemRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -54,6 +56,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private PresenceCatalogViewModel? _presences;
     [ObservableProperty] private FlockCatalogViewModel? _flocks;
     [ObservableProperty] private TranslationCatalogViewModel? _translations;
+    [ObservableProperty] private NewItemWizardViewModel? _newItemWizard;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -69,7 +72,8 @@ public partial class MainWindowViewModel : ObservableObject
         IRobotTemplateEditorRepositoryFactory robotTemplateEditorRepositoryFactory,
         INpcLootRepositoryFactory npcLootRepositoryFactory,
         IPresenceRepositoryFactory presenceRepositoryFactory,
-        IFlockRepositoryFactory flockRepositoryFactory)
+        IFlockRepositoryFactory flockRepositoryFactory,
+        INewItemRepositoryFactory? newItemRepositoryFactory = null)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -85,6 +89,7 @@ public partial class MainWindowViewModel : ObservableObject
         _npcLootRepositoryFactory = npcLootRepositoryFactory;
         _presenceRepositoryFactory = presenceRepositoryFactory;
         _flockRepositoryFactory = flockRepositoryFactory;
+        _newItemRepositoryFactory = newItemRepositoryFactory ?? new NewItemRepositoryFactory();
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -173,12 +178,15 @@ public partial class MainWindowViewModel : ObservableObject
                     Economy = new EconomyNicFlowViewModel(
                         _economyRepositoryFactory.Create(BuildConnectionSettings()));
                     var changeQueue = new ChangeQueue();
+                    var translations = new TranslationCatalogViewModel(_settingsStore);
+                    Translations = translations;
                     PendingChanges = new PendingChangesViewModel(
                         _settingsStore,
                         changeQueue,
                         _changeApplierFactory.Create(BuildConnectionSettings()),
                         _scriptExporter,
-                        Email.Trim());
+                        Email.Trim(),
+                        keys => translations.SeedKeys(keys));
                     Entities = new EntityCatalogViewModel(
                         _entityRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
@@ -201,7 +209,10 @@ public partial class MainWindowViewModel : ObservableObject
                     Flocks = new FlockCatalogViewModel(
                         _flockRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
-                    Translations = new TranslationCatalogViewModel(_settingsStore);
+                    NewItemWizard = new NewItemWizardViewModel(
+                        _newItemRepositoryFactory.Create(BuildConnectionSettings()),
+                        _entityRepositoryFactory.Create(BuildConnectionSettings()),
+                        changeQueue);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -244,6 +255,7 @@ public partial class MainWindowViewModel : ObservableObject
         Presences = null;
         Flocks = null;
         Translations = null;
+        NewItemWizard = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

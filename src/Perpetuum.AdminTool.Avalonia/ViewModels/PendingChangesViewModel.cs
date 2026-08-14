@@ -13,6 +13,7 @@ public partial class PendingChangesViewModel : ObservableObject
     private readonly IChangeApplier _changeApplier;
     private readonly ISqlScriptExporter _scriptExporter;
     private readonly string _authorEmail;
+    private readonly Func<IReadOnlyList<string>, string?>? _translationSeeder;
 
     [ObservableProperty] private string _outputDirectory;
     [ObservableProperty] private string _confirmationText = string.Empty;
@@ -27,13 +28,15 @@ public partial class PendingChangesViewModel : ObservableObject
         ChangeQueue queue,
         IChangeApplier changeApplier,
         ISqlScriptExporter scriptExporter,
-        string authorEmail)
+        string authorEmail,
+        Func<IReadOnlyList<string>, string?>? translationSeeder = null)
     {
         _settingsStore = settingsStore;
         Queue = queue;
         _changeApplier = changeApplier;
         _scriptExporter = scriptExporter;
         _authorEmail = authorEmail;
+        _translationSeeder = translationSeeder;
         _outputDirectory = string.IsNullOrWhiteSpace(settingsStore.Settings.SqlOutputDirectory)
             ? GetDefaultOutputDirectory()
             : settingsStore.Settings.SqlOutputDirectory;
@@ -94,8 +97,9 @@ public partial class PendingChangesViewModel : ObservableObject
 
             _settingsStore.Settings.SqlOutputDirectory = directory;
             _settingsStore.Save();
+            string translationResult = SeedTranslationsAfterSuccess();
             Queue.Remove(changes);
-            StatusMessage = $"Exported {changes.Length} change(s) to {path}.";
+            StatusMessage = $"Exported {changes.Length} change(s) to {path}.{translationResult}";
         }
         catch (Exception ex)
         {
@@ -126,8 +130,9 @@ public partial class PendingChangesViewModel : ObservableObject
         try
         {
             await _changeApplier.ExecuteAsync(changes, _authorEmail);
+            string translationResult = SeedTranslationsAfterSuccess();
             Queue.Remove(changes);
-            StatusMessage = $"Applied {changes.Length} change(s) successfully.";
+            StatusMessage = $"Applied {changes.Length} change(s) successfully.{translationResult}";
         }
         catch (Exception ex)
         {
@@ -152,6 +157,20 @@ public partial class PendingChangesViewModel : ObservableObject
     private bool CanExportScript()
     {
         return HasPending && !IsBusy && !string.IsNullOrWhiteSpace(OutputDirectory);
+    }
+
+    private string SeedTranslationsAfterSuccess()
+    {
+        if (_translationSeeder == null || Queue.PendingNewEntityNames.Count == 0) return string.Empty;
+        try
+        {
+            string? result = _translationSeeder(Queue.PendingNewEntityNames.ToArray());
+            return string.IsNullOrWhiteSpace(result) ? string.Empty : $" {result}";
+        }
+        catch (Exception ex)
+        {
+            return $" Warning: database work succeeded, but translation keys could not be seeded: {ex.Message}";
+        }
     }
 
     private bool CanApplyDirect()

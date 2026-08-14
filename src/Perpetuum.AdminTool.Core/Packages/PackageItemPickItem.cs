@@ -45,7 +45,7 @@ namespace Perpetuum.AdminTool.Packages
             return result.OrderBy(p => p.DisplayName, System.StringComparer.OrdinalIgnoreCase).ToList();
         }
 
-        internal static string GetTierLabel(long categoryFlags, int tierType, int tierLevel)
+        public static string GetTierLabel(long categoryFlags, int tierType, int tierLevel)
         {
             var tt = (TierType)tierType;
             bool isRobot = (categoryFlags & CategoryFlagsMask((long)CategoryFlags.cf_robots)) == (long)CategoryFlags.cf_robots;
@@ -81,7 +81,7 @@ namespace Perpetuum.AdminTool.Packages
             return false;
         }
 
-        internal static long CategoryFlagsMask(long target)
+        public static long CategoryFlagsMask(long target)
         {
             var mask = unchecked((long)0xFFFFFFFFFFFFFFFFUL);
             while (((ulong)target & (ulong)mask) > 0)

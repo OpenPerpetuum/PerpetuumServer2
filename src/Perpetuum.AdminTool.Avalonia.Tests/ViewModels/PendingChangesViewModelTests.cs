@@ -97,6 +97,29 @@ public sealed class PendingChangesViewModelTests : IDisposable
         Assert.Contains("database unavailable", viewModel.StatusMessage);
     }
 
+    [Fact]
+    public async Task ApplySuccess_SeedsPendingEntityTranslationKeysBeforeClearingQueue()
+    {
+        var queue = new ChangeQueue();
+        queue.Add(new RawSqlChange("create", "INSERT INTO test DEFAULT VALUES;"));
+        queue.AddNewEntityName("def_native_item");
+        string[] seeded = [];
+        var viewModel = new PendingChangesViewModel(
+            CreateStore(), queue, new RecordingChangeApplier(), new RecordingScriptExporter(),
+            "admin@example.invalid", keys =>
+            {
+                seeded = keys.ToArray();
+                return $"Seeded {keys.Count} translation key(s).";
+            });
+        viewModel.ConfirmationText = "APPLY";
+
+        await viewModel.ApplyDirectCommand.ExecuteAsync(null);
+
+        Assert.Equal(["def_native_item"], seeded);
+        Assert.Empty(queue.PendingNewEntityNames);
+        Assert.Contains("Seeded 1 translation key", viewModel.StatusMessage);
+    }
+
     private PendingChangesViewModel CreateViewModel(
         ChangeQueue queue,
         IChangeApplier? applier = null,
