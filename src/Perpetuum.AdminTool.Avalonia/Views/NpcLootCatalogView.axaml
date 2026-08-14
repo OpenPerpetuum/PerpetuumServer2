@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:loot="using:Perpetuum.AdminTool.Loot"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.NpcLootCatalogView"
+             x:DataType="vm:NpcLootCatalogViewModel">
+  <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <StackPanel Spacing="12">
+      <Grid ColumnDefinitions="*,280,Auto" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" Spacing="3">
+          <TextBlock Text="NPC loot" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Manage NPC-to-item drop rules through reviewed SQL changes."
+                     Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+        <TextBox Grid.Column="1" Watermark="id, definition, or name" Text="{Binding FilterText}" />
+        <Button Grid.Column="2" Content="Reload" Command="{Binding LoadCommand}"
+                IsEnabled="{Binding IsNotLoading}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="*,*,90,90,100,Auto,Auto,Auto" ColumnSpacing="6">
+        <TextBox Grid.Column="0" Watermark="NPC definition" Text="{Binding NewNpcDefinition}" />
+        <TextBox Grid.Column="1" Watermark="loot definition" Text="{Binding NewLootDefinition}" />
+        <TextBox Grid.Column="2" Watermark="min qty" Text="{Binding NewMinQuantity}" />
+        <TextBox Grid.Column="3" Watermark="max qty" Text="{Binding NewMaxQuantity}" />
+        <TextBox Grid.Column="4" Watermark="probability" Text="{Binding NewProbability}" />
+        <CheckBox Grid.Column="5" Content="Don't damage" IsChecked="{Binding NewDontDamage}" />
+        <CheckBox Grid.Column="6" Content="Repackaged" IsChecked="{Binding NewRepackaged}" />
+        <Button Grid.Column="7" Content="Create unsaved rule" Command="{Binding CreateRuleCommand}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="440,*" ColumnSpacing="16">
+        <ListBox Grid.Column="0" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
+                 MinHeight="340" MaxHeight="540">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="loot:NpcLootRow">
+              <Grid ColumnDefinitions="55,*,Auto,*" ColumnSpacing="6" Margin="2">
+                <TextBlock Grid.Column="0" Text="{Binding Id}" Opacity="0.65" />
+                <TextBlock Grid.Column="1" Text="{Binding DefinitionName}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="→" Opacity="0.65" />
+                <TextBlock Grid.Column="3" Text="{Binding LootDefinitionName}" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Column="1" ColumnDefinitions="150,*"
+              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              ColumnSpacing="10" RowSpacing="6">
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Rule id" />
+          <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedRow.Id}" />
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="NPC definition" />
+          <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedRow.Definition}" />
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="NPC name" />
+          <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedRow.DefinitionName}" />
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="Loot definition" />
+          <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SelectedRow.LootDefinition}" />
+          <TextBlock Grid.Row="4" Grid.Column="0" Text="Loot name" />
+          <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedRow.LootDefinitionName}" />
+          <TextBlock Grid.Row="5" Grid.Column="0" Text="Min / max quantity" />
+          <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.MinQuantity}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.Quantity}" />
+          </Grid>
+          <TextBlock Grid.Row="6" Grid.Column="0" Text="Probability" />
+          <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SelectedRow.Probability}" />
+          <TextBlock Grid.Row="7" Grid.Column="0" Text="Drop flags" />
+          <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+            <CheckBox Content="Don't damage" IsChecked="{Binding SelectedRow.DontDamage}" />
+            <CheckBox Content="Repackaged" IsChecked="{Binding SelectedRow.Repackaged}" />
+          </StackPanel>
+          <Grid Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2"
+                ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,8,0,0">
+            <Button Grid.Column="0" Content="Queue DELETE" Command="{Binding QueueDeleteCommand}" />
+            <Button Grid.Column="2" Content="Revert edits" Command="{Binding RevertSelectedChangesCommand}" />
+            <Button Grid.Column="3" Content="Queue changes" Command="{Binding QueueSelectedChangesCommand}" />
+          </Grid>
+        </Grid>
+      </Grid>
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </Border>
+</UserControl>

@@ -3,6 +3,7 @@ using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
+using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -117,6 +118,20 @@ public sealed class DatabaseProbeIntegrationTests
         Assert.All(rows, row => Assert.True(row.Definition > 0));
         Assert.Contains(rows, row => row.SlotFlags.Length > 0);
         Assert.Contains(rows, row => row.ModuleFlag != 0);
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task NpcLootRepository_LoadsCurrentPerpetuumSchema()
+    {
+        var repository = new NpcLootRepository(LoadConnectionSettings());
+
+        List<NpcLootRow> rows = await repository.LoadAllAsync();
+
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.True(row.Id > 0));
+        Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
+        Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.LootDefinitionName)));
     }
 
     private static ConnectionSettings LoadConnectionSettings()

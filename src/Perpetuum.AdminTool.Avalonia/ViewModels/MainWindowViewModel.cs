@@ -5,6 +5,7 @@ using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
+using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -23,6 +24,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IRobotTemplateRelationRepositoryFactory _robotTemplateRelationRepositoryFactory;
     private readonly IEquipmentSetRepositoryFactory _equipmentSetRepositoryFactory;
     private readonly IRobotTemplateEditorRepositoryFactory _robotTemplateEditorRepositoryFactory;
+    private readonly INpcLootRepositoryFactory _npcLootRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -44,6 +46,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private RobotTemplateCatalogViewModel? _robotTemplates;
     [ObservableProperty] private RobotTemplateRelationsCatalogViewModel? _robotTemplateRelations;
     [ObservableProperty] private EquipmentSetsCatalogViewModel? _equipmentSets;
+    [ObservableProperty] private NpcLootCatalogViewModel? _npcLoot;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -56,7 +59,8 @@ public partial class MainWindowViewModel : ObservableObject
         IRobotTemplateRepositoryFactory robotTemplateRepositoryFactory,
         IRobotTemplateRelationRepositoryFactory robotTemplateRelationRepositoryFactory,
         IEquipmentSetRepositoryFactory equipmentSetRepositoryFactory,
-        IRobotTemplateEditorRepositoryFactory robotTemplateEditorRepositoryFactory)
+        IRobotTemplateEditorRepositoryFactory robotTemplateEditorRepositoryFactory,
+        INpcLootRepositoryFactory npcLootRepositoryFactory)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -69,6 +73,7 @@ public partial class MainWindowViewModel : ObservableObject
         _robotTemplateRelationRepositoryFactory = robotTemplateRelationRepositoryFactory;
         _equipmentSetRepositoryFactory = equipmentSetRepositoryFactory;
         _robotTemplateEditorRepositoryFactory = robotTemplateEditorRepositoryFactory;
+        _npcLootRepositoryFactory = npcLootRepositoryFactory;
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -175,6 +180,9 @@ public partial class MainWindowViewModel : ObservableObject
                     EquipmentSets = new EquipmentSetsCatalogViewModel(
                         _equipmentSetRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
+                    NpcLoot = new NpcLootCatalogViewModel(
+                        _npcLootRepositoryFactory.Create(BuildConnectionSettings()),
+                        changeQueue);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -213,6 +221,7 @@ public partial class MainWindowViewModel : ObservableObject
         RobotTemplates = null;
         RobotTemplateRelations = null;
         EquipmentSets = null;
+        NpcLoot = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

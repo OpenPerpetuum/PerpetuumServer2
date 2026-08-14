@@ -113,6 +113,10 @@
       </Border>
 
       <Border IsVisible="{Binding IsAuthenticated}">
+        <views:NpcLootCatalogView DataContext="{Binding NpcLoot}" />
+      </Border>
+
+      <Border IsVisible="{Binding IsAuthenticated}">
         <views:EconomyNicFlowView DataContext="{Binding Economy}" />
       </Border>
 

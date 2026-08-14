@@ -5,7 +5,25 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Loot
 {
-    public class NpcLootRepository
+    public interface INpcLootRepository
+    {
+        Task<List<NpcLootRow>> LoadAllAsync();
+    }
+
+    public interface INpcLootRepositoryFactory
+    {
+        INpcLootRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class NpcLootRepositoryFactory : INpcLootRepositoryFactory
+    {
+        public INpcLootRepository Create(ConnectionSettings connection)
+        {
+            return new NpcLootRepository(connection);
+        }
+    }
+
+    public sealed class NpcLootRepository : INpcLootRepository
     {
         private readonly ConnectionSettings _connection;
 
@@ -21,8 +39,12 @@ namespace Perpetuum.AdminTool.Loot
             await cn.OpenAsync();
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
-                "select id, definition, lootdefinition, minquantity, quantity, probability, dontdamage, repackaged " +
-                "from npcloot order by definition, lootdefinition, id";
+                "select l.id, l.definition, l.lootdefinition, l.minquantity, l.quantity, " +
+                "l.probability, l.dontdamage, l.repackaged, npc.definitionname, item.definitionname " +
+                "from npcloot l " +
+                "left join entitydefaults npc on npc.definition = l.definition " +
+                "left join entitydefaults item on item.definition = l.lootdefinition " +
+                "order by l.definition, l.lootdefinition, l.id";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
@@ -37,7 +59,11 @@ namespace Perpetuum.AdminTool.Loot
                     DontDamage = !reader.IsDBNull(6) && reader.GetBoolean(6),
                     Repackaged = !reader.IsDBNull(7) && reader.GetBoolean(7)
                 };
-                rows.Add(new NpcLootRow(snap));
+                rows.Add(new NpcLootRow(snap)
+                {
+                    DefinitionName = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                    LootDefinitionName = reader.IsDBNull(9) ? "" : reader.GetString(9)
+                });
             }
             return rows;
         }
