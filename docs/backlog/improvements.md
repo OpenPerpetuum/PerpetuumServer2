@@ -1,6 +1,84 @@
 # Last ID used
 
-044
+045
+
+## IMPROVEMENT-045 - Automated test suite
+
+Status: IN_PROGRESS
+Priority: MEDIUM
+Area: Testing / Infrastructure
+
+### Description
+
+Introduce an automated test suite covering the whole project, in three tiers: a smoke script that runs
+the real server end to end, a unit tier behind fakes for the four static service locators, and an
+integration tier that runs against the real database.
+
+Coverage is partial by design and grows in stages. Stages 0-4 are implemented; stages 5-10 are listed
+under Proposed Implementation and are not started.
+
+### Impact
+
+Every change to core systems is currently validated by starting a server and watching the log. That
+answer does not survive the next change, and it is re-derived by hand every time.
+
+Two defects found in this repository in the last week — [[ISSUE-033]] and [[ISSUE-039]] — are now
+regression tests, each observed failing with its fix reverted. Neither would have been caught by
+inspection: ISSUE-039 left a running server quoting stale insurance prices with no error in the log at
+all.
+
+[[ISSUE-038]] already asks in writing for "an automated test client" looping session
+connect/disconnect while sampling `dotnet-gcdump`. That is a soak harness rather than a test suite, but
+the demand for automation is already on record.
+
+There is a second reason, and it is the stronger one. The share of AI-authored code in this repository
+is rising. The value of an automated suite is that it answers "did this break something" without a
+human re-deriving the answer for every contribution, from any author.
+
+### Proposed Implementation
+
+Three tiers, because no single tier catches what this repository actually breaks. ISSUE-039 only
+manifests when a real `SqlConnection.Open()` reads `Transaction.Current` and finds a completed scope —
+a faked connection passes it.
+
+| Tier | Project | Needs |
+|---|---|---|
+| 1 — smoke | `tools/smoke-test.ps1` | A configured `GameRoot` and a live database |
+| 2 — unit | `src/Perpetuum.Tests` | Nothing; runs in CI |
+| 3 — integration | `src/Perpetuum.Tests.Integration` | A configured `GameRoot` and a live database |
+
+Delivered (stages 0-4): infrastructure and fakes, the smoke script, `Guard.cs` and
+`ValueTypeExtensions.cs`, the data layer against both the fake and the real schema, and the two
+regression tests.
+
+Remaining stages, in order:
+
+| # | Stage | Tier |
+|---|---|---|
+| 5 | Entity system — `Entity`, `EntityDefault`, `EntityDynamicProperties` in isolation | 2 |
+| 6 | Module state machines — transitions in `ActiveModule.States.cs` | 2 |
+| 7 | Season service — tier grant, objective completion, leaderboard delivery, intro-mail idempotency, end-of-season processing | 2+3 |
+| 8 | Request handlers — fake session/request infrastructure plus one handler per dispatch category | 2 |
+| 9 | Mission engine — deterministic resolve against fixed data | 2+3 |
+| 10 | Concurrency — only what can be made deterministic: `ProcessManager`, `MessageSender` | 2 |
+
+### Notes
+
+- **No production code changes.** The four existing static service locators (`Logger.Current`,
+  `Db.DbQueryFactory`, `EntityDefault.Reader`, `Entity.Services`) turned out to be sufficient seams for
+  everything in stages 0-4. If a later stage genuinely cannot be tested without a new seam, that is
+  raised in the pull request rather than slipped in — `CLAUDE.md` forbids speculative refactors.
+- **No synthetic schema.** Tier 3 runs against the real `perpetuumsa`. Duplicating the DDL would drift
+  from production, and every developer who touches this code already has the standard environment.
+  `PERPETUUM_GAMEROOT` is the only machine-specific input and its absence makes tests skip, not fail.
+- **Coverage is not the goal.** Covering all 585 files of `Perpetuum.RequestHandlers` is explicitly a
+  non-goal. Stage 8 is one handler per dispatch category, not 200.
+- Stage 10 is scoped to what can be made deterministic. A flaky concurrency test is worse than no test:
+  it trains the team to ignore red.
+- Before stages 7 and 9, where the number of stubs multiplies, two hardening items: make the data fake
+  fail loudly when no registered pattern matches a command instead of returning an empty result set,
+  and give the assembly-wide recording logger an automatic reset instead of relying on each test class
+  to clear it.
 
 ## IMPROVEMENT-044 - Disable NPC flee behavior (player complaints)
 

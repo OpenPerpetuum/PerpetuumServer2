@@ -289,8 +289,10 @@ consumed by zones to clean up zone sessions.
   These are write-once at startup, read-only thereafter.
 - **Platform:** `[SupportedOSPlatform("windows")]` on both `Perpetuum.Server` and
   `Perpetuum.Bootstrapper` assemblies — Windows-only due to native dependencies.
-- **No automated tests:** The project has no test projects. Validation is manual or via
-  the `Perpetuum.AdminTool` WPF application.
+- **Partial test coverage:** `src/Perpetuum.Tests` (unit) and `src/Perpetuum.Tests.Integration`
+  (against the real database) cover the data layer, validation helpers and two regression paths.
+  Gameplay behaviour is still validated manually or via the `Perpetuum.AdminTool` WPF application.
+  See `docs/codebase/TESTING.md`.
 - **SQL Server only:** `Microsoft.Data.SqlClient` is hard-wired; no abstraction layer.
 
 ## Anti-Patterns
