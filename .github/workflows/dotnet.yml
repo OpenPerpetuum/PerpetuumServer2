@@ -34,6 +34,21 @@ jobs:
         path: ${{ env.Workspace }}/bin/x64/Release/net8.0
       if: ${{ github.event_name == 'push'}}
 
+  test:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Run unit tests
+      run: dotnet test src/Perpetuum.Tests/Perpetuum.Tests.csproj --no-restore --configuration Release -p:Platform=x64
+
   build-admintool-installer:
 
     runs-on: windows-latest
