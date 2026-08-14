@@ -47,6 +47,7 @@ public partial class EntityCatalogViewModel : ObservableObject
         = new Dictionary<int, AggregateFieldInfo>();
 
     public bool IsNotLoading => !IsLoading;
+    public bool HasExportScript => !string.IsNullOrWhiteSpace(ExportScript);
 
     partial void OnFilterTextChanged(string value)
     {
@@ -57,6 +58,8 @@ public partial class EntityCatalogViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsNotLoading));
     }
+
+    partial void OnExportScriptChanged(string value) => OnPropertyChanged(nameof(HasExportScript));
 
     partial void OnSelectedRowChanged(EntityDefaultRow? value)
     {

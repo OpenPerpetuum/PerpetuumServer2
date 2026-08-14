@@ -41,7 +41,7 @@
               </StackPanel>
             </Grid>
 
-            <TabControl Grid.Column="1">
+            <TabControl Grid.Column="1" SelectedIndex="{Binding SelectedSeasonDetailTabIndex}">
               <TabItem Header="Contents">
                 <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="8">
                   <Grid ColumnDefinitions="*,100,Auto" ColumnSpacing="6">

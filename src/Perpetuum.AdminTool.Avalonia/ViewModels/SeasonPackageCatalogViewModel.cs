@@ -47,6 +47,7 @@ public partial class SeasonPackageCatalogViewModel : ObservableObject
     [ObservableProperty] private SeasonTierRow? _selectedWizardTier;
     [ObservableProperty] private SeasonLeaderboardRewardRow? _selectedWizardLeaderboardReward;
     [ObservableProperty] private string _exportScript = string.Empty;
+    [ObservableProperty] private int _selectedSeasonDetailTabIndex;
 
     public SeasonPackageCatalogViewModel(
         IPackageRepository packageRepository,
@@ -389,7 +390,8 @@ public partial class SeasonPackageCatalogViewModel : ObservableObject
         try
         {
             ExportScript = await _contentExporter.ExportSeasonAsync(SelectedSeason.Id);
-            StatusMessage = "Export generated. Copy the SQL below or save it from your editor.";
+            SelectedSeasonDetailTabIndex = 6;
+            StatusMessage = "Export generated and opened in the Export SQL tab.";
         }
         catch (Exception ex) { SetError($"Unable to export season: {ex.Message}"); }
         finally { IsLoading = false; }

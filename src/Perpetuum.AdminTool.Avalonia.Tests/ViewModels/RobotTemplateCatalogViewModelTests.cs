@@ -121,6 +121,7 @@ public sealed class RobotTemplateCatalogViewModelTests
         await viewModel.ExportSelectedCommand.ExecuteAsync(null);
 
         Assert.Equal("robot export 10", viewModel.ExportScript);
+        Assert.True(viewModel.HasExportScript);
     }
 
     private static RobotTemplateRow CreateRow(int id, string name)

@@ -45,10 +45,13 @@ public partial class RobotTemplateCatalogViewModel : ObservableObject
     public bool IsNotLoading => !IsLoading;
 
     public bool HasStructuredEditor => StructuredEditor != null;
+    public bool HasExportScript => !string.IsNullOrWhiteSpace(ExportScript);
 
     partial void OnFilterTextChanged(string value) => RebuildFilteredRows();
 
     partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsNotLoading));
+
+    partial void OnExportScriptChanged(string value) => OnPropertyChanged(nameof(HasExportScript));
 
     partial void OnSelectedRowChanged(RobotTemplateRow? value)
     {

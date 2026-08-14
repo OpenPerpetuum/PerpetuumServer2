@@ -130,6 +130,7 @@ public sealed class EntityCatalogViewModelTests
         await viewModel.ExportSelectedCommand.ExecuteAsync(null);
 
         Assert.Equal("item export 100", viewModel.ExportScript);
+        Assert.True(viewModel.HasExportScript);
     }
 
     private static EntityDefaultRow CreateRow(int definition, string name)

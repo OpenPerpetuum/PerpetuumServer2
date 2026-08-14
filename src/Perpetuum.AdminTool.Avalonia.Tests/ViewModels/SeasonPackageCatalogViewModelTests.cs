@@ -98,6 +98,7 @@ public sealed class SeasonPackageCatalogViewModelTests
         await viewModel.ExportSelectedSeasonCommand.ExecuteAsync(null);
 
         Assert.Equal("season export 5", viewModel.ExportScript);
+        Assert.Equal(6, viewModel.SelectedSeasonDetailTabIndex);
     }
 
     private static SeasonPackageCatalogViewModel Create(ChangeQueue queue) => new(
