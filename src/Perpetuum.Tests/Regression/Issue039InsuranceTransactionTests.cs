@@ -12,7 +12,13 @@ namespace Perpetuum.Tests.Regression
     /// already completed, while the reload ran — so the reload threw and a running server kept
     /// quoting stale insurance fees.
     ///
-    /// Revert the fix in InsurancePriceRefreshService.Refresh() and this test fails.
+    /// Revert the fix in InsurancePriceRefreshService.Refresh() and every test in this class fails,
+    /// not just the one named for the reload. That is expected: the getter of Transaction.Current
+    /// throws inside a completed-but-undisposed scope rather than returning a value, so
+    /// FakeDbConnection.Open() throws and Refresh() aborts before any assertion runs. The named test
+    /// below is the diagnostic one; the other two fail as collateral. Reading the ambient
+    /// transaction inside a completed scope being an error is exactly why production failed at
+    /// SqlConnection.Open() with "The current TransactionScope is already complete."
     /// </summary>
     [Collection(PerpetuumStaticsCollection.Name)]
     public class Issue039InsuranceTransactionTests
