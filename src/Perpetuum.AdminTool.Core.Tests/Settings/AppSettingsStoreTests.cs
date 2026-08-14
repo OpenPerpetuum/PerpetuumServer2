@@ -17,6 +17,7 @@ namespace Perpetuum.AdminTool.Core.Tests.Settings
             writer.Settings.Connection.Server = "127.0.0.1,14331";
             writer.Settings.Connection.IntegratedSecurity = false;
             writer.Settings.LastLoginEmail = "admin@example.invalid";
+            writer.Settings.GameRootPath = "/srv/perpetuum-client";
 
             writer.Save();
 
@@ -25,6 +26,7 @@ namespace Perpetuum.AdminTool.Core.Tests.Settings
             Assert.Equal("127.0.0.1,14331", reader.Settings.Connection.Server);
             Assert.False(reader.Settings.Connection.IntegratedSecurity);
             Assert.Equal("admin@example.invalid", reader.Settings.LastLoginEmail);
+            Assert.Equal("/srv/perpetuum-client", reader.Settings.GameRootPath);
 
             if (!OperatingSystem.IsWindows())
             {

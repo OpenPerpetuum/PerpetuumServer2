@@ -34,6 +34,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _integratedSecurity;
     [ObservableProperty] private string _sqlUser;
     [ObservableProperty] private string _sqlPassword;
+    [ObservableProperty] private string _gameRootPath;
     [ObservableProperty] private bool _trustServerCertificate;
     [ObservableProperty] private string _email;
     [ObservableProperty] private string _accountPassword = string.Empty;
@@ -52,6 +53,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private NpcLootCatalogViewModel? _npcLoot;
     [ObservableProperty] private PresenceCatalogViewModel? _presences;
     [ObservableProperty] private FlockCatalogViewModel? _flocks;
+    [ObservableProperty] private TranslationCatalogViewModel? _translations;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -89,6 +91,7 @@ public partial class MainWindowViewModel : ObservableObject
         _integratedSecurity = connection.IntegratedSecurity;
         _sqlUser = connection.SqlUser;
         _sqlPassword = connection.SqlPassword;
+        _gameRootPath = settingsStore.Settings.GameRootPath;
         _trustServerCertificate = connection.TrustServerCertificate;
         _email = settingsStore.Settings.LastLoginEmail;
     }
@@ -198,6 +201,7 @@ public partial class MainWindowViewModel : ObservableObject
                     Flocks = new FlockCatalogViewModel(
                         _flockRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
+                    Translations = new TranslationCatalogViewModel(_settingsStore);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -239,6 +243,7 @@ public partial class MainWindowViewModel : ObservableObject
         NpcLoot = null;
         Presences = null;
         Flocks = null;
+        Translations = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";
@@ -261,6 +266,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void ApplySettings()
     {
         _settingsStore.Settings.Connection = BuildConnectionSettings();
+        _settingsStore.Settings.GameRootPath = GameRootPath.Trim();
     }
 
     private void SetAuthenticationError(string message)

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Perpetuum.AdminTool.Translations
@@ -14,31 +13,20 @@ namespace Perpetuum.AdminTool.Translations
             set => SetProperty(ref _key, value);
         }
 
-        // Indexer so DataGrid columns can bind via Path=[langId].
         public string this[int langId]
         {
-            get => _values.TryGetValue(langId, out var v) ? v : "";
+            get => _values.TryGetValue(langId, out string? value) ? value : "";
             set
             {
-                var current = this[langId];
-                var normalized = value ?? "";
-                if (current == normalized) return;
-
-                if (string.IsNullOrEmpty(normalized))
-                {
-                    _values.Remove(langId);
-                }
-                else
-                {
-                    _values[langId] = normalized;
-                }
-                // WPF binding listens for "Item[]" to refresh indexer-bound paths.
+                string normalized = value ?? "";
+                if (this[langId] == normalized) return;
+                if (string.IsNullOrEmpty(normalized)) _values.Remove(langId);
+                else _values[langId] = normalized;
                 OnPropertyChanged("Item[]");
             }
         }
 
         public IReadOnlyDictionary<int, string> Values => _values;
-
         public bool HasValue(int langId) => _values.ContainsKey(langId);
     }
 }

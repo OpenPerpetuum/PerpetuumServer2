@@ -25,7 +25,7 @@
                      TextWrapping="Wrap" Opacity="0.7" />
 
           <Grid ColumnDefinitions="180,*"
-                RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
                 ColumnSpacing="12" RowSpacing="8">
             <TextBlock Grid.Row="0" Grid.Column="0" Text="SQL Server" VerticalAlignment="Center" />
             <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Server}" />
@@ -49,6 +49,10 @@
 
             <TextBlock Grid.Row="5" Grid.Column="0" Text="Trust server certificate" VerticalAlignment="Center" />
             <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding TrustServerCertificate}" />
+
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="Game root" VerticalAlignment="Center" />
+            <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding GameRootPath}"
+                     Watermark="directory containing customDictionary" />
           </Grid>
 
           <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
@@ -117,6 +121,9 @@
         </TabItem>
         <TabItem Header="NPC flocks">
           <views:FlockCatalogView DataContext="{Binding Flocks}" />
+        </TabItem>
+        <TabItem Header="Translations">
+          <views:TranslationCatalogView DataContext="{Binding Translations}" />
         </TabItem>
         <TabItem Header="Economy">
           <views:EconomyNicFlowView DataContext="{Binding Economy}" />

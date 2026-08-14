@@ -1,13 +1,9 @@
-using System.Collections.Generic;
-using System.Linq;
-
 namespace Perpetuum.AdminTool.Translations
 {
     public record LanguageInfo(int Id, string Name);
 
     public static class LanguageCatalog
     {
-        // Mirrors the comment in Perpetuum/CustomDictionary.cs.
         public static readonly IReadOnlyList<LanguageInfo> All = new[]
         {
             new LanguageInfo(0,  "English"),
@@ -31,6 +27,6 @@ namespace Perpetuum.AdminTool.Translations
         };
 
         public static string NameOf(int id) =>
-            All.FirstOrDefault(l => l.Id == id)?.Name ?? $"Lang {id}";
+            All.FirstOrDefault(language => language.Id == id)?.Name ?? $"Lang {id}";
     }
 }

@@ -27,7 +27,8 @@ includes shared pending-change review, transactional SQL preview/export, and a
 guarded direct-apply workflow. The development-focused tabs cover entities,
 structured robot templates, definition-to-template relations, equipment sets,
 NPC loot, presences, flocks, and presence-to-flock relationships. The NIC-flow
-economy dashboard is also native. Template descriptions support both raw Genxy
+economy dashboard and the custom-dictionary translation editor are also native.
+Template descriptions support both raw Genxy
 and the structured robot/part/module editor, including slot and ammo
 compatibility filtering. Entity aggregate stats are visible but remain
 read-only. This establishes the complete Linux path from desktop UI through
@@ -81,6 +82,11 @@ The native application defaults to `127.0.0.1,1433` with SQL authentication on
 Linux and macOS. The Windows application retains its named-instance and
 Integrated Security defaults.
 
+Set **Game root** to the directory that contains the client's
+`customDictionary` folder before using the Translations tab. Translation edits
+are saved directly as atomically replaced UTF-8 JSON files and do not enter the
+SQL pending-change queue.
+
 ## Verification
 
 The normal test suite uses no database and includes a headless UI test that
@@ -128,7 +134,8 @@ The port is organized as tabbed modules so every stage remains usable:
 4. NPC loot, presences, flocks, and equipment sets (all four are native now,
    including presence-to-flock relationships);
 5. AutoMarket and the remaining economy diagnostics (NIC flow is native now);
-6. seasons, packages, translations, and remaining creation dialogs.
+6. seasons, packages, and remaining creation dialogs (translations are native
+   now).
 
 The WPF application remains the compatibility implementation until this list
 reaches parity. New database behavior belongs in the portable core and is

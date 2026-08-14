@@ -25,6 +25,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         store.Settings.Connection.Server = "127.0.0.1,14331";
         store.Settings.Connection.IntegratedSecurity = false;
         store.Settings.LastLoginEmail = "admin@example.invalid";
+        store.Settings.GameRootPath = "/srv/perpetuum-client";
 
         var viewModel = new MainWindowViewModel(
             store,
@@ -45,6 +46,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
         Assert.Equal("admin@example.invalid", viewModel.Email);
+        Assert.Equal("/srv/perpetuum-client", viewModel.GameRootPath);
     }
 
     [Fact]
@@ -128,6 +130,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.NotNull(viewModel.NpcLoot);
         Assert.NotNull(viewModel.Presences);
         Assert.NotNull(viewModel.Flocks);
+        Assert.NotNull(viewModel.Translations);
         Assert.True(File.Exists(store.FilePath));
     }
 
