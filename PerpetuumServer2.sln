@@ -27,6 +27,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perpetuum.AdminTool.Core", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perpetuum.AdminTool.Core.Tests", "src\Perpetuum.AdminTool.Core.Tests\Perpetuum.AdminTool.Core.Tests.csproj", "{CC9818F5-2687-47DB-A6C8-486B27D33913}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perpetuum.AdminTool.Avalonia", "src\Perpetuum.AdminTool.Avalonia\Perpetuum.AdminTool.Avalonia.csproj", "{A4B3F1C5-D217-404A-B6A7-F17137A237B5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perpetuum.AdminTool.Avalonia.Tests", "src\Perpetuum.AdminTool.Avalonia.Tests\Perpetuum.AdminTool.Avalonia.Tests.csproj", "{6544530C-F816-40ED-AFD9-869B31457AC2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -77,6 +81,14 @@ Global
 		{CC9818F5-2687-47DB-A6C8-486B27D33913}.Debug|x64.Build.0 = Debug|Any CPU
 		{CC9818F5-2687-47DB-A6C8-486B27D33913}.Release|x64.ActiveCfg = Release|Any CPU
 		{CC9818F5-2687-47DB-A6C8-486B27D33913}.Release|x64.Build.0 = Release|Any CPU
+		{A4B3F1C5-D217-404A-B6A7-F17137A237B5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A4B3F1C5-D217-404A-B6A7-F17137A237B5}.Debug|x64.Build.0 = Debug|Any CPU
+		{A4B3F1C5-D217-404A-B6A7-F17137A237B5}.Release|x64.ActiveCfg = Release|Any CPU
+		{A4B3F1C5-D217-404A-B6A7-F17137A237B5}.Release|x64.Build.0 = Release|Any CPU
+		{6544530C-F816-40ED-AFD9-869B31457AC2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6544530C-F816-40ED-AFD9-869B31457AC2}.Debug|x64.Build.0 = Debug|Any CPU
+		{6544530C-F816-40ED-AFD9-869B31457AC2}.Release|x64.ActiveCfg = Release|Any CPU
+		{6544530C-F816-40ED-AFD9-869B31457AC2}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -93,6 +105,8 @@ Global
 		{A7D1E3C5-9F4B-42E8-8A6C-B5D7F1E9C2A0} = {0BC991A1-133C-49ED-A141-80E2A906898B}
 		{BA8875EB-FB71-458A-8051-8524878C3D37} = {0BC991A1-133C-49ED-A141-80E2A906898B}
 		{CC9818F5-2687-47DB-A6C8-486B27D33913} = {0BC991A1-133C-49ED-A141-80E2A906898B}
+		{A4B3F1C5-D217-404A-B6A7-F17137A237B5} = {0BC991A1-133C-49ED-A141-80E2A906898B}
+		{6544530C-F816-40ED-AFD9-869B31457AC2} = {0BC991A1-133C-49ED-A141-80E2A906898B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {91874B60-30B0-4B48-9155-370E40BC70E6}

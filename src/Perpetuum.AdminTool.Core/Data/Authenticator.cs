@@ -3,6 +3,24 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Data
 {
+    public interface IAuthenticator
+    {
+        Task<AuthOutcome> AuthenticateAsync(string email, string password);
+    }
+
+    public interface IAuthenticatorFactory
+    {
+        IAuthenticator Create(ConnectionSettings connection);
+    }
+
+    public sealed class AuthenticatorFactory : IAuthenticatorFactory
+    {
+        public IAuthenticator Create(ConnectionSettings connection)
+        {
+            return new Authenticator(connection);
+        }
+    }
+
     public enum AuthResult
     {
         Success,
@@ -20,7 +38,7 @@ namespace Perpetuum.AdminTool.Data
         public string? ErrorMessage { get; init; }
     }
 
-    public class Authenticator
+    public class Authenticator : IAuthenticator
     {
         private readonly ConnectionSettings _connection;
         private readonly AdminAccessLevel _minimumAccess;

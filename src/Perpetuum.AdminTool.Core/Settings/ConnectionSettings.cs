@@ -4,9 +4,11 @@ namespace Perpetuum.AdminTool.Settings
 {
     public class ConnectionSettings
     {
-        public string Server { get; set; } = "localhost\\MSSQLSERVER2019";
+        public string Server { get; set; } = OperatingSystem.IsWindows()
+            ? "localhost\\MSSQLSERVER2019"
+            : "127.0.0.1,1433";
         public string Database { get; set; } = "perpetuumsa";
-        public bool IntegratedSecurity { get; set; } = true;
+        public bool IntegratedSecurity { get; set; } = OperatingSystem.IsWindows();
         public string SqlUser { get; set; } = "sa";
         public string SqlPassword { get; set; } = "";
         public bool TrustServerCertificate { get; set; } = true;

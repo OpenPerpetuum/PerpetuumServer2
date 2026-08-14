@@ -4,3 +4,5 @@
 
 # The Open Perpetuum Server 2
 
+The cross-platform AdminTool migration and Linux setup are documented in
+[`docs/admin-tool-linux.md`](docs/admin-tool-linux.md).

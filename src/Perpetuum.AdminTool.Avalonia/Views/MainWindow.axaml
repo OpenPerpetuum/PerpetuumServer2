@@ -1,0 +1,99 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+        x:Class="Perpetuum.AdminTool.Avalonia.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Perpetuum AdminTool"
+        Width="760"
+        Height="690"
+        MinWidth="640"
+        MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+  <ScrollViewer>
+    <StackPanel Margin="24" Spacing="18">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Perpetuum AdminTool" FontSize="26" FontWeight="SemiBold" />
+        <TextBlock Text="Cross-platform administration shell"
+                   Opacity="0.65" />
+      </StackPanel>
+
+      <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Database connection" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="For a local container use host,port syntax, for example 127.0.0.1,14331."
+                     TextWrapping="Wrap" Opacity="0.7" />
+
+          <Grid ColumnDefinitions="180,*"
+                RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                ColumnSpacing="12" RowSpacing="8">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="SQL Server" VerticalAlignment="Center" />
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Server}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Database" VerticalAlignment="Center" />
+            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Database}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Integrated Security" VerticalAlignment="Center" />
+            <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding IntegratedSecurity}" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="SQL user" VerticalAlignment="Center" />
+            <TextBox Grid.Row="3" Grid.Column="1"
+                     IsEnabled="{Binding SqlCredentialsEnabled}"
+                     Text="{Binding SqlUser}" />
+
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="SQL password" VerticalAlignment="Center" />
+            <TextBox Grid.Row="4" Grid.Column="1"
+                     IsEnabled="{Binding SqlCredentialsEnabled}"
+                     PasswordChar="●"
+                     Text="{Binding SqlPassword}" />
+
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="Trust server certificate" VerticalAlignment="Center" />
+            <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding TrustServerCertificate}" />
+          </Grid>
+
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Test connection"
+                    Command="{Binding TestConnectionCommand}"
+                    IsEnabled="{Binding IsNotBusy}" />
+            <Button Content="Save settings"
+                    Command="{Binding SaveSettingsCommand}"
+                    IsEnabled="{Binding IsNotBusy}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Administrator sign-in" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="This uses an existing game account with GameAdmin access or higher."
+                     TextWrapping="Wrap" Opacity="0.7" />
+
+          <Grid ColumnDefinitions="180,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Account email" VerticalAlignment="Center" />
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Email}" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Account password" VerticalAlignment="Center" />
+            <TextBox Grid.Row="1" Grid.Column="1"
+                     PasswordChar="●"
+                     Text="{Binding AccountPassword}" />
+          </Grid>
+
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Sign in"
+                    Command="{Binding SignInCommand}"
+                    IsEnabled="{Binding IsNotBusy}" />
+            <Button Content="Sign out"
+                    Command="{Binding SignOutCommand}"
+                    IsVisible="{Binding IsAuthenticated}" />
+          </StackPanel>
+
+          <TextBlock Text="{Binding AuthenticatedIdentity}"
+                     IsVisible="{Binding IsAuthenticated}"
+                     FontWeight="SemiBold" />
+        </StackPanel>
+      </Border>
+
+      <Border Padding="12" Background="#1A808080" CornerRadius="6">
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</Window>

@@ -10,6 +10,30 @@ on:
     branches: [ "develop" ]
 
 jobs:
+  build-admin-tool-linux:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - name: Test portable AdminTool core
+      run: dotnet test src/Perpetuum.AdminTool.Core.Tests/Perpetuum.AdminTool.Core.Tests.csproj --configuration Release
+    - name: Build native AdminTool
+      run: dotnet build src/Perpetuum.AdminTool.Avalonia/Perpetuum.AdminTool.Avalonia.csproj --configuration Release
+    - name: Test native AdminTool presentation logic
+      run: dotnet test src/Perpetuum.AdminTool.Avalonia.Tests/Perpetuum.AdminTool.Avalonia.Tests.csproj --configuration Release
+    - name: Publish self-contained Linux AdminTool
+      run: scripts/publish-admin-tool.sh linux-x64 artifacts/admin-tool-linux-x64
+    - name: Upload native AdminTool
+      uses: actions/upload-artifact@v4
+      with:
+        name: Perpetuum-AdminTool-linux-x64-${{ github.sha }}
+        path: artifacts/admin-tool-linux-x64
+
   build:
 
     runs-on: windows-latest
