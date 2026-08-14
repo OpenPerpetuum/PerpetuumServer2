@@ -5,6 +5,7 @@ using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Loot;
+using Perpetuum.AdminTool.Npc;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -37,7 +38,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubRobotTemplateRelationRepositoryFactory(),
             new StubEquipmentSetRepositoryFactory(),
             new StubRobotTemplateEditorRepositoryFactory(),
-            new StubNpcLootRepositoryFactory());
+            new StubNpcLootRepositoryFactory(),
+            new StubPresenceRepositoryFactory());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -61,7 +63,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubRobotTemplateRelationRepositoryFactory(),
             new StubEquipmentSetRepositoryFactory(),
             new StubRobotTemplateEditorRepositoryFactory(),
-            new StubNpcLootRepositoryFactory())
+            new StubNpcLootRepositoryFactory(),
+            new StubPresenceRepositoryFactory())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -100,7 +103,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubRobotTemplateRelationRepositoryFactory(),
             new StubEquipmentSetRepositoryFactory(),
             new StubRobotTemplateEditorRepositoryFactory(),
-            new StubNpcLootRepositoryFactory())
+            new StubNpcLootRepositoryFactory(),
+            new StubPresenceRepositoryFactory())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -119,6 +123,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.NotNull(viewModel.RobotTemplateRelations);
         Assert.NotNull(viewModel.EquipmentSets);
         Assert.NotNull(viewModel.NpcLoot);
+        Assert.NotNull(viewModel.Presences);
         Assert.True(File.Exists(store.FilePath));
     }
 
@@ -143,7 +148,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubRobotTemplateRelationRepositoryFactory(),
             new StubEquipmentSetRepositoryFactory(),
             new StubRobotTemplateEditorRepositoryFactory(),
-            new StubNpcLootRepositoryFactory())
+            new StubNpcLootRepositoryFactory(),
+            new StubPresenceRepositoryFactory())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -341,5 +347,15 @@ public sealed class MainWindowViewModelTests : IDisposable
     private sealed class StubNpcLootRepository : INpcLootRepository
     {
         public Task<List<NpcLootRow>> LoadAllAsync() => Task.FromResult(new List<NpcLootRow>());
+    }
+
+    private sealed class StubPresenceRepositoryFactory : IPresenceRepositoryFactory
+    {
+        public IPresenceRepository Create(ConnectionSettings connection) => new StubPresenceRepository();
+    }
+
+    private sealed class StubPresenceRepository : IPresenceRepository
+    {
+        public Task<PresenceLoad> LoadAllAsync() => Task.FromResult(new PresenceLoad());
     }
 }

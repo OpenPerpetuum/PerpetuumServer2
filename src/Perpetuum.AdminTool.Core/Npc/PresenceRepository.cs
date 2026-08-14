@@ -1,19 +1,29 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Npc
 {
-    public class PresenceRepository
+    public interface IPresenceRepository
+    {
+        Task<PresenceLoad> LoadAllAsync();
+    }
+
+    public interface IPresenceRepositoryFactory
+    {
+        IPresenceRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class PresenceRepositoryFactory : IPresenceRepositoryFactory
+    {
+        public IPresenceRepository Create(ConnectionSettings connection) => new PresenceRepository(connection);
+    }
+
+    public sealed class PresenceRepository : IPresenceRepository
     {
         private readonly ConnectionSettings _connection;
 
-        public PresenceRepository(ConnectionSettings connection)
-        {
-            _connection = connection;
-        }
+        public PresenceRepository(ConnectionSettings connection) => _connection = connection;
 
         public async Task<PresenceLoad> LoadAllAsync()
         {
@@ -22,7 +32,6 @@ namespace Perpetuum.AdminTool.Npc
             await cn.OpenAsync();
 
             await LoadZoneSpawnPicksAsync(cn, result.ZoneSpawnPicks);
-
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
                 "select id, name, topx, topy, bottomx, bottomy, note, spawnid, enabled, " +
@@ -33,7 +42,7 @@ namespace Perpetuum.AdminTool.Npc
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                var snap = new PresenceSnapshot
+                var snapshot = new PresenceSnapshot
                 {
                     Id = reader.GetInt32(0),
                     Name = reader.IsDBNull(1) ? "" : reader.GetString(1),
@@ -58,14 +67,15 @@ namespace Perpetuum.AdminTool.Npc
                     IzGroupId = reader.IsDBNull(20) ? null : reader.GetInt32(20),
                     GrowthSeconds = reader.IsDBNull(21) ? null : reader.GetInt32(21)
                 };
-                result.Rows.Add(new PresenceRow(snap));
+                result.Rows.Add(new PresenceRow(snapshot));
             }
             return result;
         }
 
-        private static async Task LoadZoneSpawnPicksAsync(SqlConnection cn, List<ZoneSpawnPickItem> sink)
+        private static async Task LoadZoneSpawnPicksAsync(
+            SqlConnection connection, List<ZoneSpawnPickItem> sink)
         {
-            await using var cmd = cn.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandText = "select spawnid, name from zones where spawnid is not null order by name";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -79,7 +89,7 @@ namespace Perpetuum.AdminTool.Npc
         }
     }
 
-    public class PresenceLoad
+    public sealed class PresenceLoad
     {
         public List<PresenceRow> Rows { get; } = new();
         public List<ZoneSpawnPickItem> ZoneSpawnPicks { get; } = new();

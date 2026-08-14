@@ -1,0 +1,125 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:npc="using:Perpetuum.AdminTool.Npc"
+             xmlns:common="using:Perpetuum.AdminTool.Common"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.PresenceCatalogView"
+             x:DataType="vm:PresenceCatalogViewModel">
+  <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <StackPanel Spacing="12">
+      <Grid ColumnDefinitions="*,280,Auto" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" Spacing="3">
+          <TextBlock Text="NPC presences" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Manage spawn regions, roaming behavior, and lifecycle flags through reviewed SQL."
+                     Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+        <TextBox Grid.Column="1" Watermark="id, name, or zone spawn" Text="{Binding FilterText}" />
+        <Button Grid.Column="2" Content="Reload" Command="{Binding LoadCommand}"
+                IsEnabled="{Binding IsNotLoading}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="2*,*,80,80,80,80,Auto" ColumnSpacing="6">
+        <TextBox Grid.Column="0" Watermark="unique presence name" Text="{Binding NewName}" />
+        <TextBox Grid.Column="1" Watermark="zone spawn id (optional)" Text="{Binding NewSpawnId}" />
+        <TextBox Grid.Column="2" Watermark="top X" Text="{Binding NewTopX}" />
+        <TextBox Grid.Column="3" Watermark="top Y" Text="{Binding NewTopY}" />
+        <TextBox Grid.Column="4" Watermark="bottom X" Text="{Binding NewBottomX}" />
+        <TextBox Grid.Column="5" Watermark="bottom Y" Text="{Binding NewBottomY}" />
+        <Button Grid.Column="6" Content="Create unsaved presence" Command="{Binding CreatePresenceCommand}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="360,*" ColumnSpacing="16">
+        <ListBox Grid.Column="0" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
+                 MinHeight="430" MaxHeight="680">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="npc:PresenceRow">
+              <Grid ColumnDefinitions="55,*,130" ColumnSpacing="6" Margin="2">
+                <TextBlock Grid.Column="0" Text="{Binding Id}" Opacity="0.65" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{Binding SpawnName}" Opacity="0.7"
+                           TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Column="1" ColumnDefinitions="150,*"
+              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              ColumnSpacing="10" RowSpacing="6">
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Presence id / name" />
+          <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="80,*" ColumnSpacing="6">
+            <TextBlock Grid.Column="0" Text="{Binding SelectedRow.Id}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.Name}" />
+          </Grid>
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="Zone spawn" />
+          <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="100,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.SpawnId}" />
+            <TextBlock Grid.Column="1" Text="{Binding SelectedRow.SpawnName}" VerticalAlignment="Center" />
+          </Grid>
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="Bounds (top X / Y)" />
+          <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.TopX}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.TopY}" />
+          </Grid>
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="Bounds (bottom X / Y)" />
+          <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.BottomX}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.BottomY}" />
+          </Grid>
+          <TextBlock Grid.Row="4" Grid.Column="0" Text="Enabled / roaming" />
+          <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+            <CheckBox Content="Enabled" IsChecked="{Binding SelectedRow.Enabled}" />
+            <CheckBox Content="Roaming" IsChecked="{Binding SelectedRow.Roaming}" />
+          </StackPanel>
+          <TextBlock Grid.Row="5" Grid.Column="0" Text="Roam respawn / type" />
+          <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.RoamingRespawnSeconds}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.PresenceType}" />
+          </Grid>
+          <TextBlock Grid.Row="6" Grid.Column="0" Text="Random flock limit" />
+          <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SelectedRow.MaxRandomFlock}" />
+          <TextBlock Grid.Row="7" Grid.Column="0" Text="Random center X / Y" />
+          <Grid Grid.Row="7" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.RandomCenterX}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.RandomCenterY}" />
+          </Grid>
+          <TextBlock Grid.Row="8" Grid.Column="0" Text="Random radius / lifetime" />
+          <Grid Grid.Row="8" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.RandomRadius}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.DynamicLifetime}" />
+          </Grid>
+          <TextBlock Grid.Row="9" Grid.Column="0" Text="Pull / respawn flags" />
+          <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+            <CheckBox Content="Body pull" IsChecked="{Binding SelectedRow.IsBodyPull}" />
+            <CheckBox Content="Respawn allowed" IsChecked="{Binding SelectedRow.IsRespawnAllowed}" />
+            <CheckBox Content="Safe body pull" IsChecked="{Binding SelectedRow.SafeBodyPull}" />
+          </StackPanel>
+          <TextBlock Grid.Row="10" Grid.Column="0" Text="IZ group / growth s" />
+          <Grid Grid.Row="10" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.IzGroupId}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.GrowthSeconds}" />
+          </Grid>
+          <TextBlock Grid.Row="11" Grid.Column="0" Text="Note" />
+          <TextBox Grid.Row="11" Grid.Column="1" Text="{Binding SelectedRow.Note}" />
+          <TextBlock Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="2"
+                     Text="Zone-spawn ids available in this database:" Opacity="0.7" />
+          <ItemsControl Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding ZoneSpawnPicks}"
+                        MaxHeight="80">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="common:ZoneSpawnPickItem">
+                <TextBlock Text="{Binding Display}" FontSize="11" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Grid Grid.Row="14" Grid.Column="0" Grid.ColumnSpan="2"
+                ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,8,0,0">
+            <Button Grid.Column="0" Content="Queue DELETE" Command="{Binding QueueDeleteCommand}" />
+            <Button Grid.Column="2" Content="Revert edits" Command="{Binding RevertSelectedChangesCommand}" />
+            <Button Grid.Column="3" Content="Queue changes" Command="{Binding QueueSelectedChangesCommand}" />
+          </Grid>
+        </Grid>
+      </Grid>
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </Border>
+</UserControl>

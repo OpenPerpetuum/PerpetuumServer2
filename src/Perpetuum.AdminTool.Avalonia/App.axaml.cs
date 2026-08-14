@@ -9,6 +9,7 @@ using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Loot;
+using Perpetuum.AdminTool.Npc;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -41,7 +42,8 @@ public partial class App : Application
                     new RobotTemplateRelationRepositoryFactory(),
                     new EquipmentSetRepositoryFactory(),
                     new RobotTemplateEditorRepositoryFactory(),
-                    new NpcLootRepositoryFactory())
+                    new NpcLootRepositoryFactory(),
+                    new PresenceRepositoryFactory())
             };
         }
 

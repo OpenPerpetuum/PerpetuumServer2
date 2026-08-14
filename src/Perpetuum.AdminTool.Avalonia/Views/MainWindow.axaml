@@ -117,6 +117,10 @@
       </Border>
 
       <Border IsVisible="{Binding IsAuthenticated}">
+        <views:PresenceCatalogView DataContext="{Binding Presences}" />
+      </Border>
+
+      <Border IsVisible="{Binding IsAuthenticated}">
         <views:EconomyNicFlowView DataContext="{Binding Economy}" />
       </Border>
 

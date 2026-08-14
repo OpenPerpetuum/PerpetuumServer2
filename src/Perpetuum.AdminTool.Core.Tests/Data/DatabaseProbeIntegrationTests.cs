@@ -4,6 +4,7 @@ using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Loot;
+using Perpetuum.AdminTool.Npc;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -132,6 +133,22 @@ public sealed class DatabaseProbeIntegrationTests
         Assert.All(rows, row => Assert.True(row.Id > 0));
         Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
         Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.LootDefinitionName)));
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task PresenceRepository_LoadsCurrentPerpetuumSchema()
+    {
+        var repository = new PresenceRepository(LoadConnectionSettings());
+
+        PresenceLoad load = await repository.LoadAllAsync();
+
+        Assert.NotEmpty(load.Rows);
+        Assert.NotEmpty(load.ZoneSpawnPicks);
+        Assert.All(load.Rows, row => Assert.True(row.Id > 0));
+        Assert.All(load.Rows, row => Assert.False(string.IsNullOrWhiteSpace(row.Name)));
+        Assert.All(load.ZoneSpawnPicks, pick => Assert.True(pick.SpawnId >= 0));
+        Assert.All(load.ZoneSpawnPicks, pick => Assert.False(string.IsNullOrWhiteSpace(pick.Name)));
     }
 
     private static ConnectionSettings LoadConnectionSettings()

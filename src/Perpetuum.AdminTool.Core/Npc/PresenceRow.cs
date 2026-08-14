@@ -4,16 +4,11 @@ namespace Perpetuum.AdminTool.Npc
 {
     public partial class PresenceRow : ObservableObject
     {
-        // PK is the identity column `id`. 0 means a new (unsaved) row.
         public int Id { get; }
-
         public bool IsNew { get; set; }
         public PresenceSnapshot Original { get; private set; }
 
-        // Resolved display label (not persisted) — kept in sync with current SpawnId
-        // by PresencesViewModel using the zones pick list.
         [ObservableProperty] private string _spawnName = "";
-
         [ObservableProperty] private string _name = "";
         [ObservableProperty] private int _topX;
         [ObservableProperty] private int _topY;
@@ -43,30 +38,30 @@ namespace Perpetuum.AdminTool.Npc
             ApplySnapshot(snapshot);
         }
 
-        public void ApplySnapshot(PresenceSnapshot s)
+        public void ApplySnapshot(PresenceSnapshot snapshot)
         {
-            Original = s;
-            Name = s.Name;
-            TopX = s.TopX;
-            TopY = s.TopY;
-            BottomX = s.BottomX;
-            BottomY = s.BottomY;
-            Note = s.Note;
-            SpawnId = s.SpawnId;
-            Enabled = s.Enabled;
-            Roaming = s.Roaming;
-            RoamingRespawnSeconds = s.RoamingRespawnSeconds;
-            PresenceType = s.PresenceType;
-            MaxRandomFlock = s.MaxRandomFlock;
-            RandomCenterX = s.RandomCenterX;
-            RandomCenterY = s.RandomCenterY;
-            RandomRadius = s.RandomRadius;
-            DynamicLifetime = s.DynamicLifetime;
-            IsBodyPull = s.IsBodyPull;
-            IsRespawnAllowed = s.IsRespawnAllowed;
-            SafeBodyPull = s.SafeBodyPull;
-            IzGroupId = s.IzGroupId;
-            GrowthSeconds = s.GrowthSeconds;
+            Original = snapshot;
+            Name = snapshot.Name;
+            TopX = snapshot.TopX;
+            TopY = snapshot.TopY;
+            BottomX = snapshot.BottomX;
+            BottomY = snapshot.BottomY;
+            Note = snapshot.Note;
+            SpawnId = snapshot.SpawnId;
+            Enabled = snapshot.Enabled;
+            Roaming = snapshot.Roaming;
+            RoamingRespawnSeconds = snapshot.RoamingRespawnSeconds;
+            PresenceType = snapshot.PresenceType;
+            MaxRandomFlock = snapshot.MaxRandomFlock;
+            RandomCenterX = snapshot.RandomCenterX;
+            RandomCenterY = snapshot.RandomCenterY;
+            RandomRadius = snapshot.RandomRadius;
+            DynamicLifetime = snapshot.DynamicLifetime;
+            IsBodyPull = snapshot.IsBodyPull;
+            IsRespawnAllowed = snapshot.IsRespawnAllowed;
+            SafeBodyPull = snapshot.SafeBodyPull;
+            IzGroupId = snapshot.IzGroupId;
+            GrowthSeconds = snapshot.GrowthSeconds;
         }
 
         public void RefreshOriginalFromCurrent()
@@ -98,10 +93,8 @@ namespace Perpetuum.AdminTool.Npc
             };
         }
 
-        public static PresenceRow CreateNew(PresenceSnapshot seed)
-        {
-            return new PresenceRow(seed) { IsNew = true };
-        }
+        public static PresenceRow CreateNew(PresenceSnapshot seed) =>
+            new(seed) { IsNew = true };
     }
 
     public class PresenceSnapshot
