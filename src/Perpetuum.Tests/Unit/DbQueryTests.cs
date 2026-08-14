@@ -20,6 +20,9 @@ namespace Perpetuum.Tests.Unit
         [Fact]
         public void Execute_returns_one_record_per_row()
         {
+            // The same literal is executed for real against the live schema by
+            // Perpetuum.Tests.Integration/Data/InsuranceQueryTests.cs. Nothing links the two at
+            // compile time; if they drift apart, this stub keeps passing against a fiction.
             _db.When("select definition,fee,payout from insuranceprices",
                 FakeResultSet.FromRows(
                     ["definition", "fee", "payout"],

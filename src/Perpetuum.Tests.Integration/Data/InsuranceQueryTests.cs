@@ -13,6 +13,11 @@ namespace Perpetuum.Tests.Integration.Data
     [Collection(DatabaseCollection.Name)]
     public class InsuranceQueryTests
     {
+        // Kept in sync by hand with two other copies of this literal: the stub in
+        // Perpetuum.Tests/Unit/DbQueryTests.cs and the production query in
+        // InsuranceHelper.LoadInsurancePrices. Nothing links the three at compile time — they are in
+        // two assemblies plus production — so if this one drifts, this test keeps passing while
+        // verifying a query production no longer runs, and the anchor silently stops anchoring.
         private const string InsurancePricesQuery = "select definition,fee,payout from insuranceprices";
 
         [RequiresGameRootFact]
@@ -53,14 +58,30 @@ namespace Perpetuum.Tests.Integration.Data
         }
 
         [RequiresGameRootFact]
-        public void The_insurance_price_recalculation_procedure_exists_and_is_callable()
+        public void The_insurance_price_recalculation_procedure_exists()
         {
+            // Task 8 already asserts every documented procedure exists, so this looks redundant.
+            // It is not, for two reasons worth stating rather than leaving a reader to reconstruct.
+            // It anchors the unit tier's `WhenNonQuery("exec usp_RecalculateInsurancePrices", 1)`
+            // stub exactly as the two tests above anchor the price-query stub. And Task 8's check is
+            // driven from the contents of docs/db_structure/, so deleting the procedure together
+            // with its documentation file would pass there and fail here.
+            //
+            // The name says only "exists": this asserts a catalog row, it never invokes the
+            // procedure. Invoking it would write, and nothing in stages 0-4 writes.
             DatabaseFixture fixture = new();
             using SqlConnection connection = fixture.OpenConnection();
 
             using SqlCommand command = connection.CreateCommand();
+
+            // Schema-qualified deliberately: this database already carries one same-named pair
+            // across schemas (dbo.extensionSubscriptionStart and opp.extensionSubscriptionStart),
+            // so a bare name match is not a safe assumption here.
             command.CommandText =
-                "select count(*) from sys.objects where type in ('P','PC') and name = 'usp_RecalculateInsurancePrices'";
+                "select count(*) from sys.objects o "
+                + "join sys.schemas s on s.schema_id = o.schema_id "
+                + "where o.type in ('P','PC') and s.name = 'dbo' "
+                + "and o.name = 'usp_RecalculateInsurancePrices'";
 
             Assert.Equal(1, (int)command.ExecuteScalar());
         }
