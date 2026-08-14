@@ -5,7 +5,25 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Templates
 {
-    public class RobotTemplateRelationRepository
+    public interface IRobotTemplateRelationRepository
+    {
+        Task<List<RobotTemplateRelationRow>> LoadAllAsync();
+    }
+
+    public interface IRobotTemplateRelationRepositoryFactory
+    {
+        IRobotTemplateRelationRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class RobotTemplateRelationRepositoryFactory : IRobotTemplateRelationRepositoryFactory
+    {
+        public IRobotTemplateRelationRepository Create(ConnectionSettings connection)
+        {
+            return new RobotTemplateRelationRepository(connection);
+        }
+    }
+
+    public sealed class RobotTemplateRelationRepository : IRobotTemplateRelationRepository
     {
         private readonly ConnectionSettings _connection;
 
@@ -21,9 +39,13 @@ namespace Perpetuum.AdminTool.Templates
             await cn.OpenAsync();
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
-                "select definition, templateid, itemscoresum, raceid, " +
-                "missionlevel, missionleveloverride, killep, note " +
-                "from robottemplaterelation order by definition";
+                "select r.definition, r.templateid, r.itemscoresum, r.raceid, " +
+                "r.missionlevel, r.missionleveloverride, r.killep, r.note, " +
+                "e.definitionName, t.name " +
+                "from robottemplaterelation r " +
+                "left join entitydefaults e on e.definition = r.definition " +
+                "left join robottemplates t on t.id = r.templateid " +
+                "order by r.definition";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
@@ -38,7 +60,12 @@ namespace Perpetuum.AdminTool.Templates
                     KillEp = reader.IsDBNull(6) ? null : (int?)reader.GetInt32(6),
                     Note = reader.IsDBNull(7) ? null : reader.GetString(7)
                 };
-                rows.Add(new RobotTemplateRelationRow(snap));
+                var row = new RobotTemplateRelationRow(snap)
+                {
+                    DefinitionName = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                    TemplateName = reader.IsDBNull(9) ? "" : reader.GetString(9)
+                };
+                rows.Add(row);
             }
             return rows;
         }

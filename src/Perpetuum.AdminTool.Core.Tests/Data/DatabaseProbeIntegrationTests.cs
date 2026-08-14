@@ -71,6 +71,21 @@ public sealed class DatabaseProbeIntegrationTests
         Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.Name)));
     }
 
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task RobotTemplateRelationRepository_LoadsCurrentPerpetuumSchema()
+    {
+        var repository = new RobotTemplateRelationRepository(LoadConnectionSettings());
+
+        List<RobotTemplateRelationRow> rows = await repository.LoadAllAsync();
+
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.True(row.Definition > 0));
+        Assert.All(rows, row => Assert.True(row.TemplateId > 0));
+        Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
+        Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.TemplateName)));
+    }
+
     private static ConnectionSettings LoadConnectionSettings()
     {
         string? server = Environment.GetEnvironmentVariable("PERPETUUM_ADMINTOOL_TEST_SERVER");

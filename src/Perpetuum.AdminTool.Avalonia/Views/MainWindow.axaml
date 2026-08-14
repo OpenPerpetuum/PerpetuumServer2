@@ -105,6 +105,10 @@
       </Border>
 
       <Border IsVisible="{Binding IsAuthenticated}">
+        <views:RobotTemplateRelationsCatalogView DataContext="{Binding RobotTemplateRelations}" />
+      </Border>
+
+      <Border IsVisible="{Binding IsAuthenticated}">
         <views:EconomyNicFlowView DataContext="{Binding Economy}" />
       </Border>
 

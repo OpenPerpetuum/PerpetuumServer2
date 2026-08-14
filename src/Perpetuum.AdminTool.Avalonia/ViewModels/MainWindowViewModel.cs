@@ -19,6 +19,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly ISqlScriptExporter _scriptExporter;
     private readonly IEntityRepositoryFactory _entityRepositoryFactory;
     private readonly IRobotTemplateRepositoryFactory _robotTemplateRepositoryFactory;
+    private readonly IRobotTemplateRelationRepositoryFactory _robotTemplateRelationRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -38,6 +39,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private PendingChangesViewModel? _pendingChanges;
     [ObservableProperty] private EntityCatalogViewModel? _entities;
     [ObservableProperty] private RobotTemplateCatalogViewModel? _robotTemplates;
+    [ObservableProperty] private RobotTemplateRelationsCatalogViewModel? _robotTemplateRelations;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -47,7 +49,8 @@ public partial class MainWindowViewModel : ObservableObject
         IChangeApplierFactory changeApplierFactory,
         ISqlScriptExporter scriptExporter,
         IEntityRepositoryFactory entityRepositoryFactory,
-        IRobotTemplateRepositoryFactory robotTemplateRepositoryFactory)
+        IRobotTemplateRepositoryFactory robotTemplateRepositoryFactory,
+        IRobotTemplateRelationRepositoryFactory robotTemplateRelationRepositoryFactory)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -57,6 +60,7 @@ public partial class MainWindowViewModel : ObservableObject
         _scriptExporter = scriptExporter;
         _entityRepositoryFactory = entityRepositoryFactory;
         _robotTemplateRepositoryFactory = robotTemplateRepositoryFactory;
+        _robotTemplateRelationRepositoryFactory = robotTemplateRelationRepositoryFactory;
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -156,6 +160,9 @@ public partial class MainWindowViewModel : ObservableObject
                     RobotTemplates = new RobotTemplateCatalogViewModel(
                         _robotTemplateRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
+                    RobotTemplateRelations = new RobotTemplateRelationsCatalogViewModel(
+                        _robotTemplateRelationRepositoryFactory.Create(BuildConnectionSettings()),
+                        changeQueue);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -192,6 +199,7 @@ public partial class MainWindowViewModel : ObservableObject
         PendingChanges = null;
         Entities = null;
         RobotTemplates = null;
+        RobotTemplateRelations = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

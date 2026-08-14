@@ -31,7 +31,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubChangeApplierFactory(),
             new StubSqlScriptExporter(),
             new StubEntityRepositoryFactory(),
-            new StubRobotTemplateRepositoryFactory());
+            new StubRobotTemplateRepositoryFactory(),
+            new StubRobotTemplateRelationRepositoryFactory());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -51,7 +52,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubChangeApplierFactory(),
             new StubSqlScriptExporter(),
             new StubEntityRepositoryFactory(),
-            new StubRobotTemplateRepositoryFactory())
+            new StubRobotTemplateRepositoryFactory(),
+            new StubRobotTemplateRelationRepositoryFactory())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -86,7 +88,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubChangeApplierFactory(),
             new StubSqlScriptExporter(),
             new StubEntityRepositoryFactory(),
-            new StubRobotTemplateRepositoryFactory())
+            new StubRobotTemplateRepositoryFactory(),
+            new StubRobotTemplateRelationRepositoryFactory())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -102,6 +105,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.NotNull(viewModel.PendingChanges);
         Assert.NotNull(viewModel.Entities);
         Assert.NotNull(viewModel.RobotTemplates);
+        Assert.NotNull(viewModel.RobotTemplateRelations);
         Assert.True(File.Exists(store.FilePath));
     }
 
@@ -122,7 +126,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubChangeApplierFactory(),
             new StubSqlScriptExporter(),
             new StubEntityRepositoryFactory(),
-            new StubRobotTemplateRepositoryFactory())
+            new StubRobotTemplateRepositoryFactory(),
+            new StubRobotTemplateRelationRepositoryFactory())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -252,6 +257,23 @@ public sealed class MainWindowViewModelTests : IDisposable
         public Task<List<RobotTemplateRow>> LoadAllAsync()
         {
             return Task.FromResult(new List<RobotTemplateRow>());
+        }
+    }
+
+    private sealed class StubRobotTemplateRelationRepositoryFactory
+        : IRobotTemplateRelationRepositoryFactory
+    {
+        public IRobotTemplateRelationRepository Create(ConnectionSettings connection)
+        {
+            return new StubRobotTemplateRelationRepository();
+        }
+    }
+
+    private sealed class StubRobotTemplateRelationRepository : IRobotTemplateRelationRepository
+    {
+        public Task<List<RobotTemplateRelationRow>> LoadAllAsync()
+        {
+            return Task.FromResult(new List<RobotTemplateRelationRow>());
         }
     }
 }

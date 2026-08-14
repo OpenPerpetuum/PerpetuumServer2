@@ -35,7 +35,8 @@ public partial class App : Application
                     new ChangeApplierFactory(),
                     new SqlScriptExporter(),
                     new EntityRepositoryFactory(),
-                    new RobotTemplateRepositoryFactory())
+                    new RobotTemplateRepositoryFactory(),
+                    new RobotTemplateRelationRepositoryFactory())
             };
         }
 
