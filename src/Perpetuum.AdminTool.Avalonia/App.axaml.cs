@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Perpetuum.AdminTool.Avalonia.ViewModels;
 using Perpetuum.AdminTool.Avalonia.Views;
+using Perpetuum.AdminTool.AutoMarket;
 using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
@@ -48,7 +49,8 @@ public partial class App : Application
                     new PresenceRepositoryFactory(),
                     new FlockRepositoryFactory(),
                     new NewItemRepositoryFactory(),
-                    new NewRobotRepositoryFactory())
+                    new NewRobotRepositoryFactory(),
+                    new AutoMarketRepositoryFactory())
             };
         }
 

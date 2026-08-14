@@ -131,6 +131,9 @@
         <TabItem Header="Translations">
           <views:TranslationCatalogView DataContext="{Binding Translations}" />
         </TabItem>
+        <TabItem Header="AutoMarket">
+          <views:AutoMarketCatalogView DataContext="{Binding AutoMarket}" />
+        </TabItem>
         <TabItem Header="Economy">
           <views:EconomyNicFlowView DataContext="{Binding Economy}" />
         </TabItem>

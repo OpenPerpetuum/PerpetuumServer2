@@ -1,4 +1,5 @@
 using Perpetuum.AdminTool.Data;
+using Perpetuum.AdminTool.AutoMarket;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Common;
@@ -38,6 +39,31 @@ public sealed class DatabaseProbeIntegrationTests
 
         Assert.Contains(nicIn, row => row.Category == "Total NIC In" && row.IsTotal);
         Assert.Contains(nicOut, row => row.Category == "Total NIC Out" && row.IsTotal);
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task AutoMarketRepository_LoadsEveryReadModelFromCurrentSchema()
+    {
+        var repository = new AutoMarketRepository(LoadConnectionSettings());
+
+        List<AutoMarketConfigRow> config = await repository.LoadConfigAsync();
+        List<AutoMarketTradeListRow> trade = await repository.LoadTradeListAsync();
+        List<AutoMarketRawMaterialRow> demand = await repository.LoadDerivedMaterialsAsync();
+        List<AutoMarketNicFlowRow> nic = await repository.LoadNicFlowAsync();
+        List<AutoMarketPricingTraceRow> pricing = await repository.LoadPricingTraceAsync();
+        List<AutoMarketCoveredMaterialRow> materials = await repository.LoadCoveredMaterialsAsync();
+        List<AutoMarketGatherRow> gather = await repository.LoadGatherBreakdownAsync();
+        List<AutoMarketOrderData> orders = await repository.LoadOrdersAsync();
+
+        Assert.NotEmpty(config);
+        Assert.NotEmpty(trade);
+        Assert.NotEmpty(demand);
+        Assert.Equal(3, nic.Count);
+        Assert.NotEmpty(pricing);
+        Assert.NotEmpty(materials);
+        Assert.NotNull(gather);
+        Assert.NotNull(orders);
     }
 
     [Fact]

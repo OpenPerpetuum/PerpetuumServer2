@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:market="using:Perpetuum.AdminTool.AutoMarket"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.AutoMarketCatalogView"
+             x:DataType="vm:AutoMarketCatalogViewModel">
+  <Border Padding="10" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <StackPanel Spacing="2">
+          <TextBlock Text="AutoMarket" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Configure automated orders and inspect pricing, supply, demand, and current orders."
+                     Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="Queue price/order refresh" Command="{Binding QueueRefreshNowCommand}" />
+      </Grid>
+      <TabControl Grid.Row="1" MinHeight="450">
+        <TabItem Header="Configuration">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="8">
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Text="Global parameters" FontWeight="SemiBold" />
+                <Button Grid.Column="1" Content="Load" Command="{Binding LoadConfigurationCommand}" />
+              </Grid>
+              <ListBox Grid.Row="1" ItemsSource="{Binding ConfigRows}" SelectedItem="{Binding SelectedConfig}">
+                <ListBox.ItemTemplate><DataTemplate x:DataType="market:AutoMarketConfigRow">
+                  <Grid ColumnDefinitions="2*,*" ColumnSpacing="8" Margin="2">
+                    <StackPanel><TextBlock Text="{Binding Label}" /><TextBlock Text="{Binding Description}" Opacity="0.65" TextWrapping="Wrap" /></StackPanel>
+                    <TextBox Grid.Column="1" Text="{Binding ParamValue}" />
+                  </Grid>
+                </DataTemplate></ListBox.ItemTemplate>
+              </ListBox>
+              <Button Grid.Row="2" Content="Queue selected parameter" Command="{Binding QueueSelectedConfigCommand}"
+                      HorizontalAlignment="Right" />
+            </Grid>
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" RowSpacing="8">
+              <TextBlock Text="Derived raw-material demand" FontWeight="SemiBold" />
+              <ListBox Grid.Row="1" ItemsSource="{Binding DerivedMaterials}">
+                <ListBox.ItemTemplate><DataTemplate x:DataType="market:AutoMarketRawMaterialRow">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="2">
+                    <TextBlock Text="{Binding RawMaterialName}" />
+                    <TextBlock Grid.Column="1" Text="{Binding TotalQuantity}" />
+                  </Grid>
+                </DataTemplate></ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Trade list">
+          <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="8">
+            <Grid ColumnDefinitions="*,320,Auto" ColumnSpacing="8">
+              <TextBlock Text="Production items managed by AutoMarket" FontWeight="SemiBold" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding AddItemChoices}" SelectedItem="{Binding SelectedAddItem}"
+                        DisplayMemberBinding="{Binding DisplayName}" />
+              <Button Grid.Column="2" Content="Queue add" Command="{Binding QueueAddItemCommand}" />
+            </Grid>
+            <ListBox Grid.Row="1" ItemsSource="{Binding TradeRows}" SelectedItem="{Binding SelectedTradeItem}">
+              <ListBox.ItemTemplate><DataTemplate x:DataType="market:AutoMarketTradeListRow">
+                <Grid ColumnDefinitions="2*,110,130,130" ColumnSpacing="8" Margin="2">
+                  <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                  <TextBox Grid.Column="1" Text="{Binding Amount}" />
+                  <CheckBox Grid.Column="2" Content="Sell orders" IsChecked="{Binding CreateSellOrders}" />
+                  <CheckBox Grid.Column="3" Content="Buyback" IsChecked="{Binding CreateBuybackOrders}" />
+                </Grid>
+              </DataTemplate></ListBox.ItemTemplate>
+            </ListBox>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Content="Queue selected changes" Command="{Binding QueueSelectedTradeItemCommand}" />
+              <Button Content="Queue selected removal" Command="{Binding QueueRemoveSelectedTradeItemCommand}" />
+            </StackPanel>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Raw materials">
+          <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="8">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <CheckBox Content="Overrides only" IsChecked="{Binding ShowOverridesOnly}" />
+              <Button Grid.Column="1" Content="Load" Command="{Binding LoadMaterialsCommand}" />
+              <Button Grid.Column="2" Content="Queue selected" Command="{Binding QueueSelectedMaterialCommand}" />
+            </Grid>
+            <ListBox Grid.Row="1" ItemsSource="{Binding FilteredMaterialRows}" SelectedItem="{Binding SelectedMaterial}">
+              <ListBox.ItemTemplate><DataTemplate x:DataType="market:AutoMarketCoveredMaterialRow">
+                <Grid ColumnDefinitions="2*,120,150,140,110,110" ColumnSpacing="6" Margin="2">
+                  <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding CurrentPrice}" />
+                  <TextBox Grid.Column="2" Text="{Binding WeeklyCapOverride}" Watermark="default cap" />
+                  <TextBlock Grid.Column="3" Text="{Binding BoughtThisWeek}" />
+                  <CheckBox Grid.Column="4" Content="Buy" IsChecked="{Binding CreateBuyOrders}" />
+                  <CheckBox Grid.Column="5" Content="Sell" IsChecked="{Binding CreateSellOrders}" />
+                </Grid>
+              </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Statistics">
+          <ScrollViewer>
+            <StackPanel Margin="8" Spacing="10">
+              <Button Content="Load statistics" Command="{Binding LoadStatisticsCommand}" HorizontalAlignment="Right" />
+              <TextBlock Text="NIC flow" FontWeight="SemiBold" />
+              <ItemsControl ItemsSource="{Binding NicFlow}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="market:AutoMarketNicFlowRow">
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8"><TextBlock Text="{Binding Period}" /><TextBlock Grid.Column="1" Text="{Binding PlasmaIn}" /><TextBlock Grid.Column="2" Text="{Binding RawmatOut}" /><TextBlock Grid.Column="3" Text="{Binding NetDelta}" /></Grid>
+              </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+              <TextBlock Text="Pricing trace" FontWeight="SemiBold" />
+              <ListBox ItemsSource="{Binding PricingTrace}" MaxHeight="190"><ListBox.ItemTemplate><DataTemplate x:DataType="market:AutoMarketPricingTraceRow">
+                <Grid ColumnDefinitions="2*,*,*,*,*,*" ColumnSpacing="6"><TextBlock Text="{Binding DisplayName}" /><TextBlock Grid.Column="1" Text="{Binding PlasmaAnchor}" /><TextBlock Grid.Column="2" Text="{Binding SdRatio}" /><TextBlock Grid.Column="3" Text="{Binding RiskMultiplier}" /><TextBlock Grid.Column="4" Text="{Binding ComputedPrice}" /><TextBlock Grid.Column="5" Text="{Binding EffectiveCap}" /></Grid>
+              </DataTemplate></ListBox.ItemTemplate></ListBox>
+              <TextBlock Text="Gather breakdown" FontWeight="SemiBold" />
+              <ListBox ItemsSource="{Binding GatherBreakdown}" MaxHeight="160"><ListBox.ItemTemplate><DataTemplate x:DataType="market:AutoMarketGatherRow">
+                <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="8"><TextBlock Text="{Binding DisplayName}" /><TextBlock Grid.Column="1" Text="{Binding PveQty}" /><TextBlock Grid.Column="2" Text="{Binding PvpQty}" /><TextBlock Grid.Column="3" Text="{Binding PvpPct}" /></Grid>
+              </DataTemplate></ListBox.ItemTemplate></ListBox>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Active orders">
+          <Grid RowDefinitions="Auto,*" RowSpacing="8" Margin="8">
+            <Grid ColumnDefinitions="*,180,180,Auto" ColumnSpacing="8">
+              <TextBlock Text="Current AutoMarket orders" FontWeight="SemiBold" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding OrderTypeOptions}" SelectedItem="{Binding OrderTypeFilter}" />
+              <ComboBox Grid.Column="2" ItemsSource="{Binding CategoryOptions}" SelectedItem="{Binding CategoryFilter}" />
+              <Button Grid.Column="3" Content="Load" Command="{Binding LoadOrdersCommand}" />
+            </Grid>
+            <ListBox Grid.Row="1" ItemsSource="{Binding FilteredOrders}">
+              <ListBox.ItemTemplate><DataTemplate x:DataType="market:AutoMarketOrderRow">
+                <Grid ColumnDefinitions="2*,110,140,110,2*,150" ColumnSpacing="6" Margin="2">
+                  <TextBlock Text="{Binding DisplayName}" /><TextBlock Grid.Column="1" Text="{Binding OrderType}" /><TextBlock Grid.Column="2" Text="{Binding Price}" /><TextBlock Grid.Column="3" Text="{Binding Amount}" /><TextBlock Grid.Column="4" Text="{Binding MarketName}" /><TextBlock Grid.Column="5" Text="{Binding Category}" />
+                </Grid>
+              </DataTemplate></ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </TabItem>
+      </TabControl>
+      <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </Grid>
+  </Border>
+</UserControl>

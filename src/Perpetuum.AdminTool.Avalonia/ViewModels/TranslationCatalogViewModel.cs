@@ -29,6 +29,14 @@ public partial class TranslationCatalogViewModel : ObservableObject
     public string GameRootPath => _settingsStore.Settings.GameRootPath;
     public bool IsNotLoading => !IsLoading;
 
+    public string TranslateKey(string key, int languageId = 0)
+    {
+        if (_store == null || string.IsNullOrEmpty(key)) return key;
+        TranslationRow? row = _store.Rows.FirstOrDefault(candidate => candidate.Key == key);
+        string? translated = row?[languageId];
+        return string.IsNullOrEmpty(translated) ? key : translated;
+    }
+
     public string? SeedKeys(IReadOnlyList<string> keys)
     {
         string gameRoot = _settingsStore.Settings.GameRootPath.Trim();

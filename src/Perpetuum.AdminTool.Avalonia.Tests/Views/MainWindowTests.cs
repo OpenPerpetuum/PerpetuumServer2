@@ -15,7 +15,7 @@ public sealed class MainWindowTests
         Assert.IsType<ScrollViewer>(window.Content);
         TabControl tabs = window.FindControl<TabControl>("ModulesTabs")!;
         Assert.NotNull(tabs);
-        Assert.Equal(12, tabs.ItemCount);
+        Assert.Equal(13, tabs.ItemCount);
 
         window.Close();
     }

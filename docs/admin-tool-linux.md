@@ -28,6 +28,9 @@ guarded direct-apply workflow. The development-focused tabs cover entities,
 structured robot templates, definition-to-template relations, equipment sets,
 NPC loot, presences, flocks, and presence-to-flock relationships. The NIC-flow
 economy dashboard and the custom-dictionary translation editor are also native.
+AutoMarket is native across configuration, production trade-list maintenance,
+raw-material overrides, pricing and gathering diagnostics, active-order views,
+and queued price/order refresh procedures.
 Template descriptions support both raw Genxy
 and the structured robot/part/module editor, including slot and ammo
 compatibility filtering. Entity aggregate stats are editable, and native
@@ -119,7 +122,7 @@ new build for content work, a person should perform the parts that cannot be
 meaningfully judged headlessly:
 
 1. launch the self-contained executable and confirm the window, text, and all
-   twelve module tabs render at the workstation's actual DPI;
+   thirteen module tabs render at the workstation's actual DPI;
 2. sign in and reload each development tab, checking that long names and the
    structured template editor remain usable at the chosen window size;
 3. edit one loaded row, queue it, review the SQL in **Pending changes**, then
@@ -141,7 +144,8 @@ The port is organized as tabbed modules so every stage remains usable:
    are native now);
 4. NPC loot, presences, flocks, and equipment sets (all four are native now,
    including presence-to-flock relationships);
-5. AutoMarket and the remaining economy diagnostics (NIC flow is native now);
+5. AutoMarket and the remaining economy diagnostics (AutoMarket and NIC flow
+   are native now);
 6. seasons, packages, and remaining creation dialogs (translations, New Item,
    and New Robot are native now).
 

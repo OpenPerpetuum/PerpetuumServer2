@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Data;
+using Perpetuum.AdminTool.AutoMarket;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
@@ -32,6 +33,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IFlockRepositoryFactory _flockRepositoryFactory;
     private readonly INewItemRepositoryFactory _newItemRepositoryFactory;
     private readonly INewRobotRepositoryFactory _newRobotRepositoryFactory;
+    private readonly IAutoMarketRepositoryFactory _autoMarketRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -60,6 +62,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private TranslationCatalogViewModel? _translations;
     [ObservableProperty] private NewItemWizardViewModel? _newItemWizard;
     [ObservableProperty] private NewRobotWizardViewModel? _newRobotWizard;
+    [ObservableProperty] private AutoMarketCatalogViewModel? _autoMarket;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -77,7 +80,8 @@ public partial class MainWindowViewModel : ObservableObject
         IPresenceRepositoryFactory presenceRepositoryFactory,
         IFlockRepositoryFactory flockRepositoryFactory,
         INewItemRepositoryFactory? newItemRepositoryFactory = null,
-        INewRobotRepositoryFactory? newRobotRepositoryFactory = null)
+        INewRobotRepositoryFactory? newRobotRepositoryFactory = null,
+        IAutoMarketRepositoryFactory? autoMarketRepositoryFactory = null)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -95,6 +99,7 @@ public partial class MainWindowViewModel : ObservableObject
         _flockRepositoryFactory = flockRepositoryFactory;
         _newItemRepositoryFactory = newItemRepositoryFactory ?? new NewItemRepositoryFactory();
         _newRobotRepositoryFactory = newRobotRepositoryFactory ?? new NewRobotRepositoryFactory();
+        _autoMarketRepositoryFactory = autoMarketRepositoryFactory ?? new AutoMarketRepositoryFactory();
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -223,6 +228,11 @@ public partial class MainWindowViewModel : ObservableObject
                         _newRobotRepositoryFactory.Create(BuildConnectionSettings()),
                         _entityRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
+                    AutoMarket = new AutoMarketCatalogViewModel(
+                        _autoMarketRepositoryFactory.Create(BuildConnectionSettings()),
+                        _entityRepositoryFactory.Create(BuildConnectionSettings()),
+                        changeQueue,
+                        key => translations.TranslateKey(key));
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -267,6 +277,7 @@ public partial class MainWindowViewModel : ObservableObject
         Translations = null;
         NewItemWizard = null;
         NewRobotWizard = null;
+        AutoMarket = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

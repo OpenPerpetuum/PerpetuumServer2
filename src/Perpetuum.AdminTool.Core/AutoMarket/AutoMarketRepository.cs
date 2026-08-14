@@ -5,7 +5,30 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.AutoMarket
 {
-    public class AutoMarketRepository
+    public interface IAutoMarketRepository
+    {
+        Task<List<AutoMarketConfigRow>> LoadConfigAsync();
+        Task<List<AutoMarketTradeListRow>> LoadTradeListAsync();
+        Task<List<AutoMarketRawMaterialRow>> LoadDerivedMaterialsAsync();
+        Task<List<AutoMarketNicFlowRow>> LoadNicFlowAsync();
+        Task<List<AutoMarketPricingTraceRow>> LoadPricingTraceAsync();
+        Task<List<AutoMarketCoveredMaterialRow>> LoadCoveredMaterialsAsync();
+        Task<List<AutoMarketGatherRow>> LoadGatherBreakdownAsync();
+        Task<List<AutoMarketOrderData>> LoadOrdersAsync();
+        Task RefreshNowAsync();
+    }
+
+    public interface IAutoMarketRepositoryFactory
+    {
+        IAutoMarketRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class AutoMarketRepositoryFactory : IAutoMarketRepositoryFactory
+    {
+        public IAutoMarketRepository Create(ConnectionSettings connection) => new AutoMarketRepository(connection);
+    }
+
+    public class AutoMarketRepository : IAutoMarketRepository
     {
         private readonly ConnectionSettings _connection;
 
