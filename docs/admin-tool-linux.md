@@ -30,8 +30,9 @@ NPC loot, presences, flocks, and presence-to-flock relationships. The NIC-flow
 economy dashboard and the custom-dictionary translation editor are also native.
 Template descriptions support both raw Genxy
 and the structured robot/part/module editor, including slot and ammo
-compatibility filtering. Entity aggregate stats are visible but remain
-read-only. This establishes the complete Linux path from desktop UI through
+compatibility filtering. Entity aggregate stats are editable, and native
+entity creation/deletion includes category and attribute flag pickers plus tier
+fields. This establishes the complete Linux path from desktop UI through
 `Microsoft.Data.SqlClient` to live Perpetuum data for bot and content work.
 
 Run from a machine with the .NET 8 SDK:

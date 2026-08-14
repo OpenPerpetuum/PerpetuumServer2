@@ -17,6 +17,11 @@
                 IsEnabled="{Binding IsNotLoading}" />
       </Grid>
 
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBox Grid.Column="0" Watermark="new entity definition name" Text="{Binding NewEntityName}" />
+        <Button Grid.Column="1" Content="Create unsaved entity" Command="{Binding CreateEntityCommand}" />
+      </Grid>
+
       <Grid ColumnDefinitions="340,*" ColumnSpacing="16">
         <ListBox Grid.Column="0" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
                  MinHeight="360" MaxHeight="520">
@@ -32,7 +37,7 @@
         </ListBox>
 
         <StackPanel Grid.Column="1" Spacing="8">
-          <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+          <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
                 ColumnSpacing="10" RowSpacing="6">
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Definition" />
             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedRow.Definition}" />
@@ -41,7 +46,12 @@
             <TextBlock Grid.Row="2" Grid.Column="0" Text="Description token" />
             <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SelectedRow.DescriptionToken}" />
             <TextBlock Grid.Row="3" Grid.Column="0" Text="Category flags" />
-            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SelectedRow.CategoryFlags}" />
+            <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="140,*" ColumnSpacing="6">
+              <TextBox Grid.Column="0" Text="{Binding SelectedRow.CategoryFlags}" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding CategoryChoices}"
+                        SelectedItem="{Binding SelectedCategoryChoice}"
+                        DisplayMemberBinding="{Binding Display}" />
+            </Grid>
             <TextBlock Grid.Row="4" Grid.Column="0" Text="Attribute flags" />
             <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding SelectedRow.AttributeFlags}" />
             <TextBlock Grid.Row="5" Grid.Column="0" Text="Mass / volume / health" />
@@ -60,24 +70,49 @@
             </StackPanel>
             <TextBlock Grid.Row="8" Grid.Column="0" Text="Options" />
             <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding SelectedRow.Options}" />
+            <TextBlock Grid.Row="9" Grid.Column="0" Text="Tier type / level" />
+            <Grid Grid.Row="9" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+              <TextBox Grid.Column="0" Text="{Binding SelectedRow.TierType}" Watermark="nullable tier type" />
+              <TextBox Grid.Column="1" Text="{Binding SelectedRow.TierLevel}" Watermark="nullable tier level" />
+            </Grid>
+            <Expander Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Header="Attribute flag picker">
+              <ScrollViewer MaxHeight="130">
+                <ItemsControl ItemsSource="{Binding AttributeFlags}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AttributeFlagEditorViewModel">
+                      <CheckBox Content="{Binding Display}" IsChecked="{Binding IsSet}" Margin="2" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Expander>
           </Grid>
 
-          <TextBlock Text="Aggregate stats" FontWeight="SemiBold" />
-          <ItemsControl ItemsSource="{Binding SelectedRow.Stats}" MaxHeight="130">
-            <ItemsControl.ItemTemplate>
+          <Grid ColumnDefinitions="*,120,Auto,Auto" ColumnSpacing="6">
+            <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableStatFields}"
+                      SelectedItem="{Binding NewStatField}"
+                      DisplayMemberBinding="{Binding DisplayLabel}" />
+            <TextBox Grid.Column="1" Text="{Binding NewStatValue}" Watermark="value" />
+            <Button Grid.Column="2" Content="Add stat" Command="{Binding AddStatCommand}" />
+            <Button Grid.Column="3" Content="Remove selected" Command="{Binding RemoveSelectedStatCommand}" />
+          </Grid>
+          <ListBox ItemsSource="{Binding SelectedRow.Stats}" SelectedItem="{Binding SelectedStat}"
+                   MaxHeight="150">
+            <ListBox.ItemTemplate>
               <DataTemplate x:DataType="entities:StatRow">
                 <Grid ColumnDefinitions="2*,*" ColumnSpacing="8">
                   <TextBlock Grid.Column="0" Text="{Binding Field}" />
-                  <TextBlock Grid.Column="1" Text="{Binding Value}" TextAlignment="Right" />
+                  <TextBox Grid.Column="1" Text="{Binding Value}" />
                 </Grid>
               </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+            </ListBox.ItemTemplate>
+          </ListBox>
 
-          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button Content="Revert edits" Command="{Binding RevertSelectedChangesCommand}" />
-            <Button Content="Queue changes" Command="{Binding QueueSelectedChangesCommand}" />
-          </StackPanel>
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+            <Button Grid.Column="0" Content="Queue DELETE" Command="{Binding QueueDeleteCommand}" />
+            <Button Grid.Column="2" Content="Revert edits" Command="{Binding RevertSelectedChangesCommand}" />
+            <Button Grid.Column="3" Content="Queue changes" Command="{Binding QueueSelectedChangesCommand}" />
+          </Grid>
         </StackPanel>
       </Grid>
 
