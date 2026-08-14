@@ -1,12 +1,13 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+        xmlns:views="using:Perpetuum.AdminTool.Avalonia.Views"
         x:Class="Perpetuum.AdminTool.Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Perpetuum AdminTool"
-        Width="760"
-        Height="690"
-        MinWidth="640"
+        Width="1120"
+        Height="780"
+        MinWidth="760"
         MinHeight="560"
         WindowStartupLocation="CenterScreen">
   <ScrollViewer>
@@ -93,6 +94,10 @@
 
       <Border Padding="12" Background="#1A808080" CornerRadius="6">
         <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+      </Border>
+
+      <Border IsVisible="{Binding IsAuthenticated}">
+        <views:EconomyNicFlowView DataContext="{Binding Economy}" />
       </Border>
     </StackPanel>
   </ScrollViewer>

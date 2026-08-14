@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Data;
+using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Avalonia.ViewModels;
@@ -10,6 +11,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly AppSettingsStore _settingsStore;
     private readonly IDatabaseProbe _databaseProbe;
     private readonly IAuthenticatorFactory _authenticatorFactory;
+    private readonly IEconomyRepositoryFactory _economyRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -25,15 +27,18 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isAuthenticated;
     [ObservableProperty] private string _authenticatedIdentity = string.Empty;
+    [ObservableProperty] private EconomyNicFlowViewModel? _economy;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
         IDatabaseProbe databaseProbe,
-        IAuthenticatorFactory authenticatorFactory)
+        IAuthenticatorFactory authenticatorFactory,
+        IEconomyRepositoryFactory economyRepositoryFactory)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
         _authenticatorFactory = authenticatorFactory;
+        _economyRepositoryFactory = economyRepositoryFactory;
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -118,6 +123,8 @@ public partial class MainWindowViewModel : ObservableObject
                     IsAuthenticated = true;
                     AuthenticatedIdentity =
                         $"{outcome.Email} ({outcome.AccessLevel}, account {outcome.AccountId})";
+                    Economy = new EconomyNicFlowViewModel(
+                        _economyRepositoryFactory.Create(BuildConnectionSettings()));
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -150,6 +157,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         IsAuthenticated = false;
         AuthenticatedIdentity = string.Empty;
+        Economy = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

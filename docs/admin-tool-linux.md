@@ -22,9 +22,10 @@ window lifetime, and presentation-only collection views.
 ## Current native milestone
 
 The Avalonia application provides connection settings, a live database probe,
-and normal AdminTool account authentication. This establishes the complete
-Linux path from desktop UI through `Microsoft.Data.SqlClient` to a Perpetuum
-database before larger editing screens are migrated.
+normal AdminTool account authentication, and the first real native module: a
+read-only NIC-flow economy dashboard. This establishes the complete Linux path
+from desktop UI through `Microsoft.Data.SqlClient` to live Perpetuum data before
+larger editing screens are migrated.
 
 Run from a machine with the .NET 8 SDK:
 
@@ -98,7 +99,7 @@ The port is organized as vertical modules so every stage remains usable:
 2. pending-change review, SQL-script export, and explicit commit safeguards;
 3. entities and robot templates, which support content and bot development;
 4. NPC loot, presences, flocks, and equipment sets;
-5. AutoMarket and economy diagnostics;
+5. AutoMarket and the remaining economy diagnostics (NIC flow is native now);
 6. seasons, packages, translations, and remaining creation dialogs.
 
 The WPF application remains the compatibility implementation until this list

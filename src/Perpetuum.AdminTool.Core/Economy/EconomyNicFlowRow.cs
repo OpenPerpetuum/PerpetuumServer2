@@ -1,6 +1,6 @@
 namespace Perpetuum.AdminTool.Economy
 {
-    public class EconomyNicFlowRow
+    public sealed class EconomyNicFlowRow
     {
         public string Category   { get; init; } = "";
         public long   Today      { get; init; }

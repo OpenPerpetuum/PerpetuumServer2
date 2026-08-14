@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Perpetuum.AdminTool.Avalonia.ViewModels;
 using Perpetuum.AdminTool.Avalonia.Views;
 using Perpetuum.AdminTool.Data;
+using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Avalonia;
@@ -26,7 +27,8 @@ public partial class App : Application
                 DataContext = new MainWindowViewModel(
                     settingsStore,
                     new DatabaseProbe(),
-                    new AuthenticatorFactory())
+                    new AuthenticatorFactory(),
+                    new EconomyRepositoryFactory())
             };
         }
 

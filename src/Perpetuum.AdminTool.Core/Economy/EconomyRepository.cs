@@ -7,7 +7,25 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Economy
 {
-    public class EconomyRepository
+    public interface IEconomyRepository
+    {
+        Task<(List<EconomyNicFlowRow> In, List<EconomyNicFlowRow> Out)> LoadNicFlowAsync();
+    }
+
+    public interface IEconomyRepositoryFactory
+    {
+        IEconomyRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class EconomyRepositoryFactory : IEconomyRepositoryFactory
+    {
+        public IEconomyRepository Create(ConnectionSettings connection)
+        {
+            return new EconomyRepository(connection);
+        }
+    }
+
+    public class EconomyRepository : IEconomyRepository
     {
         private readonly ConnectionSettings _connection;
 

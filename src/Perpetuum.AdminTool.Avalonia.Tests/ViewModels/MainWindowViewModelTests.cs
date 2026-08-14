@@ -1,5 +1,6 @@
 using Perpetuum.AdminTool.Avalonia.ViewModels;
 using Perpetuum.AdminTool.Data;
+using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Avalonia.Tests.ViewModels;
@@ -22,7 +23,8 @@ public sealed class MainWindowViewModelTests : IDisposable
         var viewModel = new MainWindowViewModel(
             store,
             new StubDatabaseProbe(true, "unused"),
-            new StubAuthenticatorFactory(new AuthOutcome()));
+            new StubAuthenticatorFactory(new AuthOutcome()),
+            new StubEconomyRepositoryFactory());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -37,7 +39,8 @@ public sealed class MainWindowViewModelTests : IDisposable
         var viewModel = new MainWindowViewModel(
             store,
             probe,
-            new StubAuthenticatorFactory(new AuthOutcome()))
+            new StubAuthenticatorFactory(new AuthOutcome()),
+            new StubEconomyRepositoryFactory())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -67,7 +70,8 @@ public sealed class MainWindowViewModelTests : IDisposable
         var viewModel = new MainWindowViewModel(
             store,
             new StubDatabaseProbe(true, "unused"),
-            new StubAuthenticatorFactory(outcome))
+            new StubAuthenticatorFactory(outcome),
+            new StubEconomyRepositoryFactory())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -79,6 +83,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.Contains("account 42", viewModel.AuthenticatedIdentity);
         Assert.Equal(string.Empty, viewModel.AccountPassword);
         Assert.Equal("admin@example.invalid", store.Settings.LastLoginEmail);
+        Assert.NotNull(viewModel.Economy);
         Assert.True(File.Exists(store.FilePath));
     }
 
@@ -94,7 +99,8 @@ public sealed class MainWindowViewModelTests : IDisposable
         var viewModel = new MainWindowViewModel(
             store,
             new StubDatabaseProbe(true, "unused"),
-            new StubAuthenticatorFactory(outcome))
+            new StubAuthenticatorFactory(outcome),
+            new StubEconomyRepositoryFactory())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -144,6 +150,22 @@ public sealed class MainWindowViewModelTests : IDisposable
         public Task<AuthOutcome> AuthenticateAsync(string email, string password)
         {
             return Task.FromResult(outcome);
+        }
+    }
+
+    private sealed class StubEconomyRepositoryFactory : IEconomyRepositoryFactory
+    {
+        public IEconomyRepository Create(ConnectionSettings connection)
+        {
+            return new StubEconomyRepository();
+        }
+    }
+
+    private sealed class StubEconomyRepository : IEconomyRepository
+    {
+        public Task<(List<EconomyNicFlowRow> In, List<EconomyNicFlowRow> Out)> LoadNicFlowAsync()
+        {
+            return Task.FromResult((new List<EconomyNicFlowRow>(), new List<EconomyNicFlowRow>()));
         }
     }
 }

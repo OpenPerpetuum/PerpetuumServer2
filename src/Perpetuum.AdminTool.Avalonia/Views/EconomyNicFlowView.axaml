@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:economy="using:Perpetuum.AdminTool.Economy"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.EconomyNicFlowView"
+             x:DataType="vm:EconomyNicFlowViewModel">
+  <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <StackPanel Spacing="12">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Grid.Column="0" Spacing="3">
+          <TextBlock Text="Economy: NIC flow" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Read-only totals for currency entering and leaving the economy."
+                     Opacity="0.7" />
+        </StackPanel>
+        <Button Grid.Column="1"
+                Content="Reload"
+                Command="{Binding LoadCommand}"
+                IsEnabled="{Binding IsNotLoading}"
+                VerticalAlignment="Center" />
+      </Grid>
+
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+        <StackPanel Grid.Column="0" Spacing="5">
+          <TextBlock Text="NIC in" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="6">
+            <TextBlock Grid.Column="0" Text="Category" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="Today" FontWeight="SemiBold" TextAlignment="Right" />
+            <TextBlock Grid.Column="2" Text="7 days" FontWeight="SemiBold" TextAlignment="Right" />
+            <TextBlock Grid.Column="3" Text="30 days" FontWeight="SemiBold" TextAlignment="Right" />
+            <TextBlock Grid.Column="4" Text="All time" FontWeight="SemiBold" TextAlignment="Right" />
+          </Grid>
+          <ItemsControl ItemsSource="{Binding NicIn}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="economy:EconomyNicFlowRow">
+                <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="6" Margin="0,2">
+                  <TextBlock Grid.Column="0" Text="{Binding Category}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding Today, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                  <TextBlock Grid.Column="2" Text="{Binding Last7Days, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                  <TextBlock Grid.Column="3" Text="{Binding Last30Days, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                  <TextBlock Grid.Column="4" Text="{Binding AllTime, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Spacing="5">
+          <TextBlock Text="NIC out" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="6">
+            <TextBlock Grid.Column="0" Text="Category" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="Today" FontWeight="SemiBold" TextAlignment="Right" />
+            <TextBlock Grid.Column="2" Text="7 days" FontWeight="SemiBold" TextAlignment="Right" />
+            <TextBlock Grid.Column="3" Text="30 days" FontWeight="SemiBold" TextAlignment="Right" />
+            <TextBlock Grid.Column="4" Text="All time" FontWeight="SemiBold" TextAlignment="Right" />
+          </Grid>
+          <ItemsControl ItemsSource="{Binding NicOut}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="economy:EconomyNicFlowRow">
+                <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="6" Margin="0,2">
+                  <TextBlock Grid.Column="0" Text="{Binding Category}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding Today, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                  <TextBlock Grid.Column="2" Text="{Binding Last7Days, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                  <TextBlock Grid.Column="3" Text="{Binding Last30Days, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                  <TextBlock Grid.Column="4" Text="{Binding AllTime, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </Border>
+</UserControl>

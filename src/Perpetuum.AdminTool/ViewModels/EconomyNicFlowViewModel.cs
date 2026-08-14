@@ -10,7 +10,7 @@ namespace Perpetuum.AdminTool.ViewModels
 {
     public partial class EconomyNicFlowViewModel : ObservableObject
     {
-        private readonly EconomyRepository _repo;
+        private readonly IEconomyRepository _repo;
 
         [ObservableProperty] private bool   _isLoading;
         [ObservableProperty] private string _statusMessage = "";
@@ -24,7 +24,7 @@ namespace Perpetuum.AdminTool.ViewModels
         public long NetLast30Days => TotalIn(r => r.Last30Days) - TotalOut(r => r.Last30Days);
         public long NetAllTime    => TotalIn(r => r.AllTime)    - TotalOut(r => r.AllTime);
 
-        public EconomyNicFlowViewModel(EconomyRepository repo) => _repo = repo;
+        public EconomyNicFlowViewModel(IEconomyRepository repo) => _repo = repo;
 
         [RelayCommand(CanExecute = nameof(CanRefresh))]
         public async Task RefreshAsync()
