@@ -8,9 +8,9 @@ using Perpetuum.AdminTool.Editing;
 
 namespace Perpetuum.AdminTool.Export
 {
-    internal static class ItemExporter
+    public static class ItemExporter
     {
-        internal static async Task<List<RawSqlChange>> ExportAsync(int definitionId, SqlConnection cn)
+        public static async Task<List<RawSqlChange>> ExportAsync(int definitionId, SqlConnection cn)
         {
             var changes = new List<RawSqlChange>();
             string? defName = await GetDefinitionNameAsync(definitionId, cn);
@@ -36,7 +36,7 @@ namespace Perpetuum.AdminTool.Export
             return changes;
         }
 
-        internal static string VarName(int definitionId) => $"@def_{definitionId}";
+        public static string VarName(int definitionId) => $"@def_{definitionId}";
 
         private static async Task<string?> GetDefinitionNameAsync(int definitionId, SqlConnection cn)
         {

@@ -1,0 +1,349 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.SeasonPackageCatalogView"
+             x:CompileBindings="False">
+  <Border Padding="10" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <StackPanel Spacing="2">
+          <TextBlock Text="Seasons and reward packages" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Build reusable rewards, configure seasons, inspect participation, and create a complete season from the wizard."
+                     Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="Load / refresh" Command="{Binding LoadCommand}" />
+      </Grid>
+
+      <TabControl Grid.Row="1" MinHeight="500">
+        <TabItem Header="Packages">
+          <Grid ColumnDefinitions="280,*" ColumnSpacing="12" Margin="8">
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+              <TextBlock Text="Reward packages" FontWeight="SemiBold" />
+              <ListBox Grid.Row="1" ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedPackage}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="2">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding SubtitleText}" Opacity="0.65" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <StackPanel Grid.Row="2" Spacing="6">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                  <TextBox Text="{Binding NewPackageName}" Watermark="New package name" />
+                  <Button Grid.Column="1" Content="New" Command="{Binding QueueNewPackageCommand}" />
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Button Content="Queue new package" Command="{Binding QueueSaveNewPackageCommand}" />
+                  <Button Content="Queue rename" Command="{Binding QueueRenamePackageCommand}" />
+                  <Button Content="Queue delete" Command="{Binding QueueDeletePackageCommand}" />
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+
+            <TabControl Grid.Column="1">
+              <TabItem Header="Contents">
+                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="8">
+                  <Grid ColumnDefinitions="*,100,Auto" ColumnSpacing="6">
+                    <ComboBox ItemsSource="{Binding PackageItemChoices}"
+                              SelectedItem="{Binding SelectedPackageItemChoice}"
+                              DisplayMemberBinding="{Binding DisplayName}" />
+                    <TextBox Grid.Column="1" Text="{Binding NewPackageItemQuantity}" Watermark="Quantity" />
+                    <Button Grid.Column="2" Content="Add" Command="{Binding QueueAddPackageItemCommand}" />
+                  </Grid>
+                  <ListBox Grid.Row="1" ItemsSource="{Binding PackageItems}" SelectedItem="{Binding SelectedPackageItem}">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="*,100,110" ColumnSpacing="8" Margin="2">
+                          <TextBlock Text="{Binding DisplayName}" />
+                          <TextBlock Grid.Column="1" Text="{Binding Definition}" />
+                          <TextBlock Grid.Column="2" Text="{Binding Quantity}" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                  <Button Grid.Row="2" Content="Remove selected" Command="{Binding QueueRemovePackageItemCommand}"
+                          HorizontalAlignment="Right" />
+                </Grid>
+              </TabItem>
+              <TabItem Header="Season usage">
+                <ListBox Margin="8" ItemsSource="{Binding PackageUsage}">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="2*,*,2*,Auto" ColumnSpacing="8" Margin="2">
+                        <TextBlock Text="{Binding SeasonName}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Context}" />
+                        <TextBlock Grid.Column="2" Text="{Binding Detail}" />
+                        <CheckBox Grid.Column="3" Content="Active" IsChecked="{Binding IsActive}" IsEnabled="False" />
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </TabItem>
+            </TabControl>
+          </Grid>
+        </TabItem>
+
+        <TabItem Header="Seasons">
+          <Grid ColumnDefinitions="270,*" ColumnSpacing="12" Margin="8">
+            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+              <TextBlock Text="Seasons" FontWeight="SemiBold" />
+              <ListBox Grid.Row="1" ItemsSource="{Binding Seasons}" SelectedItem="{Binding SelectedSeason}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="2">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding CardState}" Opacity="0.7" />
+                        <TextBlock Text="{Binding StartTime}" Opacity="0.7" />
+                      </StackPanel>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+
+            <TabControl Grid.Column="1">
+              <TabItem Header="General">
+                <ScrollViewer>
+                  <Grid Margin="8" ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                        ColumnSpacing="8" RowSpacing="7">
+                    <TextBlock Text="Name" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1" Text="{Binding SelectedSeason.Name}" />
+                    <TextBlock Grid.Row="1" Text="Description" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedSeason.Description}" AcceptsReturn="True" MinHeight="55" />
+                    <TextBlock Grid.Row="2" Text="Start (UTC)" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SelectedSeason.StartTime}" />
+                    <TextBlock Grid.Row="3" Text="End (UTC)" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SelectedSeason.EndTime}" />
+                    <TextBlock Grid.Row="4" Text="Scoring" VerticalAlignment="Center" />
+                    <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding ScoringModes}" SelectedItem="{Binding SelectedSeason.ScoringMode}" />
+                    <TextBlock Grid.Row="5" Text="Recurring" VerticalAlignment="Center" />
+                    <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding SelectedSeason.IsRecurring}" />
+                    <TextBlock Grid.Row="6" Text="Gap days" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SelectedSeason.RecurrenceGapDays}" />
+                    <TextBlock Grid.Row="7" Text="Daily objectives/day" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding SelectedSeason.DailyObjectivesPerDay}" Watermark="all" />
+                    <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                      <Button Content="Export saved season" Command="{Binding ExportSelectedSeasonCommand}" />
+                      <Button Content="Queue general changes" Command="{Binding QueueSeasonChangesCommand}" />
+                      <Button Content="Toggle active" Command="{Binding QueueSeasonActivationCommand}" />
+                    </StackPanel>
+                  </Grid>
+                </ScrollViewer>
+              </TabItem>
+
+              <TabItem Header="Activity rates">
+                <Grid Margin="8" RowDefinitions="*,Auto" RowSpacing="8">
+                  <ListBox ItemsSource="{Binding ActivityRates}" SelectedItem="{Binding SelectedActivityRate}">
+                    <ListBox.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="2*,120,120,*" ColumnSpacing="8" Margin="2">
+                        <TextBlock Text="{Binding ActivityTypeLabel}" />
+                        <TextBox Grid.Column="1" Text="{Binding PointsPerUnit}" />
+                        <TextBox Grid.Column="2" Text="{Binding UnitScale}" />
+                        <TextBlock Grid.Column="3" Text="{Binding EffectiveRate}" />
+                      </Grid>
+                    </DataTemplate></ListBox.ItemTemplate>
+                  </ListBox>
+                  <Button Grid.Row="1" Content="Queue selected rate" Command="{Binding QueueSelectedActivityRateCommand}"
+                          HorizontalAlignment="Right" />
+                </Grid>
+              </TabItem>
+
+              <TabItem Header="Objectives">
+                <Grid Margin="8" RowDefinitions="*,Auto,Auto" RowSpacing="8">
+                  <ListBox ItemsSource="{Binding Objectives}" SelectedItem="{Binding SelectedObjective}">
+                    <ListBox.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="2*,*,120,110,Auto" ColumnSpacing="7" Margin="2">
+                        <TextBlock Text="{Binding Name}" />
+                        <TextBlock Grid.Column="1" Text="{Binding ActivityType}" />
+                        <TextBlock Grid.Column="2" Text="{Binding TargetValue}" />
+                        <TextBlock Grid.Column="3" Text="{Binding BonusPoints}" />
+                        <CheckBox Grid.Column="4" IsChecked="{Binding IsDaily}" Content="Daily" IsEnabled="False" />
+                      </Grid>
+                    </DataTemplate></ListBox.ItemTemplate>
+                  </ListBox>
+                  <Grid Grid.Row="1" ColumnDefinitions="2*,*,100,100,Auto" ColumnSpacing="6">
+                    <TextBox Text="{Binding SelectedObjective.Name}" Watermark="Objective name" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding ActivityTypes}" SelectedItem="{Binding SelectedObjective.ActivityType}" />
+                    <TextBox Grid.Column="2" Text="{Binding SelectedObjective.TargetValue}" Watermark="Target" />
+                    <TextBox Grid.Column="3" Text="{Binding SelectedObjective.BonusPoints}" Watermark="Points" />
+                    <CheckBox Grid.Column="4" IsChecked="{Binding SelectedObjective.IsDaily}" Content="Daily" />
+                  </Grid>
+                  <Grid Grid.Row="2" ColumnDefinitions="*,*,*,Auto,Auto,Auto" ColumnSpacing="6">
+                    <ComboBox ItemsSource="{Binding SelectedObjective.AvailableMaterials}" SelectedValue="{Binding SelectedObjective.TargetDefinitionId}"
+                              SelectedValueBinding="{Binding Definition}"
+                              DisplayMemberBinding="{Binding DisplayName}" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedObjective.SelectedPackage}"
+                              DisplayMemberBinding="{Binding Name}" />
+                    <ComboBox Grid.Column="2" ItemsSource="{Binding EquipmentSets}" SelectedItem="{Binding SelectedObjective.SelectedEquipmentSet}"
+                              DisplayMemberBinding="{Binding Name}" />
+                    <Button Grid.Column="3" Content="Add" Command="{Binding AddObjectiveCommand}" />
+                    <Button Grid.Column="4" Content="Queue save" Command="{Binding QueueSelectedObjectiveCommand}" />
+                    <Button Grid.Column="5" Content="Remove" Command="{Binding QueueRemoveSelectedObjectiveCommand}" />
+                  </Grid>
+                </Grid>
+              </TabItem>
+
+              <TabItem Header="Tiers">
+                <Grid Margin="8" RowDefinitions="*,Auto,Auto" RowSpacing="8">
+                  <ListBox ItemsSource="{Binding Tiers}" SelectedItem="{Binding SelectedTier}">
+                    <ListBox.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="90,2*,130,2*" ColumnSpacing="8" Margin="2">
+                        <TextBlock Text="{Binding TierNumber}" /><TextBlock Grid.Column="1" Text="{Binding TierName}" />
+                        <TextBlock Grid.Column="2" Text="{Binding PointsRequired}" />
+                        <TextBlock Grid.Column="3" Text="{Binding SelectedPackage.Name}" />
+                      </Grid>
+                    </DataTemplate></ListBox.ItemTemplate>
+                  </ListBox>
+                  <Grid Grid.Row="1" ColumnDefinitions="90,2*,130,*,*" ColumnSpacing="6">
+                    <TextBox Text="{Binding SelectedTier.TierNumber}" />
+                    <TextBox Grid.Column="1" Text="{Binding SelectedTier.TierName}" />
+                    <TextBox Grid.Column="2" Text="{Binding SelectedTier.PointsRequired}" />
+                    <ComboBox Grid.Column="3" ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedTier.SelectedPackage}" DisplayMemberBinding="{Binding Name}" />
+                    <ComboBox Grid.Column="4" ItemsSource="{Binding EquipmentSets}" SelectedItem="{Binding SelectedTier.SelectedEquipmentSet}" DisplayMemberBinding="{Binding Name}" />
+                  </Grid>
+                  <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                    <Button Content="Add" Command="{Binding AddTierCommand}" />
+                    <Button Content="Queue save" Command="{Binding QueueSelectedTierCommand}" />
+                    <Button Content="Remove" Command="{Binding QueueRemoveSelectedTierCommand}" />
+                  </StackPanel>
+                </Grid>
+              </TabItem>
+
+              <TabItem Header="Leaderboard">
+                <Grid Margin="8" RowDefinitions="*,Auto,Auto" RowSpacing="8">
+                  <ListBox ItemsSource="{Binding LeaderboardRewards}" SelectedItem="{Binding SelectedLeaderboardReward}">
+                    <ListBox.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="100,100,2*,2*" ColumnSpacing="8" Margin="2">
+                        <TextBlock Text="{Binding RankMin}" /><TextBlock Grid.Column="1" Text="{Binding RankMax}" />
+                        <TextBlock Grid.Column="2" Text="{Binding SelectedPackage.Name}" /><TextBlock Grid.Column="3" Text="{Binding SelectedEquipmentSet.Name}" />
+                      </Grid>
+                    </DataTemplate></ListBox.ItemTemplate>
+                  </ListBox>
+                  <Grid Grid.Row="1" ColumnDefinitions="100,100,*,*" ColumnSpacing="6">
+                    <TextBox Text="{Binding SelectedLeaderboardReward.RankMin}" />
+                    <TextBox Grid.Column="1" Text="{Binding SelectedLeaderboardReward.RankMax}" />
+                    <ComboBox Grid.Column="2" ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedLeaderboardReward.SelectedPackage}" DisplayMemberBinding="{Binding Name}" />
+                    <ComboBox Grid.Column="3" ItemsSource="{Binding EquipmentSets}" SelectedItem="{Binding SelectedLeaderboardReward.SelectedEquipmentSet}" DisplayMemberBinding="{Binding Name}" />
+                  </Grid>
+                  <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                    <Button Content="Add" Command="{Binding AddLeaderboardRewardCommand}" />
+                    <Button Content="Queue save" Command="{Binding QueueSelectedLeaderboardRewardCommand}" />
+                    <Button Content="Remove" Command="{Binding QueueRemoveSelectedLeaderboardRewardCommand}" />
+                  </StackPanel>
+                </Grid>
+              </TabItem>
+
+              <TabItem Header="Statistics">
+                <ScrollViewer>
+                  <StackPanel Margin="8" Spacing="10">
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                      <Border Padding="10" Background="#1A808080"><StackPanel><TextBlock Text="Participants" Opacity="0.65" /><TextBlock Text="{Binding ParticipantCount}" FontSize="20" /></StackPanel></Border>
+                      <Border Grid.Column="1" Padding="10" Background="#1A808080"><StackPanel><TextBlock Text="Active in 7 days" Opacity="0.65" /><TextBlock Text="{Binding ActiveLast7Days}" FontSize="20" /></StackPanel></Border>
+                      <Border Grid.Column="2" Padding="10" Background="#1A808080"><StackPanel><TextBlock Text="Average points/day" Opacity="0.65" /><TextBlock Text="{Binding AveragePointsPerDay}" FontSize="20" /></StackPanel></Border>
+                    </Grid>
+                    <TextBlock Text="Tier claims" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding TierDistribution}"><ItemsControl.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="80,*,120" ColumnSpacing="8"><TextBlock Text="{Binding TierNumber}" /><TextBlock Grid.Column="1" Text="{Binding TierName}" /><TextBlock Grid.Column="2" Text="{Binding ClaimCount}" /></Grid>
+                    </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <TextBlock Text="Top leaderboard" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding TopLeaderboard}"><ItemsControl.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="80,*,140" ColumnSpacing="8"><TextBlock Text="{Binding Rank}" /><TextBlock Grid.Column="1" Text="{Binding CharacterName}" /><TextBlock Grid.Column="2" Text="{Binding TotalPoints}" /></Grid>
+                    </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <TextBlock Text="Objective completions" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding ObjectiveCompletion}"><ItemsControl.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="*,140" ColumnSpacing="8"><TextBlock Text="{Binding Name}" /><TextBlock Grid.Column="1" Text="{Binding CompletedCount}" /></Grid>
+                    </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <TextBlock Text="Today's daily objectives" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding DailyObjectives}"><ItemsControl.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="2*,*,120,150" ColumnSpacing="8"><TextBlock Text="{Binding Name}" /><TextBlock Grid.Column="1" Text="{Binding ActivityType}" /><TextBlock Grid.Column="2" Text="{Binding TargetValue}" /><TextBlock Grid.Column="3" Text="{Binding CompletionsToday}" /></Grid>
+                    </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                  </StackPanel>
+                </ScrollViewer>
+              </TabItem>
+              <TabItem Header="Export SQL">
+                <TextBox Margin="8" Text="{Binding ExportScript, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True"
+                         FontFamily="Monospace" MinHeight="360"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto" />
+              </TabItem>
+            </TabControl>
+          </Grid>
+        </TabItem>
+
+        <TabItem Header="New season wizard">
+          <ScrollViewer>
+            <StackPanel Margin="8" Spacing="10">
+              <Button Content="Start / reset wizard" Command="{Binding StartSeasonWizardCommand}" HorizontalAlignment="Left" />
+              <Border IsVisible="{Binding HasWizard}" BorderBrush="#808080" BorderThickness="1" CornerRadius="5" Padding="10">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="{Binding Wizard.StepTitle}" FontSize="17" FontWeight="SemiBold" />
+
+                  <Grid IsVisible="{Binding Wizard.IsStep1}" ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="7">
+                    <TextBlock Text="Name" /><TextBox Grid.Column="1" Text="{Binding Wizard.Name}" />
+                    <TextBlock Grid.Row="1" Text="Description" /><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Wizard.Description}" />
+                    <TextBlock Grid.Row="2" Text="Start date" /><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Wizard.StartTime}" />
+                    <TextBlock Grid.Row="3" Text="Start time (UTC)" /><TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Wizard.StartTimeText}" />
+                    <TextBlock Grid.Row="4" Text="End date" /><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Wizard.EndTime}" />
+                    <TextBlock Grid.Row="5" Text="End time (UTC)" /><TextBox Grid.Row="5" Grid.Column="1" Text="{Binding Wizard.EndTimeText}" />
+                    <TextBlock Grid.Row="6" Text="Scoring mode" /><ComboBox Grid.Row="6" Grid.Column="1" ItemsSource="{Binding Wizard.ScoringModeOptions}" SelectedValue="{Binding Wizard.ScoringMode}" SelectedValueBinding="{Binding Value}" DisplayMemberBinding="{Binding Label}" />
+                    <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Spacing="12"><CheckBox Content="Recurring" IsChecked="{Binding Wizard.IsRecurring}" /><TextBox Width="100" Text="{Binding Wizard.RecurrenceGapDays}" Watermark="Gap days" /></StackPanel>
+                    <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Wizard.Step1Validation}" Foreground="#D65B5B" />
+                  </Grid>
+
+                  <Grid IsVisible="{Binding Wizard.IsStep2}" RowDefinitions="*,Auto" RowSpacing="8" MinHeight="330">
+                    <ListBox ItemsSource="{Binding Wizard.ActivityRates}"><ListBox.ItemTemplate><DataTemplate>
+                      <Grid ColumnDefinitions="2*,120,120,*" ColumnSpacing="8" Margin="2"><TextBlock Text="{Binding ActivityTypeLabel}" /><TextBox Grid.Column="1" Text="{Binding PointsPerUnit}" /><TextBox Grid.Column="2" Text="{Binding UnitScale}" /><TextBlock Grid.Column="3" Text="{Binding EffectiveRate}" /></Grid>
+                    </DataTemplate></ListBox.ItemTemplate></ListBox>
+                    <TextBlock Grid.Row="1" Text="Set Points per unit to zero to disable an activity." Opacity="0.65" />
+                  </Grid>
+
+                  <Grid IsVisible="{Binding Wizard.IsStep3}" RowDefinitions="*,Auto,Auto" RowSpacing="8" MinHeight="330">
+                    <ListBox ItemsSource="{Binding Wizard.Objectives}" SelectedItem="{Binding SelectedWizardObjective}" />
+                    <Grid Grid.Row="1" ColumnDefinitions="2*,*,100,100" ColumnSpacing="6">
+                      <TextBox Text="{Binding SelectedWizardObjective.Name}" /><ComboBox Grid.Column="1" ItemsSource="{Binding Wizard.ObjectiveActivityTypeOptions}" SelectedValue="{Binding SelectedWizardObjective.ActivityType}" SelectedValueBinding="{Binding Value}" DisplayMemberBinding="{Binding Label}" />
+                      <TextBox Grid.Column="2" Text="{Binding SelectedWizardObjective.TargetValue}" /><TextBox Grid.Column="3" Text="{Binding SelectedWizardObjective.BonusPoints}" />
+                    </Grid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right"><Button Content="Add" Command="{Binding Wizard.AddObjectiveRowCommand}" /><Button Content="Remove" Command="{Binding RemoveSelectedWizardObjectiveCommand}" /></StackPanel>
+                  </Grid>
+
+                  <Grid IsVisible="{Binding Wizard.IsStep4}" RowDefinitions="*,Auto,Auto" RowSpacing="8" MinHeight="330">
+                    <ListBox ItemsSource="{Binding Wizard.Tiers}" SelectedItem="{Binding SelectedWizardTier}" />
+                    <Grid Grid.Row="1" ColumnDefinitions="90,2*,120,*" ColumnSpacing="6"><TextBox Text="{Binding SelectedWizardTier.TierNumber}" /><TextBox Grid.Column="1" Text="{Binding SelectedWizardTier.TierName}" /><TextBox Grid.Column="2" Text="{Binding SelectedWizardTier.PointsRequired}" /><ComboBox Grid.Column="3" ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedWizardTier.SelectedPackage}" DisplayMemberBinding="{Binding Name}" /></Grid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right"><Button Content="Add" Command="{Binding Wizard.AddTierRowCommand}" /><Button Content="Remove" Command="{Binding RemoveSelectedWizardTierCommand}" /></StackPanel>
+                  </Grid>
+
+                  <Grid IsVisible="{Binding Wizard.IsStep5}" RowDefinitions="*,Auto,Auto" RowSpacing="8" MinHeight="330">
+                    <ListBox ItemsSource="{Binding Wizard.LeaderboardRewards}" SelectedItem="{Binding SelectedWizardLeaderboardReward}" />
+                    <Grid Grid.Row="1" ColumnDefinitions="100,100,*" ColumnSpacing="6"><TextBox Text="{Binding SelectedWizardLeaderboardReward.RankMin}" /><TextBox Grid.Column="1" Text="{Binding SelectedWizardLeaderboardReward.RankMax}" /><ComboBox Grid.Column="2" ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedWizardLeaderboardReward.SelectedPackage}" DisplayMemberBinding="{Binding Name}" /></Grid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right"><Button Content="Add" Command="{Binding Wizard.AddLeaderboardRowCommand}" /><Button Content="Remove" Command="{Binding RemoveSelectedWizardLeaderboardRewardCommand}" /></StackPanel>
+                  </Grid>
+
+                  <StackPanel IsVisible="{Binding Wizard.IsReviewStep}" Spacing="7">
+                    <TextBlock Text="{Binding Wizard.Name}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Wizard.Description}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Wizard.ReviewScoringMode}" />
+                    <ItemsControl ItemsSource="{Binding Wizard.ReviewActiveRates}" />
+                    <TextBlock Text="{Binding Wizard.ReviewObjectivesHeader}" FontWeight="SemiBold" /><ItemsControl ItemsSource="{Binding Wizard.ReviewObjectiveLines}" />
+                    <TextBlock Text="{Binding Wizard.ReviewTiersHeader}" FontWeight="SemiBold" /><ItemsControl ItemsSource="{Binding Wizard.ReviewTierLines}" />
+                    <TextBlock Text="{Binding Wizard.ReviewLeaderboardHeader}" FontWeight="SemiBold" /><ItemsControl ItemsSource="{Binding Wizard.ReviewLeaderboardLines}" />
+                    <TextBlock Text="{Binding Wizard.FinishHint}" Opacity="0.7" TextWrapping="Wrap" />
+                  </StackPanel>
+
+                  <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                    <Button Content="Back" Command="{Binding Wizard.BackCommand}" IsEnabled="{Binding Wizard.CanGoBack}" />
+                    <Button Grid.Column="2" Content="Next" Command="{Binding Wizard.NextCommand}" IsVisible="{Binding Wizard.CanGoNext}" />
+                    <Button Grid.Column="3" Content="Queue season" Command="{Binding Wizard.FinishCommand}" IsVisible="{Binding Wizard.IsReviewStep}" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+      </TabControl>
+
+      <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </Grid>
+  </Border>
+</UserControl>

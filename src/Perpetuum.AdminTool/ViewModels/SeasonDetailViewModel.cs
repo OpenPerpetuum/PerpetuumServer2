@@ -581,8 +581,6 @@ namespace Perpetuum.AdminTool.ViewModels
         private bool CanExport() => !IsExporting;
     }
 
-    public record ActivityTypeOption(SeasonActivityType Value, string Label);
     public enum ObjectiveFilterMode { All, OneTime, Daily }
     public record ObjectiveFilterOption(ObjectiveFilterMode Value, string Label);
-    public record ScoringModeOption(SeasonScoringMode Value, string Label);
 }

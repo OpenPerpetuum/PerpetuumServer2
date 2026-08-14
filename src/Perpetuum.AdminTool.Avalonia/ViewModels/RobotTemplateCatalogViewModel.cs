@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Editing;
+using Perpetuum.AdminTool.Export;
 using Perpetuum.AdminTool.Templates;
 using StructuredEditorViewModel = Perpetuum.AdminTool.ViewModels.RobotTemplateEditorViewModel;
 
@@ -12,6 +13,7 @@ public partial class RobotTemplateCatalogViewModel : ObservableObject
     private readonly IRobotTemplateRepository _repository;
     private readonly IRobotTemplateEditorRepository _editorRepository;
     private readonly ChangeQueue _changeQueue;
+    private readonly IContentExporter? _contentExporter;
     private readonly List<RobotTemplateRow> _allRows = new();
 
     [ObservableProperty] private string _filterText = string.Empty;
@@ -21,6 +23,7 @@ public partial class RobotTemplateCatalogViewModel : ObservableObject
     [ObservableProperty] private bool _statusIsError;
     [ObservableProperty] private string _statusMessage =
         "Load robot templates from the server database.";
+    [ObservableProperty] private string _exportScript = string.Empty;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStructuredEditor))]
     private StructuredEditorViewModel? _structuredEditor;
@@ -28,11 +31,13 @@ public partial class RobotTemplateCatalogViewModel : ObservableObject
     public RobotTemplateCatalogViewModel(
         IRobotTemplateRepository repository,
         IRobotTemplateEditorRepository editorRepository,
-        ChangeQueue changeQueue)
+        ChangeQueue changeQueue,
+        IContentExporter? contentExporter = null)
     {
         _repository = repository;
         _editorRepository = editorRepository;
         _changeQueue = changeQueue;
+        _contentExporter = contentExporter;
     }
 
     public ObservableCollection<RobotTemplateRow> Rows { get; } = new();
@@ -251,6 +256,26 @@ public partial class RobotTemplateCatalogViewModel : ObservableObject
         StructuredEditor = null;
         StatusIsError = false;
         StatusMessage = "Closed the structured editor without changing raw Genxy.";
+    }
+
+    [RelayCommand]
+    private async Task ExportSelectedAsync()
+    {
+        if (SelectedRow == null || SelectedRow.Id <= 0 || _contentExporter == null)
+        {
+            SetError("Select a saved robot template first.");
+            return;
+        }
+        IsLoading = true;
+        StatusIsError = false;
+        StatusMessage = $"Generating a portable export for {SelectedRow.Name}...";
+        try
+        {
+            ExportScript = await _contentExporter.ExportRobotAsync(SelectedRow.Id);
+            StatusMessage = "Export generated. Copy the SQL below or save it from your editor.";
+        }
+        catch (Exception ex) { SetError($"Unable to export robot template: {ex.Message}"); }
+        finally { IsLoading = false; }
     }
 
     private void RebuildFilteredRows()

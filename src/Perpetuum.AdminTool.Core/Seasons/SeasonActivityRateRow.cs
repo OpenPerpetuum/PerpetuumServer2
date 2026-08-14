@@ -25,13 +25,13 @@ namespace Perpetuum.AdminTool.Seasons
             SeasonActivityType.IntrusionPoint => "Intrusion Point",
             SeasonActivityType.PlantHarvested => "Plant Harvested",
 
-            // Phase 1 — non-combat
+            // Phase 1 â€” non-combat
             SeasonActivityType.Prototyping => "Prototyping",
             SeasonActivityType.ReverseEngineering => "Reverse Engineering",
             SeasonActivityType.Production => "Production",
             SeasonActivityType.ArtifactFound => "Artifact Found",
             SeasonActivityType.EpEarned => "EP Earned",
-            // Phase 2 — combat
+            // Phase 2 â€” combat
             SeasonActivityType.DamageDone => "Damage Done",
             SeasonActivityType.DamageReceived => "Damage Received",
             SeasonActivityType.ArmorRestored => "Armor Restored",

@@ -119,6 +119,19 @@ public sealed class EntityCatalogViewModelTests
         Assert.Empty(viewModel.Rows);
     }
 
+    [Fact]
+    public async Task ExportSelected_ShowsPortableSql()
+    {
+        EntityDefaultRow row = CreateRow(100, "alpha_robot");
+        var viewModel = new EntityCatalogViewModel(
+            new StubEntityRepository([row]), new ChangeQueue(), new StubContentExporter());
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.ExportSelectedCommand.ExecuteAsync(null);
+
+        Assert.Equal("item export 100", viewModel.ExportScript);
+    }
+
     private static EntityDefaultRow CreateRow(int definition, string name)
     {
         return new EntityDefaultRow(new EntityDefaultSnapshot

@@ -7,9 +7,9 @@ using Perpetuum.GenXY;
 
 namespace Perpetuum.AdminTool.Export
 {
-    internal static class RobotExporter
+    public static class RobotExporter
     {
-        internal static async Task<string> ExportAsync(int templateId, ConnectionSettings conn)
+        public static async Task<string> ExportAsync(int templateId, ConnectionSettings conn)
         {
             var changes = new List<RawSqlChange>();
             await using var cn = new SqlConnection(conn.BuildConnectionString());

@@ -5,7 +5,34 @@ using Perpetuum.Services.Seasons;
 
 namespace Perpetuum.AdminTool.Seasons
 {
-    public class SeasonRepository
+    public interface ISeasonRepository
+    {
+        Task<List<SeasonRow>> LoadAllSeasonsAsync();
+        Task<List<SeasonActivityRateRow>> LoadActivityRatesAsync(int seasonId);
+        Task<List<SeasonObjectiveRow>> LoadObjectivesAsync(int seasonId);
+        Task<List<SeasonTierRow>> LoadTiersAsync(int seasonId);
+        Task<List<SeasonLeaderboardRewardRow>> LoadLeaderboardRewardsAsync(int seasonId);
+        Task<int> LoadParticipantCountAsync(int seasonId);
+        Task<int> LoadActiveLast7DaysAsync(int seasonId);
+        Task<List<TierDistributionRow>> LoadTierDistributionAsync(int seasonId);
+        Task<List<LeaderboardEntryRow>> LoadTop10LeaderboardAsync(int seasonId);
+        Task<List<ObjectiveCompletionRow>> LoadObjectiveCompletionAsync(int seasonId);
+        Task<double> LoadAvgPointsPerDayAsync(int seasonId);
+        Task<List<EquipmentSetRow>> LoadEquipmentSetsAsync();
+        Task<List<TodaysDailyObjectiveRow>> LoadTodaysDailyObjectivesAsync(int seasonId);
+    }
+
+    public interface ISeasonRepositoryFactory
+    {
+        ISeasonRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class SeasonRepositoryFactory : ISeasonRepositoryFactory
+    {
+        public ISeasonRepository Create(ConnectionSettings connection) => new SeasonRepository(connection);
+    }
+
+    public class SeasonRepository : ISeasonRepository
     {
         private readonly ConnectionSettings _connection;
 

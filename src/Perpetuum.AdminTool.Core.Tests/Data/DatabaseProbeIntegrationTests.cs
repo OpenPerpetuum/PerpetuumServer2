@@ -5,10 +5,13 @@ using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
+using Perpetuum.AdminTool.Export;
 using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Npc;
 using Perpetuum.AdminTool.NewItem;
 using Perpetuum.AdminTool.NewRobot;
+using Perpetuum.AdminTool.Packages;
+using Perpetuum.AdminTool.Seasons;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 using Perpetuum.GenXY;
@@ -87,6 +90,75 @@ public sealed class DatabaseProbeIntegrationTests
         Assert.NotEmpty(materials);
         Assert.NotNull(gather);
         Assert.NotNull(orders);
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task PackageAndSeasonRepositories_LoadEveryReadModelFromCurrentSchema()
+    {
+        ConnectionSettings settings = LoadConnectionSettings();
+        var packages = new PackageRepository(settings);
+        var seasons = new SeasonRepository(settings);
+
+        List<PackageRow> packageRows = await packages.LoadAllPackagesAsync();
+        int packageId = packageRows.FirstOrDefault()?.Id ?? -1;
+        List<PackageItemRow> packageItems = await packages.LoadPackageItemsAsync(packageId);
+        List<PackageUsageRow> packageUsage = await packages.LoadSeasonUsageAsync(packageId);
+        List<SeasonRow> seasonRows = await seasons.LoadAllSeasonsAsync();
+        int seasonId = seasonRows.FirstOrDefault()?.Id ?? -1;
+
+        List<SeasonActivityRateRow> rates = await seasons.LoadActivityRatesAsync(seasonId);
+        List<SeasonObjectiveRow> objectives = await seasons.LoadObjectivesAsync(seasonId);
+        List<SeasonTierRow> tiers = await seasons.LoadTiersAsync(seasonId);
+        List<SeasonLeaderboardRewardRow> rewards = await seasons.LoadLeaderboardRewardsAsync(seasonId);
+        int participants = await seasons.LoadParticipantCountAsync(seasonId);
+        int active = await seasons.LoadActiveLast7DaysAsync(seasonId);
+        List<TierDistributionRow> distribution = await seasons.LoadTierDistributionAsync(seasonId);
+        List<LeaderboardEntryRow> leaderboard = await seasons.LoadTop10LeaderboardAsync(seasonId);
+        List<ObjectiveCompletionRow> completion = await seasons.LoadObjectiveCompletionAsync(seasonId);
+        double average = await seasons.LoadAvgPointsPerDayAsync(seasonId);
+        List<EquipmentSetRow> equipmentSets = await seasons.LoadEquipmentSetsAsync();
+        List<TodaysDailyObjectiveRow> daily = await seasons.LoadTodaysDailyObjectivesAsync(seasonId);
+
+        Assert.NotNull(packageRows);
+        Assert.NotNull(packageItems);
+        Assert.NotNull(packageUsage);
+        Assert.NotNull(seasonRows);
+        Assert.NotNull(rates);
+        Assert.NotNull(objectives);
+        Assert.NotNull(tiers);
+        Assert.NotNull(rewards);
+        Assert.True(participants >= 0);
+        Assert.True(active >= 0);
+        Assert.NotNull(distribution);
+        Assert.NotNull(leaderboard);
+        Assert.NotNull(completion);
+        Assert.True(average >= 0);
+        Assert.NotNull(equipmentSets);
+        Assert.NotNull(daily);
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task ContentExporter_GeneratesPortableItemRobotAndAvailableSeasonScripts()
+    {
+        ConnectionSettings settings = LoadConnectionSettings();
+        var exporter = new ContentExporter(settings);
+        EntityDefaultRow entity = (await new EntityRepository(settings).LoadAsync()).Rows.First();
+        RobotTemplateRow robot = (await new RobotTemplateRepository(settings).LoadAllAsync()).First();
+
+        string itemScript = await exporter.ExportItemAsync(entity.Definition, TestContext.Current.CancellationToken);
+        string robotScript = await exporter.ExportRobotAsync(robot.Id, TestContext.Current.CancellationToken);
+
+        Assert.Contains("entitydefaults", itemScript);
+        Assert.Contains("robottemplates", robotScript);
+
+        SeasonRow? season = (await new SeasonRepository(settings).LoadAllSeasonsAsync()).FirstOrDefault();
+        if (season != null)
+        {
+            string seasonScript = await exporter.ExportSeasonAsync(season.Id, TestContext.Current.CancellationToken);
+            Assert.Contains("seasons", seasonScript);
+        }
     }
 
     [Fact]

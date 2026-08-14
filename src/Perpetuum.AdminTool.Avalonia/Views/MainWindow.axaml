@@ -137,6 +137,9 @@
         <TabItem Header="Economy">
           <views:EconomyDashboardView DataContext="{Binding Economy}" />
         </TabItem>
+        <TabItem Header="Seasons &amp; packages">
+          <views:SeasonPackageCatalogView DataContext="{Binding SeasonsAndPackages}" />
+        </TabItem>
         <TabItem Header="Pending changes">
           <views:PendingChangesView DataContext="{Binding PendingChanges}" />
         </TabItem>

@@ -110,6 +110,19 @@ public sealed class RobotTemplateCatalogViewModelTests
         Assert.Null(viewModel.StructuredEditor);
     }
 
+    [Fact]
+    public async Task ExportSelected_ShowsPortableSql()
+    {
+        RobotTemplateRow row = CreateRow(10, "alpha_patrol");
+        var viewModel = new RobotTemplateCatalogViewModel(
+            new StubRepository([row]), new StubEditorRepository(), new ChangeQueue(), new StubContentExporter());
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.ExportSelectedCommand.ExecuteAsync(null);
+
+        Assert.Equal("robot export 10", viewModel.ExportScript);
+    }
+
     private static RobotTemplateRow CreateRow(int id, string name)
     {
         return new RobotTemplateRow(new RobotTemplateSnapshot

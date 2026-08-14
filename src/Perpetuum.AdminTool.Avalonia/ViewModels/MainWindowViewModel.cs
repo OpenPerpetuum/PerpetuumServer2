@@ -6,10 +6,13 @@ using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.EquipmentSets;
+using Perpetuum.AdminTool.Export;
 using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Npc;
 using Perpetuum.AdminTool.NewItem;
 using Perpetuum.AdminTool.NewRobot;
+using Perpetuum.AdminTool.Packages;
+using Perpetuum.AdminTool.Seasons;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -35,6 +38,9 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly INewRobotRepositoryFactory _newRobotRepositoryFactory;
     private readonly IAutoMarketRepositoryFactory _autoMarketRepositoryFactory;
     private readonly IEconomyDashboardRepositoryFactory _economyDashboardRepositoryFactory;
+    private readonly IPackageRepositoryFactory _packageRepositoryFactory;
+    private readonly ISeasonRepositoryFactory _seasonRepositoryFactory;
+    private readonly IContentExporterFactory _contentExporterFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -64,6 +70,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private NewItemWizardViewModel? _newItemWizard;
     [ObservableProperty] private NewRobotWizardViewModel? _newRobotWizard;
     [ObservableProperty] private AutoMarketCatalogViewModel? _autoMarket;
+    [ObservableProperty] private SeasonPackageCatalogViewModel? _seasonsAndPackages;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -83,7 +90,10 @@ public partial class MainWindowViewModel : ObservableObject
         INewItemRepositoryFactory? newItemRepositoryFactory = null,
         INewRobotRepositoryFactory? newRobotRepositoryFactory = null,
         IAutoMarketRepositoryFactory? autoMarketRepositoryFactory = null,
-        IEconomyDashboardRepositoryFactory? economyDashboardRepositoryFactory = null)
+        IEconomyDashboardRepositoryFactory? economyDashboardRepositoryFactory = null,
+        IPackageRepositoryFactory? packageRepositoryFactory = null,
+        ISeasonRepositoryFactory? seasonRepositoryFactory = null,
+        IContentExporterFactory? contentExporterFactory = null)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -103,6 +113,9 @@ public partial class MainWindowViewModel : ObservableObject
         _newRobotRepositoryFactory = newRobotRepositoryFactory ?? new NewRobotRepositoryFactory();
         _autoMarketRepositoryFactory = autoMarketRepositoryFactory ?? new AutoMarketRepositoryFactory();
         _economyDashboardRepositoryFactory = economyDashboardRepositoryFactory ?? new EconomyDashboardRepositoryFactory();
+        _packageRepositoryFactory = packageRepositoryFactory ?? new PackageRepositoryFactory();
+        _seasonRepositoryFactory = seasonRepositoryFactory ?? new SeasonRepositoryFactory();
+        _contentExporterFactory = contentExporterFactory ?? new ContentExporterFactory();
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -190,6 +203,7 @@ public partial class MainWindowViewModel : ObservableObject
                         $"{outcome.Email} ({outcome.AccessLevel}, account {outcome.AccountId})";
                     ConnectionSettings currentConnection = BuildConnectionSettings();
                     var changeQueue = new ChangeQueue();
+                    IContentExporter contentExporter = _contentExporterFactory.Create(currentConnection);
                     Economy = new EconomyDashboardViewModel(
                         _economyRepositoryFactory.Create(currentConnection),
                         _economyDashboardRepositoryFactory.CreateMoneySupply(currentConnection),
@@ -209,11 +223,13 @@ public partial class MainWindowViewModel : ObservableObject
                         keys => translations.SeedKeys(keys));
                     Entities = new EntityCatalogViewModel(
                         _entityRepositoryFactory.Create(BuildConnectionSettings()),
-                        changeQueue);
+                        changeQueue,
+                        contentExporter);
                     RobotTemplates = new RobotTemplateCatalogViewModel(
                         _robotTemplateRepositoryFactory.Create(BuildConnectionSettings()),
                         _robotTemplateEditorRepositoryFactory.Create(BuildConnectionSettings()),
-                        changeQueue);
+                        changeQueue,
+                        contentExporter);
                     RobotTemplateRelations = new RobotTemplateRelationsCatalogViewModel(
                         _robotTemplateRelationRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
@@ -243,6 +259,13 @@ public partial class MainWindowViewModel : ObservableObject
                         _entityRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue,
                         key => translations.TranslateKey(key));
+                    SeasonsAndPackages = new SeasonPackageCatalogViewModel(
+                        _packageRepositoryFactory.Create(currentConnection),
+                        _seasonRepositoryFactory.Create(currentConnection),
+                        _entityRepositoryFactory.Create(currentConnection),
+                        changeQueue,
+                        key => translations.TranslateKey(key),
+                        contentExporter);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -288,6 +311,7 @@ public partial class MainWindowViewModel : ObservableObject
         NewItemWizard = null;
         NewRobotWizard = null;
         AutoMarket = null;
+        SeasonsAndPackages = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

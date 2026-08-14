@@ -134,6 +134,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.NotNull(viewModel.NewItemWizard);
         Assert.NotNull(viewModel.NewRobotWizard);
         Assert.NotNull(viewModel.AutoMarket);
+        Assert.NotNull(viewModel.SeasonsAndPackages);
         Assert.True(File.Exists(store.FilePath));
     }
 

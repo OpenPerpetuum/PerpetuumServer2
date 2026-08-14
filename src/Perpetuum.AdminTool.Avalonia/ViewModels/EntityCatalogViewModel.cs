@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
+using Perpetuum.AdminTool.Export;
 using Perpetuum.ExportedTypes;
 
 namespace Perpetuum.AdminTool.Avalonia.ViewModels;
@@ -11,6 +12,7 @@ public partial class EntityCatalogViewModel : ObservableObject
 {
     private readonly IEntityRepository _repository;
     private readonly ChangeQueue _changeQueue;
+    private readonly IContentExporter? _contentExporter;
     private readonly List<EntityDefaultRow> _allRows = new();
 
     [ObservableProperty] private string _filterText = string.Empty;
@@ -24,11 +26,16 @@ public partial class EntityCatalogViewModel : ObservableObject
     [ObservableProperty] private bool _statusIsError;
     [ObservableProperty] private string _statusMessage =
         "Load entity definitions from the server database.";
+    [ObservableProperty] private string _exportScript = string.Empty;
 
-    public EntityCatalogViewModel(IEntityRepository repository, ChangeQueue changeQueue)
+    public EntityCatalogViewModel(
+        IEntityRepository repository,
+        ChangeQueue changeQueue,
+        IContentExporter? contentExporter = null)
     {
         _repository = repository;
         _changeQueue = changeQueue;
+        _contentExporter = contentExporter;
     }
 
     public ObservableCollection<EntityDefaultRow> Rows { get; } = new();
@@ -233,6 +240,26 @@ public partial class EntityCatalogViewModel : ObservableObject
         RebuildAvailableStatFields();
         StatusIsError = false;
         StatusMessage = "Removed the stat in memory. Queue entity changes to persist it.";
+    }
+
+    [RelayCommand]
+    private async Task ExportSelectedAsync()
+    {
+        if (SelectedRow == null || SelectedRow.Definition <= 0 || _contentExporter == null)
+        {
+            SetError("Select a saved entity first.");
+            return;
+        }
+        IsLoading = true;
+        StatusIsError = false;
+        StatusMessage = $"Generating a portable export for {SelectedRow.DefinitionName}...";
+        try
+        {
+            ExportScript = await _contentExporter.ExportItemAsync(SelectedRow.Definition);
+            StatusMessage = "Export generated. Copy the SQL below or save it from your editor.";
+        }
+        catch (Exception ex) { SetError($"Unable to export entity: {ex.Message}"); }
+        finally { IsLoading = false; }
     }
 
     private void RebuildFilteredRows()

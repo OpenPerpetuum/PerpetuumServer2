@@ -9,9 +9,9 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Export
 {
-    internal static class SeasonExporter
+    public static class SeasonExporter
     {
-        internal static async Task<string> ExportAsync(int seasonId, ConnectionSettings conn)
+        public static async Task<string> ExportAsync(int seasonId, ConnectionSettings conn)
         {
             var changes = new List<RawSqlChange>();
             await using var cn = new SqlConnection(conn.BuildConnectionString());

@@ -9,7 +9,7 @@
       <Grid ColumnDefinitions="*,280,Auto" ColumnSpacing="8">
         <StackPanel Grid.Column="0" Spacing="3">
           <TextBlock Text="Entities" FontSize="18" FontWeight="SemiBold" />
-          <TextBlock Text="Browse and queue changes to entitydefaults. Aggregate stats are read-only in this slice."
+          <TextBlock Text="Browse, edit, export, and queue entity defaults and aggregate stats."
                      Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
         <TextBox Grid.Column="1" Watermark="definition id or name" Text="{Binding FilterText}" />
@@ -108,13 +108,21 @@
             </ListBox.ItemTemplate>
           </ListBox>
 
-          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+          <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
             <Button Grid.Column="0" Content="Queue DELETE" Command="{Binding QueueDeleteCommand}" />
-            <Button Grid.Column="2" Content="Revert edits" Command="{Binding RevertSelectedChangesCommand}" />
-            <Button Grid.Column="3" Content="Queue changes" Command="{Binding QueueSelectedChangesCommand}" />
+            <Button Grid.Column="1" Content="Export saved item" Command="{Binding ExportSelectedCommand}" />
+            <Button Grid.Column="3" Content="Revert edits" Command="{Binding RevertSelectedChangesCommand}" />
+            <Button Grid.Column="4" Content="Queue changes" Command="{Binding QueueSelectedChangesCommand}" />
           </Grid>
         </StackPanel>
       </Grid>
+
+      <Expander Header="Portable item export SQL">
+        <TextBox Text="{Binding ExportScript, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True"
+                 FontFamily="Monospace" MinHeight="180" MaxHeight="320"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+      </Expander>
 
       <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
     </StackPanel>

@@ -5,7 +5,24 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Packages
 {
-    public class PackageRepository
+    public interface IPackageRepository
+    {
+        Task<List<PackageRow>> LoadAllPackagesAsync();
+        Task<List<PackageItemRow>> LoadPackageItemsAsync(int packageId);
+        Task<List<PackageUsageRow>> LoadSeasonUsageAsync(int packageId);
+    }
+
+    public interface IPackageRepositoryFactory
+    {
+        IPackageRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class PackageRepositoryFactory : IPackageRepositoryFactory
+    {
+        public IPackageRepository Create(ConnectionSettings connection) => new PackageRepository(connection);
+    }
+
+    public class PackageRepository : IPackageRepository
     {
         private readonly ConnectionSettings _connection;
 

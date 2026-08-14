@@ -4,15 +4,14 @@ using Perpetuum.AdminTool.Packages;
 
 namespace Perpetuum.AdminTool.Seasons
 {
-    public partial class SeasonTierRow : ObservableObject
+    public partial class SeasonLeaderboardRewardRow : ObservableObject
     {
         public int Id { get; set; }
         public int SeasonId { get; set; }
         public bool IsNew { get; set; }
 
-        [ObservableProperty] private int _tierNumber;
-        [ObservableProperty] private string _tierName = "";
-        [ObservableProperty] private int _pointsRequired;
+        [ObservableProperty] private int _rankMin = 1;
+        [ObservableProperty] private int _rankMax = 1;
         [ObservableProperty] private int? _packageId;
         [ObservableProperty] private PackageRow? _selectedPackage;
         [ObservableProperty] private int? _equipmentSetId;
@@ -24,8 +23,7 @@ namespace Perpetuum.AdminTool.Seasons
             {
                 PackageId = value.Id;
                 EquipmentSetId = null;
-                _selectedEquipmentSet = null;
-                OnPropertyChanged(nameof(SelectedEquipmentSet));
+                SelectedEquipmentSet = null;
             }
         }
 
@@ -35,8 +33,7 @@ namespace Perpetuum.AdminTool.Seasons
             {
                 EquipmentSetId = value.SetId;
                 PackageId = null;
-                _selectedPackage = null;
-                OnPropertyChanged(nameof(SelectedPackage));
+                SelectedPackage = null;
             }
         }
     }
