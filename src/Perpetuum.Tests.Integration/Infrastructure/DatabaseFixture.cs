@@ -9,25 +9,25 @@ namespace Perpetuum.Tests.Integration.Infrastructure
     /// </summary>
     public sealed class DatabaseFixture
     {
-        public GameRootEnvironment? Environment { get; }
+        public GameRootEnvironment? LocalEnvironment { get; }
         public string? UnavailableReason { get; }
 
         public DatabaseFixture()
         {
             _ = GameRootEnvironment.TryLoad(out GameRootEnvironment? env, out string? reason);
-            Environment = env;
+            LocalEnvironment = env;
             UnavailableReason = reason;
         }
 
         public SqlConnection OpenConnection()
         {
-            if (Environment is null)
+            if (LocalEnvironment is null)
             {
                 throw new InvalidOperationException(
                     $"Database unavailable: {UnavailableReason}. Tests must use [RequiresGameRootFact].");
             }
 
-            SqlConnection connection = new(Environment.ConnectionString);
+            SqlConnection connection = new(LocalEnvironment.ConnectionString);
             connection.Open();
             return connection;
         }

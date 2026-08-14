@@ -20,6 +20,10 @@ namespace Perpetuum.Tests.Fakes.Data
     /// </summary>
     public sealed class FakeDb
     {
+        // _commands is lock-protected because production code logs and queries from timer and task
+        // threads. _results and _nonQueries are deliberately not: they are configured by the test
+        // before the code under test runs, and never mutated afterwards. Registering a stub from
+        // inside the code under test would race, and nothing here prevents it.
         private readonly List<(string Match, FakeResultSet Result)> _results = [];
         private readonly List<(string Match, int RowsAffected)> _nonQueries = [];
         private readonly List<RecordedCommand> _commands = [];
@@ -32,6 +36,11 @@ namespace Perpetuum.Tests.Fakes.Data
             return fake;
         }
 
+        /// <summary>
+        /// Registers a result for any command whose text contains <paramref name="commandTextContains"/>.
+        /// The first registration that matches wins, so register the most specific pattern first —
+        /// a broad pattern registered earlier silently shadows a narrower one registered later.
+        /// </summary>
         public void When(string commandTextContains, FakeResultSet result)
             => _results.Add((commandTextContains, result));
 

@@ -24,6 +24,12 @@ namespace Perpetuum.Tests.Fakes
             get { lock (_gate) { return [.. _events]; } }
         }
 
+        // LogEvent names the property ThrownException, not Exception — see
+        // src/Perpetuum/Log/LogEvent.cs:20. Logger.Exception(ex) sets LogType.Error and
+        // ThrownException together (Logger.cs:62-71), so either condition alone would do; both
+        // are kept so a future logging path that sets one without the other is excluded.
+        // Logger.Error(string) is exactly such a path: it writes LogType.Error with no
+        // exception, and the ISSUE-033 regression depends on not counting those.
         public IReadOnlyList<LogEvent> Exceptions
         {
             get { lock (_gate) { return [.. _events.Where(e => e.LogType == LogType.Error && e.ThrownException != null)]; } }

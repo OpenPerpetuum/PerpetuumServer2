@@ -25,10 +25,25 @@ namespace Perpetuum.Tests.Integration.Infrastructure
         [Fact]
         public void Writes_are_disabled_unless_explicitly_allowed()
         {
-            // This test runs everywhere, including CI, and documents the default.
-            if (Environment.GetEnvironmentVariable(GameRootEnvironment.AllowWriteVariable) is null)
+            // Controls the variable rather than reading whatever the shell happens to carry. Read
+            // ambiently, this test asserts nothing at all whenever the variable is already set —
+            // which is precisely the case for anyone working on a later write-enabled stage — and
+            // it is the only test guarding the opt-in that protects the operator's real database.
+            string? saved = Environment.GetEnvironmentVariable(GameRootEnvironment.AllowWriteVariable);
+            try
             {
+                Environment.SetEnvironmentVariable(GameRootEnvironment.AllowWriteVariable, null);
                 Assert.False(GameRootEnvironment.WritesAllowed);
+
+                Environment.SetEnvironmentVariable(GameRootEnvironment.AllowWriteVariable, "0");
+                Assert.False(GameRootEnvironment.WritesAllowed);
+
+                Environment.SetEnvironmentVariable(GameRootEnvironment.AllowWriteVariable, "1");
+                Assert.True(GameRootEnvironment.WritesAllowed);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(GameRootEnvironment.AllowWriteVariable, saved);
             }
         }
     }

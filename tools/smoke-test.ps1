@@ -6,7 +6,7 @@
 .DESCRIPTION
     Exit codes:
       0  pass
-      2  build failed
+      2  build failed, or the server binary was not found
       3  GameRoot not found
       4  timed out waiting for the server to come online
       5  a forbidden pattern was found in the log

@@ -35,7 +35,6 @@ namespace Perpetuum.Tests.Integration.Schema
         /// functions/ uses a bare "Name.sql". Taking the filename as the object name would compare
         /// "dbo.X.StoredProcedure" against "X" and report almost every documented procedure as
         /// missing, which looks like a large finding about the repository and is not one.
-        /// </summary>
         /// Procedures keep their schema; functions cannot. Two documented procedures differ only by
         /// schema — dbo.extensionSubscriptionStart and opp.extensionSubscriptionStart — so comparing
         /// bare names would let one of them disappear from the database while this test stayed green.
@@ -43,6 +42,7 @@ namespace Perpetuum.Tests.Integration.Schema
         /// dbo (opp.ToolTestAccount_GetDefinitionID, which is itself undocumented), so assuming dbo
         /// there would produce a false failure. The asymmetry is forced by the data, and the
         /// remaining gap on the function side is stated rather than left to be discovered.
+        /// </summary>
         private static string ProcedureNameFromDocumentedFileName(string fileNameWithoutExtension)
         {
             return fileNameWithoutExtension.EndsWith(".StoredProcedure", StringComparison.OrdinalIgnoreCase)
