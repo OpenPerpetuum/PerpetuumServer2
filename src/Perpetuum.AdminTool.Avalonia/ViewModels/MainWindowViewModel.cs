@@ -5,6 +5,7 @@ using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.Settings;
+using Perpetuum.AdminTool.Templates;
 
 namespace Perpetuum.AdminTool.Avalonia.ViewModels;
 
@@ -17,6 +18,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IChangeApplierFactory _changeApplierFactory;
     private readonly ISqlScriptExporter _scriptExporter;
     private readonly IEntityRepositoryFactory _entityRepositoryFactory;
+    private readonly IRobotTemplateRepositoryFactory _robotTemplateRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -35,6 +37,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private EconomyNicFlowViewModel? _economy;
     [ObservableProperty] private PendingChangesViewModel? _pendingChanges;
     [ObservableProperty] private EntityCatalogViewModel? _entities;
+    [ObservableProperty] private RobotTemplateCatalogViewModel? _robotTemplates;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -43,7 +46,8 @@ public partial class MainWindowViewModel : ObservableObject
         IEconomyRepositoryFactory economyRepositoryFactory,
         IChangeApplierFactory changeApplierFactory,
         ISqlScriptExporter scriptExporter,
-        IEntityRepositoryFactory entityRepositoryFactory)
+        IEntityRepositoryFactory entityRepositoryFactory,
+        IRobotTemplateRepositoryFactory robotTemplateRepositoryFactory)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -52,6 +56,7 @@ public partial class MainWindowViewModel : ObservableObject
         _changeApplierFactory = changeApplierFactory;
         _scriptExporter = scriptExporter;
         _entityRepositoryFactory = entityRepositoryFactory;
+        _robotTemplateRepositoryFactory = robotTemplateRepositoryFactory;
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -148,6 +153,9 @@ public partial class MainWindowViewModel : ObservableObject
                     Entities = new EntityCatalogViewModel(
                         _entityRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
+                    RobotTemplates = new RobotTemplateCatalogViewModel(
+                        _robotTemplateRepositoryFactory.Create(BuildConnectionSettings()),
+                        changeQueue);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -183,6 +191,7 @@ public partial class MainWindowViewModel : ObservableObject
         Economy = null;
         PendingChanges = null;
         Entities = null;
+        RobotTemplates = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

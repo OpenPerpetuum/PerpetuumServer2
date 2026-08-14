@@ -8,6 +8,7 @@ using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.Settings;
+using Perpetuum.AdminTool.Templates;
 
 namespace Perpetuum.AdminTool.Avalonia;
 
@@ -33,7 +34,8 @@ public partial class App : Application
                     new EconomyRepositoryFactory(),
                     new ChangeApplierFactory(),
                     new SqlScriptExporter(),
-                    new EntityRepositoryFactory())
+                    new EntityRepositoryFactory(),
+                    new RobotTemplateRepositoryFactory())
             };
         }
 

@@ -4,6 +4,7 @@ using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.Settings;
+using Perpetuum.AdminTool.Templates;
 
 namespace Perpetuum.AdminTool.Avalonia.Tests.ViewModels;
 
@@ -29,7 +30,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEconomyRepositoryFactory(),
             new StubChangeApplierFactory(),
             new StubSqlScriptExporter(),
-            new StubEntityRepositoryFactory());
+            new StubEntityRepositoryFactory(),
+            new StubRobotTemplateRepositoryFactory());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -48,7 +50,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEconomyRepositoryFactory(),
             new StubChangeApplierFactory(),
             new StubSqlScriptExporter(),
-            new StubEntityRepositoryFactory())
+            new StubEntityRepositoryFactory(),
+            new StubRobotTemplateRepositoryFactory())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -82,7 +85,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEconomyRepositoryFactory(),
             new StubChangeApplierFactory(),
             new StubSqlScriptExporter(),
-            new StubEntityRepositoryFactory())
+            new StubEntityRepositoryFactory(),
+            new StubRobotTemplateRepositoryFactory())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -97,6 +101,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.NotNull(viewModel.Economy);
         Assert.NotNull(viewModel.PendingChanges);
         Assert.NotNull(viewModel.Entities);
+        Assert.NotNull(viewModel.RobotTemplates);
         Assert.True(File.Exists(store.FilePath));
     }
 
@@ -116,7 +121,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEconomyRepositoryFactory(),
             new StubChangeApplierFactory(),
             new StubSqlScriptExporter(),
-            new StubEntityRepositoryFactory())
+            new StubEntityRepositoryFactory(),
+            new StubRobotTemplateRepositoryFactory())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -230,6 +236,22 @@ public sealed class MainWindowViewModelTests : IDisposable
         public Task<EntitiesSnapshot> LoadAsync()
         {
             return Task.FromResult(new EntitiesSnapshot());
+        }
+    }
+
+    private sealed class StubRobotTemplateRepositoryFactory : IRobotTemplateRepositoryFactory
+    {
+        public IRobotTemplateRepository Create(ConnectionSettings connection)
+        {
+            return new StubRobotTemplateRepository();
+        }
+    }
+
+    private sealed class StubRobotTemplateRepository : IRobotTemplateRepository
+    {
+        public Task<List<RobotTemplateRow>> LoadAllAsync()
+        {
+            return Task.FromResult(new List<RobotTemplateRow>());
         }
     }
 }

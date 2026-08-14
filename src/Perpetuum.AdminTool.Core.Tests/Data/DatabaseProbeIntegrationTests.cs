@@ -3,6 +3,7 @@ using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.Settings;
+using Perpetuum.AdminTool.Templates;
 
 namespace Perpetuum.AdminTool.Core.Tests.Data;
 
@@ -55,6 +56,19 @@ public sealed class DatabaseProbeIntegrationTests
         Assert.NotEmpty(snapshot.Rows);
         Assert.NotEmpty(snapshot.Fields);
         Assert.All(snapshot.Rows, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task RobotTemplateRepository_LoadsCurrentPerpetuumSchema()
+    {
+        var repository = new RobotTemplateRepository(LoadConnectionSettings());
+
+        List<RobotTemplateRow> rows = await repository.LoadAllAsync();
+
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.True(row.Id > 0));
+        Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.Name)));
     }
 
     private static ConnectionSettings LoadConnectionSettings()

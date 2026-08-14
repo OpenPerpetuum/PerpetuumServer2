@@ -5,7 +5,25 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Templates
 {
-    public class RobotTemplateRepository
+    public interface IRobotTemplateRepository
+    {
+        Task<List<RobotTemplateRow>> LoadAllAsync();
+    }
+
+    public interface IRobotTemplateRepositoryFactory
+    {
+        IRobotTemplateRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class RobotTemplateRepositoryFactory : IRobotTemplateRepositoryFactory
+    {
+        public IRobotTemplateRepository Create(ConnectionSettings connection)
+        {
+            return new RobotTemplateRepository(connection);
+        }
+    }
+
+    public sealed class RobotTemplateRepository : IRobotTemplateRepository
     {
         private readonly ConnectionSettings _connection;
 

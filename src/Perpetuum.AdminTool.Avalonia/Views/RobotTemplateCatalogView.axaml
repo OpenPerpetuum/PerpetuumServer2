@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:templates="using:Perpetuum.AdminTool.Templates"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.RobotTemplateCatalogView"
+             x:DataType="vm:RobotTemplateCatalogViewModel">
+  <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <StackPanel Spacing="12">
+      <Grid ColumnDefinitions="*,280,Auto" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" Spacing="3">
+          <TextBlock Text="Robot templates" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Edit raw template Genxy through the guarded pending-change workflow."
+                     Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+        <TextBox Grid.Column="1" Watermark="template id or name" Text="{Binding FilterText}" />
+        <Button Grid.Column="2" Content="Reload" Command="{Binding LoadCommand}"
+                IsEnabled="{Binding IsNotLoading}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBox Grid.Column="0" Watermark="new template name" Text="{Binding NewTemplateName}" />
+        <Button Grid.Column="1" Content="Create unsaved template"
+                Command="{Binding CreateTemplateCommand}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="340,*" ColumnSpacing="16">
+        <ListBox Grid.Column="0" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
+                 MinHeight="360" MaxHeight="560">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="templates:RobotTemplateRow">
+              <Grid ColumnDefinitions="90,*" ColumnSpacing="8" Margin="2">
+                <TextBlock Grid.Column="0" Text="{Binding IdDisplay}" Opacity="0.65"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="6">
+          <Grid Grid.Row="0" ColumnDefinitions="130,*" ColumnSpacing="10">
+            <TextBlock Grid.Column="0" Text="Template id" />
+            <TextBlock Grid.Column="1" Text="{Binding SelectedRow.IdDisplay}" />
+          </Grid>
+          <Grid Grid.Row="1" ColumnDefinitions="130,*" ColumnSpacing="10">
+            <TextBlock Grid.Column="0" Text="Name" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.Name}" />
+          </Grid>
+          <Grid Grid.Row="2" ColumnDefinitions="130,*" ColumnSpacing="10">
+            <TextBlock Grid.Column="0" Text="Admin note" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.Note}" />
+          </Grid>
+          <StackPanel Grid.Row="3" Spacing="4">
+            <TextBlock Text="Description (raw Genxy)" />
+            <TextBox Text="{Binding SelectedRow.Description}"
+                     AcceptsReturn="True" TextWrapping="NoWrap"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     FontFamily="Monospace" MinHeight="220" MaxHeight="360" />
+          </StackPanel>
+          <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+            <Button Grid.Column="0" Content="Queue DELETE" Command="{Binding QueueDeleteCommand}" />
+            <Button Grid.Column="2" Content="Revert edits" Command="{Binding RevertSelectedChangesCommand}" />
+            <Button Grid.Column="3" Content="Queue changes" Command="{Binding QueueSelectedChangesCommand}" />
+          </Grid>
+        </Grid>
+      </Grid>
+
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </Border>
+</UserControl>
