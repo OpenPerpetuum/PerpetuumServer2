@@ -38,7 +38,8 @@ public partial class App : Application
                     new EntityRepositoryFactory(),
                     new RobotTemplateRepositoryFactory(),
                     new RobotTemplateRelationRepositoryFactory(),
-                    new EquipmentSetRepositoryFactory())
+                    new EquipmentSetRepositoryFactory(),
+                    new RobotTemplateEditorRepositoryFactory())
             };
         }
 

@@ -34,7 +34,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEntityRepositoryFactory(),
             new StubRobotTemplateRepositoryFactory(),
             new StubRobotTemplateRelationRepositoryFactory(),
-            new StubEquipmentSetRepositoryFactory());
+            new StubEquipmentSetRepositoryFactory(),
+            new StubRobotTemplateEditorRepositoryFactory());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -56,7 +57,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEntityRepositoryFactory(),
             new StubRobotTemplateRepositoryFactory(),
             new StubRobotTemplateRelationRepositoryFactory(),
-            new StubEquipmentSetRepositoryFactory())
+            new StubEquipmentSetRepositoryFactory(),
+            new StubRobotTemplateEditorRepositoryFactory())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -93,7 +95,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEntityRepositoryFactory(),
             new StubRobotTemplateRepositoryFactory(),
             new StubRobotTemplateRelationRepositoryFactory(),
-            new StubEquipmentSetRepositoryFactory())
+            new StubEquipmentSetRepositoryFactory(),
+            new StubRobotTemplateEditorRepositoryFactory())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -133,7 +136,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEntityRepositoryFactory(),
             new StubRobotTemplateRepositoryFactory(),
             new StubRobotTemplateRelationRepositoryFactory(),
-            new StubEquipmentSetRepositoryFactory())
+            new StubEquipmentSetRepositoryFactory(),
+            new StubRobotTemplateEditorRepositoryFactory())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -306,5 +310,20 @@ public sealed class MainWindowViewModelTests : IDisposable
 
         public Task<List<SetMemberPickItem>> LoadMemberChoicesAsync() =>
             Task.FromResult(new List<SetMemberPickItem>());
+    }
+
+    private sealed class StubRobotTemplateEditorRepositoryFactory
+        : IRobotTemplateEditorRepositoryFactory
+    {
+        public IRobotTemplateEditorRepository Create(ConnectionSettings connection)
+        {
+            return new StubRobotTemplateEditorRepository();
+        }
+    }
+
+    private sealed class StubRobotTemplateEditorRepository : IRobotTemplateEditorRepository
+    {
+        public Task<List<RobotTemplateEditorEntity>> LoadAllAsync() =>
+            Task.FromResult(new List<RobotTemplateEditorEntity>());
     }
 }

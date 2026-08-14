@@ -6,6 +6,24 @@ using Perpetuum.GenXY;
 
 namespace Perpetuum.AdminTool.Templates
 {
+    public interface IRobotTemplateEditorRepository
+    {
+        Task<List<RobotTemplateEditorEntity>> LoadAllAsync();
+    }
+
+    public interface IRobotTemplateEditorRepositoryFactory
+    {
+        IRobotTemplateEditorRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class RobotTemplateEditorRepositoryFactory : IRobotTemplateEditorRepositoryFactory
+    {
+        public IRobotTemplateEditorRepository Create(ConnectionSettings connection)
+        {
+            return new RobotTemplateEditorRepository(connection);
+        }
+    }
+
     /// <summary>
     /// One-shot loader for the structured robot-template editor. Reads every
     /// entitydefaults row and parses its `options` to extract the few fields
@@ -13,7 +31,7 @@ namespace Perpetuum.AdminTool.Templates
     /// parse per row), but the modal opens infrequently and we don't keep this
     /// data around between opens.
     /// </summary>
-    public class RobotTemplateEditorRepository
+    public sealed class RobotTemplateEditorRepository : IRobotTemplateEditorRepository
     {
         private readonly ConnectionSettings _connection;
 

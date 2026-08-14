@@ -22,6 +22,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IRobotTemplateRepositoryFactory _robotTemplateRepositoryFactory;
     private readonly IRobotTemplateRelationRepositoryFactory _robotTemplateRelationRepositoryFactory;
     private readonly IEquipmentSetRepositoryFactory _equipmentSetRepositoryFactory;
+    private readonly IRobotTemplateEditorRepositoryFactory _robotTemplateEditorRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -54,7 +55,8 @@ public partial class MainWindowViewModel : ObservableObject
         IEntityRepositoryFactory entityRepositoryFactory,
         IRobotTemplateRepositoryFactory robotTemplateRepositoryFactory,
         IRobotTemplateRelationRepositoryFactory robotTemplateRelationRepositoryFactory,
-        IEquipmentSetRepositoryFactory equipmentSetRepositoryFactory)
+        IEquipmentSetRepositoryFactory equipmentSetRepositoryFactory,
+        IRobotTemplateEditorRepositoryFactory robotTemplateEditorRepositoryFactory)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -66,6 +68,7 @@ public partial class MainWindowViewModel : ObservableObject
         _robotTemplateRepositoryFactory = robotTemplateRepositoryFactory;
         _robotTemplateRelationRepositoryFactory = robotTemplateRelationRepositoryFactory;
         _equipmentSetRepositoryFactory = equipmentSetRepositoryFactory;
+        _robotTemplateEditorRepositoryFactory = robotTemplateEditorRepositoryFactory;
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -164,6 +167,7 @@ public partial class MainWindowViewModel : ObservableObject
                         changeQueue);
                     RobotTemplates = new RobotTemplateCatalogViewModel(
                         _robotTemplateRepositoryFactory.Create(BuildConnectionSettings()),
+                        _robotTemplateEditorRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
                     RobotTemplateRelations = new RobotTemplateRelationsCatalogViewModel(
                         _robotTemplateRelationRepositoryFactory.Create(BuildConnectionSettings()),

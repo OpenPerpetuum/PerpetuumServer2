@@ -1,7 +1,7 @@
 <Window x:Class="Perpetuum.AdminTool.Views.RobotTemplateEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels"
+        xmlns:vm="clr-namespace:Perpetuum.AdminTool.ViewModels;assembly=Perpetuum.AdminTool.Core"
         Title="Robot template — structured editor"
         Width="900" Height="720"
         WindowStartupLocation="CenterOwner"

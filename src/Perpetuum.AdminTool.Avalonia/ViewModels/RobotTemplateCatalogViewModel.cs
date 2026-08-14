@@ -3,12 +3,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Templates;
+using StructuredEditorViewModel = Perpetuum.AdminTool.ViewModels.RobotTemplateEditorViewModel;
 
 namespace Perpetuum.AdminTool.Avalonia.ViewModels;
 
 public partial class RobotTemplateCatalogViewModel : ObservableObject
 {
     private readonly IRobotTemplateRepository _repository;
+    private readonly IRobotTemplateEditorRepository _editorRepository;
     private readonly ChangeQueue _changeQueue;
     private readonly List<RobotTemplateRow> _allRows = new();
 
@@ -19,12 +21,17 @@ public partial class RobotTemplateCatalogViewModel : ObservableObject
     [ObservableProperty] private bool _statusIsError;
     [ObservableProperty] private string _statusMessage =
         "Load robot templates from the server database.";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStructuredEditor))]
+    private StructuredEditorViewModel? _structuredEditor;
 
     public RobotTemplateCatalogViewModel(
         IRobotTemplateRepository repository,
+        IRobotTemplateEditorRepository editorRepository,
         ChangeQueue changeQueue)
     {
         _repository = repository;
+        _editorRepository = editorRepository;
         _changeQueue = changeQueue;
     }
 
@@ -32,9 +39,16 @@ public partial class RobotTemplateCatalogViewModel : ObservableObject
 
     public bool IsNotLoading => !IsLoading;
 
+    public bool HasStructuredEditor => StructuredEditor != null;
+
     partial void OnFilterTextChanged(string value) => RebuildFilteredRows();
 
     partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsNotLoading));
+
+    partial void OnSelectedRowChanged(RobotTemplateRow? value)
+    {
+        StructuredEditor = null;
+    }
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -176,6 +190,67 @@ public partial class RobotTemplateCatalogViewModel : ObservableObject
         RemoveFromCatalog(row);
         StatusIsError = false;
         StatusMessage = $"Queued destructive DELETE for {name}. Review it below before application.";
+    }
+
+    [RelayCommand]
+    private async Task LoadStructuredEditorAsync()
+    {
+        RobotTemplateRow? row = SelectedRow;
+        if (row == null)
+        {
+            SetError("Select a robot template first.");
+            return;
+        }
+        if (IsLoading) return;
+
+        IsLoading = true;
+        StatusIsError = false;
+        StatusMessage = $"Loading structured editor data for {row.Name}...";
+        try
+        {
+            List<RobotTemplateEditorEntity> entities = await _editorRepository.LoadAllAsync();
+            StructuredEditor = new StructuredEditorViewModel(entities, row.Description ?? string.Empty);
+            StatusMessage = $"Structured editor loaded with {entities.Count} entity definitions.";
+        }
+        catch (Exception ex)
+        {
+            StructuredEditor = null;
+            SetError($"Unable to load structured editor: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ApplyStructuredEditor()
+    {
+        RobotTemplateRow? row = SelectedRow;
+        StructuredEditorViewModel? editor = StructuredEditor;
+        if (row == null || editor == null)
+        {
+            SetError("Load the structured editor first.");
+            return;
+        }
+        if (!editor.TrySerialize(out string error))
+        {
+            SetError(error);
+            return;
+        }
+
+        row.Description = editor.ResultGenxy;
+        StructuredEditor = null;
+        StatusIsError = false;
+        StatusMessage = "Applied structured values to the unsaved raw Genxy. Queue template changes to persist them.";
+    }
+
+    [RelayCommand]
+    private void CloseStructuredEditor()
+    {
+        StructuredEditor = null;
+        StatusIsError = false;
+        StatusMessage = "Closed the structured editor without changing raw Genxy.";
     }
 
     private void RebuildFilteredRows()

@@ -1,9 +1,38 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:corevm="using:Perpetuum.AdminTool.ViewModels"
              xmlns:templates="using:Perpetuum.AdminTool.Templates"
              x:Class="Perpetuum.AdminTool.Avalonia.Views.RobotTemplateCatalogView"
              x:DataType="vm:RobotTemplateCatalogViewModel">
+  <UserControl.Resources>
+    <DataTemplate x:Key="SlotTemplate" x:DataType="corevm:RobotTemplateSlotViewModel">
+      <Grid ColumnDefinitions="55,90,*,*,90" ColumnSpacing="6" Margin="0,2">
+        <TextBlock Grid.Column="0" Text="{Binding SlotIndex}" />
+        <TextBlock Grid.Column="1" Text="{Binding SlotFlagHex}" Opacity="0.65" />
+        <ComboBox Grid.Column="2" ItemsSource="{Binding ModulePicks}"
+                  SelectedValue="{Binding ModuleDefinition}"
+                  SelectedValueBinding="{Binding Definition}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="templates:RobotTemplateEditorEntity">
+              <TextBlock Text="{Binding Display}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <ComboBox Grid.Column="3" ItemsSource="{Binding AmmoPicks}"
+                  IsEnabled="{Binding IsAmmoable}"
+                  SelectedValue="{Binding AmmoDefinition}"
+                  SelectedValueBinding="{Binding Definition}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="templates:RobotTemplateEditorEntity">
+              <TextBlock Text="{Binding Display}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBox Grid.Column="4" Text="{Binding AmmoQuantity}" IsEnabled="{Binding IsAmmoable}" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
   <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
     <StackPanel Spacing="12">
       <Grid ColumnDefinitions="*,280,Auto" ColumnSpacing="8">
@@ -65,6 +94,66 @@
           </Grid>
         </Grid>
       </Grid>
+
+      <Button Content="Load structured editor" Command="{Binding LoadStructuredEditorCommand}"
+              IsEnabled="{Binding IsNotLoading}" HorizontalAlignment="Right" />
+
+      <Border IsVisible="{Binding HasStructuredEditor}"
+              Padding="12" Background="#1A808080" CornerRadius="5">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Structured robot editor" FontWeight="SemiBold" />
+          <TextBlock Text="Unknown Genxy keys, including cargo items, are preserved when applying."
+                     Opacity="0.7" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                ColumnSpacing="8" RowSpacing="6">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Robot" />
+            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding StructuredEditor.RobotPicks}"
+                      SelectedValue="{Binding StructuredEditor.RobotDefinition}"
+                      SelectedValueBinding="{Binding Definition}">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="templates:RobotTemplateEditorEntity"><TextBlock Text="{Binding Display}" /></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Head" />
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding StructuredEditor.HeadPicks}"
+                      SelectedValue="{Binding StructuredEditor.HeadDefinition}"
+                      SelectedValueBinding="{Binding Definition}">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="templates:RobotTemplateEditorEntity"><TextBlock Text="{Binding Display}" /></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Chassis" />
+            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding StructuredEditor.ChassisPicks}"
+                      SelectedValue="{Binding StructuredEditor.ChassisDefinition}"
+                      SelectedValueBinding="{Binding Definition}">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="templates:RobotTemplateEditorEntity"><TextBlock Text="{Binding Display}" /></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Leg" />
+            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding StructuredEditor.LegPicks}"
+                      SelectedValue="{Binding StructuredEditor.LegDefinition}"
+                      SelectedValueBinding="{Binding Definition}">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="templates:RobotTemplateEditorEntity"><TextBlock Text="{Binding Display}" /></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Container" />
+            <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding StructuredEditor.ContainerPicks}"
+                      SelectedValue="{Binding StructuredEditor.ContainerDefinition}"
+                      SelectedValueBinding="{Binding Definition}">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="templates:RobotTemplateEditorEntity"><TextBlock Text="{Binding Display}" /></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+
+          <TextBlock Text="Head modules" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding StructuredEditor.HeadSlots}"
+                        ItemTemplate="{StaticResource SlotTemplate}" />
+          <TextBlock Text="Chassis modules" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding StructuredEditor.ChassisSlots}"
+                        ItemTemplate="{StaticResource SlotTemplate}" />
+          <TextBlock Text="Leg modules" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding StructuredEditor.LegSlots}"
+                        ItemTemplate="{StaticResource SlotTemplate}" />
+
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Close without applying" Command="{Binding CloseStructuredEditorCommand}" />
+            <Button Content="Apply to raw Genxy" Command="{Binding ApplyStructuredEditorCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
 
       <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
     </StackPanel>

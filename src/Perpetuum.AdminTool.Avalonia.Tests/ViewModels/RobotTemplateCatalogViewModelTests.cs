@@ -13,6 +13,7 @@ public sealed class RobotTemplateCatalogViewModelTests
         RobotTemplateRow beta = CreateRow(20, "beta_guard");
         var viewModel = new RobotTemplateCatalogViewModel(
             new StubRepository([alpha, beta]),
+            new StubEditorRepository(),
             new ChangeQueue());
 
         await viewModel.LoadCommand.ExecuteAsync(null);
@@ -28,7 +29,8 @@ public sealed class RobotTemplateCatalogViewModelTests
     {
         RobotTemplateRow row = CreateRow(10, "alpha_patrol");
         var queue = new ChangeQueue();
-        var viewModel = new RobotTemplateCatalogViewModel(new StubRepository([row]), queue);
+        var viewModel = new RobotTemplateCatalogViewModel(
+            new StubRepository([row]), new StubEditorRepository(), queue);
         await viewModel.LoadCommand.ExecuteAsync(null);
         row.Note = "new note";
 
@@ -43,7 +45,8 @@ public sealed class RobotTemplateCatalogViewModelTests
     public void CreateAndQueueInsert_ProducesInsertAndRemovesUnsavedRow()
     {
         var queue = new ChangeQueue();
-        var viewModel = new RobotTemplateCatalogViewModel(new StubRepository([]), queue)
+        var viewModel = new RobotTemplateCatalogViewModel(
+            new StubRepository([]), new StubEditorRepository(), queue)
         {
             NewTemplateName = "new_patrol"
         };
@@ -65,7 +68,8 @@ public sealed class RobotTemplateCatalogViewModelTests
     {
         RobotTemplateRow row = CreateRow(10, "alpha_patrol");
         var queue = new ChangeQueue();
-        var viewModel = new RobotTemplateCatalogViewModel(new StubRepository([row]), queue);
+        var viewModel = new RobotTemplateCatalogViewModel(
+            new StubRepository([row]), new StubEditorRepository(), queue);
         await viewModel.LoadCommand.ExecuteAsync(null);
 
         viewModel.QueueDeleteCommand.Execute(null);
@@ -74,6 +78,36 @@ public sealed class RobotTemplateCatalogViewModelTests
         Assert.True(change.IsDestructive);
         Assert.Equal("DELETE FROM robottemplates WHERE id = 10", change.ToSql());
         Assert.Empty(viewModel.Rows);
+    }
+
+    [Fact]
+    public async Task StructuredEditor_AppliesRequiredPartsAndPreservesUnknownKeys()
+    {
+        RobotTemplateRow row = CreateRow(10, "alpha_patrol");
+        row.Description = "#items=[|cargo=i2a]";
+        var editorRepository = new StubEditorRepository(
+        [
+            EditorEntity(1, "robot", 0x1),
+            EditorEntity(2, "head", 0x150),
+            EditorEntity(3, "chassis", 0x250),
+            EditorEntity(4, "leg", 0x350),
+            EditorEntity(5, "container", 0x30915)
+        ]);
+        var viewModel = new RobotTemplateCatalogViewModel(
+            new StubRepository([row]), editorRepository, new ChangeQueue());
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        await viewModel.LoadStructuredEditorCommand.ExecuteAsync(null);
+        viewModel.StructuredEditor!.RobotDefinition = 1;
+        viewModel.StructuredEditor.HeadDefinition = 2;
+        viewModel.StructuredEditor.ChassisDefinition = 3;
+        viewModel.StructuredEditor.LegDefinition = 4;
+        viewModel.StructuredEditor.ContainerDefinition = 5;
+        viewModel.ApplyStructuredEditorCommand.Execute(null);
+
+        Assert.Contains("#robot=i1", row.Description);
+        Assert.Contains("#items=[|cargo=i2a]", row.Description);
+        Assert.Null(viewModel.StructuredEditor);
     }
 
     private static RobotTemplateRow CreateRow(int id, string name)
@@ -86,6 +120,17 @@ public sealed class RobotTemplateCatalogViewModelTests
         });
     }
 
+    private static RobotTemplateEditorEntity EditorEntity(int definition, string name, long categoryFlags)
+    {
+        return new RobotTemplateEditorEntity
+        {
+            Definition = definition,
+            Name = name,
+            CategoryFlags = categoryFlags,
+            Enabled = true
+        };
+    }
+
     private sealed class StubRepository(IReadOnlyList<RobotTemplateRow> rows)
         : IRobotTemplateRepository
     {
@@ -93,5 +138,18 @@ public sealed class RobotTemplateCatalogViewModelTests
         {
             return Task.FromResult(rows.ToList());
         }
+    }
+
+    private sealed class StubEditorRepository : IRobotTemplateEditorRepository
+    {
+        private readonly List<RobotTemplateEditorEntity> _rows;
+
+        public StubEditorRepository(IEnumerable<RobotTemplateEditorEntity>? rows = null)
+        {
+            _rows = rows?.ToList() ?? [];
+        }
+
+        public Task<List<RobotTemplateEditorEntity>> LoadAllAsync() =>
+            Task.FromResult(_rows);
     }
 }

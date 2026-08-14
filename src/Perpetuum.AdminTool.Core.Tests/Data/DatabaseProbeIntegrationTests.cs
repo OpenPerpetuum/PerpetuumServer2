@@ -105,6 +105,20 @@ public sealed class DatabaseProbeIntegrationTests
         await repository.LoadThresholdsAsync(sets[0].SetId);
     }
 
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task RobotTemplateEditorRepository_ParsesCurrentEntityOptions()
+    {
+        var repository = new RobotTemplateEditorRepository(LoadConnectionSettings());
+
+        List<RobotTemplateEditorEntity> rows = await repository.LoadAllAsync();
+
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.True(row.Definition > 0));
+        Assert.Contains(rows, row => row.SlotFlags.Length > 0);
+        Assert.Contains(rows, row => row.ModuleFlag != 0);
+    }
+
     private static ConnectionSettings LoadConnectionSettings()
     {
         string? server = Environment.GetEnvironmentVariable("PERPETUUM_ADMINTOOL_TEST_SERVER");
