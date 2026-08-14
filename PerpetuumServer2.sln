@@ -23,7 +23,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perpetuum.ServerService2", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Perpetuum.AdminTool", "src\Perpetuum.AdminTool\Perpetuum.AdminTool.csproj", "{A7D1E3C5-9F4B-42E8-8A6C-B5D7F1E9C2A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perpetuum.Tests", "src\Perpetuum.Tests\Perpetuum.Tests.csproj", "{C8C45427-6E5C-496C-9446-0817EADC05DD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Perpetuum.Tests", "src\Perpetuum.Tests\Perpetuum.Tests.csproj", "{C8C45427-6E5C-496C-9446-0817EADC05DD}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Perpetuum.Tests.Integration", "src\Perpetuum.Tests.Integration\Perpetuum.Tests.Integration.csproj", "{ABE8E004-66D6-4D40-AEBF-3CFBD041E29B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -71,6 +73,10 @@ Global
 		{C8C45427-6E5C-496C-9446-0817EADC05DD}.Debug|x64.Build.0 = Debug|x64
 		{C8C45427-6E5C-496C-9446-0817EADC05DD}.Release|x64.ActiveCfg = Release|x64
 		{C8C45427-6E5C-496C-9446-0817EADC05DD}.Release|x64.Build.0 = Release|x64
+		{ABE8E004-66D6-4D40-AEBF-3CFBD041E29B}.Debug|x64.ActiveCfg = Debug|x64
+		{ABE8E004-66D6-4D40-AEBF-3CFBD041E29B}.Debug|x64.Build.0 = Debug|x64
+		{ABE8E004-66D6-4D40-AEBF-3CFBD041E29B}.Release|x64.ActiveCfg = Release|x64
+		{ABE8E004-66D6-4D40-AEBF-3CFBD041E29B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -86,6 +92,7 @@ Global
 		{A2FCE930-E013-4731-B354-F7DA00322D38} = {0BC991A1-133C-49ED-A141-80E2A906898B}
 		{A7D1E3C5-9F4B-42E8-8A6C-B5D7F1E9C2A0} = {0BC991A1-133C-49ED-A141-80E2A906898B}
 		{C8C45427-6E5C-496C-9446-0817EADC05DD} = {0BC991A1-133C-49ED-A141-80E2A906898B}
+		{ABE8E004-66D6-4D40-AEBF-3CFBD041E29B} = {0BC991A1-133C-49ED-A141-80E2A906898B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {91874B60-30B0-4B48-9155-370E40BC70E6}
