@@ -7,8 +7,10 @@ using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Npc;
 using Perpetuum.AdminTool.NewItem;
+using Perpetuum.AdminTool.NewRobot;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
+using Perpetuum.GenXY;
 
 namespace Perpetuum.AdminTool.Core.Tests.Data;
 
@@ -93,6 +95,29 @@ public sealed class DatabaseProbeIntegrationTests
             lookups.EnabledItems[0].Definition);
         Assert.NotNull(clone.Components);
         Assert.NotNull(clone.DefinitionConfig);
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task NewRobotRepository_LoadsCurrentTemplateRelationAndChassisBonuses()
+    {
+        ConnectionSettings settings = LoadConnectionSettings();
+        EntitiesSnapshot snapshot = await new EntityRepository(settings).LoadAsync();
+        EntityDefaultRow robot = snapshot.Rows.First(row =>
+        {
+            Dictionary<string, object> options = GenxyConverter.Deserialize(row.Options ?? string.Empty);
+            return options.TryGetValue("chassis", out object? value) && value is int;
+        });
+        Dictionary<string, object> robotOptions = GenxyConverter.Deserialize(robot.Options ?? string.Empty);
+        int chassisDefinition = (int)robotOptions["chassis"];
+        var repository = new NewRobotRepository(settings);
+
+        RobotTemplateRelationData? relation = await repository.LoadTemplateRelationAsync(robot.Definition);
+        IReadOnlyList<ChassisBonusRow> bonuses = await repository.LoadChassisBonusesAsync(chassisDefinition);
+
+        Assert.NotNull(relation);
+        Assert.NotNull(bonuses);
+        Assert.All(bonuses, bonus => Assert.True(bonus.ExtensionId > 0));
     }
 
     [Fact]

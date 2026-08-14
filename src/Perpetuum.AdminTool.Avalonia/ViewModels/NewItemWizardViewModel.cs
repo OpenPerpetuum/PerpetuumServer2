@@ -10,11 +10,11 @@ namespace Perpetuum.AdminTool.Avalonia.ViewModels;
 
 public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildModel
 {
-    private readonly INewItemRepository _repository;
-    private readonly IEntityRepository _entityRepository;
-    private readonly ChangeQueue _queue;
-    private readonly Dictionary<int, EntityDefaultRow> _existingRowsById = new();
-    private readonly HashSet<string> _existingNames = new(StringComparer.Ordinal);
+    protected readonly INewItemRepository Repository;
+    protected readonly IEntityRepository EntityRepository;
+    protected readonly ChangeQueue Queue;
+    protected readonly Dictionary<int, EntityDefaultRow> ExistingRowsById = new();
+    protected readonly HashSet<string> ExistingNames = new(StringComparer.Ordinal);
     private bool _isResetting;
 
     [ObservableProperty] private PackageItemPickItem? _cloneSource;
@@ -38,13 +38,13 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
         IEntityRepository entityRepository,
         ChangeQueue queue)
     {
-        _repository = repository;
-        _entityRepository = entityRepository;
-        _queue = queue;
+        Repository = repository;
+        EntityRepository = entityRepository;
+        Queue = queue;
 
-        BasicPanel = new BasicPanelViewModel(BasicPanelMode.Main, _existingNames);
-        CalibrationPanel = new BasicPanelViewModel(BasicPanelMode.CalibrationTemplate, _existingNames);
-        PrototypePanel = new BasicPanelViewModel(BasicPanelMode.Prototype, _existingNames);
+        BasicPanel = new BasicPanelViewModel(BasicPanelMode.Main, ExistingNames);
+        CalibrationPanel = new BasicPanelViewModel(BasicPanelMode.CalibrationTemplate, ExistingNames);
+        PrototypePanel = new BasicPanelViewModel(BasicPanelMode.Prototype, ExistingNames);
         StatsPanel = new StatsPanelViewModel();
         PropertyModifiersPanel = new PropertyModifiersPanelViewModel();
         ProductionPanel = new ProductionPanelViewModel();
@@ -54,6 +54,7 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
         BasicPanel.PropertyChanged += (_, args) =>
         {
             if (_isResetting) return;
+            OnBasicPanelPropertyChanged(args.PropertyName);
             if (args.PropertyName == nameof(BasicPanelViewModel.DefinitionName))
             {
                 CalibrationPanel.SuggestName(BasicPanel.DefinitionName, "_cprg");
@@ -81,6 +82,12 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
     public bool IsCraftable => BasicPanel.IsCraftable;
     public bool HasPrototype => BasicPanel.HasPrototype;
     public bool IsNotLoading => !IsLoading;
+    public virtual string WorkflowTitle => "New Item";
+    public virtual string WorkflowDescription =>
+        "Create from scratch or clone every supported item table into a new definition.";
+    public virtual string QueueButtonLabel => "Queue item creation";
+
+    protected virtual void OnBasicPanelPropertyChanged(string? propertyName) { }
 
     partial void OnIsLoadingChanged(bool value)
     {
@@ -105,13 +112,13 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
         StatusMessage = "Loading entity and item metadata...";
         try
         {
-            EntitiesSnapshot snapshot = await _entityRepository.LoadAsync();
-            _existingRowsById.Clear();
-            _existingNames.Clear();
+            EntitiesSnapshot snapshot = await EntityRepository.LoadAsync();
+            ExistingRowsById.Clear();
+            ExistingNames.Clear();
             foreach (EntityDefaultRow row in snapshot.Rows)
             {
-                _existingRowsById[row.Definition] = row;
-                _existingNames.Add(row.DefinitionName);
+                ExistingRowsById[row.Definition] = row;
+                ExistingNames.Add(row.DefinitionName);
             }
 
             List<EntityPickItem> entities = snapshot.Rows.Select(row => new EntityPickItem
@@ -124,7 +131,7 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
                 TierType = row.TierType ?? 0,
                 TierLevel = row.TierLevel ?? 0
             }).ToList();
-            NewItemLookups lookups = await _repository.LoadAsync(
+            NewItemLookups lookups = await Repository.LoadAsync(
                 snapshot.Fields.Values.OrderBy(field => field.Name).ToList(), entities);
             EnabledItems = lookups.EnabledItems;
             StatsPanel.Initialize(lookups);
@@ -132,6 +139,7 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
             ProductionPanel.Initialize(lookups);
             ResearchPanel.Initialize(lookups);
             OptionsVisualPanel.Initialize(lookups);
+            await OnLookupsLoadedAsync(lookups, snapshot);
             StatusMessage = $"Loaded {snapshot.Rows.Count} entities and {snapshot.Fields.Count} aggregate fields.";
         }
         catch (Exception ex)
@@ -147,9 +155,12 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
 
     private bool CanLoad() => !IsLoading;
 
+    protected virtual Task OnLookupsLoadedAsync(NewItemLookups lookups, EntitiesSnapshot snapshot) =>
+        Task.CompletedTask;
+
     private async Task LoadCloneAsync(int definition)
     {
-        if (!_existingRowsById.TryGetValue(definition, out EntityDefaultRow? row)) return;
+        if (!ExistingRowsById.TryGetValue(definition, out EntityDefaultRow? row)) return;
         IsLoading = true;
         StatusIsError = false;
         StatusMessage = $"Loading clone source {row.DefinitionName}...";
@@ -160,10 +171,11 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
             PrototypePanel.LoadFromClone(row, "_pr");
             StatsPanel.LoadFromClone(row.Stats);
             PropertyModifiersPanel.LoadFromClone(row.CategoryFlags);
-            CloneExtendedData extended = await _repository.LoadCloneExtendedAsync(definition);
+            CloneExtendedData extended = await Repository.LoadCloneExtendedAsync(definition);
             ProductionPanel.LoadFromClone(extended.Components);
             ResearchPanel.LoadFromClone(extended);
             OptionsVisualPanel.LoadFromClone(row.Options, extended.DefinitionConfig);
+            await OnCloneLoadedAsync(definition, row, extended);
             IsQueued = false;
             StatusMessage = $"Cloned settings from {row.DefinitionName}. Choose a unique definition name before queueing.";
         }
@@ -178,6 +190,11 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
         }
     }
 
+    protected virtual Task OnCloneLoadedAsync(
+        int definition,
+        EntityDefaultRow row,
+        CloneExtendedData extended) => Task.CompletedTask;
+
     [RelayCommand(CanExecute = nameof(CanQueueItem))]
     private void QueueItem()
     {
@@ -189,16 +206,20 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
             return;
         }
 
-        _queue.Add(ItemSqlBuilder.Build(this));
+        Queue.Add(BuildChange());
         AddTranslationKeys(BasicPanel);
         if (IsCraftable) AddTranslationKeys(CalibrationPanel);
         if (IsCraftable && HasPrototype) AddTranslationKeys(PrototypePanel);
+        AddAdditionalTranslationKeys();
         IsQueued = true;
         StatusIsError = false;
         StatusMessage = $"Queued creation of {BasicPanel.DefinitionName}. Review it in Pending changes.";
     }
 
     private bool CanQueueItem() => !IsLoading && !IsQueued;
+
+    protected virtual RawSqlChange BuildChange() => ItemSqlBuilder.Build(this);
+    protected virtual void AddAdditionalTranslationKeys() { }
 
     [RelayCommand]
     private void NewDraft()
@@ -228,12 +249,15 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
             IsQueued = false;
             StatusIsError = false;
             StatusMessage = "Started a new item draft.";
+            ResetAdditionalDraft();
         }
         finally
         {
             _isResetting = false;
         }
     }
+
+    protected virtual void ResetAdditionalDraft() { }
 
     [RelayCommand] private void RemoveSelectedStat() { if (SelectedStat != null) StatsPanel.Rows.Remove(SelectedStat); }
     [RelayCommand] private void RemoveSelectedModuleModifier() { if (SelectedModuleModifier != null) PropertyModifiersPanel.ModulePropertyModifierRows.Remove(SelectedModuleModifier); }
@@ -244,7 +268,7 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
     [RelayCommand] private void RemoveSelectedEnablerExtension() { if (SelectedEnablerExtension != null) ResearchPanel.EnablerExtensionRows.Remove(SelectedEnablerExtension); }
     [RelayCommand] private void RemoveSelectedConfigRow() { if (SelectedConfigRow != null) OptionsVisualPanel.DefinitionConfigRows.Remove(SelectedConfigRow); }
 
-    private string? ValidateDraft()
+    protected virtual string? ValidateDraft()
     {
         if (BasicPanel.HasErrors) return "Basic: enter a unique definition name beginning with def_ and nonzero category flags.";
         if (IsCraftable && CalibrationPanel.HasErrors) return "Calibration Template has an invalid definition name.";
@@ -253,16 +277,19 @@ public partial class NewItemWizardViewModel : ObservableObject, INewItemBuildMod
         if (IsCraftable && ProductionPanel.HasDuplicateIngredients()) return "Production contains a duplicate ingredient.";
         if (IsCraftable && ResearchPanel.HasDuplicatePointTypes()) return "Research contains a duplicate point type.";
         if (OptionsVisualPanel.HasDuplicateConfigColumns()) return "Options & Visual contains a duplicate config column.";
-        return OptionsVisualPanel.ValidateTintValues();
+        string? tintError = OptionsVisualPanel.ValidateTintValues();
+        return tintError ?? ValidateAdditionalDraft();
     }
 
-    private void AddTranslationKeys(BasicPanelViewModel panel)
+    protected virtual string? ValidateAdditionalDraft() => null;
+
+    protected void AddTranslationKeys(BasicPanelViewModel panel)
     {
-        _queue.AddNewEntityName(panel.DefinitionName);
-        _queue.AddNewEntityName(panel.DescriptionToken);
+        Queue.AddNewEntityName(panel.DefinitionName);
+        Queue.AddNewEntityName(panel.DescriptionToken);
     }
 
-    private static void ResetBasic(BasicPanelViewModel panel, bool purchasable)
+    protected static void ResetBasic(BasicPanelViewModel panel, bool purchasable)
     {
         panel.DefinitionName = string.Empty;
         panel.CategoryFlags = 0;

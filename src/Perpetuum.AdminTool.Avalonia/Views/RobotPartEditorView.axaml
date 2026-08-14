@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:views="using:Perpetuum.AdminTool.Avalonia.Views"
+             xmlns:item="using:Perpetuum.AdminTool.NewItem"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.RobotPartEditorView"
+             x:DataType="vm:RobotPartEditorViewModel">
+  <StackPanel Spacing="8" Margin="6">
+    <Grid ColumnDefinitions="140,*" ColumnSpacing="8">
+      <TextBlock Text="Clone source" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1" ItemsSource="{Binding Items}" SelectedItem="{Binding CloneSource}"
+                DisplayMemberBinding="{Binding Display}" />
+    </Grid>
+    <views:BasicItemPanelView DataContext="{Binding BasicPanel}" />
+    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+      <TextBlock Text="Part aggregate stats: field ID and value" />
+      <Button Grid.Column="1" Content="Add" Command="{Binding StatsPanel.AddRowCommand}" />
+      <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveSelectedStatCommand}" />
+    </Grid>
+    <ListBox ItemsSource="{Binding StatsPanel.Rows}" SelectedItem="{Binding SelectedStat}" MaxHeight="150">
+      <ListBox.ItemTemplate><DataTemplate x:DataType="item:NewStatRow">
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="2">
+          <TextBox Text="{Binding FieldId}" Watermark="field ID" />
+          <TextBox Grid.Column="1" Text="{Binding NewValue}" Watermark="value" />
+        </Grid>
+      </DataTemplate></ListBox.ItemTemplate>
+    </ListBox>
+    <Expander Header="Part options">
+      <TextBox Text="{Binding OptionsPanel.OptionsText}" AcceptsReturn="True" MinHeight="80" />
+    </Expander>
+  </StackPanel>
+</UserControl>

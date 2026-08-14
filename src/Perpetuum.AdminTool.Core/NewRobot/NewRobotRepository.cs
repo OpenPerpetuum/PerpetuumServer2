@@ -7,7 +7,23 @@ namespace Perpetuum.AdminTool.NewRobot;
 
 public record ChassisBonusRow(int ExtensionId, double Bonus, int TargetPropertyId, bool EffectEnhancer, string? Note);
 
-public class NewRobotRepository
+public interface INewRobotRepository
+{
+    Task<RobotTemplateRelationData?> LoadTemplateRelationAsync(int robotDefinition);
+    Task<IReadOnlyList<ChassisBonusRow>> LoadChassisBonusesAsync(int chassisDefinition);
+}
+
+public interface INewRobotRepositoryFactory
+{
+    INewRobotRepository Create(ConnectionSettings connection);
+}
+
+public sealed class NewRobotRepositoryFactory : INewRobotRepositoryFactory
+{
+    public INewRobotRepository Create(ConnectionSettings connection) => new NewRobotRepository(connection);
+}
+
+public class NewRobotRepository : INewRobotRepository
 {
     private readonly ConnectionSettings _connection;
 

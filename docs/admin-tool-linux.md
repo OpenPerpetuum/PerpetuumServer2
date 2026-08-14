@@ -35,8 +35,11 @@ entity creation/deletion includes category and attribute flag pickers plus tier
 fields. The native New Item wizard creates from scratch or clones the full
 Windows workflow across entity defaults, aggregate values, property modifiers,
 production components and duration, research and tech-tree records, enabler
-extensions, prototypes, options, and definition configuration. This establishes
-the complete Linux path from desktop UI through
+extensions, prototypes, options, and definition configuration.
+The native New Robot workflow extends the same model with four generated part
+entities, part stats and options, chassis bonuses, robot template generation,
+and the definition-to-template relation. This establishes the complete Linux
+path from desktop UI through
 `Microsoft.Data.SqlClient` to live Perpetuum data for bot and content work.
 
 Run from a machine with the .NET 8 SDK:
@@ -116,7 +119,7 @@ new build for content work, a person should perform the parts that cannot be
 meaningfully judged headlessly:
 
 1. launch the self-contained executable and confirm the window, text, and all
-   eleven module tabs render at the workstation's actual DPI;
+   twelve module tabs render at the workstation's actual DPI;
 2. sign in and reload each development tab, checking that long names and the
    structured template editor remain usable at the chosen window size;
 3. edit one loaded row, queue it, review the SQL in **Pending changes**, then
@@ -139,8 +142,8 @@ The port is organized as tabbed modules so every stage remains usable:
 4. NPC loot, presences, flocks, and equipment sets (all four are native now,
    including presence-to-flock relationships);
 5. AutoMarket and the remaining economy diagnostics (NIC flow is native now);
-6. seasons, packages, and remaining creation dialogs (translations and New Item
-   are native now).
+6. seasons, packages, and remaining creation dialogs (translations, New Item,
+   and New Robot are native now).
 
 The WPF application remains the compatibility implementation until this list
 reaches parity. New database behavior belongs in the portable core and is

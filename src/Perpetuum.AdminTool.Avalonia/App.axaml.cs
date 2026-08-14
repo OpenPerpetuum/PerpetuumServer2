@@ -11,6 +11,7 @@ using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Npc;
 using Perpetuum.AdminTool.NewItem;
+using Perpetuum.AdminTool.NewRobot;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -46,7 +47,8 @@ public partial class App : Application
                     new NpcLootRepositoryFactory(),
                     new PresenceRepositoryFactory(),
                     new FlockRepositoryFactory(),
-                    new NewItemRepositoryFactory())
+                    new NewItemRepositoryFactory(),
+                    new NewRobotRepositoryFactory())
             };
         }
 

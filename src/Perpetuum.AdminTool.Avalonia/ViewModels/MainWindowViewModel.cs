@@ -8,6 +8,7 @@ using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Loot;
 using Perpetuum.AdminTool.Npc;
 using Perpetuum.AdminTool.NewItem;
+using Perpetuum.AdminTool.NewRobot;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -30,6 +31,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IPresenceRepositoryFactory _presenceRepositoryFactory;
     private readonly IFlockRepositoryFactory _flockRepositoryFactory;
     private readonly INewItemRepositoryFactory _newItemRepositoryFactory;
+    private readonly INewRobotRepositoryFactory _newRobotRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -57,6 +59,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private FlockCatalogViewModel? _flocks;
     [ObservableProperty] private TranslationCatalogViewModel? _translations;
     [ObservableProperty] private NewItemWizardViewModel? _newItemWizard;
+    [ObservableProperty] private NewRobotWizardViewModel? _newRobotWizard;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -73,7 +76,8 @@ public partial class MainWindowViewModel : ObservableObject
         INpcLootRepositoryFactory npcLootRepositoryFactory,
         IPresenceRepositoryFactory presenceRepositoryFactory,
         IFlockRepositoryFactory flockRepositoryFactory,
-        INewItemRepositoryFactory? newItemRepositoryFactory = null)
+        INewItemRepositoryFactory? newItemRepositoryFactory = null,
+        INewRobotRepositoryFactory? newRobotRepositoryFactory = null)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -90,6 +94,7 @@ public partial class MainWindowViewModel : ObservableObject
         _presenceRepositoryFactory = presenceRepositoryFactory;
         _flockRepositoryFactory = flockRepositoryFactory;
         _newItemRepositoryFactory = newItemRepositoryFactory ?? new NewItemRepositoryFactory();
+        _newRobotRepositoryFactory = newRobotRepositoryFactory ?? new NewRobotRepositoryFactory();
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -213,6 +218,11 @@ public partial class MainWindowViewModel : ObservableObject
                         _newItemRepositoryFactory.Create(BuildConnectionSettings()),
                         _entityRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
+                    NewRobotWizard = new NewRobotWizardViewModel(
+                        _newItemRepositoryFactory.Create(BuildConnectionSettings()),
+                        _newRobotRepositoryFactory.Create(BuildConnectionSettings()),
+                        _entityRepositoryFactory.Create(BuildConnectionSettings()),
+                        changeQueue);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -256,6 +266,7 @@ public partial class MainWindowViewModel : ObservableObject
         Flocks = null;
         Translations = null;
         NewItemWizard = null;
+        NewRobotWizard = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

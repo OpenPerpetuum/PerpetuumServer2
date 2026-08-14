@@ -2,14 +2,13 @@ using System.Linq;
 using System.Text;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.NewItem;
-using Perpetuum.AdminTool.ViewModels;
 using Perpetuum.GenXY;
 
 namespace Perpetuum.AdminTool.NewRobot;
 
 public static class RobotSqlBuilder
 {
-    public static RawSqlChange Build(NewRobotDialogViewModel vm)
+    public static RawSqlChange Build(INewRobotBuildModel vm)
     {
         var sql = new StringBuilder();
         var basic = vm.BasicPanel;

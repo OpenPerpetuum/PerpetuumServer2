@@ -104,6 +104,9 @@
         <TabItem Header="New item">
           <views:NewItemWizardView DataContext="{Binding NewItemWizard}" />
         </TabItem>
+        <TabItem Header="New robot">
+          <views:NewRobotWizardView DataContext="{Binding NewRobotWizard}" />
+        </TabItem>
         <TabItem Header="Entities">
           <views:EntityCatalogView DataContext="{Binding Entities}" />
         </TabItem>

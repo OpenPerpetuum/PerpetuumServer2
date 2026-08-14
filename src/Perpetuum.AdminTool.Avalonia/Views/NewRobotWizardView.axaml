@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:views="using:Perpetuum.AdminTool.Avalonia.Views"
+             xmlns:robot="using:Perpetuum.AdminTool.NewRobot"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.NewRobotWizardView"
+             x:DataType="vm:NewRobotWizardViewModel">
+  <TabControl MinHeight="520">
+    <TabItem Header="Item details">
+      <views:NewItemWizardView DataContext="{Binding}" />
+    </TabItem>
+    <TabItem Header="Robot parts">
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding RobotParts}" Margin="8">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:RobotPartEditorViewModel">
+              <Expander Header="{Binding Title}" Margin="0,0,0,8">
+                <views:RobotPartEditorView />
+              </Expander>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </TabItem>
+    <TabItem Header="Bonuses">
+      <Grid RowDefinitions="Auto,*" RowSpacing="8" Margin="10">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+          <TextBlock Text="Chassis bonuses: extension, bonus, target property, enhancer, note" />
+          <Button Grid.Column="1" Content="Add" Command="{Binding BonusesPanel.AddRowCommand}" />
+          <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveSelectedBonusCommand}" />
+        </Grid>
+        <ListBox Grid.Row="1" ItemsSource="{Binding BonusesPanel.Rows}" SelectedItem="{Binding SelectedBonus}">
+          <ListBox.ItemTemplate><DataTemplate x:DataType="robot:NewBonusRow">
+            <Grid ColumnDefinitions="120,120,140,110,*" ColumnSpacing="6" Margin="2">
+              <TextBox Text="{Binding ExtensionId}" Watermark="extension" />
+              <TextBox Grid.Column="1" Text="{Binding NewBonus}" Watermark="bonus" />
+              <TextBox Grid.Column="2" Text="{Binding TargetPropertyId}" Watermark="target field" />
+              <CheckBox Grid.Column="3" Content="Enhancer" IsChecked="{Binding EffectEnhancer}" />
+              <TextBox Grid.Column="4" Text="{Binding Note}" Watermark="note" />
+            </Grid>
+          </DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+    </TabItem>
+    <TabItem Header="Template &amp; relation">
+      <ScrollViewer>
+        <Grid ColumnDefinitions="180,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              ColumnSpacing="10" RowSpacing="8" Margin="12">
+          <TextBlock Grid.Row="0" Text="Template name" />
+          <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding TemplatePanelViewModel.Name}" />
+          <TextBlock Grid.Row="1" Text="Template note" />
+          <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding TemplatePanelViewModel.Note}" />
+          <TextBlock Grid.Row="2" Text="Item score sum" />
+          <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding TemplateRelationPanelViewModel.ItemScoreSum}" />
+          <TextBlock Grid.Row="3" Text="Race ID" />
+          <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding TemplateRelationPanelViewModel.RaceId}" />
+          <TextBlock Grid.Row="4" Text="Mission level" />
+          <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding TemplateRelationPanelViewModel.MissionLevel}" />
+          <TextBlock Grid.Row="5" Text="Mission level override" />
+          <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding TemplateRelationPanelViewModel.MissionLevelOverride}" />
+          <TextBlock Grid.Row="6" Text="Kill EP" />
+          <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding TemplateRelationPanelViewModel.KillEp}" />
+          <TextBlock Grid.Row="7" Text="Relation note" />
+          <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding TemplateRelationPanelViewModel.Note}" />
+        </Grid>
+      </ScrollViewer>
+    </TabItem>
+  </TabControl>
+</UserControl>

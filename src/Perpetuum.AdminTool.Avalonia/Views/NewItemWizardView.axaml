@@ -9,8 +9,8 @@
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
       <Grid ColumnDefinitions="*,320,Auto,Auto" ColumnSpacing="8">
         <StackPanel Spacing="2">
-          <TextBlock Text="New Item" FontSize="18" FontWeight="SemiBold" />
-          <TextBlock Text="Create from scratch or clone every supported item table into a new definition."
+          <TextBlock Text="{Binding WorkflowTitle}" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding WorkflowDescription}"
                      Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
         <ComboBox Grid.Column="1" ItemsSource="{Binding EnabledItems}"
@@ -187,7 +187,7 @@
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
         <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Content="Queue item creation" Command="{Binding QueueItemCommand}" />
+        <Button Grid.Column="1" Content="{Binding QueueButtonLabel}" Command="{Binding QueueItemCommand}" />
       </Grid>
     </Grid>
   </Border>

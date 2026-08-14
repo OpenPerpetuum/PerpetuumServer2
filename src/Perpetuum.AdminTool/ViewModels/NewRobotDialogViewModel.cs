@@ -19,7 +19,7 @@ using Perpetuum.GenXY;
 
 namespace Perpetuum.AdminTool.ViewModels;
 
-public partial class NewRobotDialogViewModel : ObservableObject
+public partial class NewRobotDialogViewModel : ObservableObject, INewRobotBuildModel
 {
     private readonly ConnectionSettings _connection;
     private readonly ChangeApplier _changeApplier;
