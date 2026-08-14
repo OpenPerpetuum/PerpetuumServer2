@@ -6,7 +6,14 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Economy
 {
-    public class EconomyInsuranceRepository
+    public interface IEconomyInsuranceRepository
+    {
+        Task<List<InsuranceConfigRow>> LoadConfigAsync();
+        Task<List<InsurancePriceRow>> LoadPricesAsync();
+        Task RecalculateAsync();
+    }
+
+    public class EconomyInsuranceRepository : IEconomyInsuranceRepository
     {
         private readonly ConnectionSettings _connection;
 

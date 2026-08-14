@@ -7,7 +7,12 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Economy
 {
-    public class EconomyMoneySupplyRepository
+    public interface IEconomyMoneySupplyRepository
+    {
+        Task<EconomyMoneySupplyData> LoadAsync();
+    }
+
+    public class EconomyMoneySupplyRepository : IEconomyMoneySupplyRepository
     {
         private readonly ConnectionSettings _connection;
 

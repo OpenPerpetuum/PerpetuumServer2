@@ -6,7 +6,13 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Economy
 {
-    public class EconomyMarketHealthRepository
+    public interface IEconomyMarketHealthRepository
+    {
+        Task<EconomyMarketData> LoadMarketDataAsync();
+        Task<IReadOnlyList<EconomyPriceIndexBasketItem>> LoadBasketAsync();
+    }
+
+    public class EconomyMarketHealthRepository : IEconomyMarketHealthRepository
     {
         private readonly ConnectionSettings _connection;
 

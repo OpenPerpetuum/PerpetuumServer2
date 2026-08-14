@@ -43,6 +43,29 @@ public sealed class DatabaseProbeIntegrationTests
 
     [Fact]
     [Trait("Category", "Database")]
+    public async Task EconomyDashboardRepositories_LoadCurrentSchema()
+    {
+        ConnectionSettings settings = LoadConnectionSettings();
+
+        EconomyMoneySupplyData money = await new EconomyMoneySupplyRepository(settings).LoadAsync();
+        EconomyMarketData market = await new EconomyMarketHealthRepository(settings).LoadMarketDataAsync();
+        IReadOnlyList<EconomyPriceIndexBasketItem> basket =
+            await new EconomyMarketHealthRepository(settings).LoadBasketAsync();
+        EconomySinkData sinks = await new EconomySinkRepository(settings).LoadAsync();
+        List<InsuranceConfigRow> insuranceConfig = await new EconomyInsuranceRepository(settings).LoadConfigAsync();
+        List<InsurancePriceRow> insurancePrices = await new EconomyInsuranceRepository(settings).LoadPricesAsync();
+
+        Assert.True(money.TotalNic >= 0);
+        Assert.NotNull(money.Top10Rows);
+        Assert.NotNull(market.VelocityRows);
+        Assert.NotNull(basket);
+        Assert.Contains(sinks.SinkRows, row => row.IsTotal);
+        Assert.NotEmpty(insuranceConfig);
+        Assert.NotEmpty(insurancePrices);
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
     public async Task AutoMarketRepository_LoadsEveryReadModelFromCurrentSchema()
     {
         var repository = new AutoMarketRepository(LoadConnectionSettings());

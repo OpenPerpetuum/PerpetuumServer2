@@ -34,6 +34,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly INewItemRepositoryFactory _newItemRepositoryFactory;
     private readonly INewRobotRepositoryFactory _newRobotRepositoryFactory;
     private readonly IAutoMarketRepositoryFactory _autoMarketRepositoryFactory;
+    private readonly IEconomyDashboardRepositoryFactory _economyDashboardRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -50,7 +51,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _isAuthenticated;
     [ObservableProperty] private string _authenticatedIdentity = string.Empty;
-    [ObservableProperty] private EconomyNicFlowViewModel? _economy;
+    [ObservableProperty] private EconomyDashboardViewModel? _economy;
     [ObservableProperty] private PendingChangesViewModel? _pendingChanges;
     [ObservableProperty] private EntityCatalogViewModel? _entities;
     [ObservableProperty] private RobotTemplateCatalogViewModel? _robotTemplates;
@@ -81,7 +82,8 @@ public partial class MainWindowViewModel : ObservableObject
         IFlockRepositoryFactory flockRepositoryFactory,
         INewItemRepositoryFactory? newItemRepositoryFactory = null,
         INewRobotRepositoryFactory? newRobotRepositoryFactory = null,
-        IAutoMarketRepositoryFactory? autoMarketRepositoryFactory = null)
+        IAutoMarketRepositoryFactory? autoMarketRepositoryFactory = null,
+        IEconomyDashboardRepositoryFactory? economyDashboardRepositoryFactory = null)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -100,6 +102,7 @@ public partial class MainWindowViewModel : ObservableObject
         _newItemRepositoryFactory = newItemRepositoryFactory ?? new NewItemRepositoryFactory();
         _newRobotRepositoryFactory = newRobotRepositoryFactory ?? new NewRobotRepositoryFactory();
         _autoMarketRepositoryFactory = autoMarketRepositoryFactory ?? new AutoMarketRepositoryFactory();
+        _economyDashboardRepositoryFactory = economyDashboardRepositoryFactory ?? new EconomyDashboardRepositoryFactory();
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -185,9 +188,16 @@ public partial class MainWindowViewModel : ObservableObject
                     IsAuthenticated = true;
                     AuthenticatedIdentity =
                         $"{outcome.Email} ({outcome.AccessLevel}, account {outcome.AccountId})";
-                    Economy = new EconomyNicFlowViewModel(
-                        _economyRepositoryFactory.Create(BuildConnectionSettings()));
+                    ConnectionSettings currentConnection = BuildConnectionSettings();
                     var changeQueue = new ChangeQueue();
+                    Economy = new EconomyDashboardViewModel(
+                        _economyRepositoryFactory.Create(currentConnection),
+                        _economyDashboardRepositoryFactory.CreateMoneySupply(currentConnection),
+                        _economyDashboardRepositoryFactory.CreateMarketHealth(currentConnection),
+                        _economyDashboardRepositoryFactory.CreateSink(currentConnection),
+                        _economyDashboardRepositoryFactory.CreateInsurance(currentConnection),
+                        _entityRepositoryFactory.Create(currentConnection),
+                        changeQueue);
                     var translations = new TranslationCatalogViewModel(_settingsStore);
                     Translations = translations;
                     PendingChanges = new PendingChangesViewModel(

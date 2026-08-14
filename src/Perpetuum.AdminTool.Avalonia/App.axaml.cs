@@ -50,7 +50,8 @@ public partial class App : Application
                     new FlockRepositoryFactory(),
                     new NewItemRepositoryFactory(),
                     new NewRobotRepositoryFactory(),
-                    new AutoMarketRepositoryFactory())
+                    new AutoMarketRepositoryFactory(),
+                    new EconomyDashboardRepositoryFactory())
             };
         }
 

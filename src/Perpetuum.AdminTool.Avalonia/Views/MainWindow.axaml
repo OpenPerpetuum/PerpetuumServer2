@@ -135,7 +135,7 @@
           <views:AutoMarketCatalogView DataContext="{Binding AutoMarket}" />
         </TabItem>
         <TabItem Header="Economy">
-          <views:EconomyNicFlowView DataContext="{Binding Economy}" />
+          <views:EconomyDashboardView DataContext="{Binding Economy}" />
         </TabItem>
         <TabItem Header="Pending changes">
           <views:PendingChangesView DataContext="{Binding PendingChanges}" />

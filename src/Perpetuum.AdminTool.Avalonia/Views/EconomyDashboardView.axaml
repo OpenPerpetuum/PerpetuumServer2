@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:econ="using:Perpetuum.AdminTool.Economy"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.EconomyDashboardView"
+             x:DataType="vm:EconomyDashboardViewModel">
+  <Border Padding="10" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+      <StackPanel Spacing="2">
+        <TextBlock Text="Economy" FontSize="18" FontWeight="SemiBold" />
+        <TextBlock Text="Money creation, circulation, market health, sinks, wealth, and insurance."
+                   Opacity="0.7" />
+      </StackPanel>
+      <TabControl Grid.Row="1" MinHeight="450">
+        <TabItem Header="NIC flow">
+          <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,*" ColumnSpacing="12" RowSpacing="8" Margin="8">
+            <Button Grid.ColumnSpan="2" Content="Load NIC flow" Command="{Binding LoadNicFlowCommand}" HorizontalAlignment="Right" />
+            <StackPanel Grid.Row="1"><TextBlock Text="NIC in" FontWeight="SemiBold" /><ListBox ItemsSource="{Binding NicIn}"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomyNicFlowRow"><Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="6"><TextBlock Text="{Binding Category}" /><TextBlock Grid.Column="1" Text="{Binding Today}" /><TextBlock Grid.Column="2" Text="{Binding Last7Days}" /><TextBlock Grid.Column="3" Text="{Binding Last30Days}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="1"><TextBlock Text="NIC out" FontWeight="SemiBold" /><ListBox ItemsSource="{Binding NicOut}"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomyNicFlowRow"><Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="6"><TextBlock Text="{Binding Category}" /><TextBlock Grid.Column="1" Text="{Binding Today}" /><TextBlock Grid.Column="2" Text="{Binding Last7Days}" /><TextBlock Grid.Column="3" Text="{Binding Last30Days}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Money &amp; wealth">
+          <ScrollViewer><StackPanel Margin="8" Spacing="10">
+            <Button Content="Load money supply" Command="{Binding LoadMoneySupplyCommand}" HorizontalAlignment="Right" />
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10"><TextBlock Text="{Binding TotalNic, StringFormat='Total NIC: {0}'}" /><TextBlock Grid.Column="1" Text="{Binding MedianNic, StringFormat='Median: {0}'}" /><TextBlock Grid.Column="2" Text="{Binding Top1PctShare, StringFormat='Top 1%: {0:F2}%'}" /><TextBlock Grid.Column="3" Text="{Binding IdleNic, StringFormat='Idle NIC: {0}'}" /></Grid>
+            <TextBlock Text="Daily snapshots" FontWeight="SemiBold" />
+            <ListBox ItemsSource="{Binding SnapshotRows}" MaxHeight="130"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomySnapshotRow"><Grid ColumnDefinitions="*,*"><TextBlock Text="{Binding Date}" /><TextBlock Grid.Column="1" Text="{Binding TotalNic}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel><TextBlock Text="Top characters" FontWeight="SemiBold" /><ListBox ItemsSource="{Binding TopCharacters}" MaxHeight="180"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomyWealthRow"><Grid ColumnDefinitions="40,2*,*,*"><TextBlock Text="{Binding Rank}" /><TextBlock Grid.Column="1" Text="{Binding Nick}" /><TextBlock Grid.Column="2" Text="{Binding CorpTag}" /><TextBlock Grid.Column="3" Text="{Binding Credit}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
+              <StackPanel Grid.Column="1"><TextBlock Text="Top corporations" FontWeight="SemiBold" /><ListBox ItemsSource="{Binding TopCorporations}" MaxHeight="180"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomyCorporationWealthRow"><Grid ColumnDefinitions="40,2*,*,*"><TextBlock Text="{Binding Rank}" /><TextBlock Grid.Column="1" Text="{Binding Name}" /><TextBlock Grid.Column="2" Text="{Binding MemberCount}" /><TextBlock Grid.Column="3" Text="{Binding Combined}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
+            </Grid>
+          </StackPanel></ScrollViewer>
+        </TabItem>
+        <TabItem Header="Market health">
+          <ScrollViewer><StackPanel Margin="8" Spacing="10">
+            <Button Content="Load market health" Command="{Binding LoadMarketHealthCommand}" HorizontalAlignment="Right" />
+            <Grid ColumnDefinitions="*,*,*,*,*,*" ColumnSpacing="8"><TextBlock Text="{Binding AgeBucketToday, StringFormat='Today: {0}'}" /><TextBlock Grid.Column="1" Text="{Binding AgeBucketD1To7, StringFormat='1–7d: {0}'}" /><TextBlock Grid.Column="2" Text="{Binding AgeBucketD7To30, StringFormat='7–30d: {0}'}" /><TextBlock Grid.Column="3" Text="{Binding AgeBucketD30Plus, StringFormat='30d+: {0}'}" /><TextBlock Grid.Column="4" Text="{Binding AutoMarketOrderCount, StringFormat='Auto: {0}'}" /><TextBlock Grid.Column="5" Text="{Binding PlayerOrderCount, StringFormat='Player: {0}'}" /></Grid>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel><TextBlock Text="Market velocity" FontWeight="SemiBold" /><ListBox ItemsSource="{Binding VelocityRows}" MaxHeight="150"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomyVelocityRow"><Grid ColumnDefinitions="*,*"><TextBlock Text="{Binding Date}" /><TextBlock Grid.Column="1" Text="{Binding NicTraded}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
+              <StackPanel Grid.Column="1"><TextBlock Text="Price index" FontWeight="SemiBold" /><ListBox ItemsSource="{Binding PriceIndexRows}" MaxHeight="150"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomyPriceIndexRow"><Grid ColumnDefinitions="*,*"><TextBlock Text="{Binding Date}" /><TextBlock Grid.Column="1" Text="{Binding IndexValue}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
+            </Grid>
+            <Grid ColumnDefinitions="*,320,Auto" ColumnSpacing="8"><TextBlock Text="Price-index basket" FontWeight="SemiBold" /><ComboBox Grid.Column="1" ItemsSource="{Binding BasketChoices}" SelectedItem="{Binding SelectedNewBasketItem}" DisplayMemberBinding="{Binding Display}" /><Button Grid.Column="2" Content="Queue add" Command="{Binding QueueAddBasketItemCommand}" /></Grid>
+            <ListBox ItemsSource="{Binding BasketItems}" SelectedItem="{Binding SelectedBasketItem}" MaxHeight="170"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomyPriceIndexBasketItem"><Grid ColumnDefinitions="*,140"><TextBlock Text="{Binding DefinitionName}" /><TextBox Grid.Column="1" Text="{Binding Weight}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox>
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right"><Button Content="Queue weight" Command="{Binding QueueSelectedBasketWeightCommand}" /><Button Content="Queue removal" Command="{Binding QueueRemoveSelectedBasketItemCommand}" /></StackPanel>
+          </StackPanel></ScrollViewer>
+        </TabItem>
+        <TabItem Header="Sinks">
+          <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8" Margin="8">
+            <Button Content="Load sinks" Command="{Binding LoadSinksCommand}" HorizontalAlignment="Right" />
+            <Grid Grid.Row="1" ColumnDefinitions="*,*"><TextBlock Text="{Binding ActivePlayerCount, StringFormat='Active players: {0}'}" /><TextBlock Grid.Column="1" Text="{Binding InsuranceCoveragePct, StringFormat='Insurance coverage: {0:F2}%'}" /></Grid>
+            <ListBox Grid.Row="2" ItemsSource="{Binding SinkRows}"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:EconomySinkRow"><Grid ColumnDefinitions="2*,*,*"><TextBlock Text="{Binding Category}" /><TextBlock Grid.Column="1" Text="{Binding NicLast30Days}" /><TextBlock Grid.Column="2" Text="{Binding NicPerPlayer}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox>
+          </Grid>
+        </TabItem>
+        <TabItem Header="Insurance">
+          <Grid RowDefinitions="Auto,*,Auto,*" RowSpacing="8" Margin="8">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><TextBlock Text="Insurance configuration and current robot prices" FontWeight="SemiBold" /><Button Grid.Column="1" Content="Load" Command="{Binding LoadInsuranceCommand}" /><Button Grid.Column="2" Content="Queue recalculation" Command="{Binding QueueInsuranceRecalculationCommand}" /></Grid>
+            <ListBox Grid.Row="1" ItemsSource="{Binding InsuranceConfigRows}" SelectedItem="{Binding SelectedInsuranceConfig}" MaxHeight="150"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:InsuranceConfigRow"><Grid ColumnDefinitions="2*,*"><StackPanel><TextBlock Text="{Binding Label}" /><TextBlock Text="{Binding Description}" Opacity="0.65" /></StackPanel><TextBox Grid.Column="1" Text="{Binding ParamValue}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox>
+            <Button Grid.Row="2" Content="Queue selected setting" Command="{Binding QueueSelectedInsuranceConfigCommand}" HorizontalAlignment="Right" />
+            <ListBox Grid.Row="3" ItemsSource="{Binding InsurancePriceRows}"><ListBox.ItemTemplate><DataTemplate x:DataType="econ:InsurancePriceRow"><Grid ColumnDefinitions="2*,*,*,*"><TextBlock Text="{Binding ItemName}" /><TextBlock Grid.Column="1" Text="{Binding ProductionCostNic}" /><TextBlock Grid.Column="2" Text="{Binding Fee}" /><TextBlock Grid.Column="3" Text="{Binding Payout}" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox>
+          </Grid>
+        </TabItem>
+      </TabControl>
+      <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </Grid>
+  </Border>
+</UserControl>

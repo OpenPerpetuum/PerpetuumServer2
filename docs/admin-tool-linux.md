@@ -31,6 +31,9 @@ economy dashboard and the custom-dictionary translation editor are also native.
 AutoMarket is native across configuration, production trade-list maintenance,
 raw-material overrides, pricing and gathering diagnostics, active-order views,
 and queued price/order refresh procedures.
+The Economy workspace now also covers NIC flow, money supply and wealth
+concentration, market velocity and the price-index basket, sink effectiveness,
+and insurance configuration, prices, and queued recalculation.
 Template descriptions support both raw Genxy
 and the structured robot/part/module editor, including slot and ammo
 compatibility filtering. Entity aggregate stats are editable, and native
@@ -144,8 +147,7 @@ The port is organized as tabbed modules so every stage remains usable:
    are native now);
 4. NPC loot, presences, flocks, and equipment sets (all four are native now,
    including presence-to-flock relationships);
-5. AutoMarket and the remaining economy diagnostics (AutoMarket and NIC flow
-   are native now);
+5. AutoMarket and the remaining economy diagnostics (native now);
 6. seasons, packages, and remaining creation dialogs (translations, New Item,
    and New Robot are native now).
 
