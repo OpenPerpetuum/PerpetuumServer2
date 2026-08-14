@@ -1,4 +1,3 @@
-using Perpetuum.Zones;
 using System.Collections;
 using System.Diagnostics;
 using System.Drawing;
@@ -36,9 +35,6 @@ namespace Perpetuum.GenXY
             RegisterConverter<Color>(ConvertColor);
             RegisterConverter<DateTime>(ConvertDateTime);
             RegisterConverter<Point>(ConvertPoint);
-            RegisterConverter<Position>(ConvertPosition);
-            RegisterConverter<Position[]>(ConvertPositionArray);
-            RegisterConverter<Area>(ConvertArea);
             RegisterConverter<Dictionary<string, object>>(ConvertDictionary);
             RegisterConverter<ExpandoObject>(ConvertExpandoObject);
             RegisterConverter<GenxyString>(ConvertGenxyString);
@@ -161,30 +157,6 @@ namespace Perpetuum.GenXY
             writer.WriteHexInteger(point.X);
             writer.WriteChar('.');
             writer.WriteHexInteger(point.Y);
-        }
-
-        private static void ConvertPosition(GenxyWriter writer, Position position)
-        {
-            writer.WriteToken(GenxyToken.Position);
-            writer.WritePosition(position);
-        }
-
-        private static void ConvertPositionArray(GenxyWriter writer, Position[] value)
-        {
-            writer.WriteToken(GenxyToken.PositionArray);
-            writer.WriteArray(value, writer.WritePosition);
-        }
-
-        private static void ConvertArea(GenxyWriter writer, Area area)
-        {
-            writer.WriteToken(GenxyToken.Area);
-            writer.WriteHexInteger(area.X1);
-            writer.WriteChar('.');
-            writer.WriteHexInteger(area.Y1);
-            writer.WriteChar('.');
-            writer.WriteHexInteger(area.X2);
-            writer.WriteChar('.');
-            writer.WriteHexInteger(area.Y2);
         }
 
         private static void ConvertByteArray(GenxyWriter writer, byte[] value)

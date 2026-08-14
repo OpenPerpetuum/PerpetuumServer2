@@ -1,5 +1,3 @@
-using Perpetuum.Zones;
-
 namespace Perpetuum.GenXY
 {
     public class GenxyWriter : IDisposable
@@ -93,15 +91,6 @@ namespace Perpetuum.GenXY
             {
                 _writer.Write("{0:X2}", bytes[i]);
             }
-        }
-
-        public void WritePosition(Position p)
-        {
-            WriteHexInteger((int)p.X);
-            WriteChar('.');
-            WriteHexInteger((int)p.Y);
-            WriteChar('.');
-            WriteHexInteger((int)p.Z);
         }
 
         public void WriteArray<T>(T[] array, Action<T> writeAction)

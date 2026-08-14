@@ -1,14 +1,13 @@
-using Perpetuum.Threading;
-using Perpetuum.Zones;
 using System.Drawing;
 using System.Globalization;
 using System.Text;
 
 namespace Perpetuum.GenXY
 {
-    public class GenxyReader : Disposable
+    public class GenxyReader : IDisposable
     {
         private readonly TextReader _reader;
+        private static readonly Dictionary<GenxyToken, Func<string, object>> _registeredReaders = new();
 
         private static readonly NumberFormatInfo _numberFormatInfo;
 
@@ -21,6 +20,11 @@ namespace Perpetuum.GenXY
         public GenxyReader(TextReader reader)
         {
             _reader = reader;
+        }
+
+        public static void RegisterTokenReader(GenxyToken token, Func<string, object> reader)
+        {
+            _registeredReaders[token] = reader;
         }
 
         private char _currentChar;
@@ -120,15 +124,12 @@ namespace Perpetuum.GenXY
                     case GenxyToken.Color:
                         return ReadColor();
                     case GenxyToken.Area:
-                        return ReadArea();
                     case GenxyToken.AreaArray:
-                        return ReadAreaArray();
+                    case GenxyToken.Position:
+                    case GenxyToken.PositionArray:
+                        return ReadRegisteredValue(token);
                     case GenxyToken.Point:
                         return ReadPoint();
-                    case GenxyToken.Position:
-                        return ReadPosition();
-                    case GenxyToken.PositionArray:
-                        return ReadPositionArray();
                     case GenxyToken.StartProp:
                         {
                             return ReadDictionary();
@@ -251,34 +252,21 @@ namespace Perpetuum.GenXY
             return Color.FromArgb(n[3], n[0], n[1], n[2]);
         }
 
-        private Area ReadArea()
-        {
-            string v = ReadValueAsString();
-            return ParseArea(v);
-        }
-
-        private Area[] ReadAreaArray()
-        {
-            return ReadValueAsArray(ParseArea);
-        }
-
         private Point ReadPoint()
         {
             int[] n = ReadValueAsArray(ParseInt, '.');
             return new Point(n[0], n[1]);
         }
 
-        private Position ReadPosition()
+        private object ReadRegisteredValue(GenxyToken token)
         {
-            string v = ReadValueAsString();
-            return ParsePosition(v);
+            string value = ReadValueAsString();
+            if (!_registeredReaders.TryGetValue(token, out Func<string, object>? reader))
+            {
+                throw new FormatException($"No GenXY reader is registered for token '{(char)token}'.");
+            }
+            return reader(value);
         }
-
-        private Position[] ReadPositionArray()
-        {
-            return ReadValueAsArray(ParsePosition);
-        }
-
 
         public Dictionary<string, object> ReadDictionary()
         {
@@ -306,18 +294,6 @@ namespace Perpetuum.GenXY
             return d;
         }
 
-
-        private static Position ParsePosition(string positionString)
-        {
-            int[] n = ParseValueAsArray(positionString, ParseInt, '.');
-            return new Position(n[0], n[1], n[2]);
-        }
-
-        private static Area ParseArea(string areaString)
-        {
-            int[] n = ParseValueAsArray(areaString, ParseInt, '.');
-            return new Area(n[0], n[1], n[2], n[3]);
-        }
 
         private static T ParseHexNumber<T>(string hexNumber, Func<int /* sign */, string, T> parser)
         {
@@ -407,12 +383,9 @@ namespace Perpetuum.GenXY
             return sb.ToString();
         }
 
-        protected override void Dispose(bool disposing)
+        public void Dispose()
         {
-            if (disposing)
-            {
-                _reader.Dispose();
-            }
+            _reader.Dispose();
         }
     }
 }

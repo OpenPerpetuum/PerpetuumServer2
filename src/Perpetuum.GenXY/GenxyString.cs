@@ -68,7 +68,7 @@ namespace Perpetuum.GenXY
 
         public static GenxyString FromDictionary(IDictionary<string, object> dictionary)
         {
-            if (dictionary.IsNullOrEmpty())
+            if (dictionary == null || dictionary.Count == 0)
             {
                 return Empty;
             }

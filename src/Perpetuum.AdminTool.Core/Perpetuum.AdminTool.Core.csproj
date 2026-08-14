@@ -13,5 +13,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Perpetuum.ExportedTypes\Perpetuum.ExportedTypes.csproj" />
+    <ProjectReference Include="..\Perpetuum.GenXY\Perpetuum.GenXY.csproj" />
   </ItemGroup>
 </Project>
