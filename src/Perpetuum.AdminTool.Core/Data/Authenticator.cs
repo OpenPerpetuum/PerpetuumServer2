@@ -15,7 +15,7 @@ namespace Perpetuum.AdminTool.Data
     {
         public AuthResult Result { get; init; }
         public int? AccountId { get; init; }
-        public AccessLevel AccessLevel { get; init; } = AccessLevel.notDefined;
+        public AdminAccessLevel AccessLevel { get; init; } = AdminAccessLevel.NotDefined;
         public string? Email { get; init; }
         public string? ErrorMessage { get; init; }
     }
@@ -23,9 +23,11 @@ namespace Perpetuum.AdminTool.Data
     public class Authenticator
     {
         private readonly ConnectionSettings _connection;
-        private readonly AccessLevel _minimumAccess;
+        private readonly AdminAccessLevel _minimumAccess;
 
-        public Authenticator(ConnectionSettings connection, AccessLevel minimumAccess = AccessLevel.gameAdmin)
+        public Authenticator(
+            ConnectionSettings connection,
+            AdminAccessLevel minimumAccess = AdminAccessLevel.GameAdmin)
         {
             _connection = connection;
             _minimumAccess = minimumAccess;
@@ -43,7 +45,7 @@ namespace Perpetuum.AdminTool.Data
                     "select accountid, accLevel from accounts " +
                     "where email = @email and password = @password";
                 cmd.Parameters.Add(new SqlParameter("@email", email));
-                cmd.Parameters.Add(new SqlParameter("@password", ToSha1(password)));
+                cmd.Parameters.Add(new SqlParameter("@password", PasswordHash.Compute(password)));
 
                 await using var reader = await cmd.ExecuteReaderAsync();
                 if (!await reader.ReadAsync())
@@ -52,7 +54,7 @@ namespace Perpetuum.AdminTool.Data
                 }
 
                 var accountId = reader.GetInt32(0);
-                var accLevel = (AccessLevel)reader.GetInt32(1);
+                var accLevel = (AdminAccessLevel)reader.GetInt32(1);
 
                 if ((accLevel & _minimumAccess) != _minimumAccess)
                 {
@@ -81,23 +83,6 @@ namespace Perpetuum.AdminTool.Data
                     ErrorMessage = ex.Message
                 };
             }
-        }
-
-        private string ToSha1(string input)
-        {
-            if (input.IsNullOrEmpty())
-            {
-                return "";
-            }
-
-            System.Text.ASCIIEncoding encoding = new();
-            byte[] bytes = encoding.GetBytes(input);
-
-            System.Security.Cryptography.SHA1CryptoServiceProvider sha = new();
-
-            string result = System.BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", string.Empty);
-
-            return result;
         }
     }
 }

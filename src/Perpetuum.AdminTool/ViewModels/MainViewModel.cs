@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.AutoMarket;
 using Perpetuum.AdminTool.Common;
+using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Packages;
@@ -289,7 +290,7 @@ namespace Perpetuum.AdminTool.ViewModels
         {
             _session.AccountId = null;
             _session.Email = null;
-            _session.AccessLevel = AccessLevel.notDefined;
+            _session.AccessLevel = AdminAccessLevel.NotDefined;
             _session.Changes.Clear();
         }
     }

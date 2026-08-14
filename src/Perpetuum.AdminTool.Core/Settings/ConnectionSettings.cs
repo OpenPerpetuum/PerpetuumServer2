@@ -14,7 +14,7 @@ namespace Perpetuum.AdminTool.Settings
 
         public string BuildConnectionString()
         {
-            var b = new SqlConnectionStringBuilder
+            var builder = new SqlConnectionStringBuilder
             {
                 DataSource = Server,
                 InitialCatalog = Database,
@@ -25,15 +25,15 @@ namespace Perpetuum.AdminTool.Settings
 
             if (IntegratedSecurity)
             {
-                b.IntegratedSecurity = true;
+                builder.IntegratedSecurity = true;
             }
             else
             {
-                b.UserID = SqlUser;
-                b.Password = SqlPassword;
+                builder.UserID = SqlUser;
+                builder.Password = SqlPassword;
             }
 
-            return b.ConnectionString;
+            return builder.ConnectionString;
         }
     }
 }

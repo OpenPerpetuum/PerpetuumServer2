@@ -1,7 +1,7 @@
 <Window x:Class="Perpetuum.AdminTool.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:settings="clr-namespace:Perpetuum.AdminTool.Settings"
+        xmlns:settings="clr-namespace:Perpetuum.AdminTool.Settings;assembly=Perpetuum.AdminTool.Core"
         xmlns:views="clr-namespace:Perpetuum.AdminTool.Views"
         Title="Perpetuum Admin Tool"
         Width="1100" Height="720"

@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Perpetuum.AdminTool.Core\Perpetuum.AdminTool.Core.csproj" />
     <ProjectReference Include="..\Perpetuum\Perpetuum.csproj" />
   </ItemGroup>
 
