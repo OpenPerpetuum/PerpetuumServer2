@@ -65,8 +65,9 @@ a fixture assigns a double before exercising code:
 | `EntityDefault.Reader` | `IEntityDefaultReader` | `PerpetuumBootstrapper.cs:156` |
 | `Entity.Services` | `IEntityServices` | `PerpetuumBootstrapper.cs:157` |
 
-The data layer is the important one. `Db.Query()` funnels 761 call sites through
-`Db.DbQueryFactory`, and `DbQuery` takes a `DbConnectionFactory` delegate, so
+The data layer is the important one. `Db.Query()` funnels 755 call sites in `Perpetuum` and
+`Perpetuum.RequestHandlers` through `Db.DbQueryFactory`, and `DbQuery` takes a
+`DbConnectionFactory` delegate, so
 `Db.DbQueryFactory = () => new DbQuery(() => fakeConnection)` intercepts all of them without any
 production change.
 
