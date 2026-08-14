@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Perpetuum.AdminTool.Entities
 {
-    public partial class EntityDefaultRow : ObservableObject
+    public sealed partial class EntityDefaultRow : ObservableObject
     {
         // Negative placeholder ids for in-memory new rows (real ids come from SQL identity).
         private static int _placeholderCounter = 0;

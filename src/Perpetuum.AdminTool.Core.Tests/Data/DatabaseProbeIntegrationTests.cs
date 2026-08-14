@@ -1,6 +1,7 @@
 using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
+using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Core.Tests.Data;
@@ -41,6 +42,19 @@ public sealed class DatabaseProbeIntegrationTests
             [new RawSqlChange("integration test read-only probe", "SELECT 1;")],
             "integration-test@example.invalid",
             TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task EntityRepository_LoadsCurrentPerpetuumSchema()
+    {
+        var repository = new EntityRepository(LoadConnectionSettings());
+
+        EntitiesSnapshot snapshot = await repository.LoadAsync();
+
+        Assert.NotEmpty(snapshot.Rows);
+        Assert.NotEmpty(snapshot.Fields);
+        Assert.All(snapshot.Rows, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
     }
 
     private static ConnectionSettings LoadConnectionSettings()

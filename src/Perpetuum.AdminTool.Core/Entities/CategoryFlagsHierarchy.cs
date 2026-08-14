@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace Perpetuum.AdminTool.Entities
 {
+    /// <summary>Builds the category flag tree shared by both AdminTool front ends.</summary>
     public static class CategoryFlagsHierarchy
     {
         public static IReadOnlyList<CategoryFlagsNode> BuildRoots()

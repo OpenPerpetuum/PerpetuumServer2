@@ -25,9 +25,11 @@ The Avalonia application provides connection settings, a live database probe,
 normal AdminTool account authentication, and the first real native module: a
 read-only NIC-flow economy dashboard. It also includes the shared pending-change
 review, transactional SQL preview/export, and guarded direct-apply workflow that
-future editing modules use. This establishes the complete Linux path from
-desktop UI through `Microsoft.Data.SqlClient` to live Perpetuum data before
-larger editing screens are migrated.
+future editing modules use. The Entities module can browse/filter definitions,
+edit the main `entitydefaults` fields, and queue their generated SQL; aggregate
+stats are visible but remain read-only in this slice. This establishes the
+complete Linux path from desktop UI through `Microsoft.Data.SqlClient` to live
+Perpetuum data.
 
 Run from a machine with the .NET 8 SDK:
 
@@ -100,7 +102,8 @@ The port is organized as vertical modules so every stage remains usable:
 1. connection, secure local settings, database probe, and admin authentication;
 2. pending-change review, SQL-script export, and explicit commit safeguards
    (native now);
-3. entities and robot templates, which support content and bot development;
+3. entities and robot templates, which support content and bot development
+   (entity browsing and primitive-field editing are native now);
 4. NPC loot, presences, flocks, and equipment sets;
 5. AutoMarket and the remaining economy diagnostics (NIC flow is native now);
 6. seasons, packages, translations, and remaining creation dialogs.

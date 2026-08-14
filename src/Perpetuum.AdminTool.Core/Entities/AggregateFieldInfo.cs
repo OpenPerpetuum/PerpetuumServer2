@@ -1,6 +1,6 @@
 namespace Perpetuum.AdminTool.Entities
 {
-    public class AggregateFieldInfo
+    public sealed class AggregateFieldInfo
     {
         public int Id { get; init; }
         public string Name { get; init; } = "";

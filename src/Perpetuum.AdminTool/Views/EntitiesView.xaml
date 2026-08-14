@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:Perpetuum.AdminTool.Views"
              xmlns:common="clr-namespace:Perpetuum.AdminTool.Common"
-             xmlns:entities="clr-namespace:Perpetuum.AdminTool.Entities"
+             xmlns:entities="clr-namespace:Perpetuum.AdminTool.Entities;assembly=Perpetuum.AdminTool.Core"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d">

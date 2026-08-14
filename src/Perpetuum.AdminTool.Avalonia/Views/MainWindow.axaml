@@ -97,6 +97,10 @@
       </Border>
 
       <Border IsVisible="{Binding IsAuthenticated}">
+        <views:EntityCatalogView DataContext="{Binding Entities}" />
+      </Border>
+
+      <Border IsVisible="{Binding IsAuthenticated}">
         <views:EconomyNicFlowView DataContext="{Binding Economy}" />
       </Border>
 

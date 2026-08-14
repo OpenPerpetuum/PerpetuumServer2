@@ -3,7 +3,7 @@ using Perpetuum.ExportedTypes;
 
 namespace Perpetuum.AdminTool.Entities
 {
-    public partial class StatRow : ObservableObject
+    public sealed partial class StatRow : ObservableObject
     {
         public int Definition { get; }
 

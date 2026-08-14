@@ -7,7 +7,7 @@ namespace Perpetuum.AdminTool.Entities
     /// each value is a path of bytes from the lowest byte upward. The parent of a value is
     /// the value with its highest non-zero byte cleared.
     /// </summary>
-    public class CategoryFlagsNode
+    public sealed class CategoryFlagsNode
     {
         public long Value { get; init; }
         public string Name { get; init; } = "";

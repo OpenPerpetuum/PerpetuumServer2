@@ -8,7 +8,7 @@ namespace Perpetuum.AdminTool.Entities
 {
     public static class CategoryFlagsCatalog
     {
-        public record Entry(string Name, long Value)
+        public sealed record Entry(string Name, long Value)
         {
             public string Hex => "0x" + Value.ToString("X");
             public string Display => $"{Name}  ({Hex})";

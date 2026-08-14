@@ -2,6 +2,7 @@ using Perpetuum.AdminTool.Avalonia.ViewModels;
 using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
+using Perpetuum.AdminTool.Entities;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Avalonia.Tests.ViewModels;
@@ -27,7 +28,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubAuthenticatorFactory(new AuthOutcome()),
             new StubEconomyRepositoryFactory(),
             new StubChangeApplierFactory(),
-            new StubSqlScriptExporter());
+            new StubSqlScriptExporter(),
+            new StubEntityRepositoryFactory());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -45,7 +47,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubAuthenticatorFactory(new AuthOutcome()),
             new StubEconomyRepositoryFactory(),
             new StubChangeApplierFactory(),
-            new StubSqlScriptExporter())
+            new StubSqlScriptExporter(),
+            new StubEntityRepositoryFactory())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -78,7 +81,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubAuthenticatorFactory(outcome),
             new StubEconomyRepositoryFactory(),
             new StubChangeApplierFactory(),
-            new StubSqlScriptExporter())
+            new StubSqlScriptExporter(),
+            new StubEntityRepositoryFactory())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -92,6 +96,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.Equal("admin@example.invalid", store.Settings.LastLoginEmail);
         Assert.NotNull(viewModel.Economy);
         Assert.NotNull(viewModel.PendingChanges);
+        Assert.NotNull(viewModel.Entities);
         Assert.True(File.Exists(store.FilePath));
     }
 
@@ -110,7 +115,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubAuthenticatorFactory(outcome),
             new StubEconomyRepositoryFactory(),
             new StubChangeApplierFactory(),
-            new StubSqlScriptExporter())
+            new StubSqlScriptExporter(),
+            new StubEntityRepositoryFactory())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -208,6 +214,22 @@ public sealed class MainWindowViewModelTests : IDisposable
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Path.Combine(outputDirectory, "changes.sql"));
+        }
+    }
+
+    private sealed class StubEntityRepositoryFactory : IEntityRepositoryFactory
+    {
+        public IEntityRepository Create(ConnectionSettings connection)
+        {
+            return new StubEntityRepository();
+        }
+    }
+
+    private sealed class StubEntityRepository : IEntityRepository
+    {
+        public Task<EntitiesSnapshot> LoadAsync()
+        {
+            return Task.FromResult(new EntitiesSnapshot());
         }
     }
 }

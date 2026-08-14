@@ -7,7 +7,7 @@ namespace Perpetuum.AdminTool.Entities
 {
     public static class AttributeFlagsCatalog
     {
-        public record Bit(string Name, int Position)
+        public sealed record Bit(string Name, int Position)
         {
             public ulong Mask => 1UL << Position;
             public string Display => $"[{Position,2}] {Name}";

@@ -7,7 +7,25 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Entities
 {
-    public class EntityRepository
+    public interface IEntityRepository
+    {
+        Task<EntitiesSnapshot> LoadAsync();
+    }
+
+    public interface IEntityRepositoryFactory
+    {
+        IEntityRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class EntityRepositoryFactory : IEntityRepositoryFactory
+    {
+        public IEntityRepository Create(ConnectionSettings connection)
+        {
+            return new EntityRepository(connection);
+        }
+    }
+
+    public sealed class EntityRepository : IEntityRepository
     {
         private readonly ConnectionSettings _connection;
 

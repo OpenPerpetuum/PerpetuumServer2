@@ -5,6 +5,7 @@ using Perpetuum.AdminTool.Entities;
 
 namespace Perpetuum.AdminTool.Editing
 {
+    /// <summary>Computes SQL changes from an entity row without UI dependencies.</summary>
     public static class EntityChanges
     {
         public static IEnumerable<IPendingChange> ComputeChanges(EntityDefaultRow row)

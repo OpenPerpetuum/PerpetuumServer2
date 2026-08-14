@@ -2,6 +2,7 @@ using System.Globalization;
 
 namespace Perpetuum.AdminTool.Editing
 {
+    /// <summary>Formats values for generated SQL scripts.</summary>
     public static class SqlLiteral
     {
         public static string Of(object? value)
