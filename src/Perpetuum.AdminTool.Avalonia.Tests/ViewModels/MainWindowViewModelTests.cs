@@ -3,6 +3,7 @@ using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
+using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -32,7 +33,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubSqlScriptExporter(),
             new StubEntityRepositoryFactory(),
             new StubRobotTemplateRepositoryFactory(),
-            new StubRobotTemplateRelationRepositoryFactory());
+            new StubRobotTemplateRelationRepositoryFactory(),
+            new StubEquipmentSetRepositoryFactory());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -53,7 +55,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubSqlScriptExporter(),
             new StubEntityRepositoryFactory(),
             new StubRobotTemplateRepositoryFactory(),
-            new StubRobotTemplateRelationRepositoryFactory())
+            new StubRobotTemplateRelationRepositoryFactory(),
+            new StubEquipmentSetRepositoryFactory())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -89,7 +92,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubSqlScriptExporter(),
             new StubEntityRepositoryFactory(),
             new StubRobotTemplateRepositoryFactory(),
-            new StubRobotTemplateRelationRepositoryFactory())
+            new StubRobotTemplateRelationRepositoryFactory(),
+            new StubEquipmentSetRepositoryFactory())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -106,6 +110,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.NotNull(viewModel.Entities);
         Assert.NotNull(viewModel.RobotTemplates);
         Assert.NotNull(viewModel.RobotTemplateRelations);
+        Assert.NotNull(viewModel.EquipmentSets);
         Assert.True(File.Exists(store.FilePath));
     }
 
@@ -127,7 +132,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubSqlScriptExporter(),
             new StubEntityRepositoryFactory(),
             new StubRobotTemplateRepositoryFactory(),
-            new StubRobotTemplateRelationRepositoryFactory())
+            new StubRobotTemplateRelationRepositoryFactory(),
+            new StubEquipmentSetRepositoryFactory())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -275,5 +281,30 @@ public sealed class MainWindowViewModelTests : IDisposable
         {
             return Task.FromResult(new List<RobotTemplateRelationRow>());
         }
+    }
+
+    private sealed class StubEquipmentSetRepositoryFactory : IEquipmentSetRepositoryFactory
+    {
+        public IEquipmentSetRepository Create(ConnectionSettings connection)
+        {
+            return new StubEquipmentSetRepository();
+        }
+    }
+
+    private sealed class StubEquipmentSetRepository : IEquipmentSetRepository
+    {
+        public Task<List<EquipmentSetRow>> LoadAllSetsAsync() => Task.FromResult(new List<EquipmentSetRow>());
+
+        public Task<List<EquipmentSetMemberRow>> LoadMembersAsync(int setId) =>
+            Task.FromResult(new List<EquipmentSetMemberRow>());
+
+        public Task<List<EquipmentSetThresholdRow>> LoadThresholdsAsync(int setId) =>
+            Task.FromResult(new List<EquipmentSetThresholdRow>());
+
+        public Task<List<AggregateFieldInfo>> LoadAggregateFieldsAsync() =>
+            Task.FromResult(new List<AggregateFieldInfo>());
+
+        public Task<List<SetMemberPickItem>> LoadMemberChoicesAsync() =>
+            Task.FromResult(new List<SetMemberPickItem>());
     }
 }

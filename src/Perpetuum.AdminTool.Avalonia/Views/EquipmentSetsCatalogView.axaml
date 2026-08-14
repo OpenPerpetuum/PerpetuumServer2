@@ -1,0 +1,110 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:sets="using:Perpetuum.AdminTool.EquipmentSets"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.EquipmentSetsCatalogView"
+             x:DataType="vm:EquipmentSetsCatalogViewModel">
+  <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <StackPanel Spacing="12">
+      <Grid ColumnDefinitions="*,260,Auto" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" Spacing="3">
+          <TextBlock Text="Equipment sets" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Manage set membership and aggregate bonus thresholds. Server restart required."
+                     Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+        <TextBox Grid.Column="1" Watermark="set id or name" Text="{Binding FilterText}" />
+        <Button Grid.Column="2" Content="Reload all" Command="{Binding LoadCommand}"
+                IsEnabled="{Binding IsNotLoading}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <TextBox Grid.Column="0" Watermark="new equipment-set name" Text="{Binding NewSetName}" />
+        <Button Grid.Column="1" Content="Queue new set" Command="{Binding QueueCreateSetCommand}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="280,*" ColumnSpacing="16">
+        <StackPanel Grid.Column="0" Spacing="8">
+          <ListBox ItemsSource="{Binding Sets}" SelectedItem="{Binding SelectedSet}"
+                   MinHeight="300" MaxHeight="480">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="sets:EquipmentSetRow">
+                <Grid ColumnDefinitions="60,*" ColumnSpacing="8" Margin="2">
+                  <TextBlock Grid.Column="0" Text="{Binding SetId}" Opacity="0.65" />
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Button Content="Load selected details" Command="{Binding LoadSelectedDetailsCommand}"
+                  IsEnabled="{Binding IsNotLoading}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Spacing="12">
+          <Grid ColumnDefinitions="110,*,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Text="Set name" VerticalAlignment="Center" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedSet.Name}" />
+            <Button Grid.Column="2" Content="Queue rename" Command="{Binding QueueRenameSetCommand}" />
+            <Button Grid.Column="3" Content="Queue cascade DELETE" Command="{Binding QueueDeleteSetCommand}" />
+          </Grid>
+
+          <TextBlock Text="Members" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Grid.Column="0" Watermark="enabled entity definition"
+                     Text="{Binding NewMemberDefinition}" />
+            <Button Grid.Column="1" Content="Queue member addition"
+                    Command="{Binding QueueAddMemberCommand}" />
+          </Grid>
+          <ListBox ItemsSource="{Binding Members}" SelectedItem="{Binding SelectedMember}"
+                   MinHeight="100" MaxHeight="180">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="sets:EquipmentSetMemberRow">
+                <Grid ColumnDefinitions="80,*" ColumnSpacing="8" Margin="2">
+                  <TextBlock Grid.Column="0" Text="{Binding Definition}" Opacity="0.65" />
+                  <TextBlock Grid.Column="1" Text="{Binding DefinitionName}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Button Content="Queue selected member DELETE"
+                  Command="{Binding QueueRemoveMemberCommand}" HorizontalAlignment="Right" />
+
+          <TextBlock Text="Bonus thresholds" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="8">
+            <TextBox Grid.Column="0" Watermark="required pieces" Text="{Binding NewRequiredPieces}" />
+            <TextBox Grid.Column="1" Watermark="aggregate field id" Text="{Binding NewAggregateFieldId}" />
+            <TextBox Grid.Column="2" Watermark="bonus value" Text="{Binding NewBonusValue}" />
+            <Button Grid.Column="3" Content="Create unsaved threshold"
+                    Command="{Binding AddUnsavedThresholdCommand}" />
+          </Grid>
+          <ListBox ItemsSource="{Binding Thresholds}" SelectedItem="{Binding SelectedThreshold}"
+                   MinHeight="100" MaxHeight="180">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="sets:EquipmentSetThresholdRow">
+                <Grid ColumnDefinitions="80,*,100" ColumnSpacing="8" Margin="2">
+                  <TextBlock Grid.Column="0" Text="{Binding RequiredPieces}" />
+                  <TextBlock Grid.Column="1" Text="{Binding FieldSystemName}" />
+                  <TextBlock Grid.Column="2" Text="{Binding BonusValue}" TextAlignment="Right" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <Grid ColumnDefinitions="100,*,100,*,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Text="Pieces / field" VerticalAlignment="Center" />
+            <Grid Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+              <TextBox Grid.Column="0" Text="{Binding SelectedThreshold.RequiredPieces}" />
+              <TextBox Grid.Column="1" Text="{Binding SelectedThreshold.AggregateFieldId}" />
+            </Grid>
+            <TextBlock Grid.Column="2" Text="Bonus value" VerticalAlignment="Center" />
+            <TextBox Grid.Column="3" Text="{Binding SelectedThreshold.BonusValue}" />
+            <Button Grid.Column="4" Content="Queue changes"
+                    Command="{Binding QueueThresholdChangesCommand}" />
+            <Button Grid.Column="5" Content="Queue DELETE"
+                    Command="{Binding QueueRemoveThresholdCommand}" />
+          </Grid>
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </Border>
+</UserControl>

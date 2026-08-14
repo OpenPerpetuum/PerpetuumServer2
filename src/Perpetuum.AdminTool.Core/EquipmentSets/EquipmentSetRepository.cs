@@ -6,7 +6,29 @@ using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.EquipmentSets
 {
-    public class EquipmentSetRepository
+    public interface IEquipmentSetRepository
+    {
+        Task<List<EquipmentSetRow>> LoadAllSetsAsync();
+        Task<List<EquipmentSetMemberRow>> LoadMembersAsync(int setId);
+        Task<List<EquipmentSetThresholdRow>> LoadThresholdsAsync(int setId);
+        Task<List<AggregateFieldInfo>> LoadAggregateFieldsAsync();
+        Task<List<SetMemberPickItem>> LoadMemberChoicesAsync();
+    }
+
+    public interface IEquipmentSetRepositoryFactory
+    {
+        IEquipmentSetRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class EquipmentSetRepositoryFactory : IEquipmentSetRepositoryFactory
+    {
+        public IEquipmentSetRepository Create(ConnectionSettings connection)
+        {
+            return new EquipmentSetRepository(connection);
+        }
+    }
+
+    public sealed class EquipmentSetRepository : IEquipmentSetRepository
     {
         private readonly ConnectionSettings _connection;
 
@@ -102,6 +124,27 @@ namespace Perpetuum.AdminTool.EquipmentSets
                     Category              = reader.IsDBNull(6) ? 0  : reader.GetInt32(6),
                     Digits                = reader.IsDBNull(7) ? 0  : reader.GetInt32(7),
                 });
+            return result;
+        }
+
+        public async Task<List<SetMemberPickItem>> LoadMemberChoicesAsync()
+        {
+            var result = new List<SetMemberPickItem>();
+            await using var cn = new SqlConnection(_connection.BuildConnectionString());
+            await cn.OpenAsync();
+            await using var cmd = cn.CreateCommand();
+            cmd.CommandText =
+                "SELECT definition, definitionname FROM entitydefaults " +
+                "WHERE enabled = 1 ORDER BY definitionname";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result.Add(new SetMemberPickItem
+                {
+                    Definition = reader.GetInt32(0),
+                    DefinitionName = reader.IsDBNull(1) ? "" : reader.GetString(1)
+                });
+            }
             return result;
         }
     }

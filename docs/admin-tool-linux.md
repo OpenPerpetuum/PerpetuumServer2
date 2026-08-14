@@ -30,7 +30,8 @@ edit the main `entitydefaults` fields, and queue their generated SQL; aggregate
 stats are visible but remain read-only in this slice. Robot templates and their
 definition-to-template relations can be browsed, created, edited, or queued for
 deletion. Template descriptions use raw Genxy editing in the native client. This
-establishes the complete Linux path from desktop UI through
+Equipment sets, members, and bonus thresholds are also available through the
+same guarded queue. This establishes the complete Linux path from desktop UI through
 `Microsoft.Data.SqlClient` to live Perpetuum data.
 
 Run from a machine with the .NET 8 SDK:
@@ -106,7 +107,7 @@ The port is organized as vertical modules so every stage remains usable:
    (native now);
 3. entities and robot templates, which support content and bot development
    (entity primitive fields, raw robot templates, and template relations are native now);
-4. NPC loot, presences, flocks, and equipment sets;
+4. NPC loot, presences, flocks, and equipment sets (equipment sets are native now);
 5. AutoMarket and the remaining economy diagnostics (NIC flow is native now);
 6. seasons, packages, translations, and remaining creation dialogs.
 

@@ -2,6 +2,7 @@ using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
+using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -84,6 +85,24 @@ public sealed class DatabaseProbeIntegrationTests
         Assert.All(rows, row => Assert.True(row.TemplateId > 0));
         Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
         Assert.All(rows, row => Assert.False(string.IsNullOrWhiteSpace(row.TemplateName)));
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task EquipmentSetRepository_LoadsCurrentPerpetuumSchema()
+    {
+        var repository = new EquipmentSetRepository(LoadConnectionSettings());
+
+        List<EquipmentSetRow> sets = await repository.LoadAllSetsAsync();
+        List<AggregateFieldInfo> fields = await repository.LoadAggregateFieldsAsync();
+        List<SetMemberPickItem> choices = await repository.LoadMemberChoicesAsync();
+
+        Assert.NotEmpty(sets);
+        Assert.NotEmpty(fields);
+        Assert.NotEmpty(choices);
+        Assert.All(sets, set => Assert.True(set.SetId > 0));
+        await repository.LoadMembersAsync(sets[0].SetId);
+        await repository.LoadThresholdsAsync(sets[0].SetId);
     }
 
     private static ConnectionSettings LoadConnectionSettings()

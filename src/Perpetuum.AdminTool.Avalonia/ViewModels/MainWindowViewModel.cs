@@ -4,6 +4,7 @@ using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
 using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Entities;
+using Perpetuum.AdminTool.EquipmentSets;
 using Perpetuum.AdminTool.Settings;
 using Perpetuum.AdminTool.Templates;
 
@@ -20,6 +21,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IEntityRepositoryFactory _entityRepositoryFactory;
     private readonly IRobotTemplateRepositoryFactory _robotTemplateRepositoryFactory;
     private readonly IRobotTemplateRelationRepositoryFactory _robotTemplateRelationRepositoryFactory;
+    private readonly IEquipmentSetRepositoryFactory _equipmentSetRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -40,6 +42,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private EntityCatalogViewModel? _entities;
     [ObservableProperty] private RobotTemplateCatalogViewModel? _robotTemplates;
     [ObservableProperty] private RobotTemplateRelationsCatalogViewModel? _robotTemplateRelations;
+    [ObservableProperty] private EquipmentSetsCatalogViewModel? _equipmentSets;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -50,7 +53,8 @@ public partial class MainWindowViewModel : ObservableObject
         ISqlScriptExporter scriptExporter,
         IEntityRepositoryFactory entityRepositoryFactory,
         IRobotTemplateRepositoryFactory robotTemplateRepositoryFactory,
-        IRobotTemplateRelationRepositoryFactory robotTemplateRelationRepositoryFactory)
+        IRobotTemplateRelationRepositoryFactory robotTemplateRelationRepositoryFactory,
+        IEquipmentSetRepositoryFactory equipmentSetRepositoryFactory)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -61,6 +65,7 @@ public partial class MainWindowViewModel : ObservableObject
         _entityRepositoryFactory = entityRepositoryFactory;
         _robotTemplateRepositoryFactory = robotTemplateRepositoryFactory;
         _robotTemplateRelationRepositoryFactory = robotTemplateRelationRepositoryFactory;
+        _equipmentSetRepositoryFactory = equipmentSetRepositoryFactory;
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -163,6 +168,9 @@ public partial class MainWindowViewModel : ObservableObject
                     RobotTemplateRelations = new RobotTemplateRelationsCatalogViewModel(
                         _robotTemplateRelationRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
+                    EquipmentSets = new EquipmentSetsCatalogViewModel(
+                        _equipmentSetRepositoryFactory.Create(BuildConnectionSettings()),
+                        changeQueue);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -200,6 +208,7 @@ public partial class MainWindowViewModel : ObservableObject
         Entities = null;
         RobotTemplates = null;
         RobotTemplateRelations = null;
+        EquipmentSets = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";
