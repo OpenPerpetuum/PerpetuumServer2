@@ -2,6 +2,7 @@ using Xunit;
 
 namespace Perpetuum.Tests.Integration.Infrastructure
 {
+    [Collection(DatabaseCollection.Name)]
     public class EnvironmentDiscoveryTests
     {
         [RequiresGameRootFact]
