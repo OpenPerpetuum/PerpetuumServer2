@@ -43,7 +43,8 @@ public partial class App : Application
                     new EquipmentSetRepositoryFactory(),
                     new RobotTemplateEditorRepositoryFactory(),
                     new NpcLootRepositoryFactory(),
-                    new PresenceRepositoryFactory())
+                    new PresenceRepositoryFactory(),
+                    new FlockRepositoryFactory())
             };
         }
 

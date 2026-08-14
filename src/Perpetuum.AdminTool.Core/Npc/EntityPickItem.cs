@@ -9,7 +9,6 @@ namespace Perpetuum.AdminTool.Common
         public bool Hidden { get; init; }
         public int TierType { get; init; }
         public int TierLevel { get; init; }
-
         public string Display => $"{Definition} — {Name}";
     }
 }

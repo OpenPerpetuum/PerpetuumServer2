@@ -4,17 +4,12 @@ namespace Perpetuum.AdminTool.Npc
 {
     public partial class FlockRow : ObservableObject
     {
-        // PK is the identity column `id`. 0 means a new (unsaved) row.
         public int Id { get; }
-
         public bool IsNew { get; set; }
         public FlockSnapshot Original { get; private set; }
 
-        // Resolved display labels (not persisted) — kept in sync with current PresenceId / Definition
-        // by FlocksViewModel using the pick lists.
         [ObservableProperty] private string _presenceName = "";
         [ObservableProperty] private string _definitionName = "";
-
         [ObservableProperty] private string _name = "";
         [ObservableProperty] private int _presenceId;
         [ObservableProperty] private int _flockMemberCount;
@@ -40,26 +35,26 @@ namespace Perpetuum.AdminTool.Npc
             ApplySnapshot(snapshot);
         }
 
-        public void ApplySnapshot(FlockSnapshot s)
+        public void ApplySnapshot(FlockSnapshot snapshot)
         {
-            Original = s;
-            Name = s.Name;
-            PresenceId = s.PresenceId;
-            FlockMemberCount = s.FlockMemberCount;
-            Definition = s.Definition;
-            SpawnOriginX = s.SpawnOriginX;
-            SpawnOriginY = s.SpawnOriginY;
-            SpawnRangeMin = s.SpawnRangeMin;
-            SpawnRangeMax = s.SpawnRangeMax;
-            RespawnSeconds = s.RespawnSeconds;
-            TotalSpawnCount = s.TotalSpawnCount;
-            HomeRange = s.HomeRange;
-            Note = s.Note;
-            RespawnMultiplierLow = s.RespawnMultiplierLow;
-            Enabled = s.Enabled;
-            IsCallForHelp = s.IsCallForHelp;
-            BehaviorType = s.BehaviorType;
-            NpcSpecialType = s.NpcSpecialType;
+            Original = snapshot;
+            Name = snapshot.Name;
+            PresenceId = snapshot.PresenceId;
+            FlockMemberCount = snapshot.FlockMemberCount;
+            Definition = snapshot.Definition;
+            SpawnOriginX = snapshot.SpawnOriginX;
+            SpawnOriginY = snapshot.SpawnOriginY;
+            SpawnRangeMin = snapshot.SpawnRangeMin;
+            SpawnRangeMax = snapshot.SpawnRangeMax;
+            RespawnSeconds = snapshot.RespawnSeconds;
+            TotalSpawnCount = snapshot.TotalSpawnCount;
+            HomeRange = snapshot.HomeRange;
+            Note = snapshot.Note;
+            RespawnMultiplierLow = snapshot.RespawnMultiplierLow;
+            Enabled = snapshot.Enabled;
+            IsCallForHelp = snapshot.IsCallForHelp;
+            BehaviorType = snapshot.BehaviorType;
+            NpcSpecialType = snapshot.NpcSpecialType;
         }
 
         public void RefreshOriginalFromCurrent()
@@ -87,10 +82,7 @@ namespace Perpetuum.AdminTool.Npc
             };
         }
 
-        public static FlockRow CreateNew(FlockSnapshot seed)
-        {
-            return new FlockRow(seed) { IsNew = true };
-        }
+        public static FlockRow CreateNew(FlockSnapshot seed) => new(seed) { IsNew = true };
     }
 
     public class FlockSnapshot

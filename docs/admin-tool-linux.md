@@ -110,8 +110,8 @@ The port is organized as vertical modules so every stage remains usable:
 3. entities and robot templates, which support content and bot development
    (entity primitive fields, structured robot templates, and template relations
    are native now);
-4. NPC loot, presences, flocks, and equipment sets (NPC loot, presences, and
-   equipment sets are native now);
+4. NPC loot, presences, flocks, and equipment sets (all four are native now,
+   including presence-to-flock relationships);
 5. AutoMarket and the remaining economy diagnostics (NIC flow is native now);
 6. seasons, packages, translations, and remaining creation dialogs.
 

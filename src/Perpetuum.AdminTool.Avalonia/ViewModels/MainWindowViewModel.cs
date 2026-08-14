@@ -27,6 +27,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IRobotTemplateEditorRepositoryFactory _robotTemplateEditorRepositoryFactory;
     private readonly INpcLootRepositoryFactory _npcLootRepositoryFactory;
     private readonly IPresenceRepositoryFactory _presenceRepositoryFactory;
+    private readonly IFlockRepositoryFactory _flockRepositoryFactory;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -50,6 +51,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private EquipmentSetsCatalogViewModel? _equipmentSets;
     [ObservableProperty] private NpcLootCatalogViewModel? _npcLoot;
     [ObservableProperty] private PresenceCatalogViewModel? _presences;
+    [ObservableProperty] private FlockCatalogViewModel? _flocks;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
@@ -64,7 +66,8 @@ public partial class MainWindowViewModel : ObservableObject
         IEquipmentSetRepositoryFactory equipmentSetRepositoryFactory,
         IRobotTemplateEditorRepositoryFactory robotTemplateEditorRepositoryFactory,
         INpcLootRepositoryFactory npcLootRepositoryFactory,
-        IPresenceRepositoryFactory presenceRepositoryFactory)
+        IPresenceRepositoryFactory presenceRepositoryFactory,
+        IFlockRepositoryFactory flockRepositoryFactory)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
@@ -79,6 +82,7 @@ public partial class MainWindowViewModel : ObservableObject
         _robotTemplateEditorRepositoryFactory = robotTemplateEditorRepositoryFactory;
         _npcLootRepositoryFactory = npcLootRepositoryFactory;
         _presenceRepositoryFactory = presenceRepositoryFactory;
+        _flockRepositoryFactory = flockRepositoryFactory;
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -191,6 +195,9 @@ public partial class MainWindowViewModel : ObservableObject
                     Presences = new PresenceCatalogViewModel(
                         _presenceRepositoryFactory.Create(BuildConnectionSettings()),
                         changeQueue);
+                    Flocks = new FlockCatalogViewModel(
+                        _flockRepositoryFactory.Create(BuildConnectionSettings()),
+                        changeQueue);
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -231,6 +238,7 @@ public partial class MainWindowViewModel : ObservableObject
         EquipmentSets = null;
         NpcLoot = null;
         Presences = null;
+        Flocks = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

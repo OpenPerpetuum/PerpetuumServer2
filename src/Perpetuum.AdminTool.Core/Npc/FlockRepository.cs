@@ -1,39 +1,52 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Perpetuum.AdminTool.Common;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Npc
 {
-    public class FlockRepository
+    public interface IFlockRepository
+    {
+        Task<FlockLoad> LoadAllAsync();
+        Task<List<FlockSummary>> LoadByPresenceAsync(int presenceId);
+    }
+
+    public interface IFlockRepositoryFactory
+    {
+        IFlockRepository Create(ConnectionSettings connection);
+    }
+
+    public sealed class FlockRepositoryFactory : IFlockRepositoryFactory
+    {
+        public IFlockRepository Create(ConnectionSettings connection) => new FlockRepository(connection);
+    }
+
+    public sealed class FlockRepository : IFlockRepository
     {
         private readonly ConnectionSettings _connection;
-
-        public FlockRepository(ConnectionSettings connection)
-        {
-            _connection = connection;
-        }
+        public FlockRepository(ConnectionSettings connection) => _connection = connection;
 
         public async Task<FlockLoad> LoadAllAsync()
         {
             var result = new FlockLoad();
             await using var cn = new SqlConnection(_connection.BuildConnectionString());
             await cn.OpenAsync();
-
             await LoadPresencePicksAsync(cn, result.PresencePicks);
+            await LoadDefinitionPicksAsync(cn, result.DefinitionPicks);
 
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
-                "select id, name, presenceid, flockmembercount, definition, " +
-                "spawnoriginX, spawnoriginY, spawnrangeMin, spawnrangeMax, " +
-                "respawnseconds, totalspawncount, homerange, note, respawnmultiplierlow, " +
-                "enabled, iscallforhelp, behaviorType, npcSpecialType " +
-                "from npcflock order by presenceid, name, id";
+                "select f.id, f.name, f.presenceid, f.flockmembercount, f.definition, " +
+                "f.spawnoriginX, f.spawnoriginY, f.spawnrangeMin, f.spawnrangeMax, " +
+                "f.respawnseconds, f.totalspawncount, f.homerange, f.note, f.respawnmultiplierlow, " +
+                "f.enabled, f.iscallforhelp, f.behaviorType, f.npcSpecialType, " +
+                "p.name, e.definitionname from npcflock f " +
+                "left join npcpresence p on p.id = f.presenceid " +
+                "left join entitydefaults e on e.definition = f.definition " +
+                "order by f.presenceid, f.name, f.id";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                var snap = new FlockSnapshot
+                var snapshot = new FlockSnapshot
                 {
                     Id = reader.GetInt32(0),
                     Name = reader.IsDBNull(1) ? "" : reader.GetString(1),
@@ -54,7 +67,11 @@ namespace Perpetuum.AdminTool.Npc
                     BehaviorType = reader.GetInt32(16),
                     NpcSpecialType = reader.GetInt32(17)
                 };
-                result.Rows.Add(new FlockRow(snap));
+                result.Rows.Add(new FlockRow(snapshot)
+                {
+                    PresenceName = reader.IsDBNull(18) ? "" : reader.GetString(18),
+                    DefinitionName = reader.IsDBNull(19) ? "" : reader.GetString(19)
+                });
             }
             return result;
         }
@@ -66,12 +83,10 @@ namespace Perpetuum.AdminTool.Npc
             await cn.OpenAsync();
             await using var cmd = cn.CreateCommand();
             cmd.CommandText =
-                "select f.id, f.name, f.definition, e.definitionname, " +
-                "f.flockmembercount, f.enabled, f.behaviorType, f.npcSpecialType " +
-                "from npcflock f " +
+                "select f.id, f.name, f.definition, e.definitionname, f.flockmembercount, " +
+                "f.enabled, f.behaviorType, f.npcSpecialType from npcflock f " +
                 "left join entitydefaults e on e.definition = f.definition " +
-                "where f.presenceid = @pid " +
-                "order by f.name, f.id";
+                "where f.presenceid = @pid order by f.name, f.id";
             cmd.Parameters.AddWithValue("@pid", presenceId);
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -91,9 +106,10 @@ namespace Perpetuum.AdminTool.Npc
             return result;
         }
 
-        private static async Task LoadPresencePicksAsync(SqlConnection cn, List<PresencePickItem> sink)
+        private static async Task LoadPresencePicksAsync(
+            SqlConnection connection, List<PresencePickItem> sink)
         {
-            await using var cmd = cn.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandText = "select id, name from npcpresence order by name";
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -105,15 +121,39 @@ namespace Perpetuum.AdminTool.Npc
                 });
             }
         }
+
+        private static async Task LoadDefinitionPicksAsync(
+            SqlConnection connection, List<EntityPickItem> sink)
+        {
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText =
+                "select definition, definitionname, categoryflags, enabled, hidden, tiertype, tierlevel " +
+                "from entitydefaults order by definitionname";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                sink.Add(new EntityPickItem
+                {
+                    Definition = reader.GetInt32(0),
+                    Name = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                    CategoryFlags = reader.IsDBNull(2) ? 0 : reader.GetInt64(2),
+                    Enabled = !reader.IsDBNull(3) && reader.GetBoolean(3),
+                    Hidden = !reader.IsDBNull(4) && reader.GetBoolean(4),
+                    TierType = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
+                    TierLevel = reader.IsDBNull(6) ? 0 : reader.GetInt32(6)
+                });
+            }
+        }
     }
 
-    public class FlockLoad
+    public sealed class FlockLoad
     {
         public List<FlockRow> Rows { get; } = new();
         public List<PresencePickItem> PresencePicks { get; } = new();
+        public List<EntityPickItem> DefinitionPicks { get; } = new();
     }
 
-    public class FlockSummary
+    public sealed class FlockSummary
     {
         public int Id { get; init; }
         public string Name { get; init; } = "";

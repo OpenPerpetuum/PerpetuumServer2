@@ -121,6 +121,10 @@
       </Border>
 
       <Border IsVisible="{Binding IsAuthenticated}">
+        <views:FlockCatalogView DataContext="{Binding Flocks}" />
+      </Border>
+
+      <Border IsVisible="{Binding IsAuthenticated}">
         <views:EconomyNicFlowView DataContext="{Binding Economy}" />
       </Border>
 

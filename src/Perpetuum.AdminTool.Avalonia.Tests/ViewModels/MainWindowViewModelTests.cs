@@ -39,7 +39,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEquipmentSetRepositoryFactory(),
             new StubRobotTemplateEditorRepositoryFactory(),
             new StubNpcLootRepositoryFactory(),
-            new StubPresenceRepositoryFactory());
+            new StubPresenceRepositoryFactory(),
+            new StubFlockRepositoryFactory());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -64,7 +65,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEquipmentSetRepositoryFactory(),
             new StubRobotTemplateEditorRepositoryFactory(),
             new StubNpcLootRepositoryFactory(),
-            new StubPresenceRepositoryFactory())
+            new StubPresenceRepositoryFactory(),
+            new StubFlockRepositoryFactory())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -104,7 +106,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEquipmentSetRepositoryFactory(),
             new StubRobotTemplateEditorRepositoryFactory(),
             new StubNpcLootRepositoryFactory(),
-            new StubPresenceRepositoryFactory())
+            new StubPresenceRepositoryFactory(),
+            new StubFlockRepositoryFactory())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -124,6 +127,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.NotNull(viewModel.EquipmentSets);
         Assert.NotNull(viewModel.NpcLoot);
         Assert.NotNull(viewModel.Presences);
+        Assert.NotNull(viewModel.Flocks);
         Assert.True(File.Exists(store.FilePath));
     }
 
@@ -149,7 +153,8 @@ public sealed class MainWindowViewModelTests : IDisposable
             new StubEquipmentSetRepositoryFactory(),
             new StubRobotTemplateEditorRepositoryFactory(),
             new StubNpcLootRepositoryFactory(),
-            new StubPresenceRepositoryFactory())
+            new StubPresenceRepositoryFactory(),
+            new StubFlockRepositoryFactory())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -357,5 +362,17 @@ public sealed class MainWindowViewModelTests : IDisposable
     private sealed class StubPresenceRepository : IPresenceRepository
     {
         public Task<PresenceLoad> LoadAllAsync() => Task.FromResult(new PresenceLoad());
+    }
+
+    private sealed class StubFlockRepositoryFactory : IFlockRepositoryFactory
+    {
+        public IFlockRepository Create(ConnectionSettings connection) => new StubFlockRepository();
+    }
+
+    private sealed class StubFlockRepository : IFlockRepository
+    {
+        public Task<FlockLoad> LoadAllAsync() => Task.FromResult(new FlockLoad());
+        public Task<List<FlockSummary>> LoadByPresenceAsync(int presenceId) =>
+            Task.FromResult(new List<FlockSummary>());
     }
 }

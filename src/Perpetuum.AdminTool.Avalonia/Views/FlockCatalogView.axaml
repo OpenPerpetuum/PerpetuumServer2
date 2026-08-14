@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:npc="using:Perpetuum.AdminTool.Npc"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.FlockCatalogView"
+             x:DataType="vm:FlockCatalogViewModel">
+  <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <StackPanel Spacing="12">
+      <Grid ColumnDefinitions="*,280,Auto" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" Spacing="3">
+          <TextBlock Text="NPC flocks" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Manage the NPC groups attached to presences, including composition and respawn behavior."
+                     Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+        <TextBox Grid.Column="1" Watermark="id, name, presence, or NPC" Text="{Binding FilterText}" />
+        <Button Grid.Column="2" Content="Reload" Command="{Binding LoadCommand}"
+                IsEnabled="{Binding IsNotLoading}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="2*,*,*,100,Auto" ColumnSpacing="6">
+        <TextBox Grid.Column="0" Watermark="flock name" Text="{Binding NewName}" />
+        <TextBox Grid.Column="1" Watermark="presence id" Text="{Binding NewPresenceId}" />
+        <TextBox Grid.Column="2" Watermark="NPC definition" Text="{Binding NewDefinition}" />
+        <TextBox Grid.Column="3" Watermark="members" Text="{Binding NewMemberCount}" />
+        <Button Grid.Column="4" Content="Create unsaved flock" Command="{Binding CreateFlockCommand}" />
+      </Grid>
+
+      <Grid ColumnDefinitions="420,*" ColumnSpacing="16">
+        <ListBox Grid.Column="0" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
+                 MinHeight="430" MaxHeight="680">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="npc:FlockRow">
+              <Grid ColumnDefinitions="50,*,120,150" ColumnSpacing="6" Margin="2">
+                <TextBlock Grid.Column="0" Text="{Binding Id}" Opacity="0.65" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{Binding PresenceName}" Opacity="0.7"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="3" Text="{Binding DefinitionName}" Opacity="0.7"
+                           TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Column="1" ColumnDefinitions="150,*"
+              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              ColumnSpacing="10" RowSpacing="6">
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="Flock id / name" />
+          <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="80,*" ColumnSpacing="6">
+            <TextBlock Grid.Column="0" Text="{Binding SelectedRow.Id}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.Name}" />
+          </Grid>
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="Presence" />
+          <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="100,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.PresenceId}" />
+            <TextBlock Grid.Column="1" Text="{Binding SelectedRow.PresenceName}" VerticalAlignment="Center" />
+          </Grid>
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="NPC definition" />
+          <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="100,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.Definition}" />
+            <TextBlock Grid.Column="1" Text="{Binding SelectedRow.DefinitionName}" VerticalAlignment="Center" />
+          </Grid>
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="Members / total spawn" />
+          <Grid Grid.Row="3" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.FlockMemberCount}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.TotalSpawnCount}" />
+          </Grid>
+          <TextBlock Grid.Row="4" Grid.Column="0" Text="Spawn origin X / Y" />
+          <Grid Grid.Row="4" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.SpawnOriginX}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.SpawnOriginY}" />
+          </Grid>
+          <TextBlock Grid.Row="5" Grid.Column="0" Text="Spawn range min / max" />
+          <Grid Grid.Row="5" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.SpawnRangeMin}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.SpawnRangeMax}" />
+          </Grid>
+          <TextBlock Grid.Row="6" Grid.Column="0" Text="Respawn s / multiplier" />
+          <Grid Grid.Row="6" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.RespawnSeconds}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.RespawnMultiplierLow}" />
+          </Grid>
+          <TextBlock Grid.Row="7" Grid.Column="0" Text="Home range" />
+          <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding SelectedRow.HomeRange}" />
+          <TextBlock Grid.Row="8" Grid.Column="0" Text="Enabled / call help" />
+          <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+            <CheckBox Content="Enabled" IsChecked="{Binding SelectedRow.Enabled}" />
+            <CheckBox Content="Call for help" IsChecked="{Binding SelectedRow.IsCallForHelp}" />
+          </StackPanel>
+          <TextBlock Grid.Row="9" Grid.Column="0" Text="Behavior / special type" />
+          <Grid Grid.Row="9" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="6">
+            <TextBox Grid.Column="0" Text="{Binding SelectedRow.BehaviorType}" />
+            <TextBox Grid.Column="1" Text="{Binding SelectedRow.NpcSpecialType}" />
+          </Grid>
+          <TextBlock Grid.Row="10" Grid.Column="0" Text="Note" />
+          <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding SelectedRow.Note}" />
+          <Grid Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2"
+                ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,8,0,0">
+            <Button Grid.Column="0" Content="Queue DELETE" Command="{Binding QueueDeleteCommand}" />
+            <Button Grid.Column="2" Content="Revert edits" Command="{Binding RevertSelectedChangesCommand}" />
+            <Button Grid.Column="3" Content="Queue changes" Command="{Binding QueueSelectedChangesCommand}" />
+          </Grid>
+        </Grid>
+      </Grid>
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </Border>
+</UserControl>

@@ -151,6 +151,26 @@ public sealed class DatabaseProbeIntegrationTests
         Assert.All(load.ZoneSpawnPicks, pick => Assert.False(string.IsNullOrWhiteSpace(pick.Name)));
     }
 
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task FlockRepository_LoadsCurrentPerpetuumSchemaAndPresenceRelationships()
+    {
+        var repository = new FlockRepository(LoadConnectionSettings());
+
+        FlockLoad load = await repository.LoadAllAsync();
+
+        Assert.NotEmpty(load.Rows);
+        Assert.NotEmpty(load.PresencePicks);
+        Assert.NotEmpty(load.DefinitionPicks);
+        Assert.All(load.Rows, row => Assert.True(row.Id > 0));
+        Assert.All(load.Rows, row => Assert.False(string.IsNullOrWhiteSpace(row.Name)));
+        Assert.All(load.Rows, row => Assert.False(string.IsNullOrWhiteSpace(row.PresenceName)));
+        Assert.All(load.Rows, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
+        List<FlockSummary> related = await repository.LoadByPresenceAsync(load.Rows[0].PresenceId);
+        Assert.NotEmpty(related);
+        Assert.All(related, row => Assert.False(string.IsNullOrWhiteSpace(row.DefinitionName)));
+    }
+
     private static ConnectionSettings LoadConnectionSettings()
     {
         string? server = Environment.GetEnvironmentVariable("PERPETUUM_ADMINTOOL_TEST_SERVER");
