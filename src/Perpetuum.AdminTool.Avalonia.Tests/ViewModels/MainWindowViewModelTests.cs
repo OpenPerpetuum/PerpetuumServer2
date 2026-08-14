@@ -1,6 +1,7 @@
 using Perpetuum.AdminTool.Avalonia.ViewModels;
 using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
+using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Avalonia.Tests.ViewModels;
@@ -24,7 +25,9 @@ public sealed class MainWindowViewModelTests : IDisposable
             store,
             new StubDatabaseProbe(true, "unused"),
             new StubAuthenticatorFactory(new AuthOutcome()),
-            new StubEconomyRepositoryFactory());
+            new StubEconomyRepositoryFactory(),
+            new StubChangeApplierFactory(),
+            new StubSqlScriptExporter());
 
         Assert.Equal("127.0.0.1,14331", viewModel.Server);
         Assert.True(viewModel.SqlCredentialsEnabled);
@@ -40,7 +43,9 @@ public sealed class MainWindowViewModelTests : IDisposable
             store,
             probe,
             new StubAuthenticatorFactory(new AuthOutcome()),
-            new StubEconomyRepositoryFactory())
+            new StubEconomyRepositoryFactory(),
+            new StubChangeApplierFactory(),
+            new StubSqlScriptExporter())
         {
             Server = "127.0.0.1,14332",
             Database = "perpetuumsa",
@@ -71,7 +76,9 @@ public sealed class MainWindowViewModelTests : IDisposable
             store,
             new StubDatabaseProbe(true, "unused"),
             new StubAuthenticatorFactory(outcome),
-            new StubEconomyRepositoryFactory())
+            new StubEconomyRepositoryFactory(),
+            new StubChangeApplierFactory(),
+            new StubSqlScriptExporter())
         {
             Email = "admin@example.invalid",
             AccountPassword = "game-password"
@@ -84,6 +91,7 @@ public sealed class MainWindowViewModelTests : IDisposable
         Assert.Equal(string.Empty, viewModel.AccountPassword);
         Assert.Equal("admin@example.invalid", store.Settings.LastLoginEmail);
         Assert.NotNull(viewModel.Economy);
+        Assert.NotNull(viewModel.PendingChanges);
         Assert.True(File.Exists(store.FilePath));
     }
 
@@ -100,7 +108,9 @@ public sealed class MainWindowViewModelTests : IDisposable
             store,
             new StubDatabaseProbe(true, "unused"),
             new StubAuthenticatorFactory(outcome),
-            new StubEconomyRepositoryFactory())
+            new StubEconomyRepositoryFactory(),
+            new StubChangeApplierFactory(),
+            new StubSqlScriptExporter())
         {
             Email = "player@example.invalid",
             AccountPassword = "game-password"
@@ -166,6 +176,38 @@ public sealed class MainWindowViewModelTests : IDisposable
         public Task<(List<EconomyNicFlowRow> In, List<EconomyNicFlowRow> Out)> LoadNicFlowAsync()
         {
             return Task.FromResult((new List<EconomyNicFlowRow>(), new List<EconomyNicFlowRow>()));
+        }
+    }
+
+    private sealed class StubChangeApplierFactory : IChangeApplierFactory
+    {
+        public IChangeApplier Create(ConnectionSettings connection)
+        {
+            return new StubChangeApplier();
+        }
+    }
+
+    private sealed class StubChangeApplier : IChangeApplier
+    {
+        public Task ExecuteAsync(
+            IReadOnlyList<IPendingChange> changes,
+            string? authorEmail = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class StubSqlScriptExporter : ISqlScriptExporter
+    {
+        public Task<string> ExportAsync(
+            string outputDirectory,
+            string filePrefix,
+            IReadOnlyList<IPendingChange> changes,
+            string? authorEmail = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Path.Combine(outputDirectory, "changes.sql"));
         }
     }
 }

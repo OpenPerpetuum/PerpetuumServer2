@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -211,10 +210,12 @@ namespace Perpetuum.AdminTool.ViewModels
 
                 try
                 {
-                    Directory.CreateDirectory(dir);
-                    var fileName = SqlScriptBuilder.BuildFileName("season", Seasons.DetailViewModel?.Season.Name);
-                    var path = Path.Combine(dir, fileName);
-                    await File.WriteAllTextAsync(path, script);
+                    var exporter = new SqlScriptExporter();
+                    var path = await exporter.ExportAsync(
+                        dir,
+                        "perpetuum_changes",
+                        Changes.Items.ToArray(),
+                        _session.Email);
 
                     var translationNote = ApplyPendingTranslationKeys();
 

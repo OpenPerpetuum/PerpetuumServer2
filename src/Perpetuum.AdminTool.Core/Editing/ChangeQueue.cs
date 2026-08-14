@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 
 namespace Perpetuum.AdminTool.Editing
 {
-    public class ChangeQueue
+    public sealed class ChangeQueue
     {
         public ObservableCollection<IPendingChange> Items { get; } = new();
 
@@ -14,6 +14,28 @@ namespace Perpetuum.AdminTool.Editing
 
         public void Add(IPendingChange change) => Items.Add(change);
         public void AddNewEntityName(string definitionName) => PendingNewEntityNames.Add(definitionName);
+
+        public void Remove(IEnumerable<IPendingChange> changes)
+        {
+            foreach (IPendingChange change in changes)
+            {
+                for (int index = 0; index < Items.Count; index++)
+                {
+                    if (!ReferenceEquals(Items[index], change))
+                    {
+                        continue;
+                    }
+
+                    Items.RemoveAt(index);
+                    break;
+                }
+            }
+
+            if (Items.Count == 0)
+            {
+                PendingNewEntityNames.Clear();
+            }
+        }
 
         public void Clear()
         {

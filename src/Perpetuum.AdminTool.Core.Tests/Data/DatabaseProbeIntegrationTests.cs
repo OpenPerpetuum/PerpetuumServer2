@@ -1,5 +1,6 @@
 using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
+using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Core.Tests.Data;
@@ -28,6 +29,18 @@ public sealed class DatabaseProbeIntegrationTests
 
         Assert.Contains(nicIn, row => row.Category == "Total NIC In" && row.IsTotal);
         Assert.Contains(nicOut, row => row.Category == "Total NIC Out" && row.IsTotal);
+    }
+
+    [Fact]
+    [Trait("Category", "Database")]
+    public async Task ChangeApplier_ExecutesTransactionalReadOnlyProbe()
+    {
+        var applier = new ChangeApplier(LoadConnectionSettings());
+
+        await applier.ExecuteAsync(
+            [new RawSqlChange("integration test read-only probe", "SELECT 1;")],
+            "integration-test@example.invalid",
+            TestContext.Current.CancellationToken);
     }
 
     private static ConnectionSettings LoadConnectionSettings()

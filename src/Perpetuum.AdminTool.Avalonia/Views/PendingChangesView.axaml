@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Perpetuum.AdminTool.Avalonia.ViewModels"
+             xmlns:editing="using:Perpetuum.AdminTool.Editing"
+             x:Class="Perpetuum.AdminTool.Avalonia.Views.PendingChangesView"
+             x:DataType="vm:PendingChangesViewModel">
+  <Border Padding="16" BorderBrush="#808080" BorderThickness="1" CornerRadius="6">
+    <StackPanel Spacing="12">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Grid.Column="0" Spacing="3">
+          <TextBlock Text="Pending database changes" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="Review generated SQL before exporting or applying anything."
+                     Opacity="0.7" />
+        </StackPanel>
+        <TextBlock Grid.Column="1"
+                   Text="{Binding PendingChangeCount, StringFormat={}{0} queued}"
+                   VerticalAlignment="Center"
+                   FontWeight="SemiBold" />
+      </Grid>
+
+      <ItemsControl ItemsSource="{Binding Items}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="editing:IPendingChange">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,2">
+              <Border Grid.Column="0"
+                      IsVisible="{Binding IsDestructive}"
+                      Padding="5,1"
+                      Background="#40A05050"
+                      CornerRadius="3">
+                <TextBlock Text="destructive" FontSize="11" />
+              </Border>
+              <TextBlock Grid.Column="1" Text="{Binding Description}" TextWrapping="Wrap" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <TextBlock Text="Transactional SQL preview" FontWeight="SemiBold" />
+      <TextBox Text="{Binding ScriptPreview, Mode=OneWay}"
+               IsReadOnly="True"
+               AcceptsReturn="True"
+               TextWrapping="NoWrap"
+               ScrollViewer.HorizontalScrollBarVisibility="Auto"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               FontFamily="Monospace"
+               MinHeight="180"
+               MaxHeight="300" />
+
+      <Border Padding="12" Background="#1A808080" CornerRadius="5">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+          <TextBox Grid.Column="0"
+                   Watermark="SQL output directory"
+                   Text="{Binding OutputDirectory}" />
+          <Button Grid.Column="1"
+                  Content="Export SQL script"
+                  Command="{Binding ExportScriptCommand}" />
+          <Button Grid.Column="2"
+                  Content="Discard queue"
+                  Command="{Binding ClearCommand}" />
+        </Grid>
+      </Border>
+
+      <Border Padding="12" BorderBrush="#A05050" BorderThickness="1" CornerRadius="5">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Direct database application" FontWeight="SemiBold" />
+          <TextBlock Text="Every queued statement executes in one transaction. This can permanently alter server content."
+                     TextWrapping="Wrap" />
+          <TextBlock Text="{Binding ConfirmationPrompt}" Opacity="0.75" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Grid.Column="0"
+                     Watermark="Confirmation phrase"
+                     Text="{Binding ConfirmationText}" />
+            <Button Grid.Column="1"
+                    Content="Apply directly"
+                    Command="{Binding ApplyDirectCommand}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+    </StackPanel>
+  </Border>
+</UserControl>

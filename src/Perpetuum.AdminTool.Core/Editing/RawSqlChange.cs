@@ -1,6 +1,6 @@
 namespace Perpetuum.AdminTool.Editing
 {
-    public class RawSqlChange : IPendingChange
+    public sealed class RawSqlChange : IPendingChange
     {
         public string Description { get; }
         public bool IsDestructive { get; }

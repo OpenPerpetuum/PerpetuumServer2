@@ -5,6 +5,7 @@ using Perpetuum.AdminTool.Avalonia.ViewModels;
 using Perpetuum.AdminTool.Avalonia.Views;
 using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
+using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Avalonia;
@@ -28,7 +29,9 @@ public partial class App : Application
                     settingsStore,
                     new DatabaseProbe(),
                     new AuthenticatorFactory(),
-                    new EconomyRepositoryFactory())
+                    new EconomyRepositoryFactory(),
+                    new ChangeApplierFactory(),
+                    new SqlScriptExporter())
             };
         }
 

@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Perpetuum.AdminTool.Data;
 using Perpetuum.AdminTool.Economy;
+using Perpetuum.AdminTool.Editing;
 using Perpetuum.AdminTool.Settings;
 
 namespace Perpetuum.AdminTool.Avalonia.ViewModels;
@@ -12,6 +13,8 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IDatabaseProbe _databaseProbe;
     private readonly IAuthenticatorFactory _authenticatorFactory;
     private readonly IEconomyRepositoryFactory _economyRepositoryFactory;
+    private readonly IChangeApplierFactory _changeApplierFactory;
+    private readonly ISqlScriptExporter _scriptExporter;
 
     [ObservableProperty] private string _server;
     [ObservableProperty] private string _database;
@@ -28,17 +31,22 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _isAuthenticated;
     [ObservableProperty] private string _authenticatedIdentity = string.Empty;
     [ObservableProperty] private EconomyNicFlowViewModel? _economy;
+    [ObservableProperty] private PendingChangesViewModel? _pendingChanges;
 
     public MainWindowViewModel(
         AppSettingsStore settingsStore,
         IDatabaseProbe databaseProbe,
         IAuthenticatorFactory authenticatorFactory,
-        IEconomyRepositoryFactory economyRepositoryFactory)
+        IEconomyRepositoryFactory economyRepositoryFactory,
+        IChangeApplierFactory changeApplierFactory,
+        ISqlScriptExporter scriptExporter)
     {
         _settingsStore = settingsStore;
         _databaseProbe = databaseProbe;
         _authenticatorFactory = authenticatorFactory;
         _economyRepositoryFactory = economyRepositoryFactory;
+        _changeApplierFactory = changeApplierFactory;
+        _scriptExporter = scriptExporter;
         ConnectionSettings connection = settingsStore.Settings.Connection;
         _server = connection.Server;
         _database = connection.Database;
@@ -125,6 +133,12 @@ public partial class MainWindowViewModel : ObservableObject
                         $"{outcome.Email} ({outcome.AccessLevel}, account {outcome.AccountId})";
                     Economy = new EconomyNicFlowViewModel(
                         _economyRepositoryFactory.Create(BuildConnectionSettings()));
+                    PendingChanges = new PendingChangesViewModel(
+                        _settingsStore,
+                        new ChangeQueue(),
+                        _changeApplierFactory.Create(BuildConnectionSettings()),
+                        _scriptExporter,
+                        Email.Trim());
                     AccountPassword = string.Empty;
                     ApplySettings();
                     _settingsStore.Settings.LastLoginEmail = Email.Trim();
@@ -158,6 +172,7 @@ public partial class MainWindowViewModel : ObservableObject
         IsAuthenticated = false;
         AuthenticatedIdentity = string.Empty;
         Economy = null;
+        PendingChanges = null;
         AccountPassword = string.Empty;
         StatusIsError = false;
         StatusMessage = "Signed out.";

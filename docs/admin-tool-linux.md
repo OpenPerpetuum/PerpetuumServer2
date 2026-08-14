@@ -23,8 +23,10 @@ window lifetime, and presentation-only collection views.
 
 The Avalonia application provides connection settings, a live database probe,
 normal AdminTool account authentication, and the first real native module: a
-read-only NIC-flow economy dashboard. This establishes the complete Linux path
-from desktop UI through `Microsoft.Data.SqlClient` to live Perpetuum data before
+read-only NIC-flow economy dashboard. It also includes the shared pending-change
+review, transactional SQL preview/export, and guarded direct-apply workflow that
+future editing modules use. This establishes the complete Linux path from
+desktop UI through `Microsoft.Data.SqlClient` to live Perpetuum data before
 larger editing screens are migrated.
 
 Run from a machine with the .NET 8 SDK:
@@ -96,7 +98,8 @@ The database integration test is skipped when those variables are absent.
 The port is organized as vertical modules so every stage remains usable:
 
 1. connection, secure local settings, database probe, and admin authentication;
-2. pending-change review, SQL-script export, and explicit commit safeguards;
+2. pending-change review, SQL-script export, and explicit commit safeguards
+   (native now);
 3. entities and robot templates, which support content and bot development;
 4. NPC loot, presences, flocks, and equipment sets;
 5. AutoMarket and the remaining economy diagnostics (NIC flow is native now);
@@ -105,6 +108,20 @@ The port is organized as vertical modules so every stage remains usable:
 The WPF application remains the compatibility implementation until this list
 reaches parity. New database behavior belongs in the portable core and is
 consumed by both front ends rather than being duplicated.
+
+### Change-application safeguards
+
+- SQL previews and exports wrap all queued statements in one transaction with
+  `XACT_ABORT` enabled.
+- Generated comments cannot be escaped with newline characters from account or
+  content text.
+- Export creates a unique UTF-8 file atomically and never overwrites an existing
+  script.
+- Direct application remains disabled until the administrator reviews the SQL
+  and types `APPLY`; a queue containing a destructive operation instead requires
+  `APPLY DELETE`.
+- A failed export or database operation preserves the queue for review, retry,
+  or recovery through script export.
 
 ## Wine compatibility fallback
 

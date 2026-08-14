@@ -99,6 +99,10 @@
       <Border IsVisible="{Binding IsAuthenticated}">
         <views:EconomyNicFlowView DataContext="{Binding Economy}" />
       </Border>
+
+      <Border IsVisible="{Binding IsAuthenticated}">
+        <views:PendingChangesView DataContext="{Binding PendingChanges}" />
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </Window>
