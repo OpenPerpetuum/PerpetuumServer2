@@ -337,28 +337,35 @@ Avoid parallel abstractions unless justified.
 
 # Backlog Management
 
-Persistent project backlog files are authoritative project memory.
+The project board is authoritative project memory.
 
-## Backlog Files
+## Where the backlog lives
 
-Primary:
-- `docs/backlog/issues.md`
-- `docs/backlog/improvements.md`
+https://github.com/orgs/OpenPerpetuum/projects/6
 
-Optional:
-- `docs/backlog/active-sprint.md`
-- `docs/backlog/completed.md`
+The backlog was kept in `docs/backlog/*.md` until 2026-08-14. All 85 entries were moved to the board
+as draft issues, keeping their `ISSUE-NNN` / `IMPROVEMENT-NNN` identifiers in the item title. The
+files were removed so there is one place to read and one place to update; earlier revisions remain in
+git history.
+
+Reading the board needs the `read:project` scope, which a fresh `gh` token does not carry:
+
+```bash
+gh auth refresh -h github.com -s project
+```
 
 ## Backlog Rules
 
 Claude MUST:
-- review backlog files before major implementation work
-- avoid duplicate backlog entries
-- update related backlog items after implementation
-- preserve backlog structure and identifiers
-- prefer updating existing items over creating duplicates
-- keep backlog entries concise and structured
-- move completed items to `completed.md` when appropriate
+- review the board before major implementation work
+- avoid duplicate items
+- update the related item after implementation
+- preserve item identifiers — the `ISSUE-NNN` / `IMPROVEMENT-NNN` prefix in the title is how entries
+  are cross-referenced from commits, pull requests and the implementation plans under
+  `docs/superpowers/plans/`
+- prefer updating an existing item over creating a duplicate
+- keep items concise and structured
+- set an item's Status to `Done` when it is complete, rather than moving it anywhere
 
 When asked to:
 - "work on backlog"
@@ -368,35 +375,48 @@ When asked to:
 - "implement improvements"
 
 Claude should:
-1. review backlog files, only check what you've been asked to, (e.g. issues or improvements), unless issues and improvements are depending on each other
+1. review the board, filtering to what you have been asked about (issues or improvements), unless the two depend on each other
 2. prioritize unfinished HIGH priority items
 3. prefer low-risk/high-impact work unless instructed otherwise
 4. produce a short implementation plan
-5. update backlog status after work completes
+5. update the item's Status after work completes
 
 ## Backlog Statuses
 
-Use:
+The board's `Status` field, in order:
+
+- BACKLOG
+- Triage
+- Checkup
 - TODO
-- IN_PROGRESS
-- BLOCKED
-- DONE
-- DEFERRED
+- In progress
+- Review in progress
+- Reviewer approved
+- Done
+
+The file-based backlog also used `BLOCKED` and `DEFERRED`, which the board has no equivalent for.
+Both were imported as `BACKLOG`; state the distinction in the item body when it matters.
 
 ## Backlog Priorities
 
-Use:
+The board has no priority field. Priority stays in the item body, on its own line, using:
+
 - CRITICAL
 - HIGH
 - MEDIUM
 - LOW
 
-## Recommended Backlog Entry Format
+## Recommended Backlog Item Format
+
+Item title:
+
+```
+ISSUE-001 - Short title
+```
+
+Item body:
 
 ```md
-## ISSUE-001 - Short title
-
-Status: TODO
 Priority: HIGH
 Area: Networking
 
@@ -412,4 +432,7 @@ Short implementation direction.
 ### Notes
 Optional additional context.
 ```
+
+Status is the board field, not a line in the body. Priority stays in the body because the board has
+no field for it.
 
