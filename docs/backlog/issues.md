@@ -52,7 +52,7 @@ Reproduced on a local P36.8 database (`develop` at `f9ddac2`) with the ISSUE-036
 
 ## ISSUE-035 - Server fails to start with the perpetuum.ini produced by the official installer
 
-Status: TODO
+Status: IN_PROGRESS
 Priority: HIGH
 Area: Configuration / Setup
 
@@ -76,6 +76,35 @@ Reproduced against SQL Server 2022 Express, named instance, Windows integrated a
 `Server=localhost\PERPSQL;Database=perpetuumsa;Trusted_Connection=True;TrustServerCertificate=True;Pooling=True;Connection Timeout=30;Connection Lifetime=260;Min Pool Size=20;Max Pool Size=60;`
 
 `TrustServerCertificate=True` disables server certificate validation. It is appropriate for a local development instance only and must not be carried into a deployment where the connection leaves the machine.
+
+### Progress
+
+Both failures re-measured against `Microsoft.Data.SqlClient` 6.0.1 with neutral resources, so the messages below are the ones a maintainer sees rather than a translation:
+
+- `Connection Reset=True` → `System.NotSupportedException: The keyword 'Connection Reset' is not supported on this platform.`, thrown while `SqlConnection` is being **constructed**, not on `Open()`.
+- No `Encrypt` / `TrustServerCertificate` → `SqlException` on `Open()`: `A connection was successfully established with the server, but then an error occurred during the login process. (provider: SSL Provider, error: 0 - ...)`. The trailing clause comes from Win32 and stays in the system language.
+
+**Keyword 1 is now handled in code.** `LegacyConnectionString.RemoveObsoleteKeywords` drops keywords that `Microsoft.Data.SqlClient` refuses *and* that the framework had already stopped honouring, so removing them cannot change how the server connects. `PerpetuumBootstrapper.Init` calls it right after resolving `GlobalConfiguration` and logs a warning naming `perpetuum.ini` and the keyword.
+
+Keywords that still carry meaning are deliberately left alone — `Network Library` selects a protocol, `Context Connection` selects a SQLCLR connection. Both need an operator decision and the driver's own error already names the replacement.
+
+Parsing goes through `DbConnectionStringBuilder`, the provider-agnostic parser, because `SqlConnectionStringBuilder` throws on the same keyword and so cannot be used to find it. Splitting on `;` by hand was rejected: it corrupts any quoted value containing a separator, verified against `Password="a;b=c"`.
+
+**Keyword 2 is documentation only.** Defaulting `TrustServerCertificate` in code would weaken authentication for every operator to fix a local development case, so `README.md` now carries a setup section stating the requirement, the working connection string, and the caveat that `TrustServerCertificate=True` belongs on a local instance only.
+
+Verified in three states against a real server run:
+
+| State | Result |
+|---|---|
+| `Connection Reset` present, fix applied | Warning naming `perpetuum.ini` and the keyword, then `Database: perpetuumsa` — startup proceeds |
+| `Connection Reset` present, fix reverted | `The keyword 'Connection Reset' is not supported on this platform.` and the process exits, with no mention of `perpetuum.ini` |
+| Keyword absent, fix applied | No warning, log identical to before the change |
+
+The third state matters: the connection string is returned untouched when nothing is removed, because rebuilding it through `DbConnectionStringBuilder` lower-cases every key and drops the trailing separator.
+
+### Notes on the documentation location
+
+The Proposed Fix above suggested a setup page under `docs/codebase/`. It went into `README.md` instead: the repository had no setup documentation of any kind, `README.md` was a badge and a title, and it is where someone who just ran the installer looks first. `docs/codebase/` describes the codebase for contributors; this is an operator instruction. Happy to move it if the maintainers prefer.
 
 ---
 

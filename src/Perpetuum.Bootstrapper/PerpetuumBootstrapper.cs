@@ -139,6 +139,15 @@ namespace Perpetuum.Bootstrapper
             GlobalConfiguration config = _container.Resolve<GlobalConfiguration>();
             _container.Resolve<IHostStateService>().State = HostState.Init;
 
+            // Before anything builds a SqlConnection from it, which happens further down at the
+            // DbConnectionFactory resolve. A perpetuum.ini written for the original server carries
+            // keywords Microsoft.Data.SqlClient refuses, and its error names the keyword but not
+            // the file.
+            config.ConnectionString = LegacyConnectionString.RemoveObsoleteKeywords(config.ConnectionString, out IReadOnlyList<string> obsoleteKeywords);
+            foreach (string keyword in obsoleteKeywords)
+            {
+                Logger.Warning($"perpetuum.ini: ignoring the connection string keyword '{keyword}'. Microsoft.Data.SqlClient does not accept it and the framework had already stopped honouring it, so removing it changes nothing. Delete it from perpetuum.ini to silence this warning.");
+            }
 
             Logger.Info($"Game root: {config.GameRoot}");
             Logger.Info($"GC isServerGC: {GCSettings.IsServerGC}");
