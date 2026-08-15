@@ -170,13 +170,13 @@ The `MissionHandler`, `MissionInProgress`, `MissionProcessorDeliverMission`, `Pr
 
 ## Missing Infrastructure
 
-### No Automated Tests
+### Partial Test Coverage
 
-The repository has zero automated tests (unit, integration, or functional). CLAUDE.md states this explicitly.
+A test suite exists (`src/Perpetuum.Tests`, `src/Perpetuum.Tests.Integration`, `tools/smoke-test.ps1`) but covers only the data layer, validation helpers and two regression paths. The subsystems this document calls high-risk are still untested.
 
-**Impact:** Every change to core systems — combat calculations, mission rewards, market transactions, season point accrual — must be manually validated in a running server with a connected database. Regressions are invisible until they reach production or are found by players.
+**Impact:** Changes to combat calculations, mission rewards, market transactions and season point accrual must still be manually validated in a running server with a connected database. Regressions in those areas remain invisible until they reach production or are found by players.
 
-**Fix approach:** Start with pure-logic unit tests for `FastRandom`, economy formulas, mission reward calculations, and season point math. These have no external dependencies and provide immediate value.
+**Fix approach:** Continue along the coverage map in `IMPROVEMENT-045` — entity system, module state machines, season service, request handlers, mission engine, concurrency. See `docs/codebase/TESTING.md` for what is covered today.
 
 ---
 

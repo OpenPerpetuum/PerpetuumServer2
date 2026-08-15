@@ -62,7 +62,14 @@ CI:
 Output:
 - `bin/x64/Release/net8.0`
 
-There are currently no automated tests.
+Tests:
+
+```bash
+dotnet test src/Perpetuum.Tests/Perpetuum.Tests.csproj -c Release -p:Platform=x64
+```
+
+This is the unit tier and needs no setup. The integration tier and the smoke script need a configured
+`GameRoot` and a live database — see `docs/codebase/TESTING.md`.
 
 ---
 
@@ -280,13 +287,21 @@ Prefer:
 
 # Testing & Validation
 
-There is currently no automated test suite.
+An automated test suite exists in three tiers — unit, integration and smoke. It does not cover the
+whole codebase. `docs/codebase/TESTING.md` states what is covered, what is not, and how to run each
+tier.
 
 Claude MUST:
-- propose manual validation steps
+- run the unit tier after changing code it covers
+- propose tests first, and manual validation for what tests cannot reach
+- propose manual validation steps for gameplay behaviour, which no tier covers
 - identify affected gameplay systems
 - identify affected DB state
 - identify likely regression areas
+
+Claude MUST NOT:
+- restructure production code to make a test possible without saying so explicitly
+- add a regression test without observing it fail against the unfixed code
 
 ---
 

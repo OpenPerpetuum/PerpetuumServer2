@@ -70,9 +70,15 @@
 - Runner: `windows-latest`
 - Trigger: push/PR to `develop` branch
 - Publishes build artifact `Perpetuum-Server-v2-{sha}` on push
-- Only `Perpetuum.ServerService2` project is built in CI
+- Only `Perpetuum.ServerService2` project is built in the `build` job
+- A `test` job runs the unit tier; the integration tier is not referenced in CI
 
-**No automated tests** — no test project, no test framework configured.
+**Testing:**
+- Framework: xUnit v3, with NSubstitute for interface doubles
+- `src/Perpetuum.Tests` — unit tier, no external dependencies, runs in CI
+- `src/Perpetuum.Tests.Integration` — runs against the real database, skipped when `PERPETUUM_GAMEROOT` is unset
+- `tools/smoke-test.ps1` — builds, starts the server, asserts on the startup and shutdown log
+- Coverage is partial by design; see `docs/codebase/TESTING.md`
 
 **Unsafe code:**
 - `<AllowUnsafeBlocks>true</AllowUnsafeBlocks>` in `src/Perpetuum/Perpetuum.csproj`
