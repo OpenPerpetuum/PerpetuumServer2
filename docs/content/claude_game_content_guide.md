@@ -1086,6 +1086,28 @@ Support:
 
 # 26. Validation Checklist
 
+**Most of this checklist is now executable.** Apply your content to a local database, then run:
+
+```bash
+dotnet test src/Perpetuum.Tests.Integration/Perpetuum.Tests.Integration.csproj -c Release -p:Platform=x64 --filter "FullyQualifiedName~ContentInvariantTests"
+```
+
+`ContentInvariantTests` checks the structural half of the list below against the real database:
+recipe definitions and components resolve, no definition is a component of itself, tech tree parents
+and children exist, no two nodes share a coordinate in a group, enabler extensions resolve, robot
+template relations resolve on both sides, and no two definitions share a name. It needs
+`PERPETUUM_GAMEROOT` set, and it skips rather than fails when the environment is absent — so
+**a skipped run is not a pass.** Check that it actually ran.
+
+Reporting a violation is the whole of what it does; it changes nothing and writes nothing.
+
+**What it cannot check, and what therefore stays yours:** whether a robot is balanced, whether a
+recipe's cost is sensible, whether tiering is coherent, whether an item is worth having, and
+everything under Modules / Ammoable Equipment below — `moduleFlag`, `ammoType` and `attributeflags`
+are verified against sibling items by reading, because "matches a verified sibling" is a judgement
+about which sibling is the right one. A green run means the content hangs together. It does not mean
+the content is good.
+
 Before considering content complete, Claude should validate:
 
 ## Definitions

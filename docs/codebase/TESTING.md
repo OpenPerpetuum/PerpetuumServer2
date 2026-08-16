@@ -11,7 +11,7 @@ coverage map below states what is covered and what is not.
 |------|---------|-------|-------|
 | 1 — smoke | `tools/smoke-test.ps1` | 1 end-to-end run | A configured `GameRoot` and a live database |
 | 2 — unit | `src/Perpetuum.Tests` | 58 tests | Nothing. Runs anywhere the solution builds |
-| 3 — integration | `src/Perpetuum.Tests.Integration` | 8 tests | A configured `GameRoot` and a live database |
+| 3 — integration | `src/Perpetuum.Tests.Integration` | 10 tests | A configured `GameRoot` and a live database |
 
 Tier 2 is the tier that runs in CI. Tiers 1 and 3 run on a developer machine that already has the
 standard server environment, and skip rather than fail when it is absent.
@@ -205,6 +205,19 @@ planned order of attack.
 5. Production code is not restructured to make a test possible. The four seams above have been enough
    so far; if a test genuinely cannot be written without a new seam, that is a discussion to have in
    the pull request, not a refactor to slip in.
+6. **Game content is tested differently, because it is data rather than code.** New items, robots,
+   effects, modules or tech tree nodes are rows, so tier 2 has nothing to say about them — a faked
+   data layer cannot tell you whether a recipe names a component that exists. They belong in
+   `src/Perpetuum.Tests.Integration/Content/ContentInvariantTests.cs`, which turns the validation
+   checklist in `docs/content/claude_game_content_guide.md` section 26 into queries. Adding a new
+   kind of content usually means adding an invariant there rather than a test per item: the
+   invariant holds for every row of that kind, including the ones nobody has written yet.
+
+An invariant test passes by counting zero, which means a query that can never match passes for the
+wrong reason and stays green through any amount of broken content. Write the new invariant, run it,
+and confirm it reports a violation you know is there before trusting a zero. `ContentInvariantTests`
+carries a test that does this for the shape the others use, including the NULL case that silently
+breaks it.
 
 ---
 
