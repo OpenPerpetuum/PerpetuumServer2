@@ -84,23 +84,40 @@ Both failures re-measured against `Microsoft.Data.SqlClient` 6.0.1 with neutral 
 - `Connection Reset=True` → `System.NotSupportedException: The keyword 'Connection Reset' is not supported on this platform.`, thrown while `SqlConnection` is being **constructed**, not on `Open()`.
 - No `Encrypt` / `TrustServerCertificate` → `SqlException` on `Open()`: `A connection was successfully established with the server, but then an error occurred during the login process. (provider: SSL Provider, error: 0 - ...)`. The trailing clause comes from Win32 and stays in the system language.
 
-**Keyword 1 is now handled in code.** `LegacyConnectionString.RemoveObsoleteKeywords` drops keywords that `Microsoft.Data.SqlClient` refuses *and* that the framework had already stopped honouring, so removing them cannot change how the server connects. `PerpetuumBootstrapper.Init` calls it right after resolving `GlobalConfiguration` and logs a warning naming `perpetuum.ini` and the keyword.
+**Keyword 1 is now handled in code, by reporting rather than repairing.** `ConnectionStringSupport.FindUnsupportedKeywords` returns every setting the driver will refuse. `PerpetuumBootstrapper.Init` calls it right after resolving `GlobalConfiguration`, and when the list is not empty it logs an error naming `perpetuum.ini`, the directory it sits in, and every offending setting, then throws so the server does not start. The connection string itself is never modified — the operator's file stays the only source of truth for how this server connects.
 
-Keywords that still carry meaning are deliberately left alone — `Network Library` selects a protocol, `Context Connection` selects a SQLCLR connection. Both need an operator decision and the driver's own error already names the replacement.
+This follows the Proposed Fix above, which already asked for "an error that names `perpetuum.ini` and the offending key". An earlier revision of this work removed the keywords instead; that was changed on maintainer direction.
 
-Parsing goes through `DbConnectionStringBuilder`, the provider-agnostic parser, because `SqlConnectionStringBuilder` throws on the same keyword and so cannot be used to find it. Splitting on `;` by hand was rejected: it corrupts any quoted value containing a separator, verified against `Password="a;b=c"`.
+**The check keeps no list of its own.** It parses with `DbConnectionStringBuilder` — the provider-agnostic parser, which applies the ADO.NET quoting rules without validating against any driver — and then offers each setting to `SqlConnectionStringBuilder` in turn. Whatever that refuses is reported. So `Network Library` and `Context Connection` are now named too, where the removal-based revision had to leave them alone because removing them would have changed how the server connects. A setting nobody anticipated is reported the same way, and nothing here falls out of date when the driver changes.
+
+Splitting on `;` by hand was rejected: it corrupts any quoted value containing a separator, verified against `Password="a;b=c"`.
+
+The catch around the per-setting probe is deliberately broad, because the driver does not use one exception type. Measured against `Microsoft.Data.SqlClient` 6.0.1, and `SqlConnectionStringBuilder` and `SqlConnection` agree on every one:
+
+| Setting | Exception |
+|---|---|
+| `Connection Reset` | `NotSupportedException` |
+| `Network Library` | `NotSupportedException` |
+| `Asynchronous Processing` | `ArgumentException` |
+| `Context Connection` | `InvalidOperationException` |
+
+A narrow filter that missed a type would report the setting as supported and hand the operator exactly the obscure startup failure this check exists to replace.
+
+All offending settings are reported in one message rather than one at a time, because the installer's file carries more than one and a first-failure-only report would cost a restart per setting.
 
 **Keyword 2 is documentation only.** Defaulting `TrustServerCertificate` in code would weaken authentication for every operator to fix a local development case, so `README.md` now carries a setup section stating the requirement, the working connection string, and the caveat that `TrustServerCertificate=True` belongs on a local instance only.
 
-Verified in three states against a real server run:
+Verified in three states:
 
 | State | Result |
 |---|---|
-| `Connection Reset` present, fix applied | Warning naming `perpetuum.ini` and the keyword, then `Database: perpetuumsa` — startup proceeds |
-| `Connection Reset` present, fix reverted | `The keyword 'Connection Reset' is not supported on this platform.` and the process exits, with no mention of `perpetuum.ini` |
-| Keyword absent, fix applied | No warning, log identical to before the change |
+| `Connection Reset` **and** `Network Library` present, check applied | One `ERR` line naming the game root and both settings, then the process exits with code 1. The check runs before anything else in `Init` needs the game root |
+| Neither present, check applied | `tools/smoke-test.ps1` green against the real database: `[Online]` after 80 s, 6435 members spawned, graceful shutdown in 29 s, exit 0. No new output on the startup path |
+| Settings present, check absent | `System.NotSupportedException: The keyword 'Connection Reset' is not supported on this platform.`, naming the keyword but not the file. Held as an automated test rather than a manual observation — `ConnectionStringSupportTests.The_driver_really_does_reject_the_installer_string` fails the moment the driver stops rejecting it, which would make the whole check dead weight |
 
-The third state matters: the connection string is returned untouched when nothing is removed, because rebuilding it through `DbConnectionStringBuilder` lower-cases every key and drops the trailing separator.
+Covered by 15 unit tests in `src/Perpetuum.Tests/Unit/ConnectionStringSupportTests.cs`. Eight of them were observed failing against a stub returning an empty list before the detection was written.
+
+Reported settings carry the lower-cased spelling `DbConnectionStringBuilder` produces, not the operator's own capitalisation. Left as is: any case-insensitive search finds the line, and preserving the original spelling would mean re-scanning the raw string for cosmetics.
 
 ### Notes on the documentation location
 

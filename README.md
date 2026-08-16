@@ -34,9 +34,15 @@ It was written for the original server, which used `System.Data.SqlClient`; this
    The keyword 'Connection Reset' is not supported on this platform.
    ```
 
-   The server drops this keyword for you and logs a warning naming the file, because the framework
-   had already stopped honouring it — a pooled connection is always reset. Deleting it from
-   `perpetuum.ini` silences the warning.
+   The server checks the connection string before it connects and refuses to start if the driver
+   would reject any of it, naming `perpetuum.ini`, the directory it is in, and **every** setting the
+   driver refused — so one restart is enough to clear them all rather than one restart per setting.
+   Delete them from `perpetuum.ini`. `Connection Reset` in particular is safe to delete outright:
+   the framework stopped honouring it long ago, because a pooled connection is always reset.
+
+   The check keeps no list of its own — it asks the driver about each setting in turn, so a keyword
+   nobody anticipated is reported the same way. `Network Library` and `Context Connection` are also
+   refused and will be named if they are present.
 
 2. **`Encrypt` now defaults to `true`.** Since version 4.0 the driver encrypts by default and
    validates the server certificate. A local SQL Server using a self-signed certificate fails logon

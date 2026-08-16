@@ -141,12 +141,20 @@ namespace Perpetuum.Bootstrapper
 
             // Before anything builds a SqlConnection from it, which happens further down at the
             // DbConnectionFactory resolve. A perpetuum.ini written for the original server carries
-            // keywords Microsoft.Data.SqlClient refuses, and its error names the keyword but not
-            // the file.
-            config.ConnectionString = LegacyConnectionString.RemoveObsoleteKeywords(config.ConnectionString, out IReadOnlyList<string> obsoleteKeywords);
-            foreach (string keyword in obsoleteKeywords)
+            // settings Microsoft.Data.SqlClient refuses, and its error names the setting but not
+            // the file it came from, which is the part an operator needs.
+            IReadOnlyList<string> unsupported = ConnectionStringSupport.FindUnsupportedKeywords(config.ConnectionString);
+            if (unsupported.Count > 0)
             {
-                Logger.Warning($"perpetuum.ini: ignoring the connection string keyword '{keyword}'. Microsoft.Data.SqlClient does not accept it and the framework had already stopped honouring it, so removing it changes nothing. Delete it from perpetuum.ini to silence this warning.");
+                string message =
+                    $"perpetuum.ini in {config.GameRoot} has a connectionString carrying " +
+                    $"{unsupported.Count} setting(s) Microsoft.Data.SqlClient does not accept: " +
+                    $"{string.Join(", ", unsupported)}. Remove them and start the server again. " +
+                    "The original server used System.Data.SqlClient, which accepted them.";
+
+                Logger.Error(message);
+
+                throw new InvalidOperationException(message);
             }
 
             Logger.Info($"Game root: {config.GameRoot}");
