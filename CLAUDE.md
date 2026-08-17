@@ -147,7 +147,8 @@ Claude MUST:
 - Use naming conventions from the guide (section 3): `def_`, `_pr`, `_cprg`, `effect_`, `cf_` prefixes.
 - Use idempotent SQL patterns: `MERGE`, `IF NOT EXISTS`, or `DELETE + INSERT` as appropriate per table.
 - Generate full-chain content when possible — avoid partial generation.
-- Run the validation checklist (section 26) before declaring content complete.
+- Run the validation checklist (section 26) before declaring content complete. Most of it is executable: apply the content to a local database and run `ContentInvariantTests` in `Perpetuum.Tests.Integration`. It skips when `PERPETUUM_GAMEROOT` is unset, so confirm it ran rather than assuming a pass.
+- Report what the invariants said, and state separately what they do not cover — balance, cost, tiering and sibling-matched flags are judgements no query makes.
 - Ask the user for existing database values when dynamic resolution requires live data not available in docs.
 
 Claude MUST NOT:
