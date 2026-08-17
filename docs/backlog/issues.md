@@ -1,6 +1,135 @@
 # Last ID used
 
-039
+041
+
+## ISSUE-041 - Characters stay online after the player logs out and closes the client ("zombie sessions")
+
+Status: TODO
+Priority: MEDIUM
+Area: Networking / Sessions
+Tracking: https://github.com/OpenPerpetuum/PerpetuumServer2/issues/51
+
+### Problem
+Players are sometimes shown as online after they have logged out and closed the game client. Reported
+from live server experience; previous attempts were made to address it and none is confirmed to have
+fixed it. Not reproduced in a development environment.
+
+A mechanism that produces exactly this symptom is already documented inside [[ISSUE-038]], which found
+it while investigating memory growth:
+
+- `TcpConnection` (`src/Perpetuum/Network/TcpConnection.cs:32`) sets the OS-level TCP keepalive, and
+  that keepalive is the only backstop for a peer that disappears without a clean TCP close.
+- There is no application-level heartbeat or idle timeout. `ZoneSession` tracks
+  `_lastReceivedPacketTime` / `InactiveTime`, but it is read in exactly one place — `Player.cs:1305`,
+  for the "was this player AFK at time of death" loot calculation — and never compared against a
+  threshold to force a disconnect.
+- Until the keepalive fires, `SessionManager` keeps the entry, `Character.IsOnline` stays `true`, and
+  the ghost's `Player` stays `InZone` and is still processed by the zone tick every frame.
+
+[[ISSUE-038]] shipped a mitigation for that path — keepalive time reduced from 24 hours to 2 hours —
+and explicitly deferred the robust fix, recording an application-level idle timeout as "Deliberately
+not done ... user was offered this as an option and did not request it. Worth reconsidering if 2h
+keepalive still isn't tight enough after real-world observation." **That observation has now been
+reported, so the deferral is due for review.** The 2-hour value is confirmed shipped and live in
+`TcpConnection.cs:32`.
+
+**One detail does not fit and should be settled first.** The keepalive mechanism above explains
+*ungraceful* disconnects — a crash, a force-kill, a dropped network, a closed laptop lid. The report
+describes a *graceful* exit: the player logged out and closed the client, which should send a clean TCP
+close and run the normal session teardown. Either the reports also cover ungraceful cases, or the
+logout path itself sometimes fails to tear the session down. Those are different defects with different
+fixes, and the evidence to tell them apart has not been gathered.
+
+### Impact
+- Players appear online when they are not. This is visible to everyone and misinforms corporation
+  coordination and PvP decisions.
+- Every surviving ghost holds its `Player` in the zone and keeps it inside the `ProcessManager` tick
+  loop, so it costs CPU as well as memory for as long as it lives. This is the mechanism [[ISSUE-038]]
+  identified as a likely contributor to the reported memory growth.
+- Anything gated on online state acts on stale information for the lifetime of the ghost.
+
+### Proposed Fix
+1. Establish which case is actually being reported — graceful logout or ungraceful disconnect — before
+   changing anything. A session that survives a clean logout is a different defect from one that
+   survives a dropped connection.
+2. If graceful logouts are affected, audit the session teardown path end to end: the client's logout
+   command, `SessionManager` removal, `Character.IsOnline`, and the removal of the `Player` from the
+   zone. A teardown that is skipped or that fails partway would leave exactly this state.
+3. If only ungraceful disconnects are affected, implement the application-level idle timeout that
+   [[ISSUE-038]] deferred, using the `InactiveTime` that `ZoneSession` already tracks. This does not
+   depend on OS keepalive behaviour, which NATs and firewalls can interfere with.
+4. Cover the teardown at the unit tier with a fake session, and the surviving-state question at the
+   integration tier.
+
+### Notes
+- Priority is a judgement made when filing; the report did not assign one. MEDIUM rather than higher
+  because a partial mitigation already shipped. **Raise it if the graceful-logout path turns out to be
+  the cause**, since that would mean an ordinary logout can leave a ghost.
+- Filed separately from [[ISSUE-038]] rather than folded into it: that issue is about memory growth and
+  would close on a memory measurement, while the visible-online symptom is what players actually
+  report and needs to survive that issue closing.
+- Named alongside [[ISSUE-040]] as a known trouble area to investigate, fix and cover by tests.
+- Every line number above was checked against `4e6d697` and is anchored to it. Line numbers drift.
+
+---
+
+## ISSUE-040 - Assembled robots in corporation hangars at PBS bases are altered by a server restart ("Peanut Plague")
+
+Status: TODO
+Priority: HIGH
+Area: Corporations / Containers / PBS
+Tracking: https://github.com/OpenPerpetuum/PerpetuumServer2/issues/50
+
+### Problem
+Storing **assembled** (non-repackaged) robots in a corporation hangar hosted on a PBS docking base
+leaves them in a wrong state after a server restart. The failure is known internally as the "Peanut
+Plague". Reported from live server experience; previous attempts were made to address it and none is
+confirmed to have fixed it. Not reproduced in a development environment.
+
+**No reproduction steps, affected-robot list, or exact post-restart symptom have been recorded.** The
+whole of the current description is that a restart "makes funny things with them", so establishing what
+state the robots actually end up in is the first task, not the fix.
+
+Where an investigation would start:
+
+- `PublicCorporationHangarStorage` (`src/Perpetuum/Containers/PublicCorporationHangarStorage.cs:13`) is,
+  in its own words, "the parent of every corporate hangar, one per base". On a PBS base the entire
+  hangar tree therefore hangs off an entity owned by that base.
+- `PBSDockingBase` (`src/Perpetuum/Zones/PBS/DockingBases/PBSDockingBase.cs:27`) and
+  `ExpiringPBSDockingBase` (`src/Perpetuum/Zones/PBS/DockingBases/ExpiringPBSDockingBase.cs`), which
+  calls `Kill()` when its lifetime runs out. What happens to the hangar subtree, and to assembled
+  robots inside it, when the parent base expires or is killed is worth establishing early — a PBS base
+  is not permanent, and an ordinary docking base is.
+- `Robot.IsStackable` (`src/Perpetuum/Robots/Robot.cs:87`) is `base.IsStackable && IsRepackaged`. An
+  assembled robot is an entity subtree — components, modules and its own `RobotInventory` — while a
+  repackaged one is a plain stackable item. That difference is the reason the assembled case is the one
+  that breaks, and it is what makes a restart, which rebuilds every entity from the database, the point
+  where it surfaces.
+- `Container.cs:394` already special-cases `CorporateHangar` and `CorporateHangarFolder` during item
+  movement, so the hangar types are known to need their own handling elsewhere.
+
+### Impact
+Player property, without any player action, repeating on every restart. Robots are among the most
+expensive assets a corporation owns and corporation hangars at player-built bases are where they are
+kept. Whatever the concrete symptom turns out to be, the affected items were paid for.
+
+### Proposed Fix
+Investigation first, fix second:
+
+1. Reproduce locally — place an assembled robot in a corporation hangar on a PBS base, record the full
+   entity subtree from the database, restart the server, and diff the subtree.
+2. Derive the mechanism from that diff rather than from a hypothesis.
+3. Cover it at the integration tier once the mechanism is known. This is the shape of defect that tier
+   exists for: it is about what survives a real load from a real database, which no faked data layer
+   can answer.
+
+### Notes
+- Priority is a judgement made when filing; the report did not assign one. HIGH because it destroys or
+  alters player assets and recurs, against a report that carries no measured frequency.
+- Named alongside [[ISSUE-041]] as a known trouble area to investigate, fix and cover by tests.
+- Every line number above was checked against `4e6d697` and is anchored to it. Line numbers drift.
+
+---
 
 ## ISSUE-039 - Insurance price cache never reloads — LoadInsurancePrices runs inside a completed TransactionScope
 
