@@ -33,12 +33,47 @@ keepalive still isn't tight enough after real-world observation." **That observa
 reported, so the deferral is due for review.** The 2-hour value is confirmed shipped and live in
 `TcpConnection.cs:32`.
 
-**One detail does not fit and should be settled first.** The keepalive mechanism above explains
-*ungraceful* disconnects — a crash, a force-kill, a dropped network, a closed laptop lid. The report
-describes a *graceful* exit: the player logged out and closed the client, which should send a clean TCP
-close and run the normal session teardown. Either the reports also cover ungraceful cases, or the
-logout path itself sometimes fails to tear the session down. Those are different defects with different
-fixes, and the evidence to tell them apart has not been gathered.
+**The detail that did not fit is now explained, and it points at a second, independent mechanism.**
+The keepalive above covers only *ungraceful* disconnects, while the report describes a *graceful* exit.
+Investigated 2026-08-17: there is a single teardown path, and it is fragile in a way that produces this
+exact symptom on **either** kind of exit.
+
+`Session.Disconnect(safeLogout)` calls `ForceQuit`, which ends in `_connection.Disconnect()`
+(`src/Perpetuum/Network/TcpConnection.cs:59`) — the same call a dropped socket makes. Nothing below
+that point distinguishes a clean logout from a lost connection:
+
+1. `TcpConnection.Disconnect()` runs the whole teardown as
+   `Task.Run(OnDisconnected).ContinueWith(t => Dispose()).LogExceptions()` (`TcpConnection.cs:68`).
+2. `Session.OnDisconnected` (`Session.cs:300`) wraps `SignOut()` in a transaction, completes it, and
+   **then** raises `Disconnected` on the next line (`Session.cs:308`), outside the transaction.
+3. `SessionManager` subscribes twice and in this order: `OnSessionDisconnected` at
+   `SessionManager.cs:67`, then `Remove` at `SessionManager.cs:124` by way of `Add`.
+
+So one exception thrown anywhere inside `SignOut()` leaves the server in exactly the reported state:
+
+- The transaction rolls back. `Character.IsOnline` is the `characters.inuse` column
+  (`Character.cs:195`), so the `inuse = 0` written by `DeselectCharacter` is undone and the character
+  stays online.
+- `Session.cs:308` is never reached, so `SessionManager.Remove` never runs, the entry stays in
+  `_sessions`, and the `Player` stays in the zone tick.
+- `LogExceptions` (`TaskExtensions.cs:9`) logs the exception and swallows it. Nothing else reports it.
+
+A second variant needs no rollback at all: `Disconnected` is a plain multicast invoke with no
+per-subscriber guard, so if `OnSessionDisconnected` throws, `Remove` — subscribed after it — never runs.
+
+This also fits the report saying *sometimes* rather than *always*: `SignIn` runs
+`update characters set inuse=0 where accountid=@id` (`Session.cs:209`), so a ghost clears itself the
+next time that player signs in.
+
+**What is not established is what throws.** The remaining candidates are the three `Character` database
+writes in `DeselectCharacter` and the `ThrowIfNull(AccountNotFound)` against the account repository.
+That cannot be derived from the code and needs a live server log.
+
+**The log settles it cheaply, because the teardown leaves a marker.** `[Relay] client disconnected.`
+(`SessionManager.cs:99`) is written by a `Disconnected` subscriber, so it can only appear after
+`Session.cs:308` has run. A normal disconnect logs it; a ghost produced by this path logs an exception
+and no such line. `Character deselected /M\` (`Session.cs:289`) is the same kind of marker, since it
+runs from the transaction's commit callback.
 
 ### Impact
 - Players appear online when they are not. This is visible to everyone and misinforms corporation
@@ -49,27 +84,42 @@ fixes, and the evidence to tell them apart has not been gathered.
 - Anything gated on online state acts on stale information for the lifetime of the ghost.
 
 ### Proposed Fix
-1. Establish which case is actually being reported — graceful logout or ungraceful disconnect — before
-   changing anything. A session that survives a clean logout is a different defect from one that
-   survives a dropped connection.
-2. If graceful logouts are affected, audit the session teardown path end to end: the client's logout
-   command, `SessionManager` removal, `Character.IsOnline`, and the removal of the `Player` from the
-   zone. A teardown that is skipped or that fails partway would leave exactly this state.
-3. If only ungraceful disconnects are affected, implement the application-level idle timeout that
-   [[ISSUE-038]] deferred, using the `InactiveTime` that `ZoneSession` already tracks. This does not
-   depend on OS keepalive behaviour, which NATs and firewalls can interfere with.
-4. Cover the teardown at the unit tier with a fake session, and the surviving-state question at the
-   integration tier.
+1. **Ask for a live server log before changing anything.** In a window where a ghost was reported, look
+   for a logged exception with no matching `[Relay] client disconnected.` line. That confirms or kills
+   the mechanism above at zero cost, and it decides what the fix has to be.
+2. If the log confirms it, make the teardown survive a failing `SignOut()`. The session must leave
+   `_sessions` and the character must go offline even when the transaction rolls back, which means
+   `Session.cs:308` cannot stay reachable only on the success path, and `Disconnected` cannot let one
+   throwing subscriber cancel the rest. Whatever throws should still be fixed on its own merits, but
+   the teardown should not depend on it never throwing.
+3. Independently of the above, implement the application-level idle timeout that [[ISSUE-038]]
+   deferred, using the `InactiveTime` that `ZoneSession` already tracks. It covers the ungraceful case
+   without depending on OS keepalive behaviour, which NATs and firewalls interfere with. The two fixes
+   address different halves and neither substitutes for the other.
+4. Cover the teardown at the unit tier with a fake session — a `SignOut()` that throws must still leave
+   the session removed and the character offline — and the surviving-state question at the integration
+   tier.
 
 ### Notes
-- Priority is a judgement made when filing; the report did not assign one. MEDIUM rather than higher
-  because a partial mitigation already shipped. **Raise it if the graceful-logout path turns out to be
-  the cause**, since that would mean an ordinary logout can leave a ghost.
+- Priority is a judgement made when filing; the report did not assign one. Held at MEDIUM because a
+  partial mitigation already shipped and because the mechanism found on 2026-08-17 is so far a reading
+  of the code, not an observation of the live server. **Raise it as soon as a log confirms that
+  mechanism**, since it would mean an ordinary logout can leave a ghost. Status stays TODO rather than
+  BLOCKED: only step 1 waits on the maintainers, and step 3 can proceed without them.
 - Filed separately from [[ISSUE-038]] rather than folded into it: that issue is about memory growth and
   would close on a memory measurement, while the visible-online symptom is what players actually
   report and needs to survive that issue closing.
 - Named alongside [[ISSUE-040]] as a known trouble area to investigate, fix and cover by tests.
-- Every line number above was checked against `4e6d697` and is anchored to it. Line numbers drift.
+- Found while tracing the above and unrelated to the symptom, so recorded here rather than filed on its
+  own: the `.ThrowIfZero(ErrorCodes.SQLExecutionError)` guards on `accountonlinetimestart` and
+  `accountonlinetimestop` (`Session.cs:218` and `Session.cs:263`) can never fire. Both procedures begin
+  with `SET NOCOUNT ON`, so `ExecuteNonQuery()` returns `-1` rather than a row count, and `ThrowIfZero`
+  compares against `0` (`Guard.cs:12`). It was ruled out as the trigger for this issue for that reason.
+  Worth a maintainer's decision rather than an unprompted fix, since making the guard live would turn a
+  currently silent no-op into a thrown exception.
+- Every line number above was checked against `1e68c4a` and is anchored to it. The files cited are
+  byte-identical between `4e6d697` and `1e68c4a`, so the earlier anchors still resolve. Line numbers
+  drift.
 
 ---
 
