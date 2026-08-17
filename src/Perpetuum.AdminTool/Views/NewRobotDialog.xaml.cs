@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using Perpetuum.AdminTool.NewItem;
 using Perpetuum.AdminTool.ViewModels;
 
@@ -17,6 +19,18 @@ public partial class NewRobotDialog : Window
             DialogResult = success;
             Close();
         };
+    }
+
+    // Enter activates the default Save button without moving focus, so a TextBox bound with the
+    // default LostFocus trigger would still be holding an uncommitted value when Save runs. Push
+    // it to the source first. Multi-line boxes consume Enter themselves and are left alone.
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+            return;
+
+        if (Keyboard.FocusedElement is TextBox { AcceptsReturn: false } box)
+            box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
     }
 
     // Tab 1 — Basic
