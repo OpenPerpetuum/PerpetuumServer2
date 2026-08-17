@@ -23,6 +23,8 @@ namespace Perpetuum.Network
 
         private long _isDisconnected;
 
+        private readonly ConnectionActivity _activity;
+
         public TcpConnection(Socket socket)
         {
             _socket = socket;
@@ -31,8 +33,16 @@ namespace Perpetuum.Network
             _socket.SendBufferSize = SEND_BUFFER_SIZE;
             _socket.SetKeepAlive(true, 1000 * 60 * 60 * 2, 5000);
 
+            _activity = new ConnectionActivity(DateTime.Now);
+
             RemoteEndPoint = (IPEndPoint)_socket.RemoteEndPoint;
         }
+
+        /// <summary>
+        /// How long this connection has been receiving nothing, and the widest such gap so far.
+        /// Reported only; nothing disconnects on it yet. See <see cref="ConnectionActivity"/>.
+        /// </summary>
+        public ConnectionActivity Activity => _activity;
 
         protected override void Dispose(bool disposing)
         {
@@ -64,6 +74,12 @@ namespace Perpetuum.Network
             }
 
             //Console.Beep(100, 200);
+
+            // Reported so the client's real keepalive interval can be read off a live server. An
+            // idle timeout cannot be given a threshold before that number is known.
+            Logger.Info(
+                $"connection closed. {RemoteEndPoint} silent for {_activity.SilentFor(DateTime.Now).TotalSeconds:F1}s, " +
+                $"longest gap {_activity.LongestGap.TotalSeconds:F1}s");
 
             Task.Run(OnDisconnected).ContinueWith(t => Dispose()).LogExceptions();
         }
@@ -130,6 +146,10 @@ namespace Perpetuum.Network
                     Disconnect();
                     return;
                 }
+
+                // Every byte counts here, including the client's zero-length keepalive packets:
+                // they still carry their four length bytes, so they land as received data.
+                _activity.Touch(DateTime.Now);
 
                 OnProcessReceivedRawData(_buffer, available);
 
