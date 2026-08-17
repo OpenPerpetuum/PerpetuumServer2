@@ -4,7 +4,7 @@
 
 ## ISSUE-041 - Characters stay online after the player logs out and closes the client ("zombie sessions")
 
-Status: TODO
+Status: IN_PROGRESS
 Priority: MEDIUM
 Area: Networking / Sessions
 Tracking: https://github.com/OpenPerpetuum/PerpetuumServer2/issues/51
@@ -87,18 +87,36 @@ runs from the transaction's commit callback.
 1. **Ask for a live server log before changing anything.** In a window where a ghost was reported, look
    for a logged exception with no matching `[Relay] client disconnected.` line. That confirms or kills
    the mechanism above at zero cost, and it decides what the fix has to be.
-2. If the log confirms it, make the teardown survive a failing `SignOut()`. The session must leave
-   `_sessions` and the character must go offline even when the transaction rolls back, which means
-   `Session.cs:308` cannot stay reachable only on the success path, and `Disconnected` cannot let one
-   throwing subscriber cancel the rest. Whatever throws should still be fixed on its own merits, but
-   the teardown should not depend on it never throwing.
-3. Independently of the above, implement the application-level idle timeout that [[ISSUE-038]]
-   deferred, using the `InactiveTime` that `ZoneSession` already tracks. It covers the ungraceful case
-   without depending on OS keepalive behaviour, which NATs and firewalls interfere with. The two fixes
-   address different halves and neither substitutes for the other.
+2. **DONE 2026-08-17.** The teardown no longer depends on `SignOut()` succeeding.
+   `Session.OnDisconnected` raises `Disconnected` from a `finally`, so the session leaves `_sessions`
+   either way, and `SessionManager.OnSessionDisconnected` contains its own failure so it cannot cancel
+   the `Remove` subscribed after it. The exception is still allowed to leave `Session.OnDisconnected`,
+   because what throws is step 1's question and swallowing it would make that question harder to
+   answer. **This closes the leak, not the visible symptom** — see the half still open below.
+3. **Half done 2026-08-17.** The idle timeout is not implemented, because its threshold cannot be
+   chosen here: the client's zero-length keepalive packets arrive as data, but their interval is a
+   client decision and a threshold set below it disconnects players who are still connected. What
+   shipped is the measurement — `ConnectionActivity` records when data last arrived and the widest gap
+   between two receives, `TcpConnection` touches it on every receive, and both numbers are logged when
+   a connection closes. **Read those numbers off a live server, then set the threshold and enable the
+   disconnect.** Note the timeout belongs on the relay connection rather than on `ZoneSession`, whose
+   `InactiveTime` only covers players who are in a zone.
 4. Cover the teardown at the unit tier with a fake session — a `SignOut()` that throws must still leave
    the session removed and the character offline — and the surviving-state question at the integration
-   tier.
+   tier. **Not done, and it needs a decision first:** `Session` takes a raw `Socket` in its constructor
+   and `SessionManager.Add` is private and reachable only through a real `TcpListener` accept, so
+   neither can be exercised at the unit tier without a production seam. The step 2 change is covered by
+   inspection only. `ConnectionActivity` was built as a separate unit precisely so the part that could
+   be tested, was — eleven tests, written first and observed failing.
+
+### The half still open
+
+Step 2 stops the session leaking and stops the `Player` being ticked forever, but it does **not** put
+the character offline when the transaction rolls back. `Character.IsOnline` is a database write
+(`Character.cs:195`), so a rolled-back `SignOut()` leaves `characters.inuse = 1` and the player still
+shows as online until they next sign in. Fixing that means a compensating write outside the failed
+transaction, in a catch path — a design decision with its own risks, and one that should not be made
+while the thing being compensated for is still unnamed. It waits on step 1.
 
 ### Notes
 - Priority is a judgement made when filing; the report did not assign one. Held at MEDIUM because a
