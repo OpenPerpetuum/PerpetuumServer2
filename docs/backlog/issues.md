@@ -52,7 +52,7 @@ Reproduced on a local P36.8 database (`develop` at `f9ddac2`) with the ISSUE-036
 
 ## ISSUE-035 - Server fails to start with the perpetuum.ini produced by the official installer
 
-Status: TODO
+Status: IN_PROGRESS
 Priority: HIGH
 Area: Configuration / Setup
 
@@ -76,6 +76,52 @@ Reproduced against SQL Server 2022 Express, named instance, Windows integrated a
 `Server=localhost\PERPSQL;Database=perpetuumsa;Trusted_Connection=True;TrustServerCertificate=True;Pooling=True;Connection Timeout=30;Connection Lifetime=260;Min Pool Size=20;Max Pool Size=60;`
 
 `TrustServerCertificate=True` disables server certificate validation. It is appropriate for a local development instance only and must not be carried into a deployment where the connection leaves the machine.
+
+### Progress
+
+Both failures re-measured against `Microsoft.Data.SqlClient` 6.0.1 with neutral resources, so the messages below are the ones a maintainer sees rather than a translation:
+
+- `Connection Reset=True` → `System.NotSupportedException: The keyword 'Connection Reset' is not supported on this platform.`, thrown while `SqlConnection` is being **constructed**, not on `Open()`.
+- No `Encrypt` / `TrustServerCertificate` → `SqlException` on `Open()`: `A connection was successfully established with the server, but then an error occurred during the login process. (provider: SSL Provider, error: 0 - ...)`. The trailing clause comes from Win32 and stays in the system language.
+
+**Keyword 1 is now handled in code, by reporting rather than repairing.** `ConnectionStringSupport.FindUnsupportedKeywords` returns every setting the driver will refuse. `PerpetuumBootstrapper.Init` calls it right after resolving `GlobalConfiguration`, and when the list is not empty it logs an error naming `perpetuum.ini`, the directory it sits in, and every offending setting, then throws so the server does not start. The connection string itself is never modified — the operator's file stays the only source of truth for how this server connects.
+
+This follows the Proposed Fix above, which already asked for "an error that names `perpetuum.ini` and the offending key". An earlier revision of this work removed the keywords instead; that was changed on maintainer direction.
+
+**The check keeps no list of its own.** It parses with `DbConnectionStringBuilder` — the provider-agnostic parser, which applies the ADO.NET quoting rules without validating against any driver — and then offers each setting to `SqlConnectionStringBuilder` in turn. Whatever that refuses is reported. So `Network Library` and `Context Connection` are now named too, where the removal-based revision had to leave them alone because removing them would have changed how the server connects. A setting nobody anticipated is reported the same way, and nothing here falls out of date when the driver changes.
+
+Splitting on `;` by hand was rejected: it corrupts any quoted value containing a separator, verified against `Password="a;b=c"`.
+
+The catch around the per-setting probe is deliberately broad, because the driver does not use one exception type. Measured against `Microsoft.Data.SqlClient` 6.0.1, and `SqlConnectionStringBuilder` and `SqlConnection` agree on every one:
+
+| Setting | Exception |
+|---|---|
+| `Connection Reset` | `NotSupportedException` |
+| `Network Library` | `NotSupportedException` |
+| `Asynchronous Processing` | `ArgumentException` |
+| `Context Connection` | `InvalidOperationException` |
+
+A narrow filter that missed a type would report the setting as supported and hand the operator exactly the obscure startup failure this check exists to replace.
+
+All offending settings are reported in one message rather than one at a time, because the installer's file carries more than one and a first-failure-only report would cost a restart per setting.
+
+**Keyword 2 is documentation only.** Defaulting `TrustServerCertificate` in code would weaken authentication for every operator to fix a local development case, so `README.md` now carries a setup section stating the requirement, the working connection string, and the caveat that `TrustServerCertificate=True` belongs on a local instance only.
+
+Verified in three states:
+
+| State | Result |
+|---|---|
+| `Connection Reset` **and** `Network Library` present, check applied | One `ERR` line naming the game root and both settings, then the process exits with code 1. The check runs before anything else in `Init` needs the game root |
+| Neither present, check applied | `tools/smoke-test.ps1` green against the real database: `[Online]` after 80 s, 6435 members spawned, graceful shutdown in 29 s, exit 0. No new output on the startup path |
+| Settings present, check absent | `System.NotSupportedException: The keyword 'Connection Reset' is not supported on this platform.`, naming the keyword but not the file. Held as an automated test rather than a manual observation — `ConnectionStringSupportTests.The_driver_really_does_reject_the_installer_string` fails the moment the driver stops rejecting it, which would make the whole check dead weight |
+
+Covered by 15 unit tests in `src/Perpetuum.Tests/Unit/ConnectionStringSupportTests.cs`. Eight of them were observed failing against a stub returning an empty list before the detection was written.
+
+Reported settings carry the lower-cased spelling `DbConnectionStringBuilder` produces, not the operator's own capitalisation. Left as is: any case-insensitive search finds the line, and preserving the original spelling would mean re-scanning the raw string for cosmetics.
+
+### Notes on the documentation location
+
+The Proposed Fix above suggested a setup page under `docs/codebase/`. It went into `README.md` instead: the repository had no setup documentation of any kind, `README.md` was a badge and a title, and it is where someone who just ran the installer looks first. `docs/codebase/` describes the codebase for contributors; this is an operator instruction. Happy to move it if the maintainers prefer.
 
 ---
 

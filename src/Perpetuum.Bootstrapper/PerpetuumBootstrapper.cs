@@ -139,6 +139,23 @@ namespace Perpetuum.Bootstrapper
             GlobalConfiguration config = _container.Resolve<GlobalConfiguration>();
             _container.Resolve<IHostStateService>().State = HostState.Init;
 
+            // Before anything builds a SqlConnection from it, which happens further down at the
+            // DbConnectionFactory resolve. A perpetuum.ini written for the original server carries
+            // settings Microsoft.Data.SqlClient refuses, and its error names the setting but not
+            // the file it came from, which is the part an operator needs.
+            IReadOnlyList<string> unsupported = ConnectionStringSupport.FindUnsupportedKeywords(config.ConnectionString);
+            if (unsupported.Count > 0)
+            {
+                string message =
+                    $"perpetuum.ini in {config.GameRoot} has a connectionString carrying " +
+                    $"{unsupported.Count} setting(s) Microsoft.Data.SqlClient does not accept: " +
+                    $"{string.Join(", ", unsupported)}. Remove them and start the server again. " +
+                    "The original server used System.Data.SqlClient, which accepted them.";
+
+                Logger.Error(message);
+
+                throw new InvalidOperationException(message);
+            }
 
             Logger.Info($"Game root: {config.GameRoot}");
             Logger.Info($"GC isServerGC: {GCSettings.IsServerGC}");
