@@ -87,7 +87,8 @@ The first two are the entire **Property Modifiers** tab and the third is the **P
 item created through the wizard can hold data that re-exporting it will not reproduce. Translations are
 also absent from every export: `SeedTranslations()` runs on save in both apply modes, but it writes to
 the translation store rather than into the script, so a script applied elsewhere produces an entity
-whose name and description do not resolve.
+whose name and description do not resolve. That absence is intended rather than a gap — see step 3
+of Proposed Implementation.
 
 ### Impact
 
@@ -100,12 +101,16 @@ whose name and description do not resolve.
 
 1. Close the four table gaps above in `ItemExporter` and `RobotExporter`. This is the cheapest part and
    it is independent of any UI work.
-2. Settle whether `productionduration` belongs in an item export at all. The New Item dialog states
-   that duration is category-level, so writing it back on import would affect every item in that
-   category, not just the exported one. That is a question about intended semantics, not a bug to fix
-   blind.
-3. Decide whether translations belong in the exported script. If they do, the script has to carry the
-   dictionary rows; if they do not, the export needs to say so, because silence reads as completeness.
+2. Export `productionduration`, guarded. Answered on 2026-08-19: it belongs in the export, "if
+   applicable". The table is keyed by category rather than by definition
+   (`productionduration (category, durationmodifier)`), so the script must not overwrite a row the
+   target database already holds. Emit it through `SqlExportBuilder.IfNotExistsInsert`, which is the
+   same rule the wizard already applies through
+   `ProductionPanelViewModel.ShouldWriteProductionDuration` — a target that already defines the
+   category keeps its own value, and one that does not gets the exported item's.
+3. Leave translations out of the script, and say so. Answered on 2026-08-19: they are not needed. No
+   dictionary rows are added, so the only work here is the statement — the export has to say that
+   names and descriptions are not carried, because silence reads as completeness.
 4. Design the UI. He flagged this as needing thought and it is not settled here.
 5. Cover the round trip at the integration tier: export an entity, apply the script to a clean
    database, and assert the two are equal across every table the wizard can write.
@@ -121,6 +126,11 @@ whose name and description do not resolve.
   operator that the server they are pointed at is the live one. Worth a maintainer's decision.
 - Priority set to HIGH rather than MEDIUM because the requester named live-database damage as the
   motivation. He did not assign one.
+- The two questions this entry raised were answered by the lead developer on 2026-08-19, in chat
+  rather than on [PerpetuumServer2#55](https://github.com/OpenPerpetuum/PerpetuumServer2/pull/55):
+  `productionduration` yes, if applicable; translations not needed. Both answers are folded into
+  Proposed Implementation above, and are repeated on the pull request so the direction sits on the
+  public record and not only in a chat log.
 
 ---
 
