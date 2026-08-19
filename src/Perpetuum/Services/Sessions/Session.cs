@@ -299,13 +299,23 @@ namespace Perpetuum.Services.Sessions
 
         private void OnDisconnected(ITcpConnection connection)
         {
-            using (var scope = Db.CreateTransaction())
+            // The event has to be raised even when signing out fails. SessionManager removes the
+            // session from its dictionary through this event, so leaving it on the success path
+            // means a throwing SignOut leaks the session, keeps the character shown as online and
+            // keeps its Player in the zone tick — the ISSUE-041 symptom. The exception is still
+            // allowed to leave, and TcpConnection logs it.
+            try
             {
-                SignOut();
-                scope.Complete();
+                using (var scope = Db.CreateTransaction())
+                {
+                    SignOut();
+                    scope.Complete();
+                }
             }
-
-            Disconnected?.Invoke(this);
+            finally
+            {
+                Disconnected?.Invoke(this);
+            }
         }
 
         private void OnRsaKeyReceived()
