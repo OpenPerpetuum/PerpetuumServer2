@@ -15,6 +15,11 @@ namespace Perpetuum.Network
 
         IPEndPoint RemoteEndPoint { get; }
 
+        /// <summary>
+        /// How long this connection has been receiving nothing, and the widest such gap so far.
+        /// </summary>
+        ConnectionActivity Activity { get; }
+
         event TcpConnectionEventHandler Disconnected;
         event TcpConnectionEventHandler<byte[]> Received;
     }

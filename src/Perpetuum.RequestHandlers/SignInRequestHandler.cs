@@ -42,9 +42,23 @@ namespace Perpetuum.RequestHandlers
             var isLoggedIn = account.IsLoggedIn;
             if (isLoggedIn)
             {
-                Logger.Info("a logged in account was found, starting disconnect. accountID:" + account.Id);
-
                 var session = _sessionManager.GetByAccount(account);
+
+                // This is the only place a ghost announces itself, and the two shapes of it need
+                // different fixes. A session still held means the peer vanished without closing and
+                // nothing noticed, which is the missing idle timeout. No session behind the flag
+                // means the sign out ran and rolled back, leaving the row saying logged in. The one
+                // line this replaced said "a logged in account was found" for both, so a live log
+                // could not tell them apart.
+                Logger.Info(session == null
+                    ? SessionDiagnostics.DescribeStaleLogin(account.Id)
+                    : SessionDiagnostics.DescribeStaleLogin(
+                        account.Id,
+                        session.Id,
+                        session.RemoteEndPoint,
+                        session.Activity.SilentFor(DateTime.Now),
+                        session.Activity.LongestGap));
+
                 session?.ForceQuit(ErrorCodes.NoSimultaneousLoginsAllowed);
 
                 account.IsLoggedIn = false;
