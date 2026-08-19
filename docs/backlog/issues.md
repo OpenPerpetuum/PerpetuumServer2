@@ -61,9 +61,11 @@ So one exception thrown anywhere inside `SignOut()` leaves the server in exactly
 A second variant needs no rollback at all: `Disconnected` is a plain multicast invoke with no
 per-subscriber guard, so if `OnSessionDisconnected` throws, `Remove` — subscribed after it — never runs.
 
-This also fits the report saying *sometimes* rather than *always*: `SignIn` runs
-`update characters set inuse=0 where accountid=@id` (`Session.cs:209`), so a ghost clears itself the
-next time that player signs in.
+This also fits the report saying *sometimes* rather than *always*: `SignIn` clears the flags for the
+account on the way in, so a ghost heals itself the next time that player signs in. That statement now
+lives in `StaleOnlineFlags.ClearForAccount` and carries `and inuse=1`, which leaves the data identical
+and makes the rows affected mean something: without the predicate the update matches every character
+on the account and reports that count on every sign in, stale or not.
 
 **What is not established is what throws.** The remaining candidates are the three `Character` database
 writes in `DeselectCharacter` and the `ThrowIfNull(AccountNotFound)` against the account repository.
@@ -84,9 +86,17 @@ runs from the transaction's commit callback.
 - Anything gated on online state acts on stale information for the lifetime of the ghost.
 
 ### Proposed Fix
-1. **Ask for a live server log before changing anything.** In a window where a ghost was reported, look
-   for a logged exception with no matching `[Relay] client disconnected.` line. That confirms or kills
-   the mechanism above at zero cost, and it decides what the fix has to be.
+1. **Instrumented 2026-08-19 instead of asked.** The question was whether a ghost came from a sign out
+   that rolled back or from a peer that vanished without closing, and the log could not tell them
+   apart: the sign in handler wrote `a logged in account was found` for both. It now writes which one
+   it is — `[Ghost] stale login: live session still held` with the connection's silence when the
+   server is still holding the session, and `[Ghost] stale login: no live session, the account flag was
+   left set` when the flag outlived it. The first is the missing idle timeout, the second is the
+   rolled-back sign out. Also shipped: `[Session] closing.` carrying session, account, character,
+   endpoint and silence, written before sign out clears the identity; a count of the stale flags each
+   sign in clears (`StaleOnlineFlags`); and `StaleOnlineFlagCensus`, which reports every five minutes
+   and at startup how many characters are flagged online with no session behind them. Nothing here
+   changes behaviour. **Read the live log after the next patch deploy and the mechanism is named.**
 2. **DONE 2026-08-17.** The teardown no longer depends on `SignOut()` succeeding.
    `Session.OnDisconnected` raises `Disconnected` from a `finally`, so the session leaves `_sessions`
    either way, and `SessionManager.OnSessionDisconnected` contains its own failure so it cannot cancel
@@ -108,6 +118,19 @@ runs from the transaction's commit callback.
    neither can be exercised at the unit tier without a production seam. The step 2 change is covered by
    inspection only. `ConnectionActivity` was built as a separate unit precisely so the part that could
    be tested, was — eleven tests, written first and observed failing.
+
+### A live report, 2026-08-19
+
+The operator lost their connection to the live server when their internet dropped, and on signing in
+again was told the character was already logged in and that continuing would disconnect the old
+session. That is the `account.IsLoggedIn` branch of `SignInRequestHandler`, and it is the **keepalive**
+half of this issue rather than the rollback half: a dropped link sends no close, so the server went on
+holding a session whose peer was gone. It is also the case the shipped measurement was built for — the
+silence on that session is exactly what `ConnectionActivity` records.
+
+It cannot be attributed with certainty, because the log of the day could not distinguish the two
+mechanisms. That is what the step 1 instrumentation fixes, and the next occurrence will say which it
+was.
 
 ### The half still open
 

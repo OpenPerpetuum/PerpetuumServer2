@@ -10,7 +10,7 @@ coverage map below states what is covered and what is not.
 | Tier | Project | Count | Needs |
 |------|---------|-------|-------|
 | 1 — smoke | `tools/smoke-test.ps1` | 1 end-to-end run | A configured `GameRoot` and a live database |
-| 2 — unit | `src/Perpetuum.Tests` | 58 tests | Nothing. Runs anywhere the solution builds |
+| 2 — unit | `src/Perpetuum.Tests` | 99 tests | Nothing. Runs anywhere the solution builds |
 | 3 — integration | `src/Perpetuum.Tests.Integration` | 10 tests | A configured `GameRoot` and a live database |
 
 Tier 2 is the tier that runs in CI. Tiers 1 and 3 run on a developer machine that already has the
@@ -74,6 +74,12 @@ production change.
 `Fakes/Data/` implements the ADO.NET interfaces as a recording fake: a test registers a result set
 against a command pattern, then asserts on the SQL and parameters the code under test actually
 produced. `Fakes/RecordingLogger.cs` does the same for log output.
+
+`Fakes/Sessions/` holds hand-written doubles for `ISession`, `ISessionManager`, `IAccountRepository`,
+`IRelayStateService`, `ILoginQueueService` and `IRequest`, which is what makes request handlers
+reachable at this tier. Every member no test uses throws rather than returning a default, so a path
+that starts being exercised cannot pass unnoticed. The project references `Perpetuum.RequestHandlers`
+for the same reason.
 
 Because these seams are process-wide static state, the fixtures live in xUnit collections
 (`PerpetuumStaticsCollection`) so classes touching them do not run in parallel with each other.
