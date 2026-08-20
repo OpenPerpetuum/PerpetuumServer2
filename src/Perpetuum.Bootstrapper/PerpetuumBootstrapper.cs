@@ -415,6 +415,14 @@ namespace Perpetuum.Bootstrapper
 
             _ = _builder.RegisterType<SessionManager>().As<ISessionManager>().SingleInstance();
 
+            // Reports how many characters are flagged online with nobody connected behind them.
+            // Five minutes because it is a trend, not an alarm: the number is read off a log after
+            // the fact, and a shorter period would only add lines.
+            _ = _builder.RegisterType<StaleOnlineFlagCensus>().AutoActivate().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(5)));
+            }).SingleInstance();
+
             InitRelayManager();
 
             _ = _builder.RegisterType<AdminCommandRouter>().SingleInstance();

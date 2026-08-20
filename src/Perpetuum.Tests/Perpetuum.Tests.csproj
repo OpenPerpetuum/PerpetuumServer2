@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Perpetuum\Perpetuum.csproj" />
+    <ProjectReference Include="..\Perpetuum.RequestHandlers\Perpetuum.RequestHandlers.csproj" />
   </ItemGroup>
 
 </Project>
