@@ -4,6 +4,7 @@ using Perpetuum.PathFinders;
 using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Zones.Movements;
+using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.NpcSystem.ThreatManaging;
 using Perpetuum.Zones.Terrains;
 using System.Drawing;
@@ -123,6 +124,12 @@ namespace Perpetuum.Zones.NpcSystem.AI
             {
                 Unit unit = hostile.Unit;
                 if (unit == null || unit.States.Dead || !unit.InZone)
+                {
+                    smartCreature.ThreatManager.Remove(hostile);
+                }
+
+                // Similar to CombatAI, we remove inactive hostiles.
+                if (smartCreature.Behavior.Type == BehaviorType.Neutral && hostile.IsExpired)
                 {
                     smartCreature.ThreatManager.Remove(hostile);
                 }
