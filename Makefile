@@ -1,5 +1,5 @@
 help:
-	@echo "Commands to compile, deploy, log services used to run an OpenPerpetuum server (used for local development)"
+	@echo "Commands to compile, deploy, log services used to run an OpenPerpetuum server, and run the test tiers (used for local development)"
 
 # Create and start the containers
 up:
@@ -33,4 +33,15 @@ log-db:
 log-server:
 	./script/compose.sh logs server -f
 
-phonyx: help up start stop down log-asset log-db log-server
+# Run the unit test tier (2) in the test container, no database required
+test-unit:
+	./script/compose.sh --profile test run --build --rm test dotnet test src/Perpetuum.Tests/Perpetuum.Tests.csproj -c Release -p:Platform=x64 --no-build
+
+# Run the integration test tier (3) in the test container, against the live database,
+# bringing up db + migration first (migration is idempotent and exits when already done)
+test-integration:
+	./script/compose.sh up -d db --wait
+	./script/compose.sh up migration
+	./script/compose.sh --profile test run --build --rm test dotnet test src/Perpetuum.Tests.Integration/Perpetuum.Tests.Integration.csproj -c Release -p:Platform=x64 --no-build
+
+PHONY: help up start stop down log-asset log-db log-server test-unit test-integration

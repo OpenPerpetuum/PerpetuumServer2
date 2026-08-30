@@ -77,6 +77,24 @@ services:
       - openperpetuum-data:/data
 
 
+  # Test runner (unit + integration tiers). Excluded from the default stack via the "test" profile:
+  #   make test-unit / make test-integration
+  # or manually: docker compose --profile test run --rm test <dotnet test args>
+  test:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.test
+      args:
+        SERVER_PORT: ${SERVER_PORT}
+        ASSET_URL: ${ASSET_URL}
+        CONNECTION_STRING: ${CONNECTION_STRING}
+    networks:
+      - dev_env
+    depends_on:
+      db:
+        condition: service_healthy
+
 networks:
   dev_env:
     driver: bridge
