@@ -30,9 +30,10 @@ namespace Perpetuum.Tests.Fakes.Data
         private readonly object _gate = new();
 
         public static FakeDb Install()
-        {
             FakeDb fake = new();
-            Db.DbQueryFactory = () => new DbQuery(() => new FakeDbConnection(fake));
+            Db.DbQueryFactory = () => new DbQuery(
+                () => new FakeDbConnection(fake),
+                new GlobalConfiguration { DistributedTransactions = true });
             return fake;
         }
 
