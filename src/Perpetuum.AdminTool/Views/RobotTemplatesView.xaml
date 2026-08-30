@@ -1,0 +1,134 @@
+<UserControl x:Class="Perpetuum.AdminTool.Views.RobotTemplatesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Perpetuum.AdminTool.Common"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#F8F8F8" Padding="8" BorderBrush="#DDD" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Reload" Padding="10,2" Margin="0,0,8,0" Click="OnReloadClick"
+                        IsEnabled="{Binding IsLoading, Converter={x:Static common:InverseBoolConverter.Instance}}"/>
+                <Button Content="New template..." Padding="10,2" Margin="0,0,8,0" Click="OnNewClick"/>
+                <Button Content="Export SQL..." Padding="10,2" Margin="0,0,8,0"
+                        Command="{Binding ExportTemplateCommand}"
+                        IsEnabled="{Binding IsLoading, Converter={x:Static common:InverseBoolConverter.Instance}}"/>
+                <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBox Width="240" VerticalAlignment="Center"
+                         Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged, Delay=200}"/>
+                <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Text="{Binding StatusMessage}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="DimGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="DarkRed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320"/>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <DataGrid Grid.Column="0"
+                      ItemsSource="{Binding View}"
+                      SelectedItem="{Binding SelectedRow}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      SelectionMode="Single" SelectionUnit="FullRow">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="id"   Binding="{Binding IdDisplay}" Width="80"/>
+                    <DataGridTextColumn Header="name" Binding="{Binding Name}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="#DDD"/>
+
+            <DockPanel Grid.Column="2" Margin="0">
+                <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="6" BorderBrush="#DDD" BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Save changes" Padding="14,4" Margin="0,0,8,0" FontWeight="Bold" Click="OnSaveClick"/>
+                        <Button Content="Discard" Padding="10,4" Margin="0,0,8,0" Click="OnDiscardClick"/>
+                        <Button Content="Validate Genxy" Padding="10,4" Margin="0,0,8,0" Click="OnValidateClick"/>
+                        <Button Content="Structured edit..." Padding="10,4" Margin="0,0,8,0" Click="OnStructuredEditClick"/>
+                        <Button Content="Delete template..." Padding="10,4" Foreground="DarkRed" Click="OnDeleteClick"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Margin="10">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedRow}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Padding="8" Margin="0,0,0,8" Background="#FFF3CD" BorderBrush="#FFE08A" BorderThickness="1">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedRow.IsQueued}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock TextWrapping="Wrap"
+                                   Text="This new template has been queued for INSERT. Reload after Commit to refresh the assigned id."/>
+                    </Border>
+
+                    <TextBlock Grid.Row="1" Text="id (PK)" FontWeight="Bold" Margin="0,0,0,2"/>
+                    <TextBox Grid.Row="2" IsReadOnly="True" Margin="0,0,0,8"
+                             Text="{Binding SelectedRow.IdDisplay, Mode=OneWay}"/>
+
+                    <StackPanel Grid.Row="3"
+                                IsEnabled="{Binding SelectedRow.IsQueued, Converter={x:Static common:InverseBoolConverter.Instance}}">
+                        <TextBlock Text="name" FontWeight="Bold" Margin="0,0,0,2"/>
+                        <TextBox Margin="0,0,0,8"
+                                 Text="{Binding SelectedRow.Name, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="4"
+                                IsEnabled="{Binding SelectedRow.IsQueued, Converter={x:Static common:InverseBoolConverter.Instance}}">
+                        <TextBlock Text="note (admin annotation, nullable)" FontWeight="Bold" Margin="0,0,0,2"/>
+                        <TextBox Margin="0,0,0,8" MaxLength="2000"
+                                 Text="{Binding SelectedRow.Note, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"/>
+                        <TextBlock Text="description (raw Genxy)" FontWeight="Bold" Margin="0,0,0,2"/>
+                    </StackPanel>
+
+                    <TextBox Grid.Row="6"
+                             AcceptsReturn="True" TextWrapping="Wrap"
+                             FontFamily="Consolas" FontSize="11"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             IsEnabled="{Binding SelectedRow.IsQueued, Converter={x:Static common:InverseBoolConverter.Instance}}"
+                             Text="{Binding SelectedRow.Description, UpdateSourceTrigger=PropertyChanged}"/>
+                </Grid>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

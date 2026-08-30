@@ -24,7 +24,11 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
         {
             try
             {
-                return presence.Flocks.Max(f => f.HomeRange).Clamp(10, 40);
+                return presence.Flocks
+                    .Select(f => f.HomeRange)
+                    .DefaultIfEmpty(10)
+                    .Max()
+                    .Clamp(10, 40);
             }
             catch(Exception e)
             {
@@ -37,7 +41,10 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
         {
             try
             {
-                return presence.Flocks.GetMembers().Min(m => m.Slope);
+                return presence.Flocks.GetMembers()
+                    .Select(m => m.Slope)
+                    .DefaultIfEmpty(ZoneExtensions.MIN_SLOPE)
+                    .Min();
             }
             catch (Exception e)
             {

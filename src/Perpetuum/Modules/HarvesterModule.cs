@@ -6,6 +6,7 @@ using Perpetuum.Log;
 using Perpetuum.Modules.ModuleProperties;
 using Perpetuum.Players;
 using Perpetuum.Services.MissionEngine.MissionTargets;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Beams;
 using Perpetuum.Zones.Locking.Locks;
@@ -141,6 +142,7 @@ namespace Perpetuum.Modules
                         player.Zone?.HarvestLogHandler.EnqueueHarvestLog(extractedHarvestDefinition, extractedQuantity);
 
                         resourceStats.Add((extractedMaterial.EntityDefault.Name, extractedMaterial.Quantity));
+                        SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.PlantHarvested, new Perpetuum.Services.Seasons.ActivityEvent(extractedMaterial.Quantity, extractedHarvestDefinition));
                     }
 
                     container.Save();
@@ -155,10 +157,11 @@ namespace Perpetuum.Modules
                 try
                 {
                     Db.Query()
-                        .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity")
+                        .CommandText("exec sp_RecordResourceGathered @gathered_on, @resource_name, @quantity, @is_pvp")
                         .SetParameter("@gathered_on", DateTime.UtcNow)
                         .SetParameter("@resource_name", resourceName)
                         .SetParameter("@quantity", quantity)
+                        .SetParameter("@is_pvp", !zone.Configuration.Protected)
                         .ExecuteNonQuery();
                 }
                 catch (Exception ex)

@@ -1,0 +1,12 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="Perpetuum Admin Tool" Manufacturer="Open Perpetuum"
+           Version="1.0.0.0" UpgradeCode="{3C8A7D92-1E4B-4F2A-8C6D-5B0E3A9F1D7C}">
+    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
+    <Icon Id="AppIcon.ico" SourceFile="$(var.Perpetuum.AdminTool.TargetDir)Perpetuum.AdminTool.exe" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <Feature Id="Main">
+      <ComponentGroupRef Id="AdminToolComponents" />
+    </Feature>
+  </Package>
+</Wix>

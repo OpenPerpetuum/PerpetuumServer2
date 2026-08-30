@@ -1,6 +1,6 @@
 using Perpetuum.Common.Loggers.Transaction;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Wallets;
-using System.Collections.Generic;
 
 namespace Perpetuum.Accounting.Characters
 {
@@ -49,6 +49,43 @@ namespace Perpetuum.Accounting.Characters
                 .WithData(info)
                 .ToCharacter(character)
                 .Send();
+
+            switch (transactionType)
+            {
+                case TransactionType.hangarRent:
+                case TransactionType.hangarRentAuto:
+                case TransactionType.marketFee:
+                case TransactionType.corporationCreate:
+                case TransactionType.extensionLearn:
+                case TransactionType.ItemRepair:
+                case TransactionType.ProductionManufacture:
+                case TransactionType.ProductionResearch:
+                case TransactionType.ProductionMultiItemRepair:
+                case TransactionType.ProductionPrototype:
+                case TransactionType.ProductionMassProduction:
+                case TransactionType.InsuranceFee:
+                case TransactionType.BoxRequest:
+                case TransactionType.MarketTax:
+                case TransactionType.ModifyMarketOrder:
+                case TransactionType.SparkUnlock:
+                case TransactionType.SparkActivation:
+                case TransactionType.ResearchKitMerge:
+                case TransactionType.ProductionCPRGForge:
+                case TransactionType.ItemShopBuy:
+                case TransactionType.ItemShopCreditTake:
+                    SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicSpent, new ActivityEvent((long)Math.Abs(change)));
+
+                    break;
+                case TransactionType.missionPayOut:
+                case TransactionType.refund:
+                case TransactionType.InsurancePayOut:
+                case TransactionType.GoodiePackCredit:
+                    SeasonServiceLocator.Instance?.RecordActivity(character.Id, SeasonActivityType.NicEarned, new ActivityEvent((long)change));
+
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

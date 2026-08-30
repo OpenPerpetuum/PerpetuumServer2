@@ -1,0 +1,16 @@
+Implement the following task:
+
+{{task_name}}
+
+Context:
+{{state_summary}}
+
+Relevant files:
+{{file_list}}
+
+Constraints:
+- Follow ARCHITECTURE.md
+- Keep code clean and minimal
+
+Output:
+- Only necessary code

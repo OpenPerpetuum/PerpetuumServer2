@@ -1,0 +1,76 @@
+<Window x:Class="Perpetuum.AdminTool.Views.AddNpcLootRowWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Add NPC loot drop"
+        Width="520" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Grid Margin="14">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="170"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="A drop rule. The PK is `id` (IDENTITY) so duplicate (NPC, item) pairs are allowed."/>
+
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="NPC definition:" Margin="0,4" VerticalAlignment="Center"/>
+        <ComboBox  Grid.Row="1" Grid.Column="1" Margin="0,4"
+                   ItemsSource="{Binding Lookups.Entities}"
+                   DisplayMemberPath="Display"
+                   SelectedValuePath="Definition"
+                   IsEditable="True"
+                   IsTextSearchEnabled="True"
+                   TextSearch.TextPath="Display"
+                   SelectedValue="{Binding Definition, UpdateSourceTrigger=PropertyChanged}"/>
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Item definition (drops):" Margin="0,4" VerticalAlignment="Center"/>
+        <ComboBox  Grid.Row="2" Grid.Column="1" Margin="0,4"
+                   ItemsSource="{Binding Lookups.Entities}"
+                   DisplayMemberPath="Display"
+                   SelectedValuePath="Definition"
+                   IsEditable="True"
+                   IsTextSearchEnabled="True"
+                   TextSearch.TextPath="Display"
+                   SelectedValue="{Binding LootDefinition, UpdateSourceTrigger=PropertyChanged}"/>
+
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="Min quantity:" Margin="0,4" VerticalAlignment="Center"/>
+        <TextBox  Grid.Row="3" Grid.Column="1" Margin="0,4"
+                  Text="{Binding MinQuantity, UpdateSourceTrigger=PropertyChanged}"/>
+
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="Max quantity:" Margin="0,4" VerticalAlignment="Center"/>
+        <TextBox  Grid.Row="4" Grid.Column="1" Margin="0,4"
+                  Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}"/>
+
+        <TextBlock Grid.Row="5" Grid.Column="0" Text="Probability (0.0–1.0):" Margin="0,4" VerticalAlignment="Center"/>
+        <TextBox  Grid.Row="5" Grid.Column="1" Margin="0,4"
+                  Text="{Binding Probability, UpdateSourceTrigger=PropertyChanged}"/>
+
+        <CheckBox Grid.Row="6" Grid.Column="1" Margin="0,4" Content="Don't damage on drop"
+                  IsChecked="{Binding DontDamage}"/>
+        <CheckBox Grid.Row="7" Grid.Column="1" Margin="0,4" Content="Repackaged"
+                  IsChecked="{Binding Repackaged}"/>
+
+        <TextBlock Grid.Row="8" Grid.ColumnSpan="2" Margin="0,8,0,0"
+                   Foreground="DarkRed" TextWrapping="Wrap"
+                   Text="{Binding ErrorMessage}"/>
+
+        <StackPanel Grid.Row="9" Grid.ColumnSpan="2" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Add" Padding="14,4" Margin="0,0,8,0" IsDefault="True" Click="OnAddClick"/>
+            <Button Content="Cancel" Padding="10,4" IsCancel="True" Click="OnCancelClick"/>
+        </StackPanel>
+    </Grid>
+</Window>

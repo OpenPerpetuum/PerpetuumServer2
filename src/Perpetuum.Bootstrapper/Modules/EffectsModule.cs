@@ -21,6 +21,7 @@ namespace Perpetuum.Bootstrapper.Modules
             });
 
             _ = builder.RegisterType<InvulnerableEffect>().Keyed<Effect>(EffectType.effect_invulnerable);
+            _ = builder.RegisterType<SelfDestructCountdownEffect>().Keyed<Effect>(EffectType.effect_self_destruct_countdown);
             _ = builder.RegisterType<CoTEffect>().Keyed<Effect>(EffectType.effect_eccm);
             _ = builder.RegisterType<CoTEffect>().Keyed<Effect>(EffectType.effect_stealth);
 
@@ -106,6 +107,9 @@ namespace Perpetuum.Bootstrapper.Modules
             _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_field_stealth);
             _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_field_eccm);
             _ = builder.RegisterType<AuraEffect>().Keyed<Effect>(EffectType.effect_field_reactor_stabilizer);
+
+            // Equipment set bonus display effect
+            _ = builder.RegisterType<Effect>().Keyed<Effect>(EffectType.effect_equipment_set_bonus);
 
             _ = builder.Register<EffectFactory>(x =>
             {

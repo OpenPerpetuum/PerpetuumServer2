@@ -30,6 +30,7 @@ using Perpetuum.Services.ExtensionService;
 using Perpetuum.Services.HighScores;
 using Perpetuum.Services.Insurance;
 using Perpetuum.Services.Looting;
+using Perpetuum.Services.Economy;
 using Perpetuum.Services.MarketEngine;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionBonusObjects;
@@ -139,6 +140,23 @@ namespace Perpetuum.Bootstrapper
             config.DistributedTransactions = distributedTransactions;
             _container.Resolve<IHostStateService>().State = HostState.Init;
 
+            // Before anything builds a SqlConnection from it, which happens further down at the
+            // DbConnectionFactory resolve. A perpetuum.ini written for the original server carries
+            // settings Microsoft.Data.SqlClient refuses, and its error names the setting but not
+            // the file it came from, which is the part an operator needs.
+            IReadOnlyList<string> unsupported = ConnectionStringSupport.FindUnsupportedKeywords(config.ConnectionString);
+            if (unsupported.Count > 0)
+            {
+                string message =
+                    $"perpetuum.ini in {config.GameRoot} has a connectionString carrying " +
+                    $"{unsupported.Count} setting(s) Microsoft.Data.SqlClient does not accept: " +
+                    $"{string.Join(", ", unsupported)}. Remove them and start the server again. " +
+                    "The original server used System.Data.SqlClient, which accepted them.";
+
+                Logger.Error(message);
+
+                throw new InvalidOperationException(message);
+            }
 
             Logger.Info($"Game root: {config.GameRoot}");
             Logger.Info($"GC isServerGC: {GCSettings.IsServerGC}");
@@ -362,6 +380,7 @@ namespace Perpetuum.Bootstrapper
             _builder.RegisterModule(new IntrusionsModule());
             _builder.RegisterModule(new ZonesModule());
             _builder.RegisterModule(new PbsModule());
+            _builder.RegisterModule(new SeasonModule());
 
             _ = _builder.Register<Func<string, ObjectCache>>(x =>
             {
@@ -396,6 +415,14 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<Session>().AsSelf().As<ISession>();
 
             _ = _builder.RegisterType<SessionManager>().As<ISessionManager>().SingleInstance();
+
+            // Reports how many characters are flagged online with nobody connected behind them.
+            // Five minutes because it is a trend, not an alarm: the number is read off a log after
+            // the fact, and a shorter period would only add lines.
+            _ = _builder.RegisterType<StaleOnlineFlagCensus>().AutoActivate().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(5)));
+            }).SingleInstance();
 
             InitRelayManager();
 
@@ -578,6 +605,8 @@ namespace Perpetuum.Bootstrapper
                 e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
             });
 
+            _ = _builder.RegisterType<DiscordPinStateRepository>().As<IDiscordPinStateRepository>().SingleInstance();
+
             // OPP: EventListenerService and consumers
             _ = _builder.RegisterType<ChatEcho>();
             _ = _builder.RegisterType<DirectMessenger>();
@@ -630,6 +659,14 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<EpForActivityLogger>();
 
             _ = _builder.RegisterType<MarketAutoOrdersManager>().SingleInstance().AutoActivate().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
+            });
+            _ = _builder.RegisterType<EconomySnapshotService>().SingleInstance().AutoActivate().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
+            });
+            _ = _builder.RegisterType<InsurancePriceRefreshService>().SingleInstance().AutoActivate().OnActivated(e =>
             {
                 e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
             });

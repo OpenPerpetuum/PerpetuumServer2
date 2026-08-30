@@ -1,0 +1,14 @@
+Summarize current project state for continuation.
+
+Include:
+- Active phase
+- Completed tasks
+- Remaining tasks
+- Current focus
+- Constraints
+- Open questions
+
+Keep it under 300 lines.
+Structured. No fluff.
+
+Format it as markdown. Update STATE_SUMMARY.md at Perpetuum.AdminTool/docs/STATE_SUMMARY.md with the results. Update TASKS.md and DECISIONS.md if there are any changes based on the summary.

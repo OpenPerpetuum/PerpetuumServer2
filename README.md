@@ -4,113 +4,144 @@
 
 # The Open Perpetuum Server 2
 
-## Setup (container)
+Local development runs in **Linux containers** (Docker or Podman). That is the setup documented below.
 
-This section explains how to setup for local development using docker/podman compose containers where it can be controlled using some make commands.
+The console host `Perpetuum.Server` and the WPF Admin Tool remain Windows-only. Use them only if you are running the server on a Windows machine without containers — see [Native Windows host](#native-windows-host).
 
-Here is some context for how this works:
+## Local development (containers)
 
-The entry point is `compose.yml` which contains the containers, volumes and network definitions.
+`compose.yml` defines the asset server, SQL Server, migration job, and game server. Configuration lives in `.env.local`.
 
-There are 2 volumes:
-- `openperpetuum-data`: contains the original `PerpetuumServer/Data` + custom layers + generated perpetuum.ini
-- `openperpetuum-db`: contains the database files for persistence
+Two named volumes persist between restarts:
 
-There is an environment file to control most of the configuration of this setup:
-- `.env.local`
+- `openperpetuum-data` — original `PerpetuumServer/data`, custom layers, and a generated `perpetuum.ini`
+- `openperpetuum-db` — SQL Server files
 
-### 0. Requirements
-- (optional) make (to help with docker-compose commands)
-- docker/podman
-- Steam: Perpetuum Dedicated server installed
-- Latest gamma islands layers: https://drive.google.com/file/d/1Xp0T1K57Pv-vjgmpXMG8Iea_ec0bWYR4/view?usp=drive_link 
+`make` wraps the compose commands; you can call `docker compose` / `podman compose` yourself if you prefer.
+
+### Requirements
+
+- Docker or Podman (Linux containers)
+- (optional) `make`
+- Steam: Perpetuum Dedicated Server installed
+- Latest gamma island layers: https://drive.google.com/file/d/1Xp0T1K57Pv-vjgmpXMG8Iea_ec0bWYR4/view?usp=drive_link
 - Latest asset resource: https://drive.google.com/file/d/18fh8aRqMP1J7ycGBNGraFyQ31mMXZaq1/view?usp=drive_link
 
-### 1. Clone this repository and update submodules
+### 1. Clone and submodules
 
-Start by cloning this repository
 ```sh
 git clone https://github.com/OpenPerpetuum/PerpetuumServer2.git
-```
-or
-```sh
-git clone git@github.com:OpenPerpetuum/PerpetuumServer2.git
-```
-
-Checkout on the develop branch
-```sh
-git checkout develop
-```
-
-This repository contains 2 submodules.
-- db: (OPDB) database migration files for each game update
-- asset: (OPResource) game client resources that are fetched once the client connect to the server. Contains definition files for all game entities, translations, gfx, map data (layers), audio files, custom bot models.
-
-You can initialize and update them with this command:
-```sh
+# or: git clone git@github.com:OpenPerpetuum/PerpetuumServer2.git
+cd PerpetuumServer2
 git submodule init && git submodule update
 ```
 
-### 2. Update custom resources
+Submodules:
 
-This section must be performed if there are updates on the gamma layers or asset resource.
+- `db` (OPDB) — database migration files per game update
+- `asset` (OPResource) — client resources served when a client connects (definitions, translations, gfx, layers, audio, custom bot models)
 
-- Uncompress gamma layers into a temporary directory
-- Copy gamma layers in `asset/lang0000/layers/GAMMA_LAYERS_NEW` (all .bin files)
-- Create `custom-layers` directory
-- Copy gamma layers in a new directory `custom-layers` (all .bin files) (the same one as above)
-- Unarchive asset resource into a temporary directory
-- Copy asset resource into `asset/lang0000` directory (gfx, sfx, textures)
-- Create `perpetuum-data` directory
-- Copy original PerpetuumServer/data folder into `perpetuum-data` (database, layers)
+### 2. Custom resources
 
+Do this whenever the gamma layers or asset pack are updated.
 
-### 3. Run the server
+- Uncompress the gamma layers and copy every `.bin` into both:
+  - `asset/lang0000/layers/GAMMA_LAYERS_NEW`
+  - a new `custom-layers` directory (same files)
+- Unarchive the asset resource and copy `gfx`, `sfx`, and `textures` into `asset/lang0000`
+- Create `perpetuum-data` and copy the Dedicated Server installer `data` folder into it (`database`, `layers`)
 
-At this point, you are ready to run the server.
+Paths for `perpetuum-data` and `custom-layers` can be changed in `.env.local`.
 
-Note: Take a look at the `.env.local` if you need to see what ports are used, what is the database password, or if you want to update various paths.
+### 3. Configuration
 
-#### 3.1. Start
+Edit `.env.local` for ports, the database password, paths, and the SQL connection string.
+
+The migration job writes `perpetuum.ini` from `template/perpetuum.ini.template`. Do not copy the installer `perpetuum.ini` into the data volume — that file was written for `System.Data.SqlClient` and this server uses `Microsoft.Data.SqlClient`. The template already uses a Linux-compatible string: SQL authentication (`sa`), `TrustServerCertificate=True`, no `Trusted_Connection`, and no keywords the driver refuses (`Connection Reset`, `Network Library`, `Context Connection`).
+
+Linux does not support distributed transactions. `.env.local` sets `DISTRIBUTED_TRANSACTIONS=false` for that reason.
+
+`SERVER_PORTS` must be a range of about 300 ports starting at `SERVER_PORT` (default `17700-17900`). A single mapped port is enough to log in; entering a zone then shows a black screen.
+
+### 4. Run the server
 
 ```sh
 make up
 ```
 
-This will build and start containers. The migration will run. Once the command exit, you might need to wait for a few minutes since the server is starting up.
+This builds and starts the containers and runs migrations. The command returns before the game host is fully up; wait a few minutes.
 
-You can monitor the server status with this command:
 ```sh
 make log-server
 ```
 
-If you see logs like `Unit enter to zone` or `Planthandler STOP SIGNAL received`, then the server is ready for a client to connect.
+The server is ready for a client when you see lines such as `Unit enter to zone` or `Planthandler STOP SIGNAL received`.
 
-#### 3.2. Setup client with that local server
-- Open the client
-- Click on `Server list`
-- Click on `ADD PRIVATE SERVER`
-- Enter Name: `local`, Server address: `127.0.0.1:17700` (update the port to match your `SERVER_PORT` from the `.env.local` file)
-- Click `OK`
+### 5. Point the client at this host
 
-#### 3.3. Connect client to the local server
-- Select `local` in the server list
-- Click `Connect` (this might take a few minutes to load, at this point the asset server is transfering files to the client)
-- Login with the test account user: `test`, password: `test`
+- Open the client → **Server list** → **ADD PRIVATE SERVER**
+- Name: `local`
+- Address: `127.0.0.1:17700` (use `SERVER_PORT` from `.env.local` if you changed it)
+- Connect, then log in with user `test` / password `test`
 
-#### 3.4 Stop the server
+The first connect can take several minutes while the asset server transfers files.
+
+### 6. Stop
+
 ```sh
-make down
+make down     # stop and remove containers; keep data and db volumes
+make delete   # also delete the volumes
 ```
 
-This will stop and delete the containers but keep the data and db volumes
+## Native Windows host
 
-#### 3,5 Stop and delete server data
-```sh
-make delete
+Skip this if you are using the containers above.
+
+`Perpetuum.Server` is annotated `[SupportedOSPlatform("windows")]` and the Admin Tool is WPF. You need the .NET 8 SDK, a SQL Server instance, and the `perpetuumsa` database — see [OPDB](https://github.com/OpenPerpetuum/OPDB) for restore and patches.
+
+### Build
+
+```
+dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64
 ```
 
-This will stop and delete all data such as containers and volumes (data, db)
+### Configure
 
+The server reads `perpetuum.ini` from the game root. `ConnectionString` must match your machine.
 
+**The `perpetuum.ini` written by the Perpetuum Dedicated Server installer will not start this server.** `Microsoft.Data.SqlClient` differs from `System.Data.SqlClient` in two ways that abort startup before any zone loads:
 
+1. **`Connection Reset` was removed.** The driver refuses the keyword while the connection is being constructed:
+
+   ```
+   The keyword 'Connection Reset' is not supported on this platform.
+   ```
+
+   The server checks the string before it connects. If anything is refused, it logs `perpetuum.ini`, the directory it is in, and **every** rejected setting, then stops — one restart is enough to clear them all. Delete those keys from the file. `Connection Reset` is safe to drop: a pooled connection is always reset. `Network Library` and `Context Connection` are refused the same way. The check asks the driver; it does not keep its own list of keywords.
+
+2. **`Encrypt` now defaults to `true`.** Since version 4.0 the driver encrypts and validates the server certificate. A local SQL Server with a self-signed certificate fails logon in the SSL provider:
+
+   ```
+   A connection was successfully established with the server, but then an error occurred during
+   the login process. (provider: SSL Provider, error: 0 - The certificate chain was issued by an
+   authority that is not trusted.)
+   ```
+
+   The trailing part of that message comes from Windows and appears in the system language, so match on the condition rather than the exact text. The server will not decide for you whether skipping certificate validation is acceptable.
+
+A connection string that works against a local named instance with Windows authentication:
+
+```
+Server=localhost\PERPSQL;Database=perpetuumsa;Trusted_Connection=True;TrustServerCertificate=True;Pooling=True;Connection Timeout=30;Connection Lifetime=260;Min Pool Size=20;Max Pool Size=60;
+```
+
+`TrustServerCertificate=True` keeps the connection encrypted but skips validating the certificate. **Use that only on a local development instance.** On a deployment that leaves the machine, install a trusted certificate instead. `Encrypt=False` also works locally and is strictly worse: it drops encryption as well.
+
+### Run
+
+```
+cd src/Perpetuum.Server
+dotnet run -- "C:\PerpetuumServer\data"
+```
+
+The server is up when the log reads `>>>> Perpetuum Server State : [Online]`. Ctrl+C shuts it down; a clean shutdown ends at `State : [Off]`.

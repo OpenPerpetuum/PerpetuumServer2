@@ -18,6 +18,7 @@ using Perpetuum.Services.Looting;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionTargets;
 using Perpetuum.Services.MissionEngine.TransportAssignments;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Units.DockingBases;
@@ -275,6 +276,11 @@ namespace Perpetuum.Players
 
         public void ApplyInvulnerableEffect()
         {
+            if (Perpetuum.Zones.Effects.SelfDestructDetonation.IsArmed(this))
+            {
+                return;
+            }
+
             RemoveInvulnerableEffect(); // Remove existing effect, set new
             EffectBuilder builder = NewEffectBuilder().SetType(EffectType.effect_invulnerable);
             _ = builder.WithDurationModifier(0.75); //Reduce span of syndicate protection
@@ -1086,6 +1092,24 @@ namespace Perpetuum.Players
                     killer = zone.ToPlayerOrGetOwnerPlayer(killer) ?? killer;
 
                     SaveCombatLog(zone, killer);
+
+                    if (killer is Player killerPlayer && killerPlayer != this && !this.IsBlessed)
+                    {
+                        var victimIp = Db.Query()
+                            .CommandText("SELECT TOP 1 ip FROM accountonlinetime WHERE accountid = @accountId ORDER BY loggedin DESC")
+                            .SetParameter("@accountId", this.Character.AccountId)
+                            .ExecuteScalar<string>();
+                        var killerIp = Db.Query()
+                            .CommandText("SELECT TOP 1 ip FROM accountonlinetime WHERE accountid = @accountId ORDER BY loggedin DESC")
+                            .SetParameter("@accountId", killerPlayer.Character.AccountId)
+                            .ExecuteScalar<string>();
+
+                        if (victimIp != null && killerIp != null &&
+                            !string.Equals(victimIp, killerIp, StringComparison.OrdinalIgnoreCase))
+                        {
+                            SeasonServiceLocator.Instance?.RecordActivity(killerPlayer.Character.Id, SeasonActivityType.PvpKill, new Perpetuum.Services.Seasons.ActivityEvent(1));
+                        }
+                    }
 
                     Character character = Character;
                     DockingBase dockingBase = character.GetHomeBaseOrCurrentBase();

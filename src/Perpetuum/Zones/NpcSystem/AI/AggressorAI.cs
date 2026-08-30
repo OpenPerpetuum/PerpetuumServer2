@@ -22,6 +22,20 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 return;
             }
 
+            if (smartCreature.ShouldFlee())
+            {
+                smartCreature.AI.Push(new FleeAI(smartCreature));
+
+                return;
+            }
+
+            if (smartCreature.HasFriendsNeedingSupport())
+            {
+                smartCreature.AI.Push(new SupportAI(smartCreature));
+
+                return;
+            }
+
             if (!smartCreature.ThreatManager.IsThreatened)
             {
                 ReturnToHomePosition();

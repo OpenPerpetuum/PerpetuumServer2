@@ -98,10 +98,23 @@ namespace Perpetuum.Services.Sessions
         {
             Logger.Info($"[Relay] client disconnected. {session.RemoteEndPoint}");
 
-            using (var scope = Db.CreateTransaction())
+            // This handler is subscribed to Disconnected before Remove is, and a multicast delegate
+            // stops at the first subscriber that throws. Letting an exception out of here would
+            // therefore cancel the removal and leak the session, so it is contained rather than
+            // propagated. Signing out twice is already expected: Session.OnDisconnected has done it
+            // once, and SignOut returns early once AccountId has been cleared.
+            try
             {
-                session.SignOut();
-                scope.Complete();
+                using (var scope = Db.CreateTransaction())
+                {
+                    session.SignOut();
+                    scope.Complete();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[Relay] sign out failed on disconnect for {session.RemoteEndPoint}. The session is still removed.");
+                Logger.Exception(ex);
             }
         }
 

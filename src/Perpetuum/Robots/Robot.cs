@@ -1,3 +1,5 @@
+using System.Linq;
+
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Builders;
 using Perpetuum.Containers;
@@ -8,6 +10,7 @@ using Perpetuum.Items;
 using Perpetuum.Items.Templates;
 using Perpetuum.Modules;
 using Perpetuum.Players;
+using Perpetuum.Robots.EquipmentSets;
 using Perpetuum.Services.ExtensionService;
 using Perpetuum.Services.Insurance;
 using Perpetuum.Timers;
@@ -30,6 +33,10 @@ namespace Perpetuum.Robots
         private readonly IntervalTimer overheatCooldownTimer;
         private const double HeatDissipation = 1.75;
 
+        // Safe: Initialize() is called docked (no zone update) or at zone entry (before zone participation).
+        private EquipmentSetBonusResult _setBonusResult = EquipmentSetBonusResult.Empty;
+        private readonly SetBonusEffectApplicator _setBonusEffectApplicator = new SetBonusEffectApplicator();
+
         protected Robot()
         {
             InitLockHander();
@@ -43,6 +50,8 @@ namespace Perpetuum.Robots
         public RobotHelper RobotHelper { protected get; set; }
 
         public InsuranceHelper InsuranceHelper { protected get; set; }
+
+        public IEquipmentSetBonusCalculator EquipmentSetBonusCalculator { private get; set; }
 
         public RobotTemplate Template { get; set; }
 
@@ -123,6 +132,10 @@ namespace Perpetuum.Robots
         public override void Initialize()
         {
             InitComponents();
+            if (EquipmentSetBonusCalculator != null)
+            {
+                _setBonusResult = EquipmentSetBonusCalculator.Compute(Modules.Select(m => m.Definition));
+            }
             base.Initialize();
         }
 
@@ -349,6 +362,8 @@ namespace Perpetuum.Robots
             {
                 robotComponent.Update(time);
             }
+
+            _setBonusEffectApplicator.Update(this, _setBonusResult.ModifiersPerSet);
 
             if (overheatCooldownTimer.Passed)
             {

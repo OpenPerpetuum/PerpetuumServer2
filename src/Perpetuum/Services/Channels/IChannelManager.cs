@@ -1,5 +1,6 @@
 ﻿using Perpetuum.Accounting.Characters;
 using Perpetuum.Host.Requests;
+using Perpetuum.Services.EventServices.EventMessages;
 
 namespace Perpetuum.Services.Channels
 {
@@ -30,6 +31,7 @@ namespace Perpetuum.Services.Channels
         /// <param name="message">Message string</param>
         /// <param name="rerecipient">Member to receive the announcement. null - for all members</param>
         void Announcement(string channelName, Character sender, string message, Character? recipient = null);
+        void PinnedAnnouncement(string channelName, Character sender, string message, PinSlot pinSlot);
         void KickOrBan(string channelName, Character issuer, Character character, string message, bool ban);
         void UnBan(string channelName, Character issuer, Character character);
 

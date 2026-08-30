@@ -1,5 +1,6 @@
 using Perpetuum.Data;
 using Perpetuum.EntityFramework;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Log;
 using Perpetuum.Players;
 using Perpetuum.Services.Looting;
@@ -27,6 +28,16 @@ namespace Perpetuum.Zones.NpcSystem
         public NpcSpecialType SpecialType { get; set; }
 
         public int EP { get; private set; }
+
+        public override bool ShouldFlee()
+        {
+            if (SpecialType == NpcSpecialType.Boss)
+            {
+                return false;
+            }
+
+            return base.ShouldFlee();
+        }
 
         public ILootGenerator LootGenerator { get; set; }
 
@@ -244,6 +255,9 @@ namespace Perpetuum.Zones.NpcSystem
                 }
 
                 Player killerPlayer = zone.ToPlayerOrGetOwnerPlayer(killer);
+
+                if (killerPlayer != null)
+                    SeasonServiceLocator.Instance?.RecordActivity(killerPlayer.Character.Id, SeasonActivityType.NpcKill, new Perpetuum.Services.Seasons.ActivityEvent(1));
 
                 if (GetMissionGuid() != Guid.Empty)
                 {

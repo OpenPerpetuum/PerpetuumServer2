@@ -12,6 +12,7 @@ namespace Perpetuum.Data
 
         private string _commandText = string.Empty;
         private Dictionary<string, object> _parameters;
+        private int _commandTimeout = 30;
 
         public DbQuery CommandText(string cmdText)
         {
@@ -31,6 +32,12 @@ namespace Perpetuum.Data
                 SetParameter(kvp.Key, kvp.Value);
             }
 
+            return this;
+        }
+
+        public DbQuery Timeout(int seconds)
+        {
+            _commandTimeout = seconds;
             return this;
         }
 
@@ -55,6 +62,7 @@ namespace Perpetuum.Data
             IDbCommand command = connection.CreateCommand();
             command.CommandText = _commandText;
             command.CommandType = _commandText.Contains(' ') ? CommandType.Text : CommandType.StoredProcedure;
+            command.CommandTimeout = _commandTimeout;
 
             if (_parameters != null)
             {

@@ -9,6 +9,7 @@ using Perpetuum.Modules.Weapons;
 using Perpetuum.Players;
 using Perpetuum.Robots;
 using Perpetuum.Services.RiftSystem;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Timers;
 using Perpetuum.Units.ItemProperties;
 using Perpetuum.Units.UnitProperties;
@@ -403,6 +404,15 @@ namespace Perpetuum.Units
 
             Armor -= e.TotalDamage;
 
+            var damageAmount = (long)e.TotalDamage;
+            if (damageAmount > 0)
+            {
+                if (source is Player attacker)
+                    SeasonServiceLocator.Instance?.RecordActivity(attacker.Character.Id, SeasonActivityType.DamageDone, new Perpetuum.Services.Seasons.ActivityEvent(damageAmount));
+                if (this is Player victim)
+                    SeasonServiceLocator.Instance?.RecordActivity(victim.Character.Id, SeasonActivityType.DamageReceived, new Perpetuum.Services.Seasons.ActivityEvent(damageAmount));
+            }
+
             OnCombatEvent(source, e);
 
             if (Armor <= 0.0)
@@ -434,6 +444,13 @@ namespace Perpetuum.Units
             Updated?.Invoke(this, e);
         }
 
+        // Default on-death explosion is suppressed in Protected (Alpha) zones so incidental deaths
+        // don't splash unintended damage in what's meant to be a safe zone. Units whose explosion IS
+        // their deliberate, sole attack mechanic (e.g. HunterDrone's kamikaze self-destruct, which must
+        // still damage Niani NPCs on PvE/Alpha islands) opt out via this override point instead of
+        // duplicating GetExplosionDamageBuilder()'s formula.
+        protected virtual bool BypassZoneProtectionOnExplosion => false;
+
         protected virtual void DoExplosion()
         {
             IZone zone = Zone;
@@ -442,7 +459,7 @@ namespace Perpetuum.Units
                 return;
             }
 
-            if (zone.Configuration.Protected)
+            if (zone.Configuration.Protected && !BypassZoneProtectionOnExplosion)
             {
                 return;
             }

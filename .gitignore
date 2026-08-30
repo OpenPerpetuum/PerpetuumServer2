@@ -10,6 +10,7 @@ src/Perpetuum/bin/
 src/Perpetuum.ServerService2/Properties/PublishProfiles/
 *.user
 packages/
+!src/Perpetuum.AdminTool/Packages/
 src/Perpetuum.ServerService2Installer/bin/
 src/Perpetuum.ServerService2/data/bitmaps/
 src/Perpetuum.ServerService2/data/chatlogs/
@@ -26,3 +27,15 @@ custom-layers/
 
 # Original directory folder from Stream: Perpetuum Dedicated Server installer
 perpetuum-data/
+
+.claude/settings.local.json
+.planning/
+*.log
+*_wpftmp.csproj
+
+# graphify-dotnet generated output (regenerates on build)
+docs/graph/
+graphify-out/
+
+# Claude Code worktrees
+.claude/worktrees/

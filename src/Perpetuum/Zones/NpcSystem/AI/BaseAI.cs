@@ -52,6 +52,16 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 return;
             }
 
+            // Support-fitted NPCs hide instead of brawling — see DECISIONS D1, D2, D10.
+            // RemoteControlledCreatures keep their dedicated AI tree (CombatDrones,
+            // IndustrialDrones, TurretAI) and are excluded from the redirect.
+            if (smartCreature.IsSupportCapable && smartCreature is not RemoteControlledCreature)
+            {
+                smartCreature.AI.Push(new CoveringAI(smartCreature));
+
+                return;
+            }
+
             smartCreature.AI.Push(new AggressorAI(smartCreature));
         }
 

@@ -1,0 +1,170 @@
+<UserControl x:Class="Perpetuum.AdminTool.Views.EntityDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:Perpetuum.AdminTool.Common"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#F8F8F8" Padding="8" BorderBrush="#DDD" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Save changes" Padding="14,4" Margin="0,0,8,0" FontWeight="Bold" Click="OnSaveClick"/>
+                <Button Content="Discard" Padding="10,4" Margin="0,0,8,0" Click="OnDiscardClick"/>
+                <Button Content="Delete entity..." Padding="10,4" Foreground="DarkRed" Click="OnDeleteEntityClick"/>
+                <TextBlock VerticalAlignment="Center" Margin="16,0,0,0"
+                           Text="{Binding StatusMessage}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="DimGray"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                    <Setter Property="Foreground" Value="DarkRed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <Grid>
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Row}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="10">
+                <StackPanel DataContext="{Binding Row}"
+                            IsEnabled="{Binding IsQueued, Converter={x:Static common:InverseBoolConverter.Instance}}">
+                    <Border Padding="8" Margin="0,0,0,8" Background="#FFF3CD" BorderBrush="#FFE08A" BorderThickness="1">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsQueued}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock TextWrapping="Wrap"
+                                   Text="This new row has been queued for INSERT. Reload after Commit to refresh its autoincrement id and continue editing."/>
+                    </Border>
+
+                    <TextBlock Text="Definition (PK)" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox IsReadOnly="True" Text="{Binding DefinitionDisplay, Mode=OneWay}" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="definitionName" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding DefinitionName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="descriptionToken" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding DescriptionToken, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="categoryflags (long)" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <DockPanel Margin="0,0,0,2">
+                        <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="6,0,0,0" Click="OnPickCategoryClick"/>
+                        <TextBox Text="{Binding CategoryFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                    </DockPanel>
+                    <TextBlock Margin="0,0,0,8" Foreground="DimGray" FontStyle="Italic"
+                               Text="{Binding CategoryFlags, Converter={x:Static common:CategoryFlagsDescriptionConverter.Instance}}"/>
+
+                    <TextBlock Text="attributeflags (long)" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <DockPanel Margin="0,0,0,2">
+                        <Button DockPanel.Dock="Right" Content="Pick..." Padding="8,2" Margin="6,0,0,0" Click="OnPickAttributeClick"/>
+                        <TextBox Text="{Binding AttributeFlags, UpdateSourceTrigger=PropertyChanged}"/>
+                    </DockPanel>
+                    <TextBlock Margin="0,0,0,8" Foreground="DimGray" FontStyle="Italic" TextWrapping="Wrap"
+                               Text="{Binding AttributeFlags, Converter={x:Static common:AttributeFlagsDescriptionConverter.Instance}}"/>
+
+                    <TextBlock Text="mass" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding Mass, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="volume" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding Volume, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="health" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding Health, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="quantity" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+
+                    <CheckBox Content="hidden" IsChecked="{Binding Hidden}" Margin="0,4"/>
+                    <CheckBox Content="purchasable" IsChecked="{Binding Purchasable}" Margin="0,4"/>
+                    <CheckBox Content="enabled" IsChecked="{Binding Enabled}" Margin="0,4,0,8"/>
+
+                    <TextBlock Text="tiertype (nullable int)" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding TierType, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="tierlevel (nullable int)" Margin="0,0,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding TierLevel, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="options (Genxy)" Margin="0,8,0,2" FontWeight="Bold"/>
+                    <TextBox Text="{Binding Options, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
+                             FontFamily="Consolas" FontSize="11"
+                             TextWrapping="Wrap" AcceptsReturn="True"
+                             Height="120"
+                             VerticalScrollBarVisibility="Auto"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <DockPanel Grid.Column="1" Margin="6,10,10,10"
+                       IsEnabled="{Binding Row.IsQueued, Converter={x:Static common:InverseBoolConverter.Instance}}">
+                <TextBlock DockPanel.Dock="Top" Text="Stats (aggregatevalues)" FontWeight="Bold" Margin="0,0,0,6"/>
+
+                <Border DockPanel.Dock="Top" Background="#F2F2F2" Padding="6"
+                        BorderBrush="#DDD" BorderThickness="1" Margin="0,0,0,6">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0"
+                                  ItemsSource="{Binding AvailableFields}"
+                                  SelectedItem="{Binding NewStatField}"
+                                  DisplayMemberPath="DisplayLabel"/>
+                        <TextBox  Grid.Column="1" Margin="6,0"
+                                  Text="{Binding NewStatValue, UpdateSourceTrigger=LostFocus}"/>
+                        <Button   Grid.Column="2" Content="Add stat" Padding="10,2" Margin="0,0,6,0"
+                                  Click="OnAddStatClick"/>
+                        <Button   Grid.Column="3" Content="Remove selected" Padding="10,2"
+                                  Click="OnRemoveStatClick"/>
+                    </Grid>
+                </Border>
+
+                <DataGrid x:Name="StatsGrid"
+                          ItemsSource="{Binding Row.Stats}"
+                          SelectedItem="{Binding SelectedStat}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="All"
+                          SelectionUnit="FullRow"
+                          SelectionMode="Single">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Field id" IsReadOnly="True"
+                                            Binding="{Binding Field, Converter={x:Static common:EnumIntConverter.Instance}}"
+                                            Width="80"/>
+                        <DataGridTextColumn Header="Field name" IsReadOnly="True"
+                                            Binding="{Binding Field}"
+                                            Width="2*"/>
+                        <DataGridTextColumn Header="Value"
+                                            Binding="{Binding Value, UpdateSourceTrigger=LostFocus}"
+                                            Width="120"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

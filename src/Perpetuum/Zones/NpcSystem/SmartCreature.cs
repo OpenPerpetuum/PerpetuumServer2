@@ -1,6 +1,8 @@
 ﻿using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
+using Perpetuum.Modules;
+using Perpetuum.Modules.EffectModules;
 using Perpetuum.Players;
 using Perpetuum.StateMachines;
 using Perpetuum.Timers;
@@ -12,6 +14,7 @@ using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.NpcSystem.AI;
 using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.NpcSystem.AI.CombatDrones;
+using Perpetuum.Zones.NpcSystem.AI.HunterDrones;
 using Perpetuum.Zones.NpcSystem.AI.IndustrialDrones;
 using Perpetuum.Zones.NpcSystem.Flocks;
 using Perpetuum.Zones.NpcSystem.IndustrialTargetsManagement;
@@ -30,6 +33,13 @@ namespace Perpetuum.Zones.NpcSystem
         private const double AggroRange = 30;
         private const double BestComnatRangeModifier = 0.9;
         private const double BaseCallForHelpArmorThreshold = 0.2;
+        public const double FleeArmorThreshold = 0.30;
+        public const double FleeArmorRestoreThreshold = 0.80;
+        public const double FleeCoreThreshold = 0.20;
+        public const double FleeCoreRestoreThreshold = 0.80;
+        // Disabled per IMPROVEMENT-044 (player feedback). Flip to re-enable; FleeAI and the
+        // thresholds above are left intact for later rework/reuse.
+        private const bool FleeBehaviorEnabled = false;
         private readonly TimeKeeper debounceBodyPull = new(TimeSpan.FromSeconds(2.5));
         private readonly TimeKeeper debounceLockChange = new(TimeSpan.FromSeconds(2.5));
         private readonly IntervalTimer pseudoUpdateFreq = new(TimeSpan.FromMilliseconds(650));
@@ -65,6 +75,37 @@ namespace Perpetuum.Zones.NpcSystem
         public virtual double CallForHelpArmorThreshold => BaseCallForHelpArmorThreshold;
 
         public bool CallForHelp { private get; set; }
+
+        public virtual bool ShouldFlee()
+        {
+            if (!FleeBehaviorEnabled)
+            {
+                return false;
+            }
+
+            if (IsStationary)
+            {
+                return false;
+            }
+
+            if (!ActiveModules.OfType<ArmorRepairModule>().Any() &&
+                !ActiveModules.OfType<ShieldGeneratorModule>().Any())
+            {
+                return false;
+            }
+
+            if (ArmorPercentage < FleeArmorThreshold)
+            {
+                return true;
+            }
+
+            if (HasShieldEffect && CorePercentage < FleeCoreThreshold)
+            {
+                return true;
+            }
+
+            return false;
+        }
 
         public NpcBossInfo BossInfo { get; set; }
 
@@ -376,6 +417,114 @@ namespace Perpetuum.Zones.NpcSystem
             return false;
         }
 
+        public const double SupportThreshold = 0.75;
+
+        public bool HasRemoteArmorRepairer => ActiveModules.OfType<RemoteArmorRepairModule>().Any();
+
+        public bool HasEnergyTransferer => ActiveModules.OfType<EnergyTransfererModule>().Any();
+
+        public bool IsSupportCapable => HasRemoteArmorRepairer || HasEnergyTransferer;
+
+        public IEnumerable<SmartCreature> GetSupportCandidates()
+        {
+            HashSet<long> seen = new();
+
+            ISmartCreatureGroup group = Group;
+            if (group != null)
+            {
+                foreach (SmartCreature member in group.Members)
+                {
+                    if (member == this || member.States.Dead)
+                    {
+                        continue;
+                    }
+
+                    if (seen.Add(member.Eid))
+                    {
+                        yield return member;
+                    }
+                }
+            }
+
+            // Cross-faction friends (e.g. Niani <-> Cultist) aren't in the same group
+            // but show up in the visibility set because they belong to a different
+            // faction. IsHostile gives us the friend/foe verdict consistent with the
+            // existing Npc.IsHostile(Npc) faction logic.
+            foreach (IUnitVisibility visibility in GetVisibleUnits())
+            {
+                if (visibility.Target is SmartCreature creature &&
+                    creature != this &&
+                    !creature.States.Dead &&
+                    !IsHostile(creature) &&
+                    seen.Add(creature.Eid))
+                {
+                    yield return creature;
+                }
+            }
+        }
+
+        public bool HasFriendsNeedingSupport(double threshold = SupportThreshold)
+        {
+            if (!IsSupportCapable)
+            {
+                return false;
+            }
+
+            bool canRepair = HasRemoteArmorRepairer;
+            bool canTransfer = HasEnergyTransferer;
+
+            foreach (SmartCreature candidate in GetSupportCandidates())
+            {
+                if (canRepair && candidate.ArmorPercentage < threshold)
+                {
+                    return true;
+                }
+
+                if (canTransfer && candidate.CorePercentage < threshold)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public IEnumerable<Hostile> GetActiveHostiles()
+        {
+            foreach (Hostile hostile in ThreatManager.Hostiles)
+            {
+                Unit unit = hostile.Unit;
+                if (unit == null || unit.States.Dead || !unit.InZone)
+                {
+                    continue;
+                }
+
+                yield return hostile;
+            }
+        }
+
+        public Position? ThreatCentroid()
+        {
+            double sumX = 0;
+            double sumY = 0;
+            int count = 0;
+
+            foreach (Hostile hostile in GetActiveHostiles())
+            {
+                Position p = hostile.Unit.CurrentPosition;
+                sumX += p.X;
+                sumY += p.Y;
+                count++;
+            }
+
+            if (count == 0)
+            {
+                return null;
+            }
+
+            return new Position(sumX / count, sumY / count);
+        }
+
         protected override void OnTileChanged()
         {
             base.OnTileChanged();
@@ -400,6 +549,10 @@ namespace Perpetuum.Zones.NpcSystem
                 {
                     AI.Push(new HarvestingIndustrialTurretAI(this));
                 }
+            }
+            else if (this is HunterDrone)
+            {
+                AI.Push(new HunterPatrolAI(this));
             }
             else if (this is CombatDrone or SupportDrone)
             {

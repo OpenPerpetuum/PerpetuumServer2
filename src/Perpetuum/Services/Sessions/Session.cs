@@ -24,6 +24,13 @@ namespace Perpetuum.Services.Sessions
         SessionID Id { get; }
         int AccountId { get; }
         IPEndPoint RemoteEndPoint { get; }
+
+        /// <summary>
+        /// Silence measured on this session's connection. Reported at sign in when a stale login
+        /// finds the session still held: a long silence says the peer went away without closing.
+        /// </summary>
+        ConnectionActivity Activity { get; }
+
         bool IsAuthenticated { get; }
         Character Character { get; }
         AccessLevel AccessLevel { get; }
@@ -129,6 +136,8 @@ namespace Perpetuum.Services.Sessions
 
         public IPEndPoint RemoteEndPoint => _connection.RemoteEndPoint;
 
+        public ConnectionActivity Activity => _connection.Activity;
+
         private TimeSpan OnlineTime => DateTime.Now.Subtract(_sessionStart);
 
         public bool IsAuthenticated => AccountId > 0;
@@ -206,9 +215,10 @@ namespace Perpetuum.Services.Sessions
             {
                 var account = _accountManager.Repository.Get(accountID).ThrowIfNull(ErrorCodes.AccountNotFound);
 
-                Db.Query().CommandText("update characters set inuse=0 where accountid=@id")
-                    .SetParameter("@id", account.Id)
-                    .ExecuteNonQuery();
+                // Was an unconditional update here. Moved out so the rows it clears can be counted
+                // and reported: they are exactly the online flags a previous sign out failed to
+                // clear, and nothing recorded how often that happens.
+                _ = StaleOnlineFlags.ClearForAccount(account.Id);
 
                 Db.Query().CommandText("accountonlinetimestart")
                     .SetParameter("@accountId", account.Id)
@@ -299,13 +309,38 @@ namespace Perpetuum.Services.Sessions
 
         private void OnDisconnected(ITcpConnection connection)
         {
-            using (var scope = Db.CreateTransaction())
+            // Written before sign out rather than after, because sign out clears AccountId and
+            // Character on commit and every line logged after that has only the endpoint left to
+            // identify the connection by. Unauthenticated connections are skipped: they carry no
+            // identity to correlate, and TcpConnection already logs their close.
+            if (IsAuthenticated)
             {
-                SignOut();
-                scope.Complete();
+                Logger.Info(SessionDiagnostics.DescribeClosing(
+                    Id,
+                    AccountId,
+                    Character.Id,
+                    RemoteEndPoint,
+                    Activity.SilentFor(DateTime.Now),
+                    Activity.LongestGap));
             }
 
-            Disconnected?.Invoke(this);
+            // The event has to be raised even when signing out fails. SessionManager removes the
+            // session from its dictionary through this event, so leaving it on the success path
+            // means a throwing SignOut leaks the session, keeps the character shown as online and
+            // keeps its Player in the zone tick — the ISSUE-041 symptom. The exception is still
+            // allowed to leave, and TcpConnection logs it.
+            try
+            {
+                using (var scope = Db.CreateTransaction())
+                {
+                    SignOut();
+                    scope.Complete();
+                }
+            }
+            finally
+            {
+                Disconnected?.Invoke(this);
+            }
         }
 
         private void OnRsaKeyReceived()

@@ -1,4 +1,5 @@
 using Perpetuum.Accounting.Characters;
+using Perpetuum.Services.Seasons;
 using Perpetuum.Common;
 using Perpetuum.Common.Loggers.Transaction;
 using Perpetuum.Data;
@@ -551,6 +552,7 @@ namespace Perpetuum.Zones.Intrusion
             foreach (Players.Player player in sap.Participants)
             {
                 player.Character.AddExtensionPointsBoostAndLog(EpForActivityType.Intrusion, EP_WINNER);
+                SeasonServiceLocator.Instance?.RecordActivity(player.Character.Id, SeasonActivityType.IntrusionPoint, new Perpetuum.Services.Seasons.ActivityEvent(1));
             }
 
             //make dem toast anyways

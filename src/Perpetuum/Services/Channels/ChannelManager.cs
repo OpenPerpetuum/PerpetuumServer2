@@ -334,6 +334,17 @@ namespace Perpetuum.Services.Channels
             if (recipient is null)
             {
                 channel.SendMessageToAll(_sessionManager, sender, message);
+                // TODO: Terrible hardcode, needs to be redesigned
+                if (channel.DiscordId != null && sender.Nick != "Discord")
+                {
+                    _eventChannel.PublishMessage(
+                        new DiscordIntegrationMessage(
+                            EventType.PerpetuumToDiscord,
+                            channel.DiscordId.Value,
+                            sender.Nick,
+                            message));
+                }
+
                 return;
             }
 
@@ -345,6 +356,25 @@ namespace Perpetuum.Services.Channels
             };
             MessageBuilder builder = channel.CreateNotificationMessage(ChannelNotify.Message, data);
             channel.SendToOne(_sessionManager, recipient, builder);
+        }
+
+        public void PinnedAnnouncement(string channelName, Character sender, string message, PinSlot pinSlot)
+        {
+            if (!_channels.TryGetValue(channelName, out Channel? channel))
+                return;
+
+            channel.Logger.LogMessage(sender, message);
+            channel.SendMessageToAll(_sessionManager, sender, message);
+
+            if (channel.DiscordId != null && sender.Nick != "Discord")
+            {
+                _eventChannel.PublishMessage(
+                    new DiscordPinnableMessage(
+                        channel.DiscordId.Value,
+                        sender.Nick,
+                        message,
+                        pinSlot));
+            }
         }
 
         public void KickOrBan(string channelName, Character issuer, Character character, string message, bool ban)
