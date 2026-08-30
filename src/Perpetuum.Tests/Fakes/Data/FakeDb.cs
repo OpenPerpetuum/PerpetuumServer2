@@ -32,9 +32,7 @@ namespace Perpetuum.Tests.Fakes.Data
         public static FakeDb Install()
         {
             FakeDb fake = new();
-            Db.DbQueryFactory = () => new DbQuery(
-                () => new FakeDbConnection(fake),
-                new GlobalConfiguration { DistributedTransactions = true });
+            Db.DbQueryFactory = () => new DbQuery(() => new FakeDbConnection(fake));
             return fake;
         }
 

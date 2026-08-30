@@ -1,0 +1,74 @@
+Perpetuum Server 2 — Patch p36.3 Changelog
+==========================================
+Date: 2026-05-24
+
+
+NEW FEATURES
+------------
+
+Equipment Set Bonuses (IMPROVEMENT-025)
+  Pilots now receive automatic stat bonuses when equipping multiple items
+  belonging to the same named equipment set (e.g. set_striker).
+
+  - New database schema: equipmentsets and equipmentsetbonuses tables store
+    set definitions and their per-piece bonus thresholds.
+  - New effect type: effect_equipment_set_bonus — a dedicated effect category
+    that carries set bonus modifiers so the client can display them correctly.
+  - EquipmentSetRepository loads set data from the database on startup and
+    keeps it in an in-memory cache for fast zone-side access.
+  - EquipmentSetBonusCalculator evaluates which sets are active on a robot
+    (enough equipped pieces to qualify for each bonus tier) and returns the
+    resulting modifier stack.
+  - SetBonusEffectApplicator runs on every Robot.OnUpdate tick: it compares
+    the current active sets to what is already applied, removes stale effects,
+    and adds new ones — ensuring the effect list stays in sync with the
+    robot's loadout at all times.
+  - Robot stat pipeline extended to include set bonus modifiers alongside
+    existing armor, shield, and module modifiers.
+  - Pilot set content SQL added for the Striker set (set_striker).
+
+Equipment Set Bonus Effect Display (IMPROVEMENT-027)
+  The set bonus effect shown in the client's effect list now embeds the
+  actual numeric modifier values instead of showing a generic label.
+
+  - EquipmentSetBonusResult now carries the full list of EffectModifier
+    entries produced by the active set bonuses.
+  - SetBonusEffectApplicator builds a human-readable description from those
+    modifiers (e.g. "+5% armor max, +3% weapon cycle time") and injects it
+    into the effect display name.
+  - Robot.OnUpdate updated to pass the modifier data through to the applicator.
+
+Daily Objectives Announcement — Extended Format (unlabelled)
+  The server's daily objectives broadcast now includes each objective's
+  description text alongside its name, giving pilots more context about what
+  to do without having to open the objectives panel.
+
+  Before: "  — Destroy 10 NPC units"
+  After:  "  — Destroy 10 NPC units: Eliminate NPC robots anywhere on Nia."
+
+Daily Objectives on Cold Boot (IMPROVEMENT-024)
+  The server now announces today's daily objective pool to the season channel
+  automatically when it starts up, so pilots who log in after a restart are
+  not left in the dark.
+
+Today's Daily Objectives in Admin Tool (IMPROVEMENT-024)
+  The Admin Tool Statistics tab gains a "Today's Daily Objectives" section
+  that lists the current pool with activity type, required quantity, and
+  bonus season point value. Data is loaded asynchronously from the database.
+
+
+BUG FIXES
+---------
+
+Market NIC Tracking Missing for Direct Purchases (ISSUE-020)
+  Direct market purchases handled by MarketBuyItem (buy-now from a sell
+  order) were not recording NicSpent or NicEarned season activity, so those
+  trades were invisible to the season tracking system. The bug affected all
+  three purchase branches:
+    - Player-to-player sell orders
+    - Vendor orders with infinite stock
+    - Vendor orders with finite stock
+  Matching RecordActivity calls have been added to each branch, consistent
+  with the existing hooks in FulfillBuyOrderInstantly.
+
+

@@ -4,11 +4,87 @@
 
 # The Open Perpetuum Server 2
 
-Local development runs in **Linux containers** (Docker or Podman). That is the setup documented below.
+## Native Windows host
 
-The console host `Perpetuum.Server` and the WPF Admin Tool remain Windows-only. Use them only if you are running the server on a Windows machine without containers — see [Native Windows host](#native-windows-host).
+`Perpetuum.Server` is annotated `[SupportedOSPlatform("windows")]` and the Admin Tool is WPF. You need the .NET 8 SDK, a SQL Server instance, and the `perpetuumsa` database — see [OPDB](https://github.com/OpenPerpetuum/OPDB) for restore and patches.
+## Running a local server
 
-## Local development (containers)
+Windows and x64 only. The bootstrapper is annotated `[SupportedOSPlatform("windows")]` and the Admin
+Tool is WPF.
+
+You need the .NET 8 SDK, a SQL Server instance, and the `perpetuumsa` database — see
+[OPDB](https://github.com/OpenPerpetuum/OPDB) for restoring and patching it.
+
+### Build
+
+```
+dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64
+```
+
+### Configure
+
+The server reads `perpetuum.ini` from the game root directory. `ConnectionString` is the only setting
+that must match your machine.
+
+**The `perpetuum.ini` written by the Perpetuum Dedicated Server installer will not start this server.**
+It was written for the original server, which used `System.Data.SqlClient`; this one uses
+`Microsoft.Data.SqlClient`, which differs in two ways that both abort startup before any zone loads:
+
+1. **`Connection Reset` was removed.** `Microsoft.Data.SqlClient` refuses the keyword while the
+   connection is being constructed:
+
+   ```
+   The keyword 'Connection Reset' is not supported on this platform.
+   ```
+
+   The server checks the connection string before it connects and refuses to start if the driver
+   would reject any of it, naming `perpetuum.ini`, the directory it is in, and **every** setting the
+   driver refused — so one restart is enough to clear them all rather than one restart per setting.
+   Delete them from `perpetuum.ini`. `Connection Reset` in particular is safe to delete outright:
+   the framework stopped honouring it long ago, because a pooled connection is always reset.
+
+   The check keeps no list of its own — it asks the driver about each setting in turn, so a keyword
+   nobody anticipated is reported the same way. `Network Library` and `Context Connection` are also
+   refused and will be named if they are present.
+
+2. **`Encrypt` now defaults to `true`.** Since version 4.0 the driver encrypts by default and
+   validates the server certificate. A local SQL Server using a self-signed certificate fails logon
+   in the SSL provider:
+
+   ```
+   A connection was successfully established with the server, but then an error occurred during
+   the login process. (provider: SSL Provider, error: 0 - The certificate chain was issued by an
+   authority that is not trusted.)
+   ```
+
+   The trailing part of that message comes from Windows and appears in the system language, so match
+   on the condition rather than the exact text. **This one you must fix yourself** — the server
+   cannot decide for you whether skipping certificate validation is acceptable.
+
+A connection string that works against a local named instance with Windows authentication:
+
+```
+Server=localhost\PERPSQL;Database=perpetuumsa;Trusted_Connection=True;TrustServerCertificate=True;Pooling=True;Connection Timeout=30;Connection Lifetime=260;Min Pool Size=20;Max Pool Size=60;
+```
+
+`TrustServerCertificate=True` keeps the connection encrypted but skips validating the certificate.
+**It is appropriate for a local development instance only.** Do not carry it into a deployment where
+the connection leaves the machine — install a trusted certificate there instead. Setting
+`Encrypt=False` also works locally and is strictly worse: it drops the encryption as well.
+
+### Run
+
+```
+cd src/Perpetuum.Server
+dotnet run -- "C:\PerpetuumServer\data"
+```
+
+The server is up when the log reads `>>>> Perpetuum Server State : [Online]`. Ctrl+C shuts it down;
+a clean shutdown ends at `State : [Off]`.
+
+## Docker compose
+
+Local development runs in **Linux containers** (Docker or Podman).
 
 `compose.yml` defines the asset server, SQL Server, migration job, and game server. Configuration lives in `.env.local`.
 
@@ -92,56 +168,3 @@ The first connect can take several minutes while the asset server transfers file
 make down     # stop and remove containers; keep data and db volumes
 make delete   # also delete the volumes
 ```
-
-## Native Windows host
-
-Skip this if you are using the containers above.
-
-`Perpetuum.Server` is annotated `[SupportedOSPlatform("windows")]` and the Admin Tool is WPF. You need the .NET 8 SDK, a SQL Server instance, and the `perpetuumsa` database — see [OPDB](https://github.com/OpenPerpetuum/OPDB) for restore and patches.
-
-### Build
-
-```
-dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64
-```
-
-### Configure
-
-The server reads `perpetuum.ini` from the game root. `ConnectionString` must match your machine.
-
-**The `perpetuum.ini` written by the Perpetuum Dedicated Server installer will not start this server.** `Microsoft.Data.SqlClient` differs from `System.Data.SqlClient` in two ways that abort startup before any zone loads:
-
-1. **`Connection Reset` was removed.** The driver refuses the keyword while the connection is being constructed:
-
-   ```
-   The keyword 'Connection Reset' is not supported on this platform.
-   ```
-
-   The server checks the string before it connects. If anything is refused, it logs `perpetuum.ini`, the directory it is in, and **every** rejected setting, then stops — one restart is enough to clear them all. Delete those keys from the file. `Connection Reset` is safe to drop: a pooled connection is always reset. `Network Library` and `Context Connection` are refused the same way. The check asks the driver; it does not keep its own list of keywords.
-
-2. **`Encrypt` now defaults to `true`.** Since version 4.0 the driver encrypts and validates the server certificate. A local SQL Server with a self-signed certificate fails logon in the SSL provider:
-
-   ```
-   A connection was successfully established with the server, but then an error occurred during
-   the login process. (provider: SSL Provider, error: 0 - The certificate chain was issued by an
-   authority that is not trusted.)
-   ```
-
-   The trailing part of that message comes from Windows and appears in the system language, so match on the condition rather than the exact text. The server will not decide for you whether skipping certificate validation is acceptable.
-
-A connection string that works against a local named instance with Windows authentication:
-
-```
-Server=localhost\PERPSQL;Database=perpetuumsa;Trusted_Connection=True;TrustServerCertificate=True;Pooling=True;Connection Timeout=30;Connection Lifetime=260;Min Pool Size=20;Max Pool Size=60;
-```
-
-`TrustServerCertificate=True` keeps the connection encrypted but skips validating the certificate. **Use that only on a local development instance.** On a deployment that leaves the machine, install a trusted certificate instead. `Encrypt=False` also works locally and is strictly worse: it drops encryption as well.
-
-### Run
-
-```
-cd src/Perpetuum.Server
-dotnet run -- "C:\PerpetuumServer\data"
-```
-
-The server is up when the log reads `>>>> Perpetuum Server State : [Online]`. Ctrl+C shuts it down; a clean shutdown ends at `State : [Off]`.
