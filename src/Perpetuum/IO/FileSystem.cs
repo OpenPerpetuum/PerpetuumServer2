@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace Perpetuum.IO
 {
@@ -35,6 +36,27 @@ namespace Perpetuum.IO
         public void WriteAllBytes(string path, byte[] bytes)
         {
             File.WriteAllBytes(CreatePath(path),bytes);
+        }
+
+        public byte[] WriteAllBytesAndMD5(string path, ReadOnlySpan<byte> bytes)
+        {
+            // The algorithm calculates the hash and passes the data through without modification
+            using (var md5 = MD5.Create())
+            {
+                // Open a stream to a file
+                using (var fileStream = File.Create(CreatePath(path)))
+                // Wrap it in a CryptoStream, passing in the hashing algorithm
+                using (var cryptoStream = new CryptoStream(fileStream, md5, CryptoStreamMode.Write))
+                {
+                    // We write the data (it will go both to the file and to MD5)
+                    cryptoStream.Write(bytes);
+                    // Important: Call FlushFinalBlock to complete the hash calculation
+                    cryptoStream.FlushFinalBlock();
+                }
+
+                // Obtain the final hash from the algorithm object
+                return md5.Hash;
+            }
         }
 
         public void WriteAllLines(string path, IEnumerable<string> lines)
@@ -81,6 +103,20 @@ namespace Perpetuum.IO
         public override string ToString()
         {
             return $"Root: {_root}";
+        }
+
+        public byte[] MD5SUM(string path)
+        {
+            // We use the hash algorithm MD5
+            using (var md5 = MD5.Create())
+            {
+                // Using a file stream for reading to calculate the hash
+                using (var stream = File.OpenRead(CreatePath(path)))
+                {
+                    // The method itself will read the entire stream to the end
+                    return md5.ComputeHash(stream);
+                }
+            }
         }
     }
 }

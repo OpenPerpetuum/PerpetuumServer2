@@ -100,7 +100,11 @@ namespace Perpetuum.Bootstrapper.Modules
                     }
                 };
 
-                return new CompositeLogger<LogEvent>(fileLogger, new ColoredConsoleLogger(formater));
+                if (Environment.UserInteractive)
+                {
+                    return new CompositeLogger<LogEvent>(fileLogger, new ColoredConsoleLogger(formater));
+                }
+                return new CompositeLogger<LogEvent>(fileLogger);
             }).As<ILogger<LogEvent>>();
 
             _ = builder.RegisterType<CombatLogger>();
