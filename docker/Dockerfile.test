@@ -6,8 +6,8 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0
 
-# Install the missing GSSAPI/Kerberos dependency used by the SQL client
-RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+# Install the missing GSSAPI/Kerberos dependency used by the SQL client and fontconfig for SkiaSharp
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 libfontconfig1 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /repo
 
