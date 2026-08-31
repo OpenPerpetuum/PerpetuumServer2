@@ -119,6 +119,9 @@ applyPatch Live_32 live_patch_32.sql Server
 applyPatch Live_33 live_patch_33.sql Server
 applyPatch Live_34 live_patch_34.sql Server
 applyPatch Live_35 live_patch_35.sql Server
+applyPatch Live_35 live_patch_35.sql Server
+applyPatch Live_36 Raw_SQL Server
+
 
 
 # Add test account (user: test, pass: test)
