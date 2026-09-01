@@ -31,6 +31,8 @@ namespace Perpetuum.Zones.Effects
 
         public Unit Owner { get; private set; }
 
+        public EffectType Type => _type;
+
         public EffectBuilder SetOwnerToSource()
         {
             _source = Owner;

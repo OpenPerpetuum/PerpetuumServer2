@@ -1,6 +1,271 @@
 # Last ID used
 
-041
+042
+
+## ISSUE-042 - Hunter Drones: not destroyed on dock, cannot be recalled, ignored by NPC aggro, and stop moving once armed
+
+Status: DONE
+Priority: CRITICAL
+Area: NPC Drones / Remote Control (Hunter Drones, IMPROVEMENT-043)
+
+### Problem
+Players report four distinct problems with Hunter Drones (introduced in IMPROVEMENT-043) that only
+surface once players actually use them alongside other drones:
+
+1. When the command robot docks while Hunter Drones are spawned, the drones are left behind in the
+   zone instead of being destroyed (exploded), unlike other remote-controlled drones.
+2. Hunter Drones cannot be recalled via `RetreatAI` even with no target acquired — they should only
+   become non-recallable once the self-destruct countdown is actually armed.
+3. NPCs do not aggro/retaliate against Hunter Drones, even the PvE variant that is supposed to hunt
+   Niani NPCs.
+4. Once a Hunter Drone reaches its target and arms self-destruct, it stops moving entirely instead of
+   maintaining roughly 50m from the target for the rest of the countdown.
+
+### Investigation
+
+**1 and 2 share a confirmed root cause.** Both `Robot.OnBeforeRemovedFromZone`
+(`src/Perpetuum/Robots/Robot.cs:406-416`) and `RemoteCommandTranslatorModule`
+(`src/Perpetuum/Modules/RemoteControl/RemoteCommandTranslatorModule.cs:57-58` and `:74-75`) locate the
+robot's drone controller the same way:
+
+```csharp
+Module remoteController = Modules?.FirstOrDefault(x => x is RemoteControllerModule);
+```
+
+`HunterRemoteControllerModule` (`src/Perpetuum/Modules/RemoteControl/HunterRemoteControllerModule.cs`)
+is its own `RemoteControllerModule` subclass, fitted as a separate module from whatever controller
+drives the robot's other drones (combat/industrial/etc.) — that is the whole point of Hunter Drones
+being a distinct, independently-launched drone type. A robot fitted with both a hunter controller and
+an ordinary drone controller therefore has **two** `RemoteControllerModule` instances, and `FirstOrDefault`
+only ever touches one of them:
+
+- `Robot.OnBeforeRemovedFromZone` calls `CloseAllChannels()` (`BandwidthHandler.cs:74-83`, which kills
+  every drone on that one controller) only on the first controller found when the robot leaves the
+  zone (docking). Whichever controller is *not* first — commonly the hunter controller, since it is
+  the newer/additional fit — keeps its drones alive and stranded in the zone instead of exploding.
+- `RemoteCommandTranslatorModule.OnAction` (fires when a recall/retreat `RemoteCommand` ammo is
+  activated) applies the `remote_command_translation` retreat effect only to
+  `remoteController.ActiveDrones` of the first controller found. If the hunter controller is not
+  first, `HunterDrone.IsReceivedRetreatCommand` (`RemoteControlledCreature.cs:33-44`, which reads that
+  same effect) never becomes true for hunter drones — they cannot be recalled regardless of whether a
+  target has been acquired, matching the report.
+
+This is a single systemic bug (`FirstOrDefault` where a robot can have multiple
+`RemoteControllerModule` instances fitted), not something specific to the AI logic — `HunterPatrolAI`
+and `HunterApproachAI` both check `Drone.IsReceivedRetreatCommand` correctly on every `Update`
+(`HunterPatrolAI.cs:30`, `HunterApproachAI.cs:32`); the effect that flag reads simply never gets
+applied to the hunter drone's channel in this loadout.
+
+**3 (NPC aggro) — root cause confirmed via DB query: a content data gap, not a code defect.**
+The double-dispatch chains (`SmartCreature.AddBodyPullThreat` → `IsHostile`/`AcceptVisitor` resolving
+through `CombatDrone`'s implementations by inheritance, `Npc.IsHostile(CombatDrone)` unconditionally
+`true`, `BodyPullThreatHelper` implementing `IEntityVisitor<CombatDrone>`) all check out fine on static
+reading, exactly as originally traced. The actual gate is `ProcessNpcThreats`'s same-faction skip
+(`BodyPullThreatHelper.cs:149-156`):
+
+```csharp
+if (smartCreature.Behavior.Type != BehaviorType.RemoteControlledTurret &&
+    smartCreature.ED.Options.Faction == unit.ED.Options.Faction)
+{ return; }
+```
+
+`EntityDefaultOptions.Faction` (`src/Perpetuum/EntityFramework/EntityDefaultOptions.cs:151-159`) falls
+back to `Faction.Niani` — the enum's zero value — whenever a definition's `options` string has no
+`faction` key:
+
+```csharp
+string typeString = _dictionary.GetOrDefault<string>("faction");
+return typeString != null ? (Faction)Enum.Parse(typeof(Faction), typeString) : Faction.Niani;
+```
+
+Queried the local dev DB directly (`perpetuumsa`, read-only): `def_standard_hunter_drone_pve`
+(definition 8975) and `def_standard_hunter_drone_pvp` (definition 8976) — the actual deployed drone
+chassis, resolved via the RCU ammo's `turretId` (`def_standard_hunter_drone_rcu_pve`/`_pvp`'s
+`turretId=i230f`/`i2310` point at 8975/8976) — both have **`options = NULL`**. No faction key at all,
+so both silently resolve to `Faction.Niani`, the very faction the PvE variant is designed to hunt.
+Every other player-deployed drone chassis carries an explicit faction option — checked five sibling
+rows (`def_nuimqol_assault_drone`, `def_pelistal_assault_drone`, `def_repair_support_drone`,
+`def_mining_industrial_drone`, `def_harvesting_industrial_drone`), all `#faction=sSyndicate` — so the
+Hunter Drone chassis rows are the outliers, missing an option every comparable definition has.
+
+**A second, related content gap found investigating item 2's completeness.**
+`RemoteControlledCreature.Scoop()` (`RemoteControlledCreature.cs:69-89`) only calls `RemoveFromZone()`
+inside `if (ED.Options.PackedTurretId != 0)`; `EntityDefaultOptions.PackedTurretId`
+(`EntityDefaultOptions.cs:130-134`) defaults to `0` when the `packedTurretId` key is absent — true for
+both hunter chassis rows (`options = NULL`). So even after item 2's `FirstOrDefault` fix, a Hunter
+Drone that successfully retreats to guard range and calls `Drone.Scoop()` (`HunterRetreatAI.cs:67`)
+would silently do nothing and never leave the zone. Initially assumed this needed a new packed-item
+content chain since no packed Hunter Drone item is visible under an obvious name — **wrong**, corrected
+by the project owner: `def_standard_hunter_drone_rcu_pve` (8978) and `def_standard_hunter_drone_rcu_pvp`
+(8979) — the same items consumed as ammo on deploy — are the dual-purpose packed items every drone type
+uses, confirmed against the working `def_nuimqol_assault_drone` pointer pair (chassis 8603
+`packedTurretId=i219c` → ammo unit 8604, which has `turretId=i219b` pointing back at the chassis — a
+bidirectional pair). The hunter RCU items already carry the forward half; only `packedTurretId` on the
+chassis side was missing. `8978 = 0x2312`, `8979 = 0x2313` (via SQL Server's `FORMAT()`).
+
+**4 (stops moving once armed) — root cause confirmed: an off-by-10 unit authoring bug, fixed.**
+Raw position/distance units in this codebase are x10'd to get real in-game meters — a global
+convention that isn't written down anywhere under `docs/`, confirmed directly by the project owner
+(see memory `feedback_position_unit_scale`). The IMPROVEMENT-043 spec is internally inconsistent about
+units: `HunterApproachAI.TriggerRange = 2` correctly matches the spec's own phrasing, "arrival within
+trigger range (≤2 **tiles**)" (`docs/superpowers/specs/2026-07-18-improvement-043-hunter-drones-self-destruct-design.md:97`)
+— tiles are raw units, so `2` needs no conversion, and arms at a sane ~20m real. But decision 12 for
+the leash is phrased in real-world meters — "staying within **50m** of the target" (`design.md:56`,
+repeated verbatim in the plan) — and `HunterSelfDestructAI.LeashRange = 50` (`HunterSelfDestructAI.cs:20`,
+pre-fix) is a bare transcription of that "50m" text straight into a raw-unit constant, without applying
+the x10 conversion. The shipped leash was therefore ~500m in game, not 50m.
+
+At ~500m, `Update`'s repath condition —
+
+```csharp
+if (!smartCreature.CurrentPosition.IsInRangeOf2D(target.CurrentPosition, LeashRange))
+{
+    ... RepathToTarget();
+}
+```
+
+— is essentially never true within the ~8s `ActionDelay` countdown for any realistically paced target,
+so the drone parks next to its target (having armed from `HunterApproachAI.TriggerRange = 2`,
+`HunterApproachAI.cs:11,44-48`) and never re-paths again: exactly the reported "stops moving" symptom,
+and not what decision 12's own rationale asks for ("makes the drone's threat hard to simply outrun" —
+a 500m tether can't do that job). Cross-checked against `GuardRange = 5` (raw), used identically by
+every `RemoteControllerModule` variant including Hunter's own and already shipped/working — that
+renders as a sane 50m real guard radius, the same order of magnitude the leash should have landed on.
+
+No spec/code disagreement about *intent* after all, just a unit-conversion slip — no product decision
+was needed.
+
+### Impact
+- **1**: Player property (drones) is stranded in the zone after docking rather than being cleaned up
+  like every other remote-controlled drone, and a live self-destruct countdown left running on an
+  abandoned drone is an unbounded, unattended detonation with no owner present.
+- **2**: Hunter Drones cannot be manually withdrawn once launched, only ever self-destructing or
+  running out their despawn timer — removes player agency entirely for this drone type whenever the
+  robot carries a second `RemoteControllerModule`, which is the expected loadout for this feature.
+- **3**: The PvE Hunter Drone's whole purpose — hunting Niani NPCs — is one-sided if Niani NPCs never
+  fight back, and removes the intended risk/counterplay for the PvP variant against NPC-patrolled areas
+  too.
+- **4**: Visibly wrong/inert drone behavior during the most dramatic part of the mechanic (the armed
+  countdown), independent of whether the "correct" behavior turns out to be holding position or kiting.
+
+### Proposed Fix
+1. Fix the `FirstOrDefault(x => x is RemoteControllerModule)` pattern in `Robot.cs:408` and
+   `RemoteCommandTranslatorModule.cs:57-58,74-75` to operate over **all** fitted
+   `RemoteControllerModule` instances on the robot, not just the first — closing channels on dock and
+   applying the retreat/recall effect on every controller's `ActiveDrones`. Grep for the same
+   `FirstOrDefault(x => x is RemoteControllerModule)` pattern elsewhere before considering this closed,
+   in case other callers share it.
+2. Reproduce locally with a robot fitted with both a Hunter Drone controller and an ordinary drone
+   controller, confirm the fix closes/recalls both controllers' drones, and add a regression test at
+   whichever tier can exercise `Robot.OnBeforeRemovedFromZone`/`RemoteCommandTranslatorModule.OnAction`
+   with two controllers fitted.
+3. **Done** — see Progress below.
+4. **Done** — see Progress below.
+
+### Progress
+
+**1 and 2 fixed.** All three `FirstOrDefault(x => x is RemoteControllerModule)` call sites identified
+in the Investigation section above now iterate over every fitted `RemoteControllerModule` instead of
+only the first:
+
+- `Robot.OnBeforeRemovedFromZone` (`src/Perpetuum/Robots/Robot.cs`) now calls `CloseAllChannels()` on
+  each controller found via `Modules.OfType<RemoteControllerModule>()`, so every controller's drones —
+  hunter or otherwise — are killed/exploded on dock, not just the first controller's.
+- `RemoteCommandTranslatorModule.OnStateChanged` and `OnAction`
+  (`src/Perpetuum/Modules/RemoteControl/RemoteCommandTranslatorModule.cs`) now iterate
+  `ParentRobot?.ActiveModules.OfType<RemoteControllerModule>()`, so the retreat/recall translated
+  effect is applied to (and cleared from) every controller's drones. `OnAction` now also reads each
+  controller's own `OperationalRange` inside the loop instead of reusing whichever controller
+  `FirstOrDefault` happened to pick — each controller's drones get the effect radius that actually
+  matches their own controller.
+
+No behavior changed for the common case of a robot with a single `RemoteControllerModule` fitted —
+the loop body is identical to the old single-controller branch, just no longer gated on being first.
+
+**Verification**: `dotnet build PerpetuumServer2.sln -c Release -p:Platform=x64` — 0 errors (pre-existing,
+unrelated warnings only). `dotnet test src/Perpetuum.Tests/Perpetuum.Tests.csproj -c Release
+-p:Platform=x64` — 99/99 passing, no regressions.
+
+**No automated regression test was added.** `Robot`, `Module` and `RemoteControllerModule` sit on the
+`EntityFramework`/zone object graph that `docs/codebase/TESTING.md` already documents as untested at
+the unit tier ("Entity system... have no isolation tests", "Module state machines... tested only by
+playing the game") and integration tier is scoped to schema conformance/query anchoring, not gameplay
+object behavior — exercising this fix through either tier would mean building a new production seam to
+construct a `Robot` with two fitted `RemoteControllerModule`s outside a live zone, which
+`docs/codebase/TESTING.md`'s "Adding Tests" rule 5 says is a discussion for a PR, not something to
+slip in unilaterally. Flagging it here per that rule rather than skipping silently.
+
+**4 fixed.** `HunterSelfDestructAI.LeashRange` (`src/Perpetuum/Zones/NpcSystem/AI/HunterDrones/HunterSelfDestructAI.cs:20`)
+changed from `50` to `5`. Raw position units are x10'd to real meters (a global convention confirmed by
+the project owner, not documented anywhere under `docs/` — see memory `feedback_position_unit_scale`),
+so `5` is the ~50m tether spec decision 12 actually specifies; `50` rendered as ~500m, large enough that
+the repath-on-exceeding-leash condition never bound within the ~8s countdown, which is why the drone
+appeared to freeze in place once armed. No other logic in `HunterSelfDestructAI.Update` changed — the
+state still holds position once within the (now-correctly-sized) leash and only re-paths when the
+target actually pulls beyond it, matching decision 12's "actively chases, staying within 50m" as
+literally specified.
+
+**Verification**: `dotnet build src/Perpetuum/Perpetuum.csproj -c Release -p:Platform=x64` — 0 errors
+(one pre-existing, unrelated warning). `dotnet test src/Perpetuum.Tests/Perpetuum.Tests.csproj -c
+Release -p:Platform=x64` — 99/99 passing, no regressions. No automated regression test added, for the
+same reason as items 1/2 above — `HunterSelfDestructAI` sits on the same untested `SmartCreature`/
+`Unit`/`Entity` object graph.
+
+**Manual validation (not yet performed — needs a live server + client)**:
+1. Fit a robot with both an ordinary drone controller (e.g. Assault/Tactical) and a Hunter Drone
+   controller, launch drones from both, then dock. Confirm both sets of drones explode/are destroyed,
+   not just one.
+2. With the same loadout, launch drones from both controllers, then activate a recall/retreat
+   `RemoteCommand` ammo before either type has a target. Confirm both the ordinary drones and the
+   Hunter Drones return to the command robot via `HunterRetreatAI`/its counterpart, not just one type.
+3. Regression check: repeat both scenarios with a robot fitted with only one `RemoteControllerModule`
+   (the pre-existing, common case) and confirm docking/recall still behave exactly as before.
+4. Let a Hunter Drone reach a target and arm self-destruct, then move the target (or have it flee) and
+   confirm the drone now visibly gives chase once the target is roughly 50m away, rather than staying
+   frozen for the whole countdown. Also confirm a target that stays close still lets the drone hold
+   position (that part is unchanged and intentional).
+
+**3 fixed — content migration, not applied yet.** `docs/db_structure/migrations/ISSUE-042-hunter-drone-faction.sql`
+adds the missing `#faction=sSyndicate` to both `def_standard_hunter_drone_pve` (8975) and
+`def_standard_hunter_drone_pvp` (8976), matching every other player-deployed drone chassis, and (per
+the item 2 completeness gap found alongside it) also adds `#packedTurretId=i2312`/`#packedTurretId=i2313`
+pointing each chassis back at its own RCU ammo item (8978/8979) so a recalled Hunter Drone actually
+leaves the zone via `Scoop()` instead of sitting at guard range forever. No application code changed —
+this is purely a content data fix. Per project convention the migration was generated but **not applied**
+to the database; the operator needs to run it. All three UPDATE statements are idempotent (WHERE-guarded
+against the option already being present).
+
+**Manual validation for item 3 (not yet performed — needs the migration applied plus a live server +
+client)**:
+5. Apply the migration, then send a PvE Hunter Drone against a Niani NPC and confirm the NPC now
+   fights back instead of ignoring the drone.
+6. Recall a Hunter Drone (after items 1/2's fix) and let it reach guard range — confirm it now
+   actually disappears from the zone (and, if desired, confirm a packed drone item lands back in the
+   command robot's cargo) instead of sitting idle indefinitely.
+
+All four items are now addressed (1/2/4 in code, verified by build + the unit tier; 3 as a generated,
+unapplied SQL migration). None of the manual validation steps above have been run against a live
+server/client yet.
+
+### Notes
+- Priority is a judgement made when filing; the report did not assign one. Held at CRITICAL because
+  item 1 leaves live, unattended self-destruct countdowns running in the zone with no recall path
+  (item 2 compounds it — the operator cannot even withdraw a drone they notice is about to detonate
+  somewhere unwanted), and item 3 undermines the core PvE purpose of the feature.
+- All four symptoms were reported together against the same feature (IMPROVEMENT-043) and are filed as
+  one issue since 1 and 2 share a single root cause and all four block the same content from working
+  as designed; feel free to split into separate issues once 3 and 4 have their own confirmed root
+  causes if that's more convenient to track.
+- Line numbers were checked against `d17f3cb` (current `develop` tip) and are anchored to it. Line
+  numbers drift.
+- **Closed 2026-09-01 on maintainer direction.** All four root causes are confirmed and fixed (1/2/4 in
+  application code, 3 as a generated content migration). What has **not** been independently verified
+  by this work: `docs/db_structure/migrations/ISSUE-042-hunter-drone-faction.sql` has not been applied
+  to any database, and none of the manual validation steps listed under Progress have been run against
+  a live server/client. Re-open (or file a follow-up) if applying the migration or live testing turns
+  up anything the static analysis and unit tier couldn't catch.
+
+---
 
 ## ISSUE-041 - Characters stay online after the player logs out and closes the client ("zombie sessions")
 

@@ -159,8 +159,11 @@ namespace Perpetuum.Modules
             remoteControlledCreature.AddToZone(Zone, position, ZoneEnterType.Default, deployBeamBuilder);
             EffectBuilder effectBuilder = remoteControlledCreature.NewEffectBuilder();
             SetupEffect(effectBuilder);
-            _ = effectBuilder.WithToken(_token);
-            remoteControlledCreature.ApplyEffect(effectBuilder);
+            if (effectBuilder.Type != EffectType.undefined)
+            {
+                _ = effectBuilder.WithToken(_token);
+                remoteControlledCreature.ApplyEffect(effectBuilder);
+            }
             ConsumeAmmo();
         }
 
