@@ -1,0 +1,69 @@
+name: Docker Compose Tests (Unit & Integration)
+
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+
+jobs:
+  docker-tests:
+    name: Docker Compose Tests (Unit & Integration)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache Perpetuum Data and Custom Layers
+        id: cache-data
+        uses: actions/cache@v4
+        with:
+          path: |
+            perpetuum-data
+            custom-layers
+          key: perpetuum-test-data-v1
+
+      - name: Install dependencies for data download
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full lib32gcc-s1 curl python3-venv
+
+      - name: Download Perpetuum Dedicated Server data (SteamCMD)
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /tmp/steamcmd
+          curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - -C /tmp/steamcmd
+          /tmp/steamcmd/steamcmd.sh +login anonymous +force_install_dir /tmp/perp_server +app_update 693060 validate +quit
+          mkdir -p perpetuum-data
+          cp -r /tmp/perp_server/data/* ./perpetuum-data/
+          chmod -R 777 ./perpetuum-data
+
+      - name: Download custom gamma layers from Google Drive
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        run: |
+          python3 -m venv /tmp/gdown-env
+          /tmp/gdown-env/bin/pip install gdown
+          mkdir -p custom-layers
+          /tmp/gdown-env/bin/gdown --fuzzy "https://drive.google.com/uc?id=1Xp0T1K57Pv-vjgmpXMG8Iea_ec0bWYR4" -O /tmp/gamma_layers.rar || true
+          if [ -f /tmp/gamma_layers.rar ]; then
+            7z x /tmp/gamma_layers.rar -o./custom-layers -y || true
+          fi
+          chmod -R 777 ./custom-layers || true
+
+      - name: Ensure correct file permissions
+        run: |
+          chmod -R 777 ./perpetuum-data ./custom-layers || true
+
+      - name: Run Unit Tests
+        run: make test-unit
+
+      - name: Run Integration Tests
+        run: make test-integration
+
+      - name: Docker Compose Teardown
+        if: always()
+        run: make delete
