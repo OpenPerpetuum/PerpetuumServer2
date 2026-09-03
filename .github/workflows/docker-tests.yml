@@ -1,4 +1,4 @@
-name: Docker Compose Tests (Unit & Integration)
+name: Docker Compose Tests
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   unit-tests:
-    name: Unit Tests (Docker)
+    name: Unit Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +30,7 @@ jobs:
         run: make delete
 
   integration-tests:
-    name: Integration Tests (Docker)
+    name: Integration Tests
     runs-on: ubuntu-latest
 
     steps:

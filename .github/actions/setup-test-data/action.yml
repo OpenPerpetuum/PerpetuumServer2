@@ -33,7 +33,14 @@ runs:
       run: |
         mkdir -p /tmp/steamcmd
         curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - -C /tmp/steamcmd
-        /tmp/steamcmd/steamcmd.sh +@sSteamCmdForcePlatformType windows +force_install_dir /tmp/perp_server +login anonymous +app_update 693060 validate +quit
+        /tmp/steamcmd/steamcmd.sh +@sSteamCmdForcePlatformType windows +login anonymous +app_info_update 1 +quit || true
+        for attempt in 1 2 3; do
+          echo "SteamCMD download attempt $attempt..."
+          if /tmp/steamcmd/steamcmd.sh +@sSteamCmdForcePlatformType windows +force_install_dir /tmp/perp_server +login anonymous +app_update 693060 validate +quit; then
+            break
+          fi
+          sleep 5
+        done
         mkdir -p perpetuum-data
         cp -r /tmp/perp_server/data/* ./perpetuum-data/
         chmod -R 777 ./perpetuum-data
