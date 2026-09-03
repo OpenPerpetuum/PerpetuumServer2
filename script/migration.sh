@@ -72,7 +72,9 @@ rm /work/create-database.sql
 # runSqlCmd
 
 # Restore DB original state
-runSqlCmd "/work/restore_DB_to_original_state.sql"
+set +x
+sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -b -I -i "/work/restore_DB_to_original_state.sql"
+set -x
 
 # Apply patches
 applyPatch Pre_Alpha_0 prealpha_patch_0.sql

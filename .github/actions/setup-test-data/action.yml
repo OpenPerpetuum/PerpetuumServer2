@@ -18,7 +18,7 @@ runs:
         path: |
           perpetuum-data
           custom-layers
-        key: perpetuum-test-data-v1
+        key: perpetuum-test-data-v2
 
     - name: Install dependencies for data download
       if: inputs.download-data == 'true' && steps.cache-data.outputs.cache-hit != 'true'
@@ -68,3 +68,10 @@ runs:
       run: |
         mkdir -p perpetuum-data custom-layers
         chmod -R 777 ./perpetuum-data ./custom-layers || true
+        if [ "${{ inputs.download-data }}" = "true" ]; then
+          if [ ! -f "./perpetuum-data/database/perpetuumsa.bak" ]; then
+            echo "ERROR: perpetuumsa.bak is missing from ./perpetuum-data/database/"
+            exit 1
+          fi
+          echo "Perpetuum test data successfully verified."
+        fi
