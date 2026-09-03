@@ -315,6 +315,9 @@ namespace Perpetuum.Zones
 
         public IEnumerable<Player> Players => _players.Values;
 
+        private readonly IntervalTimer _timerLastPlayer = new IntervalTimer(TimeSpan.FromMinutes(15), false);
+        public bool FreeFromPlayers { get; set; } = true;
+
         public Unit GetUnit(long eid)
         {
             return _units.GetValueOrDefault(eid);
@@ -342,6 +345,7 @@ namespace Perpetuum.Zones
 
         public override void Update(TimeSpan time)
         {
+            UpdatePlayerPresence(time);
             UpdateSessions(time);
 
             _updateUnitsTimer.Update(time).IsPassed(ProcessUpdatedUnits);
@@ -353,6 +357,42 @@ namespace Perpetuum.Zones
             MiningLogHandler.Update(time);
             HarvestLogHandler.Update(time);
             MeasureUpdate(time);
+        }
+
+        /// <summary>
+        /// Checks for the presence of players on the field.
+        /// </summary>
+        /// <param name="time"></param>
+        private void UpdatePlayerPresence(TimeSpan time)
+        {
+            if (FreeFromPlayers)
+            {
+                // There are no players, but if someone comes out, we’ll change the flag.
+                if (!Players.IsNullOrEmpty())
+                {
+                    _timerLastPlayer.Reset();
+                    Logger.Info($"Zone: {Id} - player enter o/");
+                    FreeFromPlayers = false;
+                }
+            }
+            else
+            {
+                // We get here if the flag indicates that there are players.
+                if (Players.IsNullOrEmpty())
+                {
+                    // If no one is around, time is ticking away.
+                    _timerLastPlayer.Update(time).IsPassed(() =>
+                    {
+                        Logger.Info($"Zone: {Id} - free from players.");
+                        FreeFromPlayers = true;
+                    });
+                }
+                else
+                {
+                    // If someone is on the field, we reset the timer.
+                    _timerLastPlayer.Reset();
+                }
+            }
         }
 
         private void UpdateUnits(TimeSpan time)
