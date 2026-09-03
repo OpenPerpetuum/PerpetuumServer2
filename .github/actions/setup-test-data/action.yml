@@ -42,7 +42,12 @@ runs:
           sleep 5
         done
         mkdir -p perpetuum-data
-        cp -r /tmp/perp_server/data/* ./perpetuum-data/
+        if [ -f /tmp/perp_server/perpetuumserver_setup.exe ]; then
+          7z x /tmp/perp_server/perpetuumserver_setup.exe -o/tmp/perp_extracted -y
+          cp -r /tmp/perp_extracted/data/* ./perpetuum-data/
+        elif [ -d /tmp/perp_server/data ]; then
+          cp -r /tmp/perp_server/data/* ./perpetuum-data/
+        fi
         chmod -R 777 ./perpetuum-data
 
     - name: Download custom gamma layers from Google Drive
