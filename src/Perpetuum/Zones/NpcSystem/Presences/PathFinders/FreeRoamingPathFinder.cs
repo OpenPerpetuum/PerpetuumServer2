@@ -1,14 +1,11 @@
 //#define VERBOSE
 
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using Perpetuum.Collections;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Log;
 using Perpetuum.PathFinders;
 using Perpetuum.Zones.NpcSystem.Flocks;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
 {
@@ -56,7 +53,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             return ZoneExtensions.MIN_SLOPE;
         }
 
-        public Point FindSpawnPosition(IRoamingPresence presence)
+        public SKPointI FindSpawnPosition(IRoamingPresence presence)
         {
             var homeRange = TryGetMaxHomeRange(presence);
             var rangeMax = homeRange * 2;
@@ -65,7 +62,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             return walkableArea.RandomElement();
         }
 
-        public Point FindNextRoamingPosition(IRoamingPresence presence)
+        public SKPointI FindNextRoamingPosition(IRoamingPresence presence)
         {
             var minSlope = TryGetMinSlope(presence);
             var maxHomeRange = TryGetMaxHomeRange(presence);
@@ -75,7 +72,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             var startNode = new Node(presence.CurrentRoamingPosition);
             queue.Enqueue(startNode);
 
-            var closed = new HashSet<Point> {presence.CurrentRoamingPosition};
+            var closed = new HashSet<SKPointI> {presence.CurrentRoamingPosition};
 
             if (FastRandom.NextDouble() < 0.3)
             {
@@ -123,10 +120,10 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
 
         private struct Node : IComparable<Node>
         {
-            public readonly Point location;
+            public readonly SKPointI location;
             private readonly int _cost;
 
-            public Node(Point location,int cost = 0)
+            public Node(SKPointI location,int cost = 0)
             {
                 this.location = location;
                 _cost = cost;

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Perpetuum.Zones.NpcSystem.SafeSpawnPoints
 {
     public interface ISafeSpawnPointsRepository

@@ -4,6 +4,9 @@
 
 # The Open Perpetuum Server 2
 
+## Native Windows host
+
+`Perpetuum.Server` is annotated `[SupportedOSPlatform("windows")]` and the Admin Tool is WPF. You need the .NET 8 SDK, a SQL Server instance, and the `perpetuumsa` database — see [OPDB](https://github.com/OpenPerpetuum/OPDB) for restore and patches.
 ## Running a local server
 
 Windows and x64 only. The bootstrapper is annotated `[SupportedOSPlatform("windows")]` and the Admin
@@ -79,3 +82,89 @@ dotnet run -- "C:\PerpetuumServer\data"
 The server is up when the log reads `>>>> Perpetuum Server State : [Online]`. Ctrl+C shuts it down;
 a clean shutdown ends at `State : [Off]`.
 
+## Docker compose
+
+Local development runs in **Linux containers** (Docker or Podman).
+
+`compose.yml` defines the asset server, SQL Server, migration job, and game server. Configuration lives in `.env.local`.
+
+Two named volumes persist between restarts:
+
+- `openperpetuum-data` — original `PerpetuumServer/data`, custom layers, and a generated `perpetuum.ini`
+- `openperpetuum-db` — SQL Server files
+
+`make` wraps the compose commands; you can call `docker compose` / `podman compose` yourself if you prefer.
+
+### Requirements
+
+- Docker or Podman (Linux containers)
+- (optional) `make`
+- Steam: Perpetuum Dedicated Server installed
+- Latest gamma island layers: https://drive.google.com/file/d/1Xp0T1K57Pv-vjgmpXMG8Iea_ec0bWYR4/view?usp=drive_link
+- Latest asset resource: https://drive.google.com/file/d/18fh8aRqMP1J7ycGBNGraFyQ31mMXZaq1/view?usp=drive_link
+
+### 1. Clone and submodules
+
+```sh
+git clone https://github.com/OpenPerpetuum/PerpetuumServer2.git
+# or: git clone git@github.com:OpenPerpetuum/PerpetuumServer2.git
+cd PerpetuumServer2
+git submodule init && git submodule update
+```
+
+Submodules:
+
+- `db` (OPDB) — database migration files per game update
+- `asset` (OPResource) — client resources served when a client connects (definitions, translations, gfx, layers, audio, custom bot models)
+
+### 2. Custom resources
+
+Do this whenever the gamma layers or asset pack are updated.
+
+- Uncompress the gamma layers and copy every `.bin` into both:
+  - `asset/lang0000/layers/GAMMA_LAYERS_NEW`
+  - a new `custom-layers` directory (same files)
+- Unarchive the asset resource and copy `gfx`, `sfx`, and `textures` into `asset/lang0000`
+- Create `perpetuum-data` and copy the Dedicated Server installer `data` folder into it (`database`, `layers`)
+
+Paths for `perpetuum-data` and `custom-layers` can be changed in `.env.local`.
+
+### 3. Configuration
+
+Edit `.env.local` for ports, the database password, paths, and the SQL connection string.
+
+The migration job writes `perpetuum.ini` from `template/perpetuum.ini.template`. Do not copy the installer `perpetuum.ini` into the data volume — that file was written for `System.Data.SqlClient` and this server uses `Microsoft.Data.SqlClient`. The template already uses a Linux-compatible string: SQL authentication (`sa`), `TrustServerCertificate=True`, no `Trusted_Connection`, and no keywords the driver refuses (`Connection Reset`, `Network Library`, `Context Connection`).
+
+Linux does not support distributed transactions. `.env.local` sets `DISTRIBUTED_TRANSACTIONS=false` for that reason.
+
+`SERVER_PORTS` must be a range of about 300 ports starting at `SERVER_PORT` (default `17700-17900`). A single mapped port is enough to log in; entering a zone then shows a black screen.
+
+### 4. Run the server
+
+```sh
+make up
+```
+
+This builds and starts the containers and runs migrations. The command returns before the game host is fully up; wait a few minutes.
+
+```sh
+make log-server
+```
+
+The server is ready for a client when you see lines such as `Unit enter to zone` or `Planthandler STOP SIGNAL received`.
+
+### 5. Point the client at this host
+
+- Open the client → **Server list** → **ADD PRIVATE SERVER**
+- Name: `local`
+- Address: `127.0.0.1:17700` (use `SERVER_PORT` from `.env.local` if you changed it)
+- Connect, then log in with user `test` / password `test`
+
+The first connect can take several minutes while the asset server transfers files.
+
+### 6. Stop
+
+```sh
+make down     # stop and remove containers; keep data and db volumes
+make delete   # also delete the volumes
+```

@@ -129,7 +129,7 @@ namespace Perpetuum.Bootstrapper
             File.WriteAllText(path, sb.ToString());
         }
 
-        public void Init(string gameRoot)
+        public void Init(string gameRoot, bool distributedTransactions)
         {
             _builder = new ContainerBuilder();
             InitContainer(gameRoot);
@@ -137,6 +137,7 @@ namespace Perpetuum.Bootstrapper
             Logger.Current = _container.Resolve<ILogger<LogEvent>>();
 
             GlobalConfiguration config = _container.Resolve<GlobalConfiguration>();
+            config.DistributedTransactions = distributedTransactions;
             _container.Resolve<IHostStateService>().State = HostState.Init;
 
             // Before anything builds a SqlConnection from it, which happens further down at the
@@ -162,7 +163,7 @@ namespace Perpetuum.Bootstrapper
             Logger.Info($"GC Latency mode: {GCSettings.LatencyMode}");
             Logger.Info($"Vector is hardware accelerated: {Vector.IsHardwareAccelerated}");
 
-            TransactionManager.ImplicitDistributedTransactions = true;
+            TransactionManager.ImplicitDistributedTransactions = distributedTransactions;
 
             Db.DbQueryFactory = _container.Resolve<Func<DbQuery>>();
 

@@ -5,6 +5,7 @@ using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Zones.Effects;
 using Perpetuum.Zones.Movements;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI.HunterDrones
 {
@@ -89,7 +90,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.HunterDrones
                 .FindPathAsync(smartCreature.CurrentPosition, target.CurrentPosition)
                 .ContinueWith(t =>
                 {
-                    System.Drawing.Point[] path = t.Result;
+                    SKPointI[] path = t.Result;
                     if (path == null)
                     {
                         return;

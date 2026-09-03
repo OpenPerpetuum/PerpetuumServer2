@@ -1,10 +1,10 @@
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
 {
     public interface IRoamingPathFinder
     {
-        Point FindSpawnPosition(IRoamingPresence presence);
-        Point FindNextRoamingPosition(IRoamingPresence presence);
+        SKPointI FindSpawnPosition(IRoamingPresence presence);
+        SKPointI FindNextRoamingPosition(IRoamingPresence presence);
     }
 }

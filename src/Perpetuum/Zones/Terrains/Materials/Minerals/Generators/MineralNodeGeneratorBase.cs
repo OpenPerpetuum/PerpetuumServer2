@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using Perpetuum.Units;
 using Perpetuum.Units.DockingBases;
 using Perpetuum.Zones.Finders.PositionFinders;
 using Perpetuum.Zones.Teleporting;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains.Materials.Minerals.Generators
 {
@@ -34,11 +31,11 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals.Generators
             return node;
         }
 
-        private Dictionary<Point, double> NormalizeNoise(Dictionary<Point, double> noise)
+        private Dictionary<SKPointI, double> NormalizeNoise(Dictionary<SKPointI, double> noise)
         {
             var max = noise.Values.Max();
 
-            var result = new Dictionary<Point, double>();
+            var result = new Dictionary<SKPointI, double>();
 
             foreach (var kvp in noise)
             {
@@ -48,9 +45,9 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals.Generators
             return result;
         }
 
-        protected abstract Dictionary<Point, double> GenerateNoise(Position startPosition);
+        protected abstract Dictionary<SKPointI, double> GenerateNoise(Position startPosition);
 
-        protected bool IsValid(Point location)
+        protected bool IsValid(SKPointI location)
         {
             if (!_zone.Size.Contains(location.X, location.Y))
                 return false;
@@ -77,7 +74,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals.Generators
             return true;
         }
 
-        private MineralNode CreateMineralNode(MineralLayer layer, Dictionary<Point, double> tiles)
+        private MineralNode CreateMineralNode(MineralLayer layer, Dictionary<SKPointI, double> tiles)
         {
             int minx = int.MaxValue, miny = int.MaxValue, maxx = 0, maxy = 0;
 
@@ -108,7 +105,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals.Generators
             return node;
         }
 
-        private bool IsInRangeOfBaseOrTeleports(Point location, double dist)
+        private bool IsInRangeOfBaseOrTeleports(SKPointI location, double dist)
         {
             if (_zone.Units.OfType<DockingBase>().WithinRange2D(location.ToPosition(), dist).Any())
                 return true;

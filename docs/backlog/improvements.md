@@ -64,6 +64,10 @@ Remaining stages, in order:
 
 ### Notes
 
+- **Containerized tiers 2 and 3.** Both automated tiers run in one test container (compose service
+  `test`, profile `test`, `docker/Dockerfile.test`) via `make test-unit` / `make test-integration`.
+  No local dotnet SDK or `GameRoot` setup is needed: the image pre-builds the tests and generates
+  `perpetuum.ini` from the same template the migration service uses.
 - **No production code changes.** The four existing static service locators (`Logger.Current`,
   `Db.DbQueryFactory`, `EntityDefault.Reader`, `Entity.Services`) turned out to be sufficient seams for
   everything in stages 0-4. If a later stage genuinely cannot be tested without a new seam, that is

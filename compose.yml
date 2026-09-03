@@ -1,0 +1,104 @@
+services:
+  asset:
+    build:
+      context: ./asset
+      dockerfile: ../docker/Dockerfile.asset.dev
+    restart: unless-stopped
+    networks:
+      - dev_env
+    volumes:
+      - .:/asset
+    ports:
+      - ${ASSET_PORT}:1337
+  
+  db:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    ports:
+      - ${DB_PORT}:1433
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
+    networks:
+      - dev_env
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -C -U sa -P "${DB_PASSWORD}" -Q "SELECT 1" -b -o /dev/null
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    hostname: db
+    volumes:
+      # Note for linux/WSL2, it can cause permission denied, fix:
+      #  sudo chown -R 10001:10001 openperpetuum-db
+      - openperpetuum-db:/var/opt/mssql
+      # Mount perpetuum database path that contains the perpetuumsa.bak
+      - "${PERPETUUM_DATA}/database:/data"
+
+  migration:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.migration.dev
+      args:
+        ASSET_URL: ${ASSET_URL}
+        CONNECTION_STRING: ${CONNECTION_STRING}
+        SERVER_PORT: ${SERVER_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      FORCE_MIGRATION: ${FORCE_MIGRATION}
+    networks:
+      - dev_env
+    volumes:
+      - ./db:/migration
+      - "${PERPETUUM_DATA}:/base-data"
+      - "${CUSTOM_LAYERS}:/custom-layers"
+      - "./src/Perpetuum.ServerService2/data:/perpetuum-service-data"
+      - openperpetuum-data:/data
+  
+  server:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.server.dev
+      args:
+        RUNTIME_IDENTIFIER: ${RUNTIME_IDENTIFIER}
+    restart: unless-stopped
+    networks:
+      - dev_env
+    ports:
+      - ${SERVER_PORTS}:17700-17900
+    environment:
+      GameRoot: ${GAME_ROOT}
+      DistributedTransactions: ${DISTRIBUTED_TRANSACTIONS}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    volumes:
+      - openperpetuum-data:/data
+
+
+  # Test runner (unit + integration tiers). Excluded from the default stack via the "test" profile:
+  #   make test-unit / make test-integration
+  # or manually: docker compose --profile test run --rm test <dotnet test args>
+  test:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.test
+      args:
+        SERVER_PORT: ${SERVER_PORT}
+        ASSET_URL: ${ASSET_URL}
+        CONNECTION_STRING: ${CONNECTION_STRING}
+    networks:
+      - dev_env
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  dev_env:
+    driver: bridge
+
+volumes:
+  openperpetuum-data:
+  openperpetuum-db:

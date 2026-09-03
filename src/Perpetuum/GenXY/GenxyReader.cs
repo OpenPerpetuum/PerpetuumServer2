@@ -1,8 +1,8 @@
 using Perpetuum.Threading;
 using Perpetuum.Zones;
-using System.Drawing;
 using System.Globalization;
 using System.Text;
+using SkiaSharp;
 
 namespace Perpetuum.GenXY
 {
@@ -245,10 +245,10 @@ namespace Perpetuum.GenXY
             return new DateTime(n[0], n[1], n[2], n[3], n[4], n[5]);
         }
 
-        private Color ReadColor()
+        private SKColor ReadColor()
         {
             int[] n = ReadValueAsArray(ParseInt, '.');
-            return Color.FromArgb(n[3], n[0], n[1], n[2]);
+            return new SKColor((byte)n[0], (byte)n[1], (byte)n[2], (byte)n[3]);
         }
 
         private Area ReadArea()
@@ -262,10 +262,10 @@ namespace Perpetuum.GenXY
             return ReadValueAsArray(ParseArea);
         }
 
-        private Point ReadPoint()
+        private SKPointI ReadPoint()
         {
             int[] n = ReadValueAsArray(ParseInt, '.');
-            return new Point(n[0], n[1]);
+            return new SKPointI(n[0], n[1]);
         }
 
         private Position ReadPosition()

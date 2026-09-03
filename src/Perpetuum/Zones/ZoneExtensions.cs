@@ -7,7 +7,7 @@ using Perpetuum.Players;
 using Perpetuum.Units;
 using Perpetuum.Zones.RemoteControl;
 using Perpetuum.Zones.Terrains;
-using System.Drawing;
+using SkiaSharp;
 using System.Security.Cryptography;
 
 namespace Perpetuum.Zones
@@ -64,23 +64,23 @@ namespace Perpetuum.Zones
 
     public static partial class ZoneExtensions
     {
-        public static List<Point> FindWalkableArea(this IZone zone, Area area, int size, double slope = 4.0)
+        public static List<SKPointI> FindWalkableArea(this IZone zone, Area area, int size, double slope = 4.0)
         {
             area = area.Clamp(zone.Size);
             while (true)
             {
-                Point startPosition;
+                SKPointI startPosition;
                 while (true)
                 {
                     startPosition = area.GetRandomPosition();
 
-                    if (!zone.Terrain.Blocks.GetValue(startPosition).Island && zone.IsWalkable(startPosition, slope))
+                    if (!zone.Terrain.Blocks.GetValue(startPosition.X, startPosition.Y).Island && zone.IsWalkable(startPosition, slope))
                     {
                         break;
                     }
                 }
 
-                List<Point> p = FindWalkableArea(zone, startPosition, area, size, slope);
+                List<SKPointI> p = FindWalkableArea(zone, startPosition, area, size, slope);
                 if (p != null)
                 {
                     return p;
@@ -91,14 +91,14 @@ namespace Perpetuum.Zones
         }
 
         [CanBeNull]
-        public static List<Point>? FindWalkableArea(this IZone zone, Point startPosition, Area area, int size, double slope = 4.0)
+        public static List<SKPointI>? FindWalkableArea(this IZone zone, SKPointI startPosition, Area area, int size, double slope = 4.0)
         {
-            Queue<Point> q = new();
+            Queue<SKPointI> q = new();
             q.Enqueue(startPosition);
-            HashSet<Point> closed = [startPosition];
+            HashSet<SKPointI> closed = [startPosition];
 
-            List<Point> result = [];
-            while (q.TryDequeue(out Point position))
+            List<SKPointI> result = [];
+            while (q.TryDequeue(out SKPointI position))
             {
                 result.Add(position);
 
@@ -108,7 +108,7 @@ namespace Perpetuum.Zones
                     return result;
                 }
 
-                foreach (Point np in position.GetNonDiagonalNeighbours())
+                foreach (SKPointI np in position.GetNonDiagonalNeighbours())
                 {
                     if (closed.Contains(np))
                     {
@@ -138,7 +138,7 @@ namespace Perpetuum.Zones
         /// <param name="end">End point of line segment</param>
         /// <param name="slope">Slope capability check for slope-based blocking</param>
         /// <returns>True if tiles checked are walkable</returns>
-        public static bool CheckLinearPath(this IZone zone, Point start, Point end, double slope = 4.0)
+        public static bool CheckLinearPath(this IZone zone, SKPointI start, SKPointI end, double slope = 4.0)
         {
             int x = start.X;
             int y = start.Y;
