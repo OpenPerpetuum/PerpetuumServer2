@@ -1,132 +1,112 @@
 #!/usr/bin/env sh
 
-# Check if the file /data/done exist
-# If the file exist, skip migration
-# OR override check with FORCE_MIGRATION
-# Using ${val+x} to ensure is not defined or empty
-ls /data/done
-if [ $? -eq 0 ] && [ "$FORCE_MIGRATION" != "true" ]; then
-    echo Skipping migration, exiting
+# Check if /data/done exists (skips on simple container restarts)
+if [ -f /data/done ] && [ "$FORCE_MIGRATION" != "true" ]; then
+    echo "Skipping migration, /data/done already exists."
     exit 0
 fi 
 
-echo "$FORCE_MIGRATION"
-
 set -eux
 
-# Script to run database migration
-# - seed the /data using the original PerpetuumServer/data content
-# - Set initial state using backup
-# - Run migration for each patch
+CACHE_BAK="/base-data/database/perpetuumsa_migrated.bak"
+CACHE_HASH_FILE="/base-data/database/perpetuumsa_migrated.hash"
 
-# Copy the Perpetuum.ServerService data directory
-cp -rv /perpetuum-service-data/* /data/
-
-# Copy the generated perpetuum.ini
+# 1. Sync server data and layer files to shared /data
+echo "==> Syncing base server data and layers..."
+cp -r /perpetuum-service-data/* /data/
 cp -v /work/perpetuum.ini /data/
+cp -r /base-data/layers /data/
+[ -d /custom-layers ] && cp -r /custom-layers/* /data/layers/
 
-# Copy PerpetuumServer/data to the shared /data
-cp -rv /base-data/layers /data/
-
-# Copy the custom-layers to the shared /data/layers
-cp -rv /custom-layers/* /data/layers
-
+# Copy all patch-specific data/layers
+for d in /migration/Patches/*/Server/data; do
+    [ -d "$d" ] && cp -r "$d"/* /data/
+done
 
 runSqlCmd () {
     set +x
-    sqlcmd -S db -d perpetuumsa -C -U sa -P "${DB_PASSWORD}" -I -i $1
-    # Comment the line above and uncomment the following line if you want to stop at any error during execution of a script.
-    # sqlcmd -S db -d perpetuumsa -b -C -U sa -P "${DB_PASSWORD}" -I -i $1
+    sqlcmd -S db -d perpetuumsa -C -U sa -P "${DB_PASSWORD}" -I -i "$1"
     set -x
 }
 
-# applyPatch run SQL file and optionally copy content of a directory to
-#  PerpetuumServer/data.
-#
-# Arguments:
-# - 1: Name of the directory of the patch to apply (Ex: Live_99)
-# - 2: SQL File name OR directory to execute (Ex: some_patch.sql or Raw_SQL)
-# - 3: (optional) Name of the directory containing the "data" folder (Ex: Server)
-applyPatch () {
-    PATCH_PATH="/migration/Patches/$1/$2"
-    if [ -d "$PATCH_PATH" ]; then
-        for f in "$PATCH_PATH"/*.sql; do
-            [ -e "$f" ] || continue
-            runSqlCmd "$f"
-        done
-    else
-        runSqlCmd "$PATCH_PATH"
-    fi
-
-    if [ $# -eq 3 ]; then
-        cp -rv "/migration/Patches/$1/$3/data/" /
-    fi
+# 2. Compute SHA-256 hash of all migration sources
+compute_migration_hash() {
+    (
+        find /migration -type f \( -name "*.sql" -o -name "*.bin" \) -exec sha256sum {} + | sort
+        [ -f /base-data/database/perpetuumsa.bak ] && sha256sum /base-data/database/perpetuumsa.bak
+        [ -f /work/restore_DB_to_original_state.sql ] && sha256sum /work/restore_DB_to_original_state.sql
+        [ -f /work/migration.sh ] && sha256sum /work/migration.sh
+    ) | sha256sum | awk '{print $1}'
 }
 
-# Create perperuumsa database if it does not exist
-echo "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'perpetuumsa') CREATE DATABASE perpetuumsa" > /work/create-database.sql
-sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -I -i "/work/create-database.sql"
-rm /work/create-database.sql
+CURRENT_HASH=$(compute_migration_hash)
+CACHED_HASH=""
+[ -f "$CACHE_HASH_FILE" ] && CACHED_HASH=$(cat "$CACHE_HASH_FILE")
 
-# echo "CREATE LOGIN sa WITH PASSWORD = '${DB_PASSWORD}'" > /work/create-user.sql
-# runSqlCmd
+USE_CACHE=false
+if [ "$FORCE_MIGRATION" != "true" ] && [ -f "$CACHE_BAK" ] && [ "$CURRENT_HASH" = "$CACHED_HASH" ]; then
+    USE_CACHE=true
+fi
 
-# Restore DB original state
-runSqlCmd "/work/restore_DB_to_original_state.sql"
+# 3. Restore from cache OR run automated full migration
+if [ "$USE_CACHE" = "true" ]; then
+    echo "==> Migration cache HIT (hash matches). Restoring snapshot..."
+    set +x
+    sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -b -I -i "/work/restore_migrated_DB.sql"
+    set -x
+    echo "==> Restored migrated DB snapshot in seconds."
+else
+    echo "==> Migration cache MISS or FORCED. Running full migration from scratch..."
+    
+    # Create perpetuumsa database if it does not exist
+    echo "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'perpetuumsa') CREATE DATABASE perpetuumsa" > /work/create-database.sql
+    sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -I -i "/work/create-database.sql"
+    rm /work/create-database.sql
 
-# Apply patches
-applyPatch Pre_Alpha_0 prealpha_patch_0.sql
-applyPatch Pre_Alpha_1 prealpha_patch_1.sql Server
-applyPatch Pre_Alpha_2 prealpha_patch_2.sql Server
-applyPatch Pre_Alpha_3 prealpha_patch_3.sql
-applyPatch Pre_Alpha_4 prealpha_patch_4.sql Server
-applyPatch Pre_Alpha_5 prealpha_patch_5.sql
-applyPatch Pre_Alpha_6 prealpha_patch_6.sql
-applyPatch Pre_Alpha_7_FInal FIX_robottemplaterelation_pinkarkhe.sql
-applyPatch Pre_Alpha_7_FInal NPC_robottemplates_argano_GetsEcms__2018_04_12.sql
-applyPatch Live_1 live_patch_1.sql
-applyPatch Live_2 live_patch_2.sql
-applyPatch Live_3 live_patch_3.sql
-applyPatch Live_4 live_patch_4.sql
-applyPatch Live_5 live_patch_5.sql
-applyPatch Live_6 live_patch_6.sql
-applyPatch Live_7 live_patch_7.sql
-applyPatch Live_8 live_patch_8.sql
-applyPatch Live_9 live_patch_9.sql
-applyPatch Live_10 live_patch_10.sql Server
-applyPatch Live_11 live_patch_11.sql Server
-applyPatch Live_12 live_patch_12.sql
-applyPatch Live_13 live_patch_13.sql Server
-applyPatch Live_14 live_patch_14.sql
-applyPatch Live_15 live_patch_15.sql Server
-applyPatch Live_16 live_patch_16.sql Server
-applyPatch Live_17 live_patch_17.sql Server
-applyPatch Live_18 live_patch_18.sql Server
-applyPatch Live_19 live_patch_19.sql Server
-applyPatch Live_20 live_patch_20.sql Server
-applyPatch Live_21 live_patch_21.sql Server
-applyPatch Live_22 live_patch_22.sql Server
-applyPatch Live_23 live_patch_23.sql
-applyPatch Live_24 live_patch_24.sql Server
-applyPatch Live_25 live_patch_25.sql Server
-applyPatch Live_26 live_patch_26.sql Server
-applyPatch Live_27 live_patch_27.sql Server
-applyPatch Live_28 live_patch_28.sql Server
-applyPatch Live_29 live_patch_29.sql
-applyPatch Live_30 live_patch_30.sql Server
-applyPatch Live_31 live_patch_31.sql Server
-applyPatch Live_32 live_patch_32.sql Server
-applyPatch Live_33 live_patch_33.sql Server
-applyPatch Live_34 live_patch_34.sql Server
-applyPatch Live_35 live_patch_35.sql Server
-applyPatch Live_35 live_patch_35.sql Server
-applyPatch Live_36 Raw_SQL Server
+    # Restore base vanilla state
+    set +x
+    sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -b -I -i "/work/restore_DB_to_original_state.sql"
+    set -x
 
+    # Discover and apply all patches dynamically in chronological version order
+    PATCH_DIRS=$(ls -1d /migration/Patches/Pre_Alpha_* 2>/dev/null | sort -V; ls -1d /migration/Patches/Live_* 2>/dev/null | sort -V)
 
+    for patch_dir in $PATCH_DIRS; do
+        [ -d "$patch_dir" ] || continue
+        patch_name=$(basename "$patch_dir")
+        echo "==> Applying patch: $patch_name"
 
-# Add test account (user: test, pass: test)
-runSqlCmd "/migration/Tools/TOOL_test_account.sql"
+        # Check for consolidated patch file
+        consolidated=$(find "$patch_dir" -maxdepth 1 -type f \( -name "live_patch_*.sql" -o -name "prealpha_patch_*.sql" \) | head -n 1)
 
-echo Patching complete
+        if [ -n "$consolidated" ]; then
+            runSqlCmd "$consolidated"
+        elif [ -d "$patch_dir/Raw_SQL" ]; then
+            # Run all SQL scripts in Raw_SQL in numerical order
+            find "$patch_dir/Raw_SQL" -maxdepth 1 -type f -name "*.sql" | sort -V | while read -r sql_file; do
+                runSqlCmd "$sql_file"
+            done
+        else
+            # Run any top-level SQL scripts in the patch folder in order
+            find "$patch_dir" -maxdepth 1 -type f -name "*.sql" | sort -V | while read -r sql_file; do
+                runSqlCmd "$sql_file"
+            done
+        fi
+    done
+
+    # Add test account (user: test, pass: test)
+    runSqlCmd "/migration/Tools/TOOL_test_account.sql"
+
+    echo "==> Creating compressed migration database snapshot..."
+    set +x
+    sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -b -I -Q "BACKUP DATABASE perpetuumsa TO DISK = '/data/perpetuumsa_migrated.bak' WITH FORMAT, INIT, COMPRESSION"
+    set -x
+
+    # Save hash and set permissions
+    echo "$CURRENT_HASH" > "$CACHE_HASH_FILE"
+    chmod 666 "$CACHE_BAK" "$CACHE_HASH_FILE" 2>/dev/null || true
+    echo "==> Migration snapshot cache saved."
+fi
 
 touch /data/done
+echo "Patching complete."

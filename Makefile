@@ -1,47 +1,46 @@
-help:
-	@echo "Commands to compile, deploy, log services used to run an OpenPerpetuum server, and run the test tiers (used for local development)"
+help: ## Show this help message
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-20s %s\n", $$1, $$2}'
 
-# Create and start the containers
-up:
+up: ## Create and start the containers
 	./script/compose.sh up -d --build --remove-orphans --wait
 
-# Start the containers
-start:
+start: ## Start the containers
 	./script/compose.sh start
 
-# Stop the containers
-stop:
+stop: ## Stop the containers
 	./script/compose.sh stop
 
-# Stop and delete the containers
-down:
+down: ## Stop and delete the containers
 	./script/compose.sh down
 
-# Stop and delete the containers, also delete the volumes (openperpetuum-data, openperpetuum-db)
-delete:
+delete: ## Stop and delete the containers, also delete the volumes (openperpetuum-data, openperpetuum-db)
 	./script/compose.sh down -v
 
-# Stop, delete and start the containers
-restart: down up
+restart: down up ## Stop, delete and start the containers
 
-log-asset:
+reset: ## Stop, delete and start the containers with forced migration
+	FORCE_MIGRATION=true $(MAKE) restart
+
+clean-cache: ## Delete migration snapshot cache to force full re-migration on next start
+	rm -f ./perpetuum-data/database/perpetuumsa_migrated.bak ./perpetuum-data/database/perpetuumsa_migrated.hash 2>/dev/null || true
+
+log-asset: ## Follow asset logs
 	./script/compose.sh logs asset -f
 
-log-db:
+log-db: ## Follow db logs
 	./script/compose.sh logs db -f
 
-log-server:
+log-server: ## Follow server logs
 	./script/compose.sh logs server -f
 
-# Run the unit test tier (2) in the test container, no database required
-test-unit:
-	./script/compose.sh --profile test run --build --rm test dotnet test src/Perpetuum.Tests/Perpetuum.Tests.csproj -c Release -p:Platform=x64 --no-build
+test-unit: ## Run the unit test tier (2) in the test container, no database required
+	./script/compose.sh --profile test run --no-deps --build --rm test dotnet test src/Perpetuum.Tests/Perpetuum.Tests.csproj -c Release -p:Platform=x64 --no-build
 
-# Run the integration test tier (3) in the test container, against the live database,
-# bringing up db + migration first (migration is idempotent and exits when already done)
-test-integration:
+test-integration: ## Run the integration test tier (3) in the test container, against the live database, bringing up db + migration first (migration is idempotent and exits when already done)
 	./script/compose.sh up -d db --wait
 	./script/compose.sh up migration
 	./script/compose.sh --profile test run --build --rm test dotnet test src/Perpetuum.Tests.Integration/Perpetuum.Tests.Integration.csproj -c Release -p:Platform=x64 --no-build
 
-PHONY: help up start stop down log-asset log-db log-server test-unit test-integration
+.PHONY: help up start stop down delete restart reset clean-cache log-asset log-db log-server test-unit test-integration
+
+

@@ -28,6 +28,7 @@ WORKDIR /work
 COPY script/migration.sh .
 COPY template/perpetuum.ini.template .
 COPY template/restore_DB_to_original_state.sql .
+COPY template/restore_migrated_DB.sql .
 
 RUN mv perpetuum.ini.template perpetuum.ini
 
