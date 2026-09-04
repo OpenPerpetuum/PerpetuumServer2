@@ -11,8 +11,22 @@ services:
     ports:
       - ${ASSET_PORT}:1337
   
+  # One-shot init service to ensure the database volume is owned by the non-root mssql user (UID 10001)
+  db-init:
+    image: busybox
+    restart: "no"
+    command: chown -R 10001:0 /var/opt/mssql
+    volumes:
+      - openperpetuum-db:/var/opt/mssql
+
   db:
     image: mcr.microsoft.com/mssql/server:2025-latest
+    # UID 10001 is the default non-root 'mssql' service account in the Microsoft SQL Server image.
+    # GID 0 is the root group required for internal file permissions in the container.
+    user: "10001:0"
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
     ports:
       - ${DB_PORT}:1433
     environment:
@@ -27,8 +41,6 @@ services:
       retries: 10
     hostname: db
     volumes:
-      # Note for linux/WSL2, it can cause permission denied, fix:
-      #  sudo chown -R 10001:10001 openperpetuum-db
       - openperpetuum-db:/var/opt/mssql
       # Mount perpetuum database path that contains the perpetuumsa.bak
       - "${PERPETUUM_DATA}/database:/data"
@@ -70,6 +82,8 @@ services:
     environment:
       GameRoot: ${GAME_ROOT}
       DistributedTransactions: ${DISTRIBUTED_TRANSACTIONS}
+      # .NET 8 DATAS: dynamically scales GC heaps to reduce idle memory usage
+      DOTNET_GCDynamicAdaptationMode: 1
     depends_on:
       migration:
         condition: service_completed_successfully
@@ -91,9 +105,6 @@ services:
         CONNECTION_STRING: ${CONNECTION_STRING}
     networks:
       - dev_env
-    depends_on:
-      db:
-        condition: service_healthy
 
 networks:
   dev_env:

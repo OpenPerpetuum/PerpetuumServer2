@@ -326,6 +326,7 @@ namespace Perpetuum.Zones
         }
 
         private readonly ShiftedConsumerTimer _updateUnitsTimer = new ShiftedConsumerTimer(500);
+        private readonly IntervalTimer _idleUpdateTimer = new IntervalTimer(1000);
 
         private Action<TimeSpan> _updateProfiler;
 
@@ -343,6 +344,22 @@ namespace Perpetuum.Zones
         public override void Update(TimeSpan time)
         {
             UpdateSessions(time);
+
+            // Throttle unit physics, AI, and visibility processing when no players are in the zone
+            if (_players.IsEmpty)
+            {
+                _idleUpdateTimer.Update(time);
+                if (!_idleUpdateTimer.Passed)
+                {
+                    RiftManager?.Update(time);
+                    RelicManager?.Update(time);
+                    MiningLogHandler.Update(time);
+                    HarvestLogHandler.Update(time);
+                    return;
+                }
+
+                _idleUpdateTimer.Reset();
+            }
 
             _updateUnitsTimer.Update(time).IsPassed(ProcessUpdatedUnits);
 
