@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using Perpetuum.Collections;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
 {
@@ -17,13 +14,13 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             _zone = zone;
         }
 
-        public Point FindSpawnPosition(IRoamingPresence presence)
+        public SKPointI FindSpawnPosition(IRoamingPresence presence)
         {
             var point = _zone.SafeSpawnPoints.GetAll().RandomElement();
             return point.Location;
         }
 
-        public Point FindNextRoamingPosition(IRoamingPresence presence)
+        public SKPointI FindNextRoamingPosition(IRoamingPresence presence)
         {
             var homeRange = presence.Flocks.Max(f => f.HomeRange);
             var rangeMax = homeRange * 2;
@@ -82,7 +79,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             return startNode.position;
         }
 
-        private int CalculateCost(Point from, Point position)
+        private int CalculateCost(SKPointI from, SKPointI position)
         {
             var dx = Math.Abs(position.X - from.X);
             var dy = Math.Abs(position.Y - from.Y);
@@ -97,7 +94,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             return cost;
         }
 
-        private bool IsRoamingPosition(Point roamingPosition)
+        private bool IsRoamingPosition(SKPointI roamingPosition)
         {
             var isRoaming = _zone.Terrain.Controls[roamingPosition.X,roamingPosition.Y].Roaming;
             var isWalkable = _zone.IsWalkable(roamingPosition.X, roamingPosition.Y);
@@ -106,14 +103,14 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
 
         private struct Node : IComparable<Node>
         {
-            public readonly Point position;
+            public readonly SKPointI position;
             public int cost;
 
-            public Node(int x, int y) : this(new Point(x, y))
+            public Node(int x, int y) : this(new SKPointI(x, y))
             {
             }
 
-            public Node(Point position)
+            public Node(SKPointI position)
             {
                 this.position = position;
                 cost = 0;

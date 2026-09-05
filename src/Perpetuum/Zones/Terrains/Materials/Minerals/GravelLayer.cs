@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
 using Perpetuum.IO;
-using Perpetuum.Services.EventServices;
 using Perpetuum.Zones.Terrains.Materials.Minerals.Generators;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains.Materials.Minerals
 {
@@ -51,9 +47,9 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
 
         public List<MineralNode> GetAll()
         {
-            var bmp = (Bitmap)Image.FromFile(_fileSystem.CreatePath( Path.Combine("layers",  "mineral_gravel.0045.png")));
+            var bmp = SKBitmap.Decode(_fileSystem.CreatePath(Path.Combine("layers", "mineral_gravel.0045.png")));
 
-            var minerals = new Dictionary<Point, uint>();
+            var minerals = new Dictionary<SKPointI, uint>();
 
             int minx = int.MaxValue, miny = int.MaxValue, maxx = 0, maxy = 0;
 
@@ -63,7 +59,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
                 {
                     var c = bmp.GetPixel(x, y);
 
-                    var b = c.GetBrightness() * 350000;
+                    var b = c.GetLuminance() * 350000;
 
                     if (b > 0)
                     {
@@ -72,7 +68,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
                         maxx = Math.Max(maxx, x);
                         maxy = Math.Max(maxy, y);
                         
-                        var point = new Point(x, y);
+                        var point = new SKPointI(x, y);
                         minerals.Add(point, (uint)b);
                     }
                 }

@@ -1,17 +1,16 @@
-﻿using System.Drawing;
-using System.Linq;
-using Perpetuum.Data;
+﻿using Perpetuum.Data;
 using Perpetuum.Host.Requests;
 using Perpetuum.Log;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Zones;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 {
     public partial class ZoneDrawStatMap
     {
 
-        private Bitmap GenerateRandomPointsOnly(IRequest request)
+        private SKBitmap GenerateRandomPointsOnly(IRequest request)
         {
             //-------- kick brute force fill in
             const int randomPointTargetAmount = 2500;

@@ -1,9 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
 using Perpetuum.StateMachines;
 using Perpetuum.Zones.NpcSystem.Flocks;
 using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.Presences
 {
@@ -11,7 +9,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences
     {
         StackFSM StackFSM { get; }
         Position SpawnOrigin { get; set; }
-        Point CurrentRoamingPosition { get; set; }
+        SKPointI CurrentRoamingPosition { get; set; }
         IRoamingPathFinder PathFinder { get; set; }
         IPresenceConfiguration Configuration { get; }
         IZone Zone { get; }
@@ -25,7 +23,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences
     {
         public StackFSM StackFSM { get; }
         public Position SpawnOrigin { get; set; }
-        public Point CurrentRoamingPosition { get; set; }
+        public SKPointI CurrentRoamingPosition { get; set; }
         public IRoamingPathFinder PathFinder { get; set; }
         public override Area Area => Configuration.Area;
 

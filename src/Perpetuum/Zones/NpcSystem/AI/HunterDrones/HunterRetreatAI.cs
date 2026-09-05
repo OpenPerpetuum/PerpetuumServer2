@@ -2,6 +2,7 @@ using System;
 using Perpetuum.PathFinders;
 using Perpetuum.Zones.Movements;
 using Perpetuum.Zones.RemoteControl;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI.HunterDrones
 {
@@ -30,7 +31,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.HunterDrones
                 .FindPathAsync(smartCreature.CurrentPosition, randomHome)
                 .ContinueWith(t =>
                 {
-                    System.Drawing.Point[] path = t.Result;
+                    SKPointI[] path = t.Result;
                     if (path == null)
                     {
                         path = new AStarFinder(Heuristic.Manhattan, (x, y) => true)

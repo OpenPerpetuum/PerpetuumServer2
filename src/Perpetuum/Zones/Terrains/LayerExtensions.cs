@@ -1,5 +1,4 @@
-using System;
-using System.Drawing;
+using SkiaSharp;
 using System.Numerics;
 
 namespace Perpetuum.Zones.Terrains
@@ -11,7 +10,7 @@ namespace Perpetuum.Zones.Terrains
             return x >= 0 && x < layer.Width && y >= 0 && y < layer.Height;
         }
 
-        public static T GetValue<T>(this ILayer<T> layer, Point position)
+        public static T GetValue<T>(this ILayer<T> layer, SKPointI position)
         {
             return layer.GetValue(position.X, position.Y);
         }
