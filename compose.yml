@@ -21,17 +21,39 @@ services:
 
   db:
     image: mcr.microsoft.com/mssql/server:2025-latest
+    restart: unless-stopped
     # UID 10001 is the default non-root 'mssql' service account in the Microsoft SQL Server image.
     # GID 0 is the root group required for internal file permissions in the container.
     user: "10001:0"
     depends_on:
       db-init:
         condition: service_completed_successfully
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        # Background sleep watchdog: detects host clock jump on resume and restarts sqlservr to prevent scheduler spin
+        # This fixes an issue when running this container on linux pinning 1 core to 100% when waking up from sleep
+        (
+          while true; do
+            t1=$$(date +%s)
+            sleep 2
+            t2=$$(date +%s)
+            delta=$$((t2 - t1))
+            if [ "$$delta" -gt 8 ]; then
+              echo "==> Host resume from sleep detected (clock jumped by $${delta}s). Restarting sqlservr..."
+              pkill -TERM -f sqlservr || kill 1
+              break
+            fi
+          done
+        ) &
+        exec /opt/mssql/bin/launch_sqlservr.sh /opt/mssql/bin/sqlservr
     ports:
       - ${DB_PORT}:1433
     environment:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${DB_PASSWORD}
+      - MSSQL_MEMORY_LIMIT_MB=${DB_MEMORY_LIMIT_MB:-4096}
     networks:
       - dev_env
     healthcheck:
