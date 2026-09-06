@@ -1,8 +1,7 @@
-using System;
-using System.Drawing;
 using Perpetuum.Builders;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Units;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Beams
 {
@@ -106,7 +105,7 @@ namespace Perpetuum.Zones.Beams
             return this;
         }
 
-        public BeamBuilder WithPosition(Point position)
+        public BeamBuilder WithPosition(SKPointI position)
         {
             return WithSourcePosition(position.ToPosition()).WithTargetPosition(position.ToPosition());
        }

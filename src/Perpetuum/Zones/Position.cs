@@ -1,6 +1,6 @@
 ﻿using Perpetuum.Collections.Spatial;
-using System.Drawing;
 using System.Numerics;
+using SkiaSharp;
 
 namespace Perpetuum.Zones
 {
@@ -32,7 +32,7 @@ namespace Perpetuum.Zones
 
         public Position Center => new(intX + 0.5, intY + 0.5, _z);
 
-        public bool IsValid(Size size)
+        public bool IsValid(SKSizeI size)
         {
             return size.Contains(intX, intY) && intZ >= 0 && intZ < short.MaxValue;
         }
@@ -87,7 +87,7 @@ namespace Perpetuum.Zones
         }
 
         [System.Diagnostics.Contracts.Pure]
-        public double TotalDistance2D(Point p)
+        public double TotalDistance2D(SKPointI p)
         {
             return TotalDistance2D(p.X, p.Y);
         }
@@ -320,7 +320,7 @@ namespace Perpetuum.Zones
             return new Position(_y, -1 * _x, _z);
         }
 
-        public Position Clamp(Size size)
+        public Position Clamp(SKSizeI size)
         {
             return new Position(_x.Clamp(0, size.Width - 1), _y.Clamp(0, size.Height - 1), _z.Clamp(0, short.MaxValue));
         }
@@ -372,7 +372,7 @@ namespace Perpetuum.Zones
             return new Position(p._x * num, p._y * num, p._z * num);
         }
 
-        public static implicit operator Point(Position p)
+        public static implicit operator SKPointI(Position p)
         {
             return p.ToPoint();
         }
@@ -424,14 +424,14 @@ namespace Perpetuum.Zones
             return new Vector3((float)_x, (float)_y, (float)_z);
         }
 
-        public Point ToPoint()
+        public SKPointI ToPoint()
         {
-            return new Point((int)_x, (int)_y);
+            return new SKPointI((int)_x, (int)_y);
         }
 
-        public PointF ToPointF()
+        public SKPoint ToPointF()
         {
-            return new PointF((float)_x, (float)_y);
+            return new SKPoint((float)_x, (float)_y);
         }
 
         public ulong GetUlongHashCode()
@@ -471,7 +471,7 @@ namespace Perpetuum.Zones
             { -2, 2}, { -1, 2}, { 0, 2 }, { 1, 2 }, { 2, 2 },
         };
 
-        public IEnumerable<Position> GetEightNeighbours(Size size)
+        public IEnumerable<Position> GetEightNeighbours(SKSizeI size)
         {
             return EightNeighbours.Where(np => np.IsValid(size));
         }
@@ -490,7 +490,7 @@ namespace Perpetuum.Zones
             }
         }
 
-        public IEnumerable<Position> GetTwentyFourNeighbours(Size size)
+        public IEnumerable<Position> GetTwentyFourNeighbours(SKSizeI size)
         {
             return TwentyFourNeighbours.Where(np => np.IsValid(size));
         }
@@ -536,14 +536,14 @@ namespace Perpetuum.Zones
             return CellCoord.FromXY((int)X, (int)Y);
         }
 
-        public double DirectionTo(Point point)
+        public double DirectionTo(SKPointI point)
         {
-            return DirectionTo(point.ToPosition());
+            return DirectionTo(new Position(point.X, point.Y));
         }
 
-        public bool IsInRangeOf2D(Point point, double range)
+        public bool IsInRangeOf2D(SKPointI point, double range)
         {
-            return IsInRangeOf2D(point.ToPosition(), range);
+            return IsInRangeOf2D(new Position(point.X, point.Y), range);
         }
 
 

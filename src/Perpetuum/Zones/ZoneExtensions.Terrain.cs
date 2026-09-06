@@ -1,8 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using Perpetuum.Data;
+﻿using Perpetuum.Data;
 using Perpetuum.Zones.Terrains;
+using SkiaSharp;
 
 namespace Perpetuum.Zones
 {
@@ -18,7 +16,7 @@ namespace Perpetuum.Zones
                            .Select(r => new Position(r.GetValue<int>(0), r.GetValue<int>(1))).ToList();
         }
 
-        public static bool IsWalkableForNpc(this IZone zone,Point position, double slope = MIN_SLOPE)
+        public static bool IsWalkableForNpc(this IZone zone, SKPointI position, double slope = MIN_SLOPE)
         {
             return zone.IsWalkableForNpc(position.X, position.Y, slope);
         }
@@ -36,7 +34,7 @@ namespace Perpetuum.Zones
             return zone.IsWalkable(new Position(x, y), slope);
         }
 
-        public static bool IsWalkable(this IZone zone, Point point, double slope = MIN_SLOPE)
+        public static bool IsWalkable(this IZone zone, SKPointI point, double slope = MIN_SLOPE)
         {
             return zone.IsWalkable(point.ToPosition(),slope);
         }

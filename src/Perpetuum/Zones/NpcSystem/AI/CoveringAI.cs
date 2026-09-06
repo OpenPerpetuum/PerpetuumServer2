@@ -7,7 +7,7 @@ using Perpetuum.Zones.Movements;
 using Perpetuum.Zones.NpcSystem.AI.Behaviors;
 using Perpetuum.Zones.NpcSystem.ThreatManaging;
 using Perpetuum.Zones.Terrains;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {
@@ -164,7 +164,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 // Snapshot the hostile + screen-target picture on the main thread so
                 // the worker doesn't iterate live ThreatManager/Group/Visibility sets.
                 List<Hostile> hostiles = smartCreature.GetActiveHostiles().ToList();
-                Point? screenTarget = ComputeScreenTarget(centroid.Value);
+                SKPointI? screenTarget = ComputeScreenTarget(centroid.Value);
 
                 pathPending = true;
 
@@ -177,7 +177,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                             return;
                         }
 
-                        List<Point> path = t.Result;
+                        List<SKPointI> path = t.Result;
                         if (path == null)
                         {
                             if (!holdLogged)
@@ -217,7 +217,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             }
         }
 
-        private Task<List<Point>> FindNewCoverPositionAsync(List<Hostile> hostiles, Point? screenTarget)
+        private Task<List<SKPointI>> FindNewCoverPositionAsync(List<Hostile> hostiles, SKPointI? screenTarget)
         {
             source?.Cancel();
             source = new CancellationTokenSource();
@@ -226,10 +226,10 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
             return Task.Run(() =>
             {
-                List<Point> coverPath = FindCoverPosition(hostiles, ct);
+                List<SKPointI> coverPath = FindCoverPosition(hostiles, ct);
                 if (coverPath != null)
                 {
-                    Point goal = coverPath[coverPath.Count - 1];
+                    SKPointI goal = coverPath[coverPath.Count - 1];
                     WriteLog($"CoveringAI: cover found at {goal.X},{goal.Y}");
 
                     return coverPath;
@@ -245,10 +245,10 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 }
 
                 WriteLog($"CoveringAI: no cover, falling back to screen at {screenTarget.Value.X},{screenTarget.Value.Y}");
-                List<Point> screenPath = FindScreenPath(screenTarget.Value, ct);
+                List<SKPointI> screenPath = FindScreenPath(screenTarget.Value, ct);
                 if (screenPath != null)
                 {
-                    Point goal = screenPath[screenPath.Count - 1];
+                    SKPointI goal = screenPath[screenPath.Count - 1];
                     WriteLog($"CoveringAI: screen path found at {goal.X},{goal.Y}");
                 }
 
@@ -290,7 +290,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
         // so the friendly's hitbox sits between us and the bulk of incoming fire.
         // Returns null when there's no friendly to screen behind, or the friendly
         // is sitting on top of the centroid (degenerate direction).
-        private Point? ComputeScreenTarget(Position centroid)
+        private SKPointI? ComputeScreenTarget(Position centroid)
         {
             SmartCreature friendly = SelectScreenFriendly();
             if (friendly == null)
@@ -310,14 +310,14 @@ namespace Perpetuum.Zones.NpcSystem.AI
             double tx = friendlyPos.X + (dx / length * ScreenOffsetTiles);
             double ty = friendlyPos.Y + (dy / length * ScreenOffsetTiles);
 
-            return new Point((int)tx, (int)ty);
+            return new SKPointI((int)tx, (int)ty);
         }
 
         // Worker-thread A* over walkable tiles around the NPC, looking for the nearest
         // tile from which every active hostile is LoS-blocked by terrain (not plants —
         // see D4). Modeled on SupportAI.FindSupportPosition; must not mutate AI fields
         // directly — results travel through Interlocked.Exchange(ref nextMovement, ...).
-        private List<Point> FindCoverPosition(List<Hostile> hostiles, CancellationToken cancellationToken)
+        private List<SKPointI> FindCoverPosition(List<Hostile> hostiles, CancellationToken cancellationToken)
         {
             try
             {
@@ -328,7 +328,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
                 // D5: cap search radius at HomeRange so cover never pulls us off-leash.
                 int coverRadius = (int)Math.Max(1, Math.Min(CoverRadius, smartCreature.HomeRange));
-                Point origin = smartCreature.CurrentPosition.ToPoint();
+                SKPointI origin = smartCreature.CurrentPosition.ToPoint();
 
                 double maxNode = Math.Pow(coverRadius, 2) * Math.PI;
                 PriorityQueue<Node> priorityQueue = new((int)Math.Max(1, maxNode));
@@ -336,7 +336,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
                 priorityQueue.Enqueue(startNode);
 
-                HashSet<Point> closed =
+                HashSet<SKPointI> closed =
                 [
                     startNode.position
                 ];
@@ -353,7 +353,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                         return BuildPath(current);
                     }
 
-                    foreach (Point n in current.position.GetNeighbours())
+                    foreach (SKPointI n in current.position.GetNeighbours())
                     {
                         if (closed.Contains(n))
                         {
@@ -401,7 +401,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             }
         }
 
-        private bool IsValidCoverPosition(Point position, List<Hostile> hostiles)
+        private bool IsValidCoverPosition(SKPointI position, List<Hostile> hostiles)
         {
             IZone zone = smartCreature.Zone;
             if (zone == null)
@@ -444,12 +444,12 @@ namespace Perpetuum.Zones.NpcSystem.AI
         // D6 — we trust that "behind a teammate, relative to the threat centroid"
         // is good enough screening on average. Heuristic biases the search toward
         // screenTarget so we stop expanding once we reach it.
-        private List<Point> FindScreenPath(Point screenTarget, CancellationToken cancellationToken)
+        private List<SKPointI> FindScreenPath(SKPointI screenTarget, CancellationToken cancellationToken)
         {
             try
             {
                 int coverRadius = (int)Math.Max(1, Math.Min(CoverRadius, smartCreature.HomeRange));
-                Point origin = smartCreature.CurrentPosition.ToPoint();
+                SKPointI origin = smartCreature.CurrentPosition.ToPoint();
 
                 double maxNode = Math.Pow(coverRadius, 2) * Math.PI;
                 PriorityQueue<Node> priorityQueue = new((int)Math.Max(1, maxNode));
@@ -457,7 +457,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
                 priorityQueue.Enqueue(startNode);
 
-                HashSet<Point> closed =
+                HashSet<SKPointI> closed =
                 [
                     startNode.position
                 ];
@@ -474,7 +474,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                         return BuildPath(current);
                     }
 
-                    foreach (Point n in current.position.GetNeighbours())
+                    foreach (SKPointI n in current.position.GetNeighbours())
                     {
                         if (closed.Contains(n))
                         {
@@ -519,7 +519,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             }
         }
 
-        private static bool IsAtScreenTarget(Point candidate, Point screenTarget)
+        private static bool IsAtScreenTarget(SKPointI candidate, SKPointI screenTarget)
         {
             int dx = Math.Abs(candidate.X - screenTarget.X);
             int dy = Math.Abs(candidate.Y - screenTarget.Y);
@@ -527,9 +527,9 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return dx <= ScreenArriveTolerance && dy <= ScreenArriveTolerance;
         }
 
-        private static List<Point> BuildPath(Node current)
+        private static List<SKPointI> BuildPath(Node current)
         {
-            Stack<Point> stack = new();
+            Stack<SKPointI> stack = new();
             Node node = current;
 
             while (node != null)

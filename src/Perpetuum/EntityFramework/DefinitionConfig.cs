@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
+﻿using System.Data;
 using Perpetuum.Data;
 using Perpetuum.Log;
+using SkiaSharp;
 
 namespace Perpetuum.EntityFramework
 {
@@ -51,7 +49,7 @@ namespace Perpetuum.EntityFramework
 
         private readonly double _hitSize;
 
-        private readonly Color _tint = Color.White;
+        private readonly SKColor _tint = SKColors.White;
 
         private readonly double? _coreCalories;
 
@@ -88,7 +86,7 @@ namespace Perpetuum.EntityFramework
             get { return (int) constructionRadius.ThrowIfNull(ErrorCodes.ServerError); }
         }
 
-        public Color Tint
+        public SKColor Tint
         {
             get { return _tint; }
         }
@@ -146,7 +144,11 @@ namespace Perpetuum.EntityFramework
 
             if (!string.IsNullOrEmpty(tint))
             {
-                _tint = ColorTranslator.FromHtml(tint);
+                bool success = SKColor.TryParse(tint, out _tint);
+                if (!success)
+                {
+                    Logger.Info($"Could not parse tint {_tint}");
+                }
             }
         }
 

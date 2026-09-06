@@ -1,6 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Collections.Spatial
 {
@@ -48,8 +46,8 @@ namespace Perpetuum.Collections.Spatial
 
                     neighbours[cell] = new List<TCell>();
 
-                    Point p = new Point(x, y);
-                    foreach (Point np in p.GetNeighbours())
+                    SKPointI p = new SKPointI(x, y);
+                    foreach (SKPointI np in p.GetNeighbours())
                     {
                         if (np.X < 0 || np.X >= numCellsX || np.Y < 0 || np.Y >= numCellsY)
                         {
@@ -68,7 +66,7 @@ namespace Perpetuum.Collections.Spatial
         }
 
         [CanBeNull]
-        public TCell GetCell(Point p)
+        public TCell GetCell(SKPointI p)
         {
             return GetCell(p.X, p.Y);
         }
