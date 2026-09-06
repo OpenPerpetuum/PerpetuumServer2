@@ -17,7 +17,11 @@ namespace Perpetuum.Zones.NpcSystem.AI.HunterDrones
     /// </summary>
     public class HunterSelfDestructAI : HunterDroneAI
     {
-        private const double LeashRange = 50;
+        // Raw position units are x10'd to real in-game meters (ISSUE-042 item 4), so 5 here is
+        // the ~50m tether spec decision 12 actually asks for ("staying within 50m of the
+        // target") — not 50, which would be ~500m and never bind within an 8s countdown against
+        // any realistically paced target.
+        private const double LeashRange = 5;
 
         // Guards against ED.Config.ActionDelay being misconfigured to zero (or a negative
         // value) in the DB — mirrors SelfDestructModule.OnAction's fallback (see
