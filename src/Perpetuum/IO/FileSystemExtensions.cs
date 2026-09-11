@@ -14,6 +14,30 @@ namespace Perpetuum.IO
             return fileSystem.ReadAllBytes(CreateLayerPath(filename));
         }
 
+        /// <summary>
+        /// Returns a hash for the layer file.
+        /// </summary>
+        /// <param name="fileSystem"></param>
+        /// <param name="filename">Layer filename</param>
+        /// <returns>16 bytes of hash</returns>
+        public static byte[] MD5(this IFileSystem fileSystem, string filename)
+        {
+            return fileSystem.MD5SUM(CreateLayerPath(filename));
+        }
+
+        /// <summary>
+        /// Writes all bytes to a file on disk, calculating the hash in parallel.
+        /// </summary>
+        /// <param name="fileSystem"></param>
+        /// <param name="filename">Layer filename</param>
+        /// <param name="bytes">Layer data as bytes</param>
+        /// <param name="size">Size fo saved type</param>
+        /// <returns>16 bytes of hash</returns>
+        public static byte[] WriteLayerAndMD5(this IFileSystem fileSystem, string filename, ReadOnlySpan<byte> bytes, int size)
+        {
+            return fileSystem.WriteAllBytesAndMD5(CreateLayerPath(filename), bytes, size);
+        }
+
         private static string CreateLayerPath(string filename)
         {
             return Path.Combine("layers", filename);

@@ -33,6 +33,7 @@ namespace Perpetuum.Zones
 
         IEnumerable<Unit> Units { get; }
         IEnumerable<Player> Players { get; }
+        bool FreeFromPlayers { get; }
 
         [CanBeNull]
         Unit GetUnit(long eid);
