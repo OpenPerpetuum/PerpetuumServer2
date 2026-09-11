@@ -54,10 +54,10 @@ namespace Perpetuum.Modules.RemoteControl
 
             if (moduleState.Type == ModuleStateType.Idle)
             {
-                RemoteControllerModule remoteController =
-                    (RemoteControllerModule)ParentRobot?.ActiveModules.FirstOrDefault(x => x is RemoteControllerModule);
-
-                if (remoteController != null)
+                // A robot can carry more than one RemoteControllerModule fitted at once (e.g. a
+                // hunter drone controller alongside an ordinary drone controller), so the effect
+                // must be cleared from every one of them, not just the first found (ISSUE-042).
+                foreach (RemoteControllerModule remoteController in ParentRobot?.ActiveModules.OfType<RemoteControllerModule>() ?? Enumerable.Empty<RemoteControllerModule>())
                 {
                     foreach (Unit drone in remoteController.ActiveDrones)
                     {
@@ -71,12 +71,15 @@ namespace Perpetuum.Modules.RemoteControl
 
         protected override void OnAction()
         {
-            RemoteControllerModule remoteController =
-                (RemoteControllerModule)ParentRobot?.ActiveModules.FirstOrDefault(x => x is RemoteControllerModule);
-            double operationalRange = remoteController?.OperationalRange ?? 0;
-
-            if (remoteController != null)
+            // A robot can carry more than one RemoteControllerModule fitted at once (e.g. a
+            // hunter drone controller alongside an ordinary drone controller), so the translated
+            // command must be applied to every one of them, not just the first found (ISSUE-042).
+            // Each controller's own OperationalRange is used for its own drones, rather than
+            // reusing whichever controller happened to be picked first.
+            foreach (RemoteControllerModule remoteController in ParentRobot?.ActiveModules.OfType<RemoteControllerModule>() ?? Enumerable.Empty<RemoteControllerModule>())
             {
+                double operationalRange = remoteController.OperationalRange;
+
                 foreach (Unit drone in remoteController.ActiveDrones)
                 {
                     OnApplyingEffect(drone);

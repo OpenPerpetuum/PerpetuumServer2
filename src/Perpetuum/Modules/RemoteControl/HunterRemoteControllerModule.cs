@@ -1,5 +1,6 @@
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
+using Perpetuum.Items;
 using Perpetuum.Modules.ModuleProperties;
 using Perpetuum.Zones.Effects;
 using Perpetuum.Zones.NpcSystem;
@@ -25,10 +26,19 @@ namespace Perpetuum.Modules
 
         protected override void SetupEffect(EffectBuilder effectBuilder)
         {
-            // Deliberately empty: hunter drones have no amplifiable combat stats (their only
-            // mechanic is contact self-destruct via SelfDestructDetonation), so no drone_amplification
-            // -style effect is needed. Left as an explicit override to document this as a deliberate
-            // decision, not an accidental EffectType.undefined effect application.
+            double armorMaxModifier = GetPropertyModifier(AggregateField.drone_amplification_armor_max_modifier).Value;
+            double coreMaxModifier = GetPropertyModifier(AggregateField.drone_amplification_core_max_modifier).Value;
+            double coreRechargeTimeModifier = GetPropertyModifier(AggregateField.drone_amplification_core_recharge_time_modifier).Value;
+            double speedMaxModifier = GetPropertyModifier(AggregateField.drone_amplification_speed_max_modifier).Value;
+            double reactorRadiationModifier = GetPropertyModifier(AggregateField.drone_amplification_reactor_radiation_modifier).Value;
+
+            _ = effectBuilder
+                .SetType(EffectType.drone_amplification)
+                .WithPropertyModifier(new ItemPropertyModifier(AggregateField.drone_amplification_armor_max_modifier, AggregateFormula.Modifier, armorMaxModifier))
+                .WithPropertyModifier(new ItemPropertyModifier(AggregateField.drone_amplification_core_max_modifier, AggregateFormula.Modifier, coreMaxModifier))
+                .WithPropertyModifier(new ItemPropertyModifier(AggregateField.drone_amplification_core_recharge_time_modifier, AggregateFormula.Inverse, coreRechargeTimeModifier))
+                .WithPropertyModifier(new ItemPropertyModifier(AggregateField.drone_amplification_speed_max_modifier, AggregateFormula.Modifier, speedMaxModifier))
+                .WithPropertyModifier(new ItemPropertyModifier(AggregateField.drone_amplification_reactor_radiation_modifier, AggregateFormula.Inverse, reactorRadiationModifier));
         }
 
         public override RemoteControlledCreature CreateAndConfigureRcu(RemoteControlledUnit ammo)

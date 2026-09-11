@@ -405,11 +405,13 @@ namespace Perpetuum.Robots
 
         protected override void OnBeforeRemovedFromZone(IZone zone)
         {
-            Module remoteController = Modules?.FirstOrDefault(x => x is RemoteControllerModule);
-
-            if (remoteController != null)
+            // A robot can carry more than one RemoteControllerModule fitted at once (e.g. a
+            // hunter drone controller alongside an ordinary drone controller), each with its own
+            // BandwidthHandler/channels, so every one of them must be closed here — not just the
+            // first found (ISSUE-042).
+            foreach (RemoteControllerModule remoteController in Modules.OfType<RemoteControllerModule>())
             {
-                (remoteController as RemoteControllerModule).CloseAllChannels();
+                remoteController.CloseAllChannels();
             }
 
             base.OnBeforeRemovedFromZone(zone);
