@@ -60,6 +60,7 @@ using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Terraforming;
 using SharpOpenNat;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime;
 using System.Runtime.Caching;
 using System.Runtime.Versioning;
@@ -67,6 +68,7 @@ using System.Text;
 using System.Transactions;
 using IContainer = Autofac.IContainer;
 using LogEvent = Perpetuum.Log.LogEvent;
+using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
 
 [assembly: SupportedOSPlatform("windows")]
 namespace Perpetuum.Bootstrapper
@@ -157,6 +159,15 @@ namespace Perpetuum.Bootstrapper
                 throw new InvalidOperationException(message);
             }
 
+            // Get last commit hash
+            var version = Assembly.GetEntryAssembly()
+                ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+#if DEBUG
+            Logger.Warning($"DEBUG Version: {version}, UserInteractive: {Environment.UserInteractive}");
+#else
+            Logger.Info($"RELEASE Version: {version}, UserInteractive: {Environment.UserInteractive}");
+#endif
             Logger.Info($"Game root: {config.GameRoot}");
             Logger.Info($"GC isServerGC: {GCSettings.IsServerGC}");
             Logger.Info($"GC Latency mode: {GCSettings.LatencyMode}");
@@ -357,6 +368,7 @@ namespace Perpetuum.Bootstrapper
                 string settingsFile = fileManager.ReadAllText("perpetuum.ini");
                 GlobalConfiguration configuration = JsonConvert.DeserializeObject<GlobalConfiguration>(settingsFile);
                 configuration.GameRoot = gameRoot;
+                RoamingState.Mode = configuration.RoamingMode;
 
                 return configuration;
             }).SingleInstance();

@@ -84,7 +84,12 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             }
 
             var farPosition = startNode.location.ToPosition().OffsetInDirection(_direction,FastRandom.NextDouble(range.Min,range.Max));
-
+            if (!_zone.Size.Contains(farPosition))
+            {
+                presence.Log($"far position outside the zone: ({farPosition}), current roaming position: ({presence.CurrentRoamingPosition}).");
+                _direction = FastRandom.NextDouble();
+                return presence.CurrentRoamingPosition;
+            }
             _zone.CreateAlignedDebugBeam(BeamType.red_20sec,farPosition);
 
             Node current;
