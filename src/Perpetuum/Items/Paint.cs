@@ -1,11 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using Perpetuum.Accounting.Characters;
-using Perpetuum.Common.Loggers.Transaction;
-using Perpetuum.Containers;
-using Perpetuum.Data;
-using Perpetuum.EntityFramework;
+﻿using Perpetuum.Accounting.Characters;
 using Perpetuum.Robots;
 
 namespace Perpetuum.Items

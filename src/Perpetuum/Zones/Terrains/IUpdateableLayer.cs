@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace Perpetuum.Zones.Terrains
 {
     public interface IUpdateableLayer

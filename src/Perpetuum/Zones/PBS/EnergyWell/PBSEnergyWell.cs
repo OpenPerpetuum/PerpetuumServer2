@@ -1,11 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using Perpetuum.Items;
+﻿using Perpetuum.Items;
 using Perpetuum.Log;
 using Perpetuum.Zones.PBS.Reactors;
 using Perpetuum.Zones.Terrains.Materials;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.PBS.EnergyWell
 {
@@ -124,7 +122,7 @@ namespace Perpetuum.Zones.PBS.EnergyWell
             DynamicProperties.Update(k.depleted, IsDepleted ? 1 : 0);
         }
 
-        public List<ItemInfo> ExtractWithinRange(MineralLayer layer, Point location, int range, uint amount)
+        public List<ItemInfo> ExtractWithinRange(MineralLayer layer, SKPointI location, int range, uint amount)
         {
             var nodes = layer.GetNodesWithinRange(location, range).OrderBy(n => n.Area.SqrDistance(location));
 

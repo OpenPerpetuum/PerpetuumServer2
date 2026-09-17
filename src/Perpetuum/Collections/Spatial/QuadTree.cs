@@ -1,5 +1,4 @@
-using System.Collections.Generic;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Collections.Spatial
 {
@@ -12,7 +11,7 @@ namespace Perpetuum.Collections.Spatial
             Root = new QuadTreeNode<T>(area);
         }
 
-        public QuadTreeItem<T> Add(Point position, T value)
+        public QuadTreeItem<T> Add(SKPointI position, T value)
         {
             return Add(position.X, position.Y, value);
         }

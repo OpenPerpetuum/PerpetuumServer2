@@ -31,6 +31,22 @@ set PERPETUUM_GAMEROOT=C:\PerpetuumServer\data
 dotnet test src/Perpetuum.Tests.Integration/Perpetuum.Tests.Integration.csproj -c Release -p:Platform=x64
 ```
 
+### Docker (docker compose)
+
+Tiers 2 and 3 also run in a single test container (compose service `test`, profile `test`), with the
+tests pre-built at image build time and the connection string generated from `template/perpetuum.ini.template`
+in `docker/Dockerfile.test`:
+
+```bash
+make test-unit          # tier 2, no database required
+make test-integration   # tier 3, brings up db + migration, then runs against the live DB
+```
+
+The test profile is excluded from the default `up`/`down` stack. Note that tier 3 failures about
+documented objects being absent from the database (e.g. `usp_RecalculateInsurancePrices`) are real schema
+drift findings, not environment errors — the test suite reports what
+`docs/db_structure/` claims against what the live `perpetuumsa` contains.
+
 Tier 1, a full server run:
 
 ```bash

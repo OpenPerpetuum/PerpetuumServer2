@@ -1,6 +1,4 @@
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains.Materials.Minerals.Generators
 {
@@ -13,29 +11,29 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals.Generators
 
         private int BrushSize { get; set; }
 
-        protected override Dictionary<Point,double> GenerateNoise(Position startPosition)
+        protected override Dictionary<SKPointI, double> GenerateNoise(Position startPosition)
         {
-            var closed = new HashSet<Point>();
-            var tiles = new Dictionary<Point,double>();
+            var closed = new HashSet<SKPointI>();
+            var tiles = new Dictionary<SKPointI, double>();
 
-            var q = new Queue<Point>();
+            var q = new Queue<SKPointI>();
             q.Enqueue(startPosition);
 
             var i = 0;
 
-            while (q.TryDequeue(out Point current) && i < 50000)
+            while (q.TryDequeue(out SKPointI current) && i < 50000)
             {
                 i++;
 
                 foreach (var point in current.FloodFill(IsValid).Take(BrushSize * BrushSize))
                 {
-                    tiles.AddOrUpdate(point,1,c => c + 1);
+                    tiles.AddOrUpdate(point, 1, c => c + 1);
 
                     if (tiles.Count >= MaxTiles)
                         return tiles;
                 }
 
-                var r = new List<Point>();
+                var r = new List<SKPointI>();
 
                 foreach (var np in current.GetNeighbours())
                 {
