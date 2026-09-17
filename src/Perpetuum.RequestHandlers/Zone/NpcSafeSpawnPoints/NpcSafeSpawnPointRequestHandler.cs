@@ -1,9 +1,8 @@
-using System.Collections.Generic;
-using System.Drawing;
 using System.Transactions;
 using Perpetuum.Data;
 using Perpetuum.Host.Requests;
 using Perpetuum.Zones.NpcSystem.SafeSpawnPoints;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone.NpcSafeSpawnPoints
 {
@@ -36,7 +35,7 @@ namespace Perpetuum.RequestHandlers.Zone.NpcSafeSpawnPoints
             }
         }
 
-        protected void AddSafeSpawnPoint(IZoneRequest request, Point location)
+        protected void AddSafeSpawnPoint(IZoneRequest request, SKPointI location)
         {
             var point = new SafeSpawnPoint { Location = location };
             request.Zone.SafeSpawnPoints.Add(point);

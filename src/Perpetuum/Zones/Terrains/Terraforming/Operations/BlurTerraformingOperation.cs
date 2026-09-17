@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+﻿using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains.Terraforming.Operations
 {
@@ -17,7 +17,7 @@ namespace Perpetuum.Zones.Terrains.Terraforming.Operations
 
         protected override int ProduceDirection(IZone zone, int x, int y)
         {
-            var p = new Point(x, y);
+            var p = new SKPointI(x, y);
 
             var sum = 0.0;
             foreach (var n in p.GetNeighbours())

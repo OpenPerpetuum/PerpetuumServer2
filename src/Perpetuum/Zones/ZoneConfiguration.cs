@@ -2,8 +2,7 @@
 using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Zones.Terrains.Materials.Plants;
-using System.Collections.Generic;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Zones
 {
@@ -44,8 +43,8 @@ namespace Perpetuum.Zones
                 ZoneConfiguration config = new ZoneConfiguration
                 {
                     Id = id,
-                    WorldPosition = new Point(x, y),
-                    Size = new Size(w, h),
+                    WorldPosition = new SKPointI(x, y),
+                    Size = new SKSizeI(w, h),
                     Name = record.GetValue<string>("name"),
                     Fertility = record.GetValue<int>("fertility"),
                     PluginName = record.GetValue<string>("zoneplugin"),
@@ -91,8 +90,8 @@ namespace Perpetuum.Zones
         public int plantRuleSetId;
 
         public int Id { get; set; }
-        public Size Size { get; set; }
-        public Point WorldPosition { get; set; }
+        public SKSizeI Size { get; set; }
+        public SKPointI WorldPosition { get; set; }
         public string PluginName { get; set; }
         public int Fertility { get; set; }
         public bool Terraformable { get; set; }

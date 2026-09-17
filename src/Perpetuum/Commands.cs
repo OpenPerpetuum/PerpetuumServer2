@@ -1,5 +1,5 @@
-using System.Drawing;
 using System.Reflection;
+using SkiaSharp;
 
 namespace Perpetuum
 {
@@ -4825,7 +4825,7 @@ namespace Perpetuum
             Arguments =
             {
                 new Argument<long>(k.robotEID),
-                new Argument<Color>(k.tint),
+                new Argument<SKColor>(k.tint),
             }
         };
 

@@ -1,0 +1,18 @@
+{
+  "ListenerPort": {SERVER_PORT},
+  "EnableUpnp": false,
+  "EnableDev": true,
+  
+  "PersonalConfig": "startup_standalone",
+  "ConnectionString": "{CONNECTION_STRING}",
+  
+  "Corporation":{
+   "Price" : 250000,
+   "HangarPrice" : 50000,
+   "RentPeriod" : 7,
+   "LeavePeriod" : 1440,
+   "NumberOfHangarFolders" : 10,
+   "FoundingPrice" : 25000
+  },
+  "ResourceServerURL": "{ASSET_URL}"
+}

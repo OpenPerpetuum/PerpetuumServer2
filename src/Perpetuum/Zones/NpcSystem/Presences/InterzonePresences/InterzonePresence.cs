@@ -1,9 +1,8 @@
-﻿using System;
-using System.Text;
-using System.Drawing;
+﻿using System.Text;
 using Perpetuum.StateMachines;
 using Perpetuum.Zones.NpcSystem.Flocks;
 using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.Presences.InterzonePresences
 {
@@ -11,7 +10,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences.InterzonePresences
     {
         public StackFSM StackFSM { get; }
         public Position SpawnOrigin { get; set; }
-        public Point CurrentRoamingPosition { get; set; }
+        public SKPointI CurrentRoamingPosition { get; set; }
         public IRoamingPathFinder PathFinder { get; set; }
         public InterzoneRoamingPresence(IZone zone, IPresenceConfiguration configuration) : base(zone, configuration)
         {
