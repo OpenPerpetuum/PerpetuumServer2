@@ -1,4 +1,4 @@
-﻿using Perpetuum.Collections.Spatial;
+using Perpetuum.Collections.Spatial;
 using System.Numerics;
 using SkiaSharp;
 
@@ -34,7 +34,7 @@ namespace Perpetuum.Zones
 
         public bool IsValid(SKSizeI size)
         {
-            return size.Contains(intX, intY) && intZ >= 0 && intZ < short.MaxValue;
+            return _x >= 0 && _y >= 0 && _z >= 0 && size.Contains(intX, intY) && intZ < short.MaxValue;
         }
 
         public void Normalize()
