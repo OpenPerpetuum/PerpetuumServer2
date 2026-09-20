@@ -8,6 +8,7 @@ using Perpetuum.Services.EventServices;
 using Perpetuum.Services.EventServices.EventProcessors;
 using Perpetuum.Services.EventServices.EventProcessors.NpcSpawnEventHandlers;
 using Perpetuum.Services.HighScores;
+using Perpetuum.Services.PathFind;
 using Perpetuum.Services.Relics;
 using Perpetuum.Services.RiftSystem;
 using Perpetuum.Services.Strongholds;
@@ -57,6 +58,11 @@ namespace Perpetuum.Bootstrapper.Modules
             {
                 e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(5)));
             }).As<IWeatherService>();
+
+            _ = builder.RegisterType<PathFindService>().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(5)));
+            }).As<IPathFindService>().SingleInstance();
 
             _ = builder.RegisterType<WeatherMonitor>();
             _ = builder.RegisterType<WeatherEventListener>();
@@ -160,6 +166,7 @@ namespace Perpetuum.Bootstrapper.Modules
                     zone.SafeSpawnPoints = ctx.Resolve<ISafeSpawnPointsRepository>(new TypedParameter(typeof(IZone), zone));
                     zone.ZoneSessionFactory = ctx.Resolve<ZoneSession.Factory>();
                     zone.RelicManager = ctx.Resolve<Func<IZone, IRelicManager>>().Invoke(zone);
+                    zone.PathFindService = ctx.Resolve<IPathFindService>();
 
                     if (configuration.Terraformable)
                     {

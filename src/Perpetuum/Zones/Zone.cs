@@ -7,6 +7,7 @@ using Perpetuum.Log;
 using Perpetuum.Network;
 using Perpetuum.Players;
 using Perpetuum.Services.HighScores;
+using Perpetuum.Services.PathFind;
 using Perpetuum.Services.Relics;
 using Perpetuum.Services.RiftSystem;
 using Perpetuum.Services.Sessions;
@@ -64,6 +65,7 @@ namespace Perpetuum.Zones
         public HarvestLogHandler HarvestLogHandler { get; set; }
         public ZoneSession.Factory ZoneSessionFactory { get; set; }
         public IZoneEffectHandler ZoneEffectHandler { get; set; }
+        public IPathFindService PathFindService { get; set; }
 
         [CanBeNull]
         public IRiftManager RiftManager { private get; set; }

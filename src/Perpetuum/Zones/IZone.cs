@@ -5,6 +5,7 @@ using Perpetuum.Common.Loggers;
 using Perpetuum.Groups.Corporations;
 using Perpetuum.Log;
 using Perpetuum.Players;
+using Perpetuum.Services.PathFind;
 using Perpetuum.Services.Relics;
 using Perpetuum.Services.Strongholds;
 using Perpetuum.Services.Weather;
@@ -61,6 +62,8 @@ namespace Perpetuum.Zones
         IZoneEnterQueueService EnterQueueService { get; }
 
         ILogger<ChatLogEvent> ChatLogger { get; }
+
+        IPathFindService PathFindService { get; }
 
         void AddUnit(Unit unit);
         void RemoveUnit(Unit unit);
