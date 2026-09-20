@@ -58,5 +58,11 @@ namespace Perpetuum
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         [JsonConverter(typeof(StringEnumConverter))]
         public RoamingState.RoamingMode RoamingMode { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of concurrent pathfinding operations allowed.
+        /// </summary>
+        [DefaultValue(0), JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public int ConcurrentPathFinds { get; set; }
     }
 }
