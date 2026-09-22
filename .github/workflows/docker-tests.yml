@@ -1,0 +1,52 @@
+name: Docker Compose Tests
+
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup environment and directories
+        uses: ./.github/actions/setup-test-data
+        with:
+          download-data: 'false'
+
+      - name: Run Unit Tests
+        run: make test-unit
+
+      - name: Docker Compose Teardown
+        if: always()
+        run: make delete
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Perpetuum test data
+        uses: ./.github/actions/setup-test-data
+        with:
+          download-data: 'true'
+
+      - name: Run Integration Tests
+        run: make test-integration
+
+      - name: Docker Compose Teardown
+        if: always()
+        run: make delete

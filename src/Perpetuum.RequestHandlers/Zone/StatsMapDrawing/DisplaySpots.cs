@@ -1,11 +1,11 @@
-﻿using System.Drawing;
-using Perpetuum.Services.MissionEngine;
+﻿using Perpetuum.Services.MissionEngine;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 {
     public partial class ZoneDrawStatMap
     {
-        private Bitmap DisplaySpots()
+        private SKBitmap DisplaySpots()
         {
 
             var staticObjects = MissionSpot.GetStaticObjectsFromZone(_zone);

@@ -1,8 +1,7 @@
 ﻿using Perpetuum.StateMachines;
 using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
-using System;
-using System.Drawing;
 using Perpetuum.Zones.NpcSystem.Presences.ExpiringStaticPresence;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.Presences.RandomExpiringPresence
 {
@@ -15,7 +14,7 @@ namespace Perpetuum.Zones.NpcSystem.Presences.RandomExpiringPresence
         public Position SpawnOrigin { get; set; }
         public IRoamingPathFinder PathFinder { get; set; }
         public override Area Area => Configuration.Area;
-        public Point CurrentRoamingPosition { get; set; }
+        public SKPointI CurrentRoamingPosition { get; set; }
 
         public RandomSpawningExpiringPresence(IZone zone, IPresenceConfiguration configuration) : base(zone, configuration)
         {
