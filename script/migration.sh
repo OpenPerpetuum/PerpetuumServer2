@@ -16,11 +16,15 @@ echo "==> Syncing base server data and layers..."
 cp -r /perpetuum-service-data/* /data/
 cp -v /work/perpetuum.ini /data/
 cp -r /base-data/layers /data/
-[ -d /custom-layers ] && cp -r /custom-layers/* /data/layers/
+if [ -d /custom-layers ] && [ -n "$(ls -A /custom-layers 2>/dev/null)" ]; then
+    cp -r /custom-layers/* /data/layers/
+fi
 
 # Copy all patch-specific data/layers
 for d in /migration/Patches/*/Server/data; do
-    [ -d "$d" ] && cp -r "$d"/* /data/
+    if [ -d "$d" ] && [ -n "$(ls -A "$d" 2>/dev/null)" ]; then
+        cp -r "$d"/* /data/
+    fi
 done
 
 runSqlCmd () {
