@@ -162,9 +162,54 @@ The server is ready for a client when you see lines such as `Unit enter to zone`
 
 The first connect can take several minutes while the asset server transfers files.
 
-### 6. Stop
+### 6. Stop and Cache Management
 
 ```sh
-make down     # stop and remove containers; keep data and db volumes
-make delete   # also delete the volumes
+make down         # stop and remove containers; keep data and db volumes
+make delete       # also delete the docker volumes
+make reset        # force re-run full migration from scratch and refresh cache
+make clean-cache  # delete migration snapshot backup and hash
 ```
+
+### Database Migration & Snapshot Cache
+
+The migration container seeds configuration files and applies all database patches from the `db` (OPDB) submodule to the SQL Server database.
+
+To optimize local development startup time from ~90s down to ~2s, the migration job employs an **automatic snapshot caching mechanism** with SHA-256 change detection:
+
+```mermaid
+flowchart TD
+    Start(["Start migration container"]) --> CheckDone{"/data/done exists && !FORCE_MIGRATION?"}
+    CheckDone -- "Yes" --> Skip(["Skip migration (0s)"])
+    
+    CheckDone -- "No" --> SyncFiles["Sync layer assets & perpetuum.ini to /data"]
+    SyncFiles --> ComputeHash["Compute SHA-256 hash of all SQL patches, base .bak & scripts"]
+    
+    ComputeHash --> CheckCache{"perpetuumsa_migrated.bak exists && Hash matches?"}
+    
+    subgraph FastPath["Fast Path (Cache Hit: ~2s)"]
+        CheckCache -- "Yes (Cache Hit)" --> RestoreSnapshot["RESTORE DATABASE from snapshot (perpetuumsa_migrated.bak)"]
+    end
+    
+    subgraph SlowPath["Full Migration (First Run / Patch Changed: ~90s)"]
+        CheckCache -- "No (Miss / Changed / Force)" --> CreateDB["Ensure perpetuumsa DB exists"]
+        CreateDB --> RestoreBase["RESTORE DATABASE from Steam base perpetuumsa.bak"]
+        RestoreBase --> DiscoverPatches["Auto-discover patches in numerical order (Pre_Alpha_* -> Live_*)"]
+        DiscoverPatches --> ApplyPatches["Apply SQL scripts (live_patch_*.sql, Raw_SQL, or *.sql)"]
+        ApplyPatches --> AddTestAccount["Add test account (TOOL_test_account.sql)"]
+        AddTestAccount --> BackupSnapshot["BACKUP DATABASE to perpetuumsa_migrated.bak WITH COMPRESSION"]
+        BackupSnapshot --> SaveHash["Save SHA-256 hash to perpetuumsa_migrated.hash"]
+    end
+    
+    RestoreSnapshot --> MarkDone["touch /data/done"]
+    SaveHash --> MarkDone
+    MarkDone --> End(["Migration complete -> Game server starts"])
+```
+
+#### Key Features
+
+- **Automated Patch Discovery**: Automatically iterates through `Pre_Alpha_*` and `Live_*` patch folders in version order. It runs consolidated patch files (`live_patch_*.sql` / `prealpha_patch_*.sql`), `Raw_SQL/*.sql`, or loose `*.sql` files, and copies any `Server/data` assets automatically.
+- **Instant Restore on Volume Wipe**: When recreating containers with `make delete && make up`, the database snapshot (`perpetuum-data/database/perpetuumsa_migrated.bak`) is preserved on host disk and restored in ~2 seconds.
+- **Zero-touch Invalidation**: If you modify, add, or delete any SQL patch in the `db/` submodule, the SHA-256 hash mismatch is detected automatically, triggering a full re-migration and snapshot update.
+- **Clean / Force Options**: Use `make clean-cache` to delete the snapshot, or `make reset` (`FORCE_MIGRATION=true`) to force a fresh re-migration from the raw Steam base backup.
+

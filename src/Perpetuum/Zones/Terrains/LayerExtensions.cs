@@ -34,7 +34,7 @@ namespace Perpetuum.Zones.Terrains
         {
             for (var y = 0; y < layer.Height; y++)
             {
-                for (var x = 0; x < layer.Height; x++)
+                for (var x = 0; x < layer.Width; x++)
                 {
                     var current = layer[x, y];
                     var updated = updater(x, y, current);

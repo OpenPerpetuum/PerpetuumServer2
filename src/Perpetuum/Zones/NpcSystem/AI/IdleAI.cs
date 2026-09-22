@@ -1,4 +1,4 @@
-﻿using Perpetuum.Modules;
+using Perpetuum.Modules;
 using Perpetuum.Zones.Movements;
 using System;
 

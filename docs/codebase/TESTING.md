@@ -5,13 +5,13 @@
 ## Current State
 
 The repository has an automated test suite in three tiers. It does not cover the whole codebase — the
-coverage map below states what is covered and what is not.
+coverage map below states what is covered and what is not. Detailed line and branch coverage metrics are documented in [`docs/codebase/COVERAGE.md`](COVERAGE.md).
 
 | Tier | Project | Count | Needs |
 |------|---------|-------|-------|
 | 1 — smoke | `tools/smoke-test.ps1` | 1 end-to-end run | A configured `GameRoot` and a live database |
-| 2 — unit | `src/Perpetuum.Tests` | 99 tests | Nothing. Runs anywhere the solution builds |
-| 3 — integration | `src/Perpetuum.Tests.Integration` | 10 tests | A configured `GameRoot` and a live database |
+| 2 — unit | `src/Perpetuum.Tests` | 209 tests | Nothing. Runs anywhere the solution builds |
+| 3 — integration | `src/Perpetuum.Tests.Integration` | 15 tests | A configured `GameRoot` and a live database |
 
 Tier 2 is the tier that runs in CI. Tiers 1 and 3 run on a developer machine that already has the
 standard server environment, and skip rather than fail when it is absent.
@@ -40,6 +40,7 @@ in `docker/Dockerfile.test`:
 ```bash
 make test-unit          # tier 2, no database required
 make test-integration   # tier 3, brings up db + migration, then runs against the live DB
+make test-smoke         # tier 1, brings up full server stack, asserts on startup/shutdown logs
 ```
 
 The test profile is excluded from the default `up`/`down` stack. Note that tier 3 failures about
@@ -47,10 +48,17 @@ documented objects being absent from the database (e.g. `usp_RecalculateInsuranc
 drift findings, not environment errors — the test suite reports what
 `docs/db_structure/` claims against what the live `perpetuumsa` contains.
 
-Tier 1, a full server run:
+Tier 1 on Windows (bare-metal server run):
 
 ```bash
 pwsh tools/smoke-test.ps1 -GameRoot C:\PerpetuumServer\data
+```
+
+Tier 1 on Linux / Docker:
+
+```bash
+make test-smoke
+# or manually: ./script/smoke-test.sh
 ```
 
 ### Environment variables

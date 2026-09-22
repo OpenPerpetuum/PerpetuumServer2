@@ -42,5 +42,29 @@ namespace Perpetuum.Tests.Unit
             layer.UpdateValue(3, 4, v => v * 10);
             Assert.Equal(70, layer[3, 4]);
         }
+
+        [Fact]
+        public void GetValue_clamps_out_of_bounds()
+        {
+            var layer = new Layer<int>(LayerType.Altitude, 10, 20);
+            layer[0, 0] = 100;
+            layer[9, 19] = 200;
+
+            Assert.Equal(100, layer[-5, -10]);
+            Assert.Equal(200, layer[50, 100]);
+        }
+
+        [Fact]
+        public void Position_IsValid_rejects_negative_fractional_coords()
+        {
+            var size = new SKSizeI(100, 100);
+
+            Assert.True(new Position(0.0, 0.0).IsValid(size));
+            Assert.True(new Position(99.9, 99.9).IsValid(size));
+            Assert.False(new Position(-0.1, 50.0).IsValid(size));
+            Assert.False(new Position(50.0, -0.5).IsValid(size));
+            Assert.False(new Position(50.0, 50.0, -0.1).IsValid(size));
+            Assert.False(new Position(100.0, 50.0).IsValid(size));
+        }
     }
 }

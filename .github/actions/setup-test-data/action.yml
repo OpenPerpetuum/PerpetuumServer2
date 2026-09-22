@@ -57,7 +57,7 @@ runs:
         python3 -m venv /tmp/gdown-env
         /tmp/gdown-env/bin/pip install gdown
         mkdir -p custom-layers
-        /tmp/gdown-env/bin/gdown --fuzzy "https://drive.google.com/uc?id=1Xp0T1K57Pv-vjgmpXMG8Iea_ec0bWYR4" -O /tmp/gamma_layers.rar || true
+        /tmp/gdown-env/bin/gdown "https://drive.google.com/uc?id=1Xp0T1K57Pv-vjgmpXMG8Iea_ec0bWYR4" -O /tmp/gamma_layers.rar || true
         if [ -f /tmp/gamma_layers.rar ]; then
           7z x /tmp/gamma_layers.rar -o./custom-layers -y || true
         fi

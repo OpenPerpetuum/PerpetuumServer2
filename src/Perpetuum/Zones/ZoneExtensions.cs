@@ -38,7 +38,42 @@ namespace Perpetuum.Zones
         public T[] LoadLayerData<T>(IZone zone, string name) where T : struct
         {
             string path = zone.CreateTerrainDataFilename(name);
-            T[] data = _fileSystem.ReadLayer<T>(path);
+            T[] data;
+
+            if (typeof(T) == typeof(TerrainControlInfo))
+            {
+                byte[] rawBytes = _fileSystem.ReadLayerAsByteArray(path);
+                int totalCells = zone.Size.Width * zone.Size.Height;
+                if (rawBytes.Length == totalCells)
+                {
+                    var converted = new TerrainControlInfo[totalCells];
+                    for (int i = 0; i < totalCells; i++)
+                    {
+                        converted[i] = new TerrainControlInfo((TerrainControlFlags)rawBytes[i]);
+                    }
+                    data = (T[])(object)converted;
+                }
+                else
+                {
+                    data = rawBytes.ToArray<T>();
+                }
+            }
+            else
+            {
+                data = _fileSystem.ReadLayer<T>(path);
+            }
+
+            int expectedCells = zone.Size.Width * zone.Size.Height;
+            if (expectedCells > 0 && (data == null || data.Length != expectedCells))
+            {
+                var safeData = new T[expectedCells];
+                if (data != null && data.Length > 0)
+                {
+                    Array.Copy(data, safeData, Math.Min(data.Length, expectedCells));
+                }
+                data = safeData;
+            }
+
             Logger.Info("Layer data loaded. (" + name + ") zone:" + zone.Id);
             return data;
         }
