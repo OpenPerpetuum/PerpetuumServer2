@@ -59,19 +59,25 @@ namespace Perpetuum.Zones
             zone.Beams.Add(beam);
         }
 
+        private const double MAX_DISTANCE = 100.0;
+
         [Conditional("DEBUG")]
         public static void CreateAlignedDebugBeam(this IZone zone, BeamType beamType, Position position)
         {
-            zone?.CreateBeam(beamType, builder => builder.WithPosition(zone.FixZ(position)).WithState(BeamState.AlignToTerrain).WithDuration(15000));
+            CreateDebugBeam(zone, beamType, zone.FixZ(position), BeamState.AlignToTerrain);
         }
 
         [Conditional("DEBUG")]
-        public static void CreateDebugBeam(this IZone zone, BeamType beamType, Position position)
+        public static void CreateDebugBeam(this IZone zone, BeamType beamType, Position position, BeamState state = BeamState.Hit)
         {
-            if ( zone == null )
+            if (zone == null ||
+                !zone.Size.Contains(position) ||
+                (zone.Players?.All(p => p.CurrentPosition.TotalDistance2D(position) > MAX_DISTANCE) ?? true))
+            {
                 return;
+            }
 
-            var builder = Beam.NewBuilder().WithType(beamType).WithPosition(position).WithState(BeamState.Hit).WithDuration(15000);
+            var builder = Beam.NewBuilder().WithType(beamType).WithPosition(position).WithState(state).WithDuration(15000);
             zone.CreateBeam(builder);
         }
     }
