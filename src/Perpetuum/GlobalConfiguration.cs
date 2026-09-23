@@ -1,4 +1,6 @@
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
 using System.ComponentModel;
 
 namespace Perpetuum
@@ -50,5 +52,17 @@ namespace Perpetuum
         public string DiscordBotToken { get; set; }
 
         public string OpHelpChannelId { get; set; }
+
+        // Default roaming mode.
+        [DefaultValue(RoamingState.RoamingMode.Default)]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public RoamingState.RoamingMode RoamingMode { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of concurrent pathfinding operations allowed.
+        /// </summary>
+        [DefaultValue(0), JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public int ConcurrentPathFinds { get; set; }
     }
 }

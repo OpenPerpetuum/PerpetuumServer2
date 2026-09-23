@@ -1,5 +1,6 @@
 ﻿using Perpetuum.Modules;
 using Perpetuum.PathFinders;
+using Perpetuum.Services.PathFind;
 using Perpetuum.Zones.Movements;
 using System;
 using System.Collections.Generic;
@@ -11,12 +12,10 @@ namespace Perpetuum.Zones.NpcSystem.AI
     {
         private PathMovement movement;
         private readonly double maxReturnHomeRadius;
-        private readonly PathFinder pathFinder;
 
         public HomingAI(SmartCreature smartCreature) : base(smartCreature)
         {
             maxReturnHomeRadius = (smartCreature.HomeRange * 0.4).Clamp(3, 20);
-            pathFinder = new AStarFinder(Heuristic.Manhattan, smartCreature.IsWalkable);
         }
 
         public override void Enter()
@@ -29,29 +28,19 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 randomHome = smartCreature.HomePosition;
             }
 
-            _ = pathFinder
-                .FindPathAsync(smartCreature.CurrentPosition, randomHome)
-                .ContinueWith(t =>
+            smartCreature.Zone.PathFindService.EnqueuePathFinding(new HomePathFindInfo
+            (
+                smartCreature.CurrentPosition,
+                randomHome,
+                Heuristic.Manhattan,
+                smartCreature.IsWalkable,
+                smartCreature.Zone.Id,  
+                path =>
                 {
-                    System.Drawing.Point[] path = t.Result;
-
-                    if (path == null)
-                    {
-                        WriteLog("Path not found! (" + smartCreature.CurrentPosition + " => " + smartCreature.HomePosition + ")");
-
-                        AStarFinder f = new AStarFinder(Heuristic.Manhattan, (x, y) => true);
-
-                        path = f.FindPath(smartCreature.CurrentPosition, smartCreature.HomePosition);
-
-                        if (path == null)
-                        {
-                            WriteLog("Safe path not found! (" + smartCreature.CurrentPosition + " => " + smartCreature.HomePosition + ")");
-                        }
-                    }
-
                     movement = new PathMovement(path);
                     movement.Start(smartCreature);
-                });
+                }
+            ));
 
             base.Enter();
         }

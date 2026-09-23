@@ -67,6 +67,7 @@ using System.Text;
 using System.Transactions;
 using IContainer = Autofac.IContainer;
 using LogEvent = Perpetuum.Log.LogEvent;
+using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
 
 [assembly: SupportedOSPlatform("windows")]
 namespace Perpetuum.Bootstrapper
@@ -357,6 +358,7 @@ namespace Perpetuum.Bootstrapper
                 string settingsFile = fileManager.ReadAllText("perpetuum.ini");
                 GlobalConfiguration configuration = JsonConvert.DeserializeObject<GlobalConfiguration>(settingsFile);
                 configuration.GameRoot = gameRoot;
+                RoamingState.Mode = configuration.RoamingMode;
 
                 return configuration;
             }).SingleInstance();
