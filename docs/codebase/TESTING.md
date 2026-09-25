@@ -10,8 +10,8 @@ coverage map below states what is covered and what is not. Detailed line and bra
 | Tier | Project | Count | Needs |
 |------|---------|-------|-------|
 | 1 — smoke | `tools/smoke-test.ps1` | 1 end-to-end run | A configured `GameRoot` and a live database |
-| 2 — unit | `src/Perpetuum.Tests` | 209 tests | Nothing. Runs anywhere the solution builds |
-| 3 — integration | `src/Perpetuum.Tests.Integration` | 15 tests | A configured `GameRoot` and a live database |
+| 2 — unit | `src/Perpetuum.Tests` | 229 tests | Nothing. Runs anywhere the solution builds |
+| 3 — integration | `src/Perpetuum.Tests.Integration` | 17 tests | A configured `GameRoot` and a live database |
 
 Tier 2 is the tier that runs in CI. Tiers 1 and 3 run on a developer machine that already has the
 standard server environment, and skip rather than fail when it is absent.
@@ -124,6 +124,13 @@ Two things are covered:
 
 Isolation is by read-only default: writes require `PERPETUUM_TESTDB_ALLOW_WRITE=1`. Tests use a single
 connection, because a second concurrent connection inside a `TransactionScope` escalates to MSDTC.
+`make test-integration` does not set the flag, so write tests skip there (and in CI). To run them,
+inject the variable into the test container:
+
+```bash
+./script/compose.sh --profile test run --build --rm -e PERPETUUM_TESTDB_ALLOW_WRITE=1 test \
+  dotnet test src/Perpetuum.Tests.Integration/Perpetuum.Tests.Integration.csproj -c Release -p:Platform=x64 --no-build
+```
 
 ### Tier 1 — smoke
 

@@ -64,7 +64,6 @@ using System.Runtime;
 using System.Runtime.Caching;
 using System.Runtime.Versioning;
 using System.Text;
-using System.Transactions;
 using IContainer = Autofac.IContainer;
 using LogEvent = Perpetuum.Log.LogEvent;
 
@@ -163,7 +162,9 @@ namespace Perpetuum.Bootstrapper
             Logger.Info($"GC Latency mode: {GCSettings.LatencyMode}");
             Logger.Info($"Vector is hardware accelerated: {Vector.IsHardwareAccelerated}");
 
-            TransactionManager.ImplicitDistributedTransactions = distributedTransactions;
+            // On platforms without a DTC coordinator (e.g. Linux) enabling this throws
+            // PlatformNotSupportedException; degrade to local transactions instead of failing to boot.
+            TransactionSupport.SetImplicitDistributedTransactions(distributedTransactions);
 
             Db.DbQueryFactory = _container.Resolve<Func<DbQuery>>();
 

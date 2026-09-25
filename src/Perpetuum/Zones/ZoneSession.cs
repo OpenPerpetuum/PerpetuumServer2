@@ -300,10 +300,16 @@ namespace Perpetuum.Zones
 
             _terrainUpdateNotifier = CreateTerrainNotifier(player);
 
-            player.SetSession(this);
-            player.SendInitSelf();
-            player.ApplyTeleportSicknessEffect();
-            player.ApplyInvulnerableEffect();
+            // The player is already in the zone (added on transaction commit), so the tick thread
+            // may be updating it concurrently. Serialize the entry snapshot with the tick to keep
+            // it consistent.
+            lock (player.UpdateLock)
+            {
+                player.SetSession(this);
+                player.SendInitSelf();
+                player.ApplyTeleportSicknessEffect();
+                player.ApplyInvulnerableEffect();
+            }
 
             _player = player;
         }

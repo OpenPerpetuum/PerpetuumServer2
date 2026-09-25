@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Runtime.CompilerServices;
 
 namespace Perpetuum.Zones.Terrains
@@ -6,6 +7,20 @@ namespace Perpetuum.Zones.Terrains
     /// <summary>
     /// Pre-extracted hierarchical chunk bounding metadata from terrain layers (altitude and blocking)
     /// to accelerate spatial queries, Line-of-Sight (LOS) raycasting, and obstacle checks.
+    ///
+    /// Production wiring: the Zone bakes the metadata from the terrain when the Terrain is assigned
+    /// and exposes it as IZone.Heightfield. TerrainUpdateMonitor marks chunks dirty as the altitude
+    /// or blocking layers mutate (plant growth, terraforming, PBS construction, environment
+    /// placement), and Zone.Update drains the dirty set via RecomputeDirty before the unit update.
+    ///
+    /// Chunk bounds are incremental: mutations to the altitude or blocking layers mark the affected
+    /// chunks dirty via MarkDirtyTile/MarkDirtyArea, and RecomputeDirty re-bakes only those chunks.
+    /// The compact per-chunk min/max arrays are never rebuilt in full except via RecomputeAll.
+    ///
+    /// Threading: marking and re-baking run on the zone tick thread; consumers (LineOfSight) read
+    /// the bounds lock-free from any thread, the same benign-race assumption the terrain layers
+    /// themselves already live under. While HasDirtyChunks is true, bounds may be stale in either
+    /// direction and consumers must not trust them for early-outs.
     /// </summary>
     public class HeightfieldMetadata
     {
@@ -20,6 +35,15 @@ namespace Perpetuum.Zones.Terrains
         private readonly float[] _minHeights;
         private readonly float[] _maxHeights;
 
+        private readonly BitArray _dirtyChunks;
+        private int _dirtyCount;
+
+        /// <summary>
+        /// Highest (altitude + blocking) height over the whole map, in altitude units.
+        /// Maintained by RecomputeAll and RecomputeDirty; 0 for a freshly constructed instance.
+        /// </summary>
+        public float GlobalMaxHeight { get; private set; }
+
         public HeightfieldMetadata(int width, int height, int chunkSize = DefaultChunkSize)
         {
             Width = width;
@@ -30,6 +54,80 @@ namespace Perpetuum.Zones.Terrains
 
             _minHeights = new float[ChunksX * ChunksY];
             _maxHeights = new float[ChunksX * ChunksY];
+            _dirtyChunks = new BitArray(ChunksX * ChunksY);
+        }
+
+        public bool HasDirtyChunks => _dirtyCount > 0;
+
+        public int DirtyChunkCount => _dirtyCount;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void MarkDirtyTile(int tileX, int tileY)
+        {
+            if (tileX < 0 || tileX >= Width || tileY < 0 || tileY >= Height)
+                return;
+
+            MarkDirtyChunk(tileX / ChunkSize, tileY / ChunkSize);
+        }
+
+        public void MarkDirtyArea(Area area)
+        {
+            if (area.X2 < 0 || area.Y2 < 0 || area.X1 >= Width || area.Y1 >= Height)
+                return;
+
+            int x2 = Math.Min(area.X2, Width - 1);
+            int y2 = Math.Min(area.Y2, Height - 1);
+
+            int cy1 = Math.Max(0, area.Y1 / ChunkSize);
+            int cx1 = Math.Max(0, area.X1 / ChunkSize);
+
+            for (int cy = cy1; cy <= y2 / ChunkSize; cy++)
+            {
+                for (int cx = cx1; cx <= x2 / ChunkSize; cx++)
+                {
+                    MarkDirtyChunk(cx, cy);
+                }
+            }
+        }
+
+        private void MarkDirtyChunk(int chunkX, int chunkY)
+        {
+            int idx = GetChunkIndex(chunkX, chunkY);
+            if (!_dirtyChunks[idx])
+            {
+                _dirtyChunks[idx] = true;
+                _dirtyCount++;
+            }
+        }
+
+        /// <summary>
+        /// Re-bakes every dirty chunk and clears the dirty flags. Returns the number of chunks
+        /// re-baked, so callers can skip the scan entirely when nothing is dirty.
+        /// </summary>
+        public int RecomputeDirty(AltitudeLayer altitudeLayer, ILayer<BlockingInfo> blockingLayer = null)
+        {
+            if (_dirtyCount == 0)
+                return 0;
+
+            int recomputed = 0;
+            for (int cy = 0; cy < ChunksY; cy++)
+            {
+                for (int cx = 0; cx < ChunksX; cx++)
+                {
+                    int idx = GetChunkIndex(cx, cy);
+                    if (!_dirtyChunks[idx])
+                        continue;
+
+                    RecomputeChunk(cx, cy, altitudeLayer, blockingLayer);
+                    _dirtyChunks[idx] = false;
+                    _dirtyCount--;
+                    recomputed++;
+                }
+            }
+
+            GlobalMaxHeight = ComputeGlobalMax();
+
+            return recomputed;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -86,6 +184,24 @@ namespace Perpetuum.Zones.Terrains
                     RecomputeChunk(cx, cy, altitudeLayer, blockingLayer);
                 }
             }
+
+            _dirtyChunks.SetAll(false);
+            _dirtyCount = 0;
+            GlobalMaxHeight = ComputeGlobalMax();
+        }
+
+        private float ComputeGlobalMax()
+        {
+            float max = 0;
+            foreach (float h in _maxHeights)
+            {
+                if (h > max)
+                {
+                    max = h;
+                }
+            }
+
+            return max;
         }
 
         public void RecomputeChunk(int chunkX, int chunkY, AltitudeLayer altitudeLayer, ILayer<BlockingInfo> blockingLayer = null)

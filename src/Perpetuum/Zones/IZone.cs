@@ -39,6 +39,14 @@ namespace Perpetuum.Zones
         Player GetPlayer(long eid);
 
         ITerrain Terrain { get; }
+
+        /// <summary>
+        /// Chunk bounding metadata over the terrain altitude and blocking layers, baked when the
+        /// terrain is assigned and kept fresh by the zone update loop. Null when the zone has no
+        /// terrain; consumers must treat dirty chunks as untrusted (see HeightfieldMetadata).
+        /// </summary>
+        [CanBeNull]
+        HeightfieldMetadata Heightfield { get; }
         CorporationHandler CorporationHandler { get; }
         IPlantHandler PlantHandler { get; }
         IBeamService Beams { get; }
