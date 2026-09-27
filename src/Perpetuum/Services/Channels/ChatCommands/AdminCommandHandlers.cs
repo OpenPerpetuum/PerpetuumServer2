@@ -5,6 +5,7 @@ using Perpetuum.Services.RiftSystem;
 using Perpetuum.Services.Weather;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Locking.Locks;
+using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
 using Perpetuum.Zones.Teleporting.Strategies;
 using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials.Plants;
@@ -694,6 +695,28 @@ namespace Perpetuum.Services.Channels.ChatCommands
             CheckZoneId(data, zoneId);
             IZone zone = data.Request.Session.ZoneMgr.GetZone(zoneId);
             SendMessageToAll(data, $"Weather set {zone.Weather.GetCurrentWeather()}");
+        }
+        [ChatCommand("GetRoamingMode")]
+        public static void GetRoamingMode(AdminCommandData data)
+        {
+            SendMessageToAll(data, $"RoamingMode is {RoamingState.Mode}");
+        }
+        [ChatCommand("SetRoamingMode")]
+        public static void SetRoamingMode(AdminCommandData data)
+        {
+            RoamingState.RoamingMode mode = RoamingState.RoamingMode.Default;
+            bool err = false;
+            if (!data.Command.Args.IsNullOrEmpty())
+            {
+                err = !RoamingState.RoamingMode.TryParse(data.Command.Args[0], out mode);
+            }
+            if (err)
+            {
+                SendMessageToAll(data, $"Bad RoamingMode!");
+                throw PerpetuumException.Create(ErrorCodes.RequiredArgumentIsNotSpecified);
+            }
+            RoamingState.Mode = mode;
+            SendMessageToAll(data, $"RoamingMode set {RoamingState.Mode}");
         }
         #endregion
         #region DevCommands
