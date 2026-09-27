@@ -44,6 +44,12 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             MathHelper.NormalizeDirection(ref _direction);
 
             var farPosition = startNode.position.OffsetInDirection(_direction, rangeMax);
+            if (!_zone.Size.Contains(farPosition))
+            {
+                presence.Log($"far position outside the zone: ({farPosition}), current roaming position: ({presence.CurrentRoamingPosition}).");
+                _direction = FastRandom.NextDouble();
+                return presence.CurrentRoamingPosition;
+            }
 
             Node currentNode;
             while (pq.TryDequeue(out currentNode))

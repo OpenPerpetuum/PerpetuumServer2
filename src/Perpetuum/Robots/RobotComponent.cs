@@ -130,7 +130,7 @@ namespace Perpetuum.Robots
 
         public ErrorCodes CanEquipModule(Module module, int slot, int robotDefinition = 0)
         {
-            return IsRobotAllowed(module, robotDefinition)
+            return IsRobotNotAllowed(module, robotDefinition)
                 ? ErrorCodes.NotAllowedOnThisBot
                 : IsUsedSlot(slot)
                     ? ErrorCodes.UsedSlot
@@ -145,7 +145,7 @@ namespace Perpetuum.Robots
                                     : ErrorCodes.NoError;
         }
 
-        private bool IsRobotAllowed(Module module, int robotDefinition = 0)
+        private bool IsRobotNotAllowed(Module module, int robotDefinition = 0)
         {
             return module.ED.Options.AllowedBots.Length > 0 && !module.ED.Options.AllowedBots.Contains(robotDefinition);
         }
