@@ -375,7 +375,21 @@ namespace Perpetuum.Zones.NpcSystem.AI
         {
             UnitLock[] validLocks = GetValidLocks();
 
-            return validLocks.Length >= 1 && (stratSelector?.TryUseStrategy(smartCreature, validLocks) ?? false);
+            if (validLocks.Length < 1)
+            {
+                return false;
+            }
+
+            return TryPriorityStrategy(validLocks) || (stratSelector?.TryUseStrategy(smartCreature, validLocks) ?? false);
+        }
+
+        // Hook for subclasses that need a target choice to override the weighted strategy
+        // selection deterministically (e.g. a sentry turret prioritizing its command robot's
+        // primary-locked target) rather than merely biasing it. Returns false by default, in
+        // which case the weighted selector runs exactly as before.
+        protected virtual bool TryPriorityStrategy(UnitLock[] validLocks)
+        {
+            return false;
         }
 
         private List<Point> FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)

@@ -1,9 +1,13 @@
 ﻿using Perpetuum.EntityFramework;
 using Perpetuum.Players;
+using Perpetuum.Services.RiftSystem;
 using Perpetuum.Services.Standing;
 using Perpetuum.Units;
+using Perpetuum.Zones.Eggs;
+using Perpetuum.Zones.Gates;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.NpcSystem;
+using Perpetuum.Zones.Teleporting;
 using System;
 
 namespace Perpetuum.Zones.RemoteControl
@@ -14,6 +18,8 @@ namespace Perpetuum.Zones.RemoteControl
             : base(standingHandler)
         {
         }
+
+        public bool IsInGuardRange => CommandRobot.CurrentPosition.IsInRangeOf2D(CurrentPosition, GuardRange);
 
         public override void AcceptVisitor(IEntityVisitor visitor)
         {
@@ -51,6 +57,46 @@ namespace Perpetuum.Zones.RemoteControl
         internal override bool IsHostile(SentryTurret turret)
         {
             return !(turret.CommandRobot is Player player) || IsHostilePlayer(player);
+        }
+
+        internal override bool IsHostile(IndustrialDrone drone)
+        {
+            return !(drone.CommandRobot is Player player) || IsHostilePlayer(player);
+        }
+
+        internal override bool IsHostile(SupportDrone drone)
+        {
+            return !(drone.CommandRobot is Player player) || IsHostilePlayer(player);
+        }
+
+        internal override bool IsHostile(Rift rift)
+        {
+            return true;
+        }
+
+        internal override bool IsHostile(Gate gate)
+        {
+            return true;
+        }
+
+        internal override bool IsHostile(AreaBomb bomb)
+        {
+            return true;
+        }
+
+        internal override bool IsHostile(IndustrialTurret turret)
+        {
+            return !(turret.CommandRobot is Player player) || IsHostilePlayer(player);
+        }
+
+        internal override bool IsHostile(Portal portal)
+        {
+            return true;
+        }
+
+        internal override bool IsHostile(MobileTeleport teleport)
+        {
+            return true;
         }
 
         protected override void UpdateUnitVisibility(Unit target)

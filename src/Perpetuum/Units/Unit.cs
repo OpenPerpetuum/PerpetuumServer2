@@ -970,6 +970,7 @@ namespace Perpetuum.Units
 
                     break;
                 case AggregateField.drone_amplification_core_recharge_time_modifier:
+                case AggregateField.turret_amplification_core_recharge_time_modifier:
                     _coreRechargeTime.Update();
 
                     break;
@@ -1063,6 +1064,7 @@ namespace Perpetuum.Units
                 AggregateField.core_recharge_time,
                 AggregateField.core_recharge_time_modifier,
                 AggregateField.drone_amplification_core_recharge_time_modifier,
+                AggregateField.turret_amplification_core_recharge_time_modifier,
                 AggregateField.effect_core_recharge_time_modifier);
             AddProperty(_coreRechargeTime);
 

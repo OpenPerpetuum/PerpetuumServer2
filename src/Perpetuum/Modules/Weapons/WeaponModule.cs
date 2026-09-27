@@ -24,15 +24,19 @@ namespace Perpetuum.Modules.Weapons
             Accuracy = new ModuleProperty(this, AggregateField.accuracy);
             AddProperty(Accuracy);
             Accuracy.AddEffectModifier(AggregateField.drone_amplification_accuracy_modifier);
+            Accuracy.AddEffectModifier(AggregateField.turret_amplification_accuracy_modifier);
             cycleTime
                 .AddEffectModifier(AggregateField.effect_weapon_cycle_time_modifier);
             cycleTime
                 .AddEffectModifier(AggregateField.drone_amplification_cycle_time_modifier);
             cycleTime
+                .AddEffectModifier(AggregateField.turret_amplification_cycle_time_modifier);
+            cycleTime
                 .AddEffectModifier(AggregateField.effect_dreadnought_weapon_cycle_time_modifier);
             DamageModifier = new ModuleProperty(this, AggregateField.damage_modifier);
             AddProperty(DamageModifier);
             DamageModifier.AddEffectModifier(AggregateField.drone_amplification_damage_modifier);
+            DamageModifier.AddEffectModifier(AggregateField.turret_amplification_damage_modifier);
             DamageModifier.AddEffectModifier(AggregateField.drone_remote_command_translation_damage_modifier);
             DamageModifier.AddEffectModifier(AggregateField.effect_dreadnought_weapon_damage_modifier);
         }
@@ -50,6 +54,7 @@ namespace Perpetuum.Modules.Weapons
             switch (field)
             {
                 case AggregateField.drone_amplification_damage_modifier:
+                case AggregateField.turret_amplification_damage_modifier:
                 case AggregateField.drone_remote_command_translation_damage_modifier:
                 case AggregateField.effect_dreadnought_weapon_damage_modifier:
                     {
@@ -58,6 +63,7 @@ namespace Perpetuum.Modules.Weapons
                         return;
                     }
                 case AggregateField.drone_amplification_accuracy_modifier:
+                case AggregateField.turret_amplification_accuracy_modifier:
                     {
                         Accuracy.Update();
 

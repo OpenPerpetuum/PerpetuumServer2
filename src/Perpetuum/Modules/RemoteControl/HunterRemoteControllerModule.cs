@@ -18,10 +18,35 @@ namespace Perpetuum.Modules
     {
         private readonly ModuleProperty detectionRange;
 
+        private readonly ModuleProperty droneLockingTime;
+        private readonly ModuleProperty droneArmorMax;
+        private readonly ModuleProperty droneCoreMax;
+        private readonly ModuleProperty droneCoreRechargeTime;
+        private readonly ModuleProperty droneSpeedMax;
+        private readonly ModuleProperty droneReactorRadiation;
+
         public HunterRemoteControllerModule(CategoryFlags ammoCategoryFlags) : base(ammoCategoryFlags)
         {
             detectionRange = new ModuleProperty(this, AggregateField.detection_range);
             AddProperty(detectionRange);
+
+            droneLockingTime = new ModuleProperty(this, AggregateField.drone_amplification_locking_time_modifier);
+            AddProperty(droneLockingTime);
+
+            droneArmorMax = new ModuleProperty(this, AggregateField.drone_amplification_armor_max_modifier);
+            AddProperty(droneArmorMax);
+
+            droneCoreMax = new ModuleProperty(this, AggregateField.drone_amplification_core_max_modifier);
+            AddProperty(droneCoreMax);
+
+            droneCoreRechargeTime = new ModuleProperty(this, AggregateField.drone_amplification_core_recharge_time_modifier);
+            AddProperty(droneCoreRechargeTime);
+
+            droneSpeedMax = new ModuleProperty(this, AggregateField.drone_amplification_speed_max_modifier);
+            AddProperty(droneSpeedMax);
+
+            droneReactorRadiation = new ModuleProperty(this, AggregateField.drone_amplification_reactor_radiation_modifier);
+            AddProperty(droneReactorRadiation);
         }
 
         protected override void SetupEffect(EffectBuilder effectBuilder)
