@@ -23,6 +23,7 @@ namespace Perpetuum.Modules.Weapons
             MissileFalloffModifier = new ModuleProperty(this, AggregateField.module_missile_falloff_modifier);
             AddProperty(MissileFalloffModifier);
             propertyExplosionRadius.AddEffectModifier(AggregateField.drone_amplification_accuracy_modifier);
+            propertyExplosionRadius.AddEffectModifier(AggregateField.turret_amplification_accuracy_modifier);
         }
 
         public override void AcceptVisitor(IEntityVisitor visitor)
@@ -40,6 +41,7 @@ namespace Perpetuum.Modules.Weapons
                 case AggregateField.explosion_radius:
                 case AggregateField.explosion_radius_modifier:
                 case AggregateField.drone_amplification_accuracy_modifier:
+                case AggregateField.turret_amplification_accuracy_modifier:
                     {
                         propertyExplosionRadius.Update();
                         return;

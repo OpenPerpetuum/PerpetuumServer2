@@ -7,14 +7,13 @@ using Perpetuum.Zones.Eggs;
 using Perpetuum.Zones.Gates;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.NpcSystem;
+using Perpetuum.Zones.NpcSystem.ThreatManaging;
 using Perpetuum.Zones.Teleporting;
 
 namespace Perpetuum.Zones.RemoteControl
 {
     public class CombatDrone : RemoteControlledCreature
     {
-        public double GuardRange { get; set; }
-
         public override bool IsStationary => false;
 
         public CombatDrone(IStandingHandler standingHandler)
@@ -40,6 +39,13 @@ namespace Perpetuum.Zones.RemoteControl
         public override void OnAggression(Unit victim)
         {
             CommandRobot.OnAggression(victim);
+        }
+
+        // CombatDrone targets exclusively via the command robot's primary lock
+        // (see IsDetected/HasCommandBotPrimaryLock below) and never reads ThreatManager.Hostiles,
+        // so body-pull/damage threat is deliberately not tracked here.
+        public override void AddThreat(Unit hostile, Threat threat, bool spreadToGroup)
+        {
         }
 
         public bool HasCommandBotPrimaryLock()

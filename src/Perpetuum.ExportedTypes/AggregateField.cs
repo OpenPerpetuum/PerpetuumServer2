@@ -522,5 +522,23 @@ namespace Perpetuum.ExportedTypes
         self_destruct_config_damage_explosive = 762,
         self_destruct_config_damage_kinetic = 763,
         self_destruct_config_damage_thermal = 764,
+        turret_amplification_damage_modifier = 765,
+        turret_amplification_damage_modifier_modifier = 766,
+        turret_amplification_locking_time_modifier = 767,
+        turret_amplification_locking_time_modifier_modifier = 768,
+        turret_amplification_cycle_time_modifier = 769,
+        turret_amplification_cycle_time_modifier_modifier = 770,
+        turret_amplification_armor_max_modifier = 771,
+        turret_amplification_armor_max_modifier_modifier = 772,
+        turret_amplification_core_max_modifier = 773,
+        turret_amplification_core_max_modifier_modifier = 774,
+        turret_amplification_core_recharge_time_modifier = 775,
+        turret_amplification_core_recharge_time_modifier_modifier = 776,
+        turret_amplification_long_range_modifier = 777,
+        turret_amplification_long_range_modifier_modifier = 778,
+        turret_amplification_accuracy_modifier = 779,
+        turret_amplification_accuracy_modifier_modifier = 780,
+        turret_amplification_reactor_radiation_modifier = 781,
+        turret_amplification_reactor_radiation_modifier_modifier = 782
     }
 }

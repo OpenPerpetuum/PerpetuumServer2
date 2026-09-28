@@ -13,6 +13,13 @@ namespace Perpetuum.Modules
         private readonly ModuleProperty droneMiningAmount;
         private readonly ModuleProperty droneHarvestingAmount;
 
+        private readonly ModuleProperty droneLockingTime;
+        private readonly ModuleProperty droneArmorMax;
+        private readonly ModuleProperty droneCoreMax;
+        private readonly ModuleProperty droneCoreRechargeTime;
+        private readonly ModuleProperty droneSpeedMax;
+        private readonly ModuleProperty droneReactorRadiation;
+
         public IndustrialRemoteControllerModule(CategoryFlags ammoCategoryFlags) : base(ammoCategoryFlags)
         {
             droneMiningAmount = new ModuleProperty(this, AggregateField.drone_amplification_mining_amount_modifier);
@@ -20,6 +27,24 @@ namespace Perpetuum.Modules
 
             droneHarvestingAmount = new ModuleProperty(this, AggregateField.drone_amplification_harvesting_amount_modifier);
             AddProperty(droneHarvestingAmount);
+
+            droneLockingTime = new ModuleProperty(this, AggregateField.drone_amplification_locking_time_modifier);
+            AddProperty(droneLockingTime);
+
+            droneArmorMax = new ModuleProperty(this, AggregateField.drone_amplification_armor_max_modifier);
+            AddProperty(droneArmorMax);
+
+            droneCoreMax = new ModuleProperty(this, AggregateField.drone_amplification_core_max_modifier);
+            AddProperty(droneCoreMax);
+
+            droneCoreRechargeTime = new ModuleProperty(this, AggregateField.drone_amplification_core_recharge_time_modifier);
+            AddProperty(droneCoreRechargeTime);
+
+            droneSpeedMax = new ModuleProperty(this, AggregateField.drone_amplification_speed_max_modifier);
+            AddProperty(droneSpeedMax);
+
+            droneReactorRadiation = new ModuleProperty(this, AggregateField.drone_amplification_reactor_radiation_modifier);
+            AddProperty(droneReactorRadiation);
         }
 
         public override RemoteControlledCreature CreateAndConfigureRcu(RemoteControlledUnit ammo)
