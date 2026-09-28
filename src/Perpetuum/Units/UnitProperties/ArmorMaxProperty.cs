@@ -11,6 +11,7 @@ namespace Perpetuum.Units.UnitProperties
                   AggregateField.armor_max_modifier,
                   AggregateField.effect_armor_max_modifier,
                   AggregateField.drone_amplification_armor_max_modifier,
+                  AggregateField.turret_amplification_armor_max_modifier,
                   AggregateField.drone_remote_command_translation_armor_max_modifier)
         { }
 

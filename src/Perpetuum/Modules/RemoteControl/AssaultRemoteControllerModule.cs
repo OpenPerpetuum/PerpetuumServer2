@@ -15,6 +15,13 @@ namespace Perpetuum.Modules
         private readonly ModuleProperty droneLongRange;
         private readonly ModuleProperty droneAccuracy;
 
+        private readonly ModuleProperty droneLockingTime;
+        private readonly ModuleProperty droneArmorMax;
+        private readonly ModuleProperty droneCoreMax;
+        private readonly ModuleProperty droneCoreRechargeTime;
+        private readonly ModuleProperty droneSpeedMax;
+        private readonly ModuleProperty droneReactorRadiation;
+
         public AssaultRemoteControllerModule(CategoryFlags ammoCategoryFlags) : base(ammoCategoryFlags)
         {
             droneDamage = new ModuleProperty(this, AggregateField.drone_amplification_damage_modifier);
@@ -27,6 +34,24 @@ namespace Perpetuum.Modules
             AddProperty(droneLongRange);
             droneAccuracy = new ModuleProperty(this, AggregateField.drone_amplification_accuracy_modifier);
             AddProperty(droneAccuracy);
+
+            droneLockingTime = new ModuleProperty(this, AggregateField.drone_amplification_locking_time_modifier);
+            AddProperty(droneLockingTime);
+
+            droneArmorMax = new ModuleProperty(this, AggregateField.drone_amplification_armor_max_modifier);
+            AddProperty(droneArmorMax);
+
+            droneCoreMax = new ModuleProperty(this, AggregateField.drone_amplification_core_max_modifier);
+            AddProperty(droneCoreMax);
+
+            droneCoreRechargeTime = new ModuleProperty(this, AggregateField.drone_amplification_core_recharge_time_modifier);
+            AddProperty(droneCoreRechargeTime);
+
+            droneSpeedMax = new ModuleProperty(this, AggregateField.drone_amplification_speed_max_modifier);
+            AddProperty(droneSpeedMax);
+
+            droneReactorRadiation = new ModuleProperty(this, AggregateField.drone_amplification_reactor_radiation_modifier);
+            AddProperty(droneReactorRadiation);
         }
 
         public override RemoteControlledCreature CreateAndConfigureRcu(RemoteControlledUnit ammo)

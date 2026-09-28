@@ -6,7 +6,6 @@ using Perpetuum.Robots;
 using Perpetuum.Services.Standing;
 using Perpetuum.Units;
 using Perpetuum.Zones.NpcSystem;
-using Perpetuum.Zones.NpcSystem.ThreatManaging;
 
 namespace Perpetuum.Zones.RemoteControl
 {
@@ -22,6 +21,8 @@ namespace Perpetuum.Zones.RemoteControl
         public Robot CommandRobot { get; private set; }
 
         public double RemoteChannelBandwidthUsage { get; private set; }
+
+        public double GuardRange { get; set; }
 
         public TimeSpan DespawnTime
         {
@@ -60,10 +61,6 @@ namespace Perpetuum.Zones.RemoteControl
         public void SetBandwidthUsage(double value)
         {
             RemoteChannelBandwidthUsage = value;
-        }
-
-        public override void AddThreat(Unit hostile, Threat threat, bool spreadToGroup)
-        {
         }
 
         public void Scoop()

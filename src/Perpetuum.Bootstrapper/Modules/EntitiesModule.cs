@@ -239,6 +239,7 @@ namespace Perpetuum.Bootstrapper.Modules
             RegisterModule<IndustrialRemoteControllerModule>(builder);
             RegisterModule<SupportRemoteControllerModule>(builder);
             RegisterModule<HunterRemoteControllerModule>(builder);
+            RegisterModule<EngineeringRemoteControllerModule>(builder);
             RegisterModule<TerraformMultiModule>(builder);
             RegisterModule<WallBuilderModule>(builder);
             RegisterModule<ConstructionModule>(builder);
@@ -400,6 +401,7 @@ namespace Perpetuum.Bootstrapper.Modules
                 ByCategoryFlags<RemoteControlledUnit>(CategoryFlags.cf_industrial_drones_units);
                 ByCategoryFlags<RemoteControlledUnit>(CategoryFlags.cf_support_drones_units);
                 ByCategoryFlags<RemoteControlledUnit>(CategoryFlags.cf_hunter_drones_units);
+                ByCategoryFlags<RemoteControlledUnit>(CategoryFlags.cf_sentry_turret_units);
                 ByCategoryFlags<RemoteCommand>(CategoryFlags.cf_remote_commands);
                 ByCategoryFlags<TileScannerAmmo>(CategoryFlags.cf_mining_probe_ammo_tile);
                 ByCategoryFlags<OneTileScannerAmmo>(CategoryFlags.cf_mining_probe_ammo_one_tile);
@@ -501,6 +503,7 @@ namespace Perpetuum.Bootstrapper.Modules
                 ByCategoryFlags<IndustrialRemoteControllerModule>(CategoryFlags.cf_industrial_remote_controllers, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_industrial_drones_units));
                 ByCategoryFlags<SupportRemoteControllerModule>(CategoryFlags.cf_support_remote_controllers, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_support_drones_units));
                 ByCategoryFlags<HunterRemoteControllerModule>(CategoryFlags.cf_hunter_remote_controllers, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_hunter_drones_units));
+                ByCategoryFlags<EngineeringRemoteControllerModule>(CategoryFlags.cf_engineering_remote_controllers, new NamedParameter("ammoCategoryFlags", CategoryFlags.cf_sentry_turret_units));
                 ByCategoryFlags<WebberModule>(CategoryFlags.cf_webber);
                 ByCategoryFlags<SensorDampenerModule>(CategoryFlags.cf_sensor_dampeners);
                 ByCategoryFlags<RemoteSensorBoosterModule>(CategoryFlags.cf_remote_sensor_boosters);

@@ -59,6 +59,7 @@ namespace Perpetuum.ExportedTypes
         cf_support_drones = 0x0000000000031101,
         cf_attack_drones = 0x0000000000041101,
         cf_hunter_drones = 0x0000000000051101,
+        cf_sentry_turrets = 0x0000000000061101,
 
         cf_ammo = 0x000000000000000A,
         cf_railgun_ammo = 0x000000000000010A,
@@ -223,6 +224,7 @@ namespace Perpetuum.ExportedTypes
 
         cf_remote_command_translators = 0x00000000050C040F,
         cf_hunter_remote_controllers = 0x00000000060C040F,
+        cf_engineering_remote_controllers = 0x00000000070C040F,
 
         cf_electronic_warfare_equipment = 0x000000000000050F,
         cf_webber = 0x000000000001050F,
@@ -618,7 +620,6 @@ namespace Perpetuum.ExportedTypes
         cf_gate = 0x0000000000000A92,
         cf_rifts = 0x0000000000000B92,
         cf_portals = 0x0000000000000C92,
-        cf_sentry_turrets = 0x0000000000000D92,
         cf_mining_turrets = 0x0000000000000E92,
         cf_harvesting_turrets = 0x0000000000000F92,
         cf_combat_drones = 0x0000000000001092,

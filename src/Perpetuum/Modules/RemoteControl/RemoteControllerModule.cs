@@ -23,13 +23,7 @@ namespace Perpetuum.Modules
         private readonly ModuleProperty bandwidthMax;
         private readonly ModuleProperty operationalRange;
         private readonly ModuleProperty lifetime;
-        private readonly ModuleProperty droneLockingTime;
-        private readonly ModuleProperty droneArmorMax;
-        private readonly ModuleProperty droneCoreMax;
-        private readonly ModuleProperty droneCoreRechargeTime;
-        private readonly ModuleProperty droneSpeedMax;
-        private readonly ModuleProperty droneReactorRadiation;
-
+        
         private BandwidthHandler bandwidthHandler;
 
         public double BandwidthMax => bandwidthMax.Value;
@@ -50,24 +44,6 @@ namespace Perpetuum.Modules
 
             lifetime = new ModuleProperty(this, AggregateField.remote_control_lifetime);
             AddProperty(lifetime);
-
-            droneLockingTime = new ModuleProperty(this, AggregateField.drone_amplification_locking_time_modifier);
-            AddProperty(droneLockingTime);
-
-            droneArmorMax = new ModuleProperty(this, AggregateField.drone_amplification_armor_max_modifier);
-            AddProperty(droneArmorMax);
-
-            droneCoreMax = new ModuleProperty(this, AggregateField.drone_amplification_core_max_modifier);
-            AddProperty(droneCoreMax);
-
-            droneCoreRechargeTime = new ModuleProperty(this, AggregateField.drone_amplification_core_recharge_time_modifier);
-            AddProperty(droneCoreRechargeTime);
-
-            droneSpeedMax = new ModuleProperty(this, AggregateField.drone_amplification_speed_max_modifier);
-            AddProperty(droneSpeedMax);
-
-            droneReactorRadiation = new ModuleProperty(this, AggregateField.drone_amplification_reactor_radiation_modifier);
-            AddProperty(droneReactorRadiation);
 
             InitBandwidthHandler(this);
         }
@@ -122,7 +98,6 @@ namespace Perpetuum.Modules
             SyncRemoteChannels();
             RemoteControlledUnit ammo = GetAmmo() as RemoteControlledUnit;
             HasFreeBandwidthFor(ammo).ThrowIfFalse(ErrorCodes.MaxBandwidthExceed);
-            Position targetPosition = GetSpawnPosition(ParentRobot.CurrentPosition);
             Player player = ParentRobot is Player robotAsPlayer
                 ? robotAsPlayer
                 : null;
@@ -144,6 +119,9 @@ namespace Perpetuum.Modules
             UseRemoteChannel(remoteControlledCreature);
             remoteControlledCreature.DespawnTime = TimeSpan.FromMilliseconds(lifetime.Value);
             remoteControlledCreature.SetGroup(bandwidthHandler);
+            Position targetPosition = remoteControlledCreature.IsStationary
+                ? ParentRobot.CurrentPosition
+                : GetSpawnPosition(ParentRobot.CurrentPosition);
             ClosestWalkablePositionFinder finder = new ClosestWalkablePositionFinder(Zone, targetPosition);
             Position position = finder.FindOrThrow();
             remoteControlledCreature.HomePosition = position;

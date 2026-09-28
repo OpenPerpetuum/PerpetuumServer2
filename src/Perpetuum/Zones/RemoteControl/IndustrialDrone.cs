@@ -21,8 +21,6 @@ namespace Perpetuum.Zones.RemoteControl
         {
         }
 
-        public double GuardRange { get; set; }
-
         public TurretType TurretType { get; private set; }
 
         public override bool IsStationary => false;

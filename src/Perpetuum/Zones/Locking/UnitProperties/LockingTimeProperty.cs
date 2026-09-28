@@ -14,7 +14,8 @@ namespace Perpetuum.Zones.Locking.UnitProperties
                 AggregateField.effect_sensor_booster_locking_time_modifier,
                 AggregateField.effect_sensor_dampener_locking_time_modifier,
                 AggregateField.effect_locking_time_modifier,
-                AggregateField.drone_amplification_locking_time_modifier)
+                AggregateField.drone_amplification_locking_time_modifier,
+                AggregateField.turret_amplification_locking_time_modifier)
         { }
 
         protected override double CalculateValue()
