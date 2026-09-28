@@ -47,12 +47,6 @@ test-smoke: ## Run the end-to-end smoke test (tier 1) against the docker server 
 check-assets: ## Verify presence and integrity of assets listed in manifest
 	python3 ./script/check_assets.py --check-sizes
 
-cli: ## Run the CLI client in a container (connect, login, character select)
-	./script/cli.sh $(ARGS)
-
-create-account: ## Create a new account with optional admin privileges (interactive or EMAIL=... PASSWORD=... ADMIN=true/false)
-	./script/create-account.sh $(ARGS)
-
-.PHONY: help up start stop down delete restart reset clean-cache log-asset log-db log-server test-smoke test-unit test-integration check-assets extract-models cli create-account
+.PHONY: help up start stop down delete restart reset clean-cache log-asset log-db log-server test-smoke test-unit test-integration check-assets extract-models
 
 

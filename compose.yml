@@ -104,8 +104,6 @@ services:
     environment:
       GameRoot: ${GAME_ROOT}
       DistributedTransactions: ${DISTRIBUTED_TRANSACTIONS}
-      # .NET 8 DATAS: dynamically scales GC heaps to reduce idle memory usage
-      DOTNET_GCDynamicAdaptationMode: 1
     depends_on:
       migration:
         condition: service_completed_successfully

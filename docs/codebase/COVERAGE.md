@@ -27,8 +27,7 @@ Measurements were performed inside the SDK test container using `dotnet-coverage
 
 | Project / Assembly | Line Coverage | Branch Coverage | Source Files | Lines of Code | Description / Coverage Focus |
 |---|---|---|---|---|---|
-| `Perpetuum` | **11.0%** | **4.4%** | 1,337 files | ~142,800 | Core domain logic. Covered areas: geometry (`Area`, `PointExtensions`), SIMD math (`SimdMath`), data access fakes (`Db`, `DbQuery`), logging, bitmaps/layers. |
-| `Perpetuum.CliClient` | **19.4%** | **15.0%** | 17 files | ~2,880 | CLI client helper commands, connection activity, authentication protocols. |
+| `Perpetuum` | **11.0%** | **4.4%** | 1,337 files | ~142,800 | Core domain logic. Covered areas: geometry (`Area`, `PointExtensions`), data access fakes (`Db`, `DbQuery`), logging, bitmaps/layers. |
 | `Perpetuum.RequestHandlers` | **0.4%** | **0.0%** | 585 files | ~26,500 | 200+ command handlers. Largely untested in isolation at the unit level; orchestrate zone/service logic. |
 | `Perpetuum.ExportedTypes` | **0.0%** | **0.0%** | 14 files | ~7,670 | Enums, category flags, definition IDs, aggregate field constants. Declarative data without complex logic. |
 | `Perpetuum.Bootstrapper` | **0.0%** | **0.0%** | 24 files | ~3,430 | Autofac dependency injection modules and container bootstrap wiring. |
@@ -49,10 +48,10 @@ Measurements were performed inside the SDK test container using `dotnet-coverage
 ## Subsystem Coverage Map
 
 ### Well-Covered Subsystems (>80% coverage)
-- **Math & Spatial Utilities:** `Area`, `SimdMath`, `PointExtensions`, `SizeExtensions`, `CompactPassabilityMask`, `SpatialCollectionsSkia`.
+- **Math & Spatial Utilities:** `Area`, `PointExtensions`, `SizeExtensions`, `SpatialCollectionsSkia`.
 - **Data Query Abstraction:** `DbQuery`, `DbConnectionManager`, `ConnectionStringSupport`, recording fake ADO.NET providers.
 - **Guard & Validation Extensions:** `Guard.cs`, `ValueTypeExtensions.cs`.
-- **Image & Layer Utilities:** `BitmapExtensions`, `BinaryStreamSkia`, `LayerExtensions`, `HeightfieldMetadata`.
+- **Image & Layer Utilities:** `BitmapExtensions`, `BinaryStreamSkia`, `LayerExtensions`.
 - **Known Regression Guards:** `Issue033EmptyFlockTests`, `Issue039InsuranceTransactionTests`.
 
 ### Untested Subsystems (0% - 5% coverage)

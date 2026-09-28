@@ -112,11 +112,6 @@ namespace Perpetuum.Zones
                 return losResult;
             }
 
-            if (RayPassesAboveAllCrossedChunks(zone, origin, direction, distance))
-            {
-                return LOSResult.None;
-            }
-
             var lastAltitude = zone.Terrain.Altitude.GetAltitudeAsDouble(origin) + 2;
 
             var lx = (int) origin.X;
@@ -168,80 +163,6 @@ namespace Perpetuum.Zones
             }
 
             return LOSResult.None;
-        }
-
-        /// <summary>
-        /// Coarse pre-check: walks the chunk grid the ray crosses (Amanatides &amp; Woo) and reports
-        /// whether every crossed chunk is provably below the ray, so the per-tile loop below can be
-        /// skipped entirely. The per-tile check can raise a tile's effective blocking height above
-        /// its raw (altitude + block) by at most 0.1 * (highest terrain in the zone + 2) through
-        /// neighbor-tile smoothing (see GetAltitude), so a chunk is only trusted when the ray's
-        /// lowest point clears its max height by that margin. Ballistic arcs only add height, so
-        /// the linear min Z bounds the whole ray. Skipped entirely while any chunk is dirty, when
-        /// the bounds may be stale in either direction.
-        /// </summary>
-        private static bool RayPassesAboveAllCrossedChunks(IZone zone, Vector3 origin, Vector3 direction, float distance)
-        {
-            var heightfield = zone.Heightfield;
-            if (heightfield == null || heightfield.HasDirtyChunks)
-            {
-                return false;
-            }
-
-            float endZ = origin.Z + (float)(direction.Z * distance);
-            float minZ = Math.Min(origin.Z, endZ);
-            float clearance = minZ - (float)(0.1 * (heightfield.GlobalMaxHeight + 2.0));
-
-            int stepX = direction.X >= 0 ? 1 : -1;
-            int stepY = direction.Y >= 0 ? 1 : -1;
-            int size = heightfield.ChunkSize;
-
-            int chunkX = (int) (origin.X / size);
-            int chunkY = (int) (origin.Y / size);
-            float tMaxX = NextChunkBoundary(origin.X, direction.X, chunkX, size, stepX);
-            float tMaxY = NextChunkBoundary(origin.Y, direction.Y, chunkY, size, stepY);
-            float tDeltaX = direction.X != 0 ? size / Math.Abs(direction.X) : float.PositiveInfinity;
-            float tDeltaY = direction.Y != 0 ? size / Math.Abs(direction.Y) : float.PositiveInfinity;
-
-            while (true)
-            {
-                if (!heightfield.CanRayPassAboveChunk(chunkX, chunkY, clearance))
-                {
-                    return false;
-                }
-
-                if (tMaxX < tMaxY)
-                {
-                    chunkX += stepX;
-                    if (tMaxX > distance)
-                    {
-                        return true;
-                    }
-
-                    tMaxX += tDeltaX;
-                }
-                else
-                {
-                    chunkY += stepY;
-                    if (tMaxY > distance)
-                    {
-                        return true;
-                    }
-
-                    tMaxY += tDeltaY;
-                }
-            }
-        }
-
-        private static float NextChunkBoundary(float coordinate, float direction, int chunk, int size, int step)
-        {
-            if (direction == 0)
-            {
-                return float.PositiveInfinity;
-            }
-
-            float boundary = step > 0 ? (chunk + 1) * (float) size - coordinate : chunk * (float) size - coordinate;
-            return boundary / direction;
         }
 
         private static double GetAltitude(IZone zone,Vector3 position,ref double lastAltitude)
