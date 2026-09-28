@@ -5,6 +5,7 @@ using Perpetuum.Units;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Effects.ZoneEffects;
 using Perpetuum.Zones.Terrains;
+using Perpetuum.Tests.Infrastructure;
 using System;
 using System.Collections.Generic;
 using Xunit;
@@ -15,8 +16,10 @@ namespace Perpetuum.Tests.Unit
     /// Covers the idle throttle in Zone.Update: when no players are in the zone, units are
     /// updated once per idle second and must receive the accumulated elapsed time, otherwise
     /// every elapsed/timer-driven system inside a unit (cooldowns, movement, recharge, AI)
-    /// runs at a fraction of real speed.
+    /// runs at a fraction of real speed. In the statics collection because it mutates the
+    /// process-wide ZoneIdleThrottling flag, shared with IdleThrottleAdminCommandTests.
     /// </summary>
+    [Collection(PerpetuumStaticsCollection.Name)]
     public class ZoneIdleThrottlingTests
     {
         private static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(200);

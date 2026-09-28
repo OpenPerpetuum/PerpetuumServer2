@@ -230,7 +230,6 @@ namespace Perpetuum.Bootstrapper.Modules
             _ = RegisterRequestHandler<ExtensionResetCharacter>(builder, Commands.ExtensionResetCharacter);
             _ = RegisterRequestHandler<ExtensionFreeLockedEp>(builder, Commands.ExtensionFreeLockedEp);
             _ = RegisterRequestHandler<ExtensionFreeAllLockedEpByCommand>(builder, Commands.ExtensionFreeAllLockedEpCommand); // For GameAdmin Channel Command
-            _ = RegisterRequestHandler<ZoneIdleThrottleSet>(builder, Commands.ZoneIdleThrottleSet); // For GameAdmin Channel Command
             _ = RegisterRequestHandler<ExtensionGive>(builder, Commands.ExtensionGive);
             _ = RegisterRequestHandler<ExtensionReset>(builder, Commands.ExtensionReset);
             _ = RegisterRequestHandler<ExtensionRevert>(builder, Commands.ExtensionRevert);
