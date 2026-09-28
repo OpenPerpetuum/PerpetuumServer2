@@ -3,6 +3,7 @@ using Perpetuum.Common.Loggers;
 using Perpetuum.Groups.Corporations;
 using Perpetuum.Log;
 using Perpetuum.Players;
+using Perpetuum.Services.PathFind;
 using Perpetuum.Services.Relics;
 using Perpetuum.Services.Weather;
 using Perpetuum.Units;
@@ -31,6 +32,7 @@ namespace Perpetuum.Zones
 
         IEnumerable<Unit> Units { get; }
         IEnumerable<Player> Players { get; }
+        bool FreeFromPlayers { get; }
 
         [CanBeNull]
         Unit GetUnit(long eid);
@@ -66,6 +68,8 @@ namespace Perpetuum.Zones
         IZoneEnterQueueService EnterQueueService { get; }
 
         ILogger<ChatLogEvent> ChatLogger { get; }
+
+        IPathFindService PathFindService { get; }
 
         void AddUnit(Unit unit);
         void RemoveUnit(Unit unit);

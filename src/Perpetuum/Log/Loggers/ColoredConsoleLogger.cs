@@ -3,6 +3,7 @@ namespace Perpetuum.Log.Loggers
     public class ColoredConsoleLogger : ConsoleLogger<LogEvent>
     {
         private readonly ConsoleColor _defaultColor = Console.ForegroundColor;
+        private readonly object _lock = new object();
 
         public ColoredConsoleLogger(ILogEventFormatter<LogEvent, string> formatter) : base(formatter)
         {
@@ -10,30 +11,27 @@ namespace Perpetuum.Log.Loggers
 
         public override void Log(LogEvent logEvent)
         {
-            try
+            var message = _formatter.Format(logEvent);
+
+            lock (_lock)
             {
-                switch (logEvent.LogType)
+                try
                 {
-                    case LogType.Warning:
-                        {
+                    switch (logEvent.LogType)
+                    {
+                        case LogType.Warning:
                             Console.ForegroundColor = ConsoleColor.Yellow;
                             break;
-                        }
-                    case LogType.Error:
-                        {
-                            {
-                                Console.ForegroundColor = ConsoleColor.Red;
-                                //Console.Beep(4000, 30); I HAET U GOU OWEI
-                                break;
-                            }
-                        }
+                        case LogType.Error:
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            break;
+                    }
+                    Console.Out.WriteLine(message);
                 }
-
-                base.Log(logEvent);
-            }
-            finally
-            {
-                Console.ForegroundColor = _defaultColor;
+                finally
+                {
+                    Console.ForegroundColor = _defaultColor;
+                }
             }
         }
     }

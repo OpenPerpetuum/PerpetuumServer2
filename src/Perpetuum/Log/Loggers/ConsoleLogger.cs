@@ -4,7 +4,7 @@ namespace Perpetuum.Log.Loggers
 {
     public class ConsoleLogger<T> : ILogger<T> where T : ILogEvent
     {
-        private readonly ILogEventFormatter<T,string> _formatter;
+        protected readonly ILogEventFormatter<T,string> _formatter;
 
         public ConsoleLogger(ILogEventFormatter<T,string> formatter)
         {

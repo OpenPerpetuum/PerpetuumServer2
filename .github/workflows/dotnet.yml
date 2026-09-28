@@ -18,9 +18,9 @@ jobs:
       Workspace: ${{ github.workspace }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
@@ -28,7 +28,7 @@ jobs:
     - name: Build
       run: dotnet build src/Perpetuum.ServerService2/Perpetuum.ServerService2.csproj --no-restore --configuration Release --verbosity quiet -p:Platform=x64
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: Perpetuum-Server-v2-${{ github.sha }}
         path: ${{ env.Workspace }}/bin/x64/Release/net8.0
@@ -39,9 +39,9 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
@@ -57,9 +57,9 @@ jobs:
       Workspace: ${{ github.workspace }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
@@ -67,7 +67,7 @@ jobs:
     - name: Build AdminTool installer
       run: dotnet build src/Perpetuum.AdminToolInstaller/Perpetuum.AdminToolInstaller.wixproj --no-restore --configuration Release --verbosity quiet -p:Platform=x64
     - name: Upload AdminTool installer
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: Perpetuum-AdminTool-Installer-${{ github.sha }}
         path: ${{ env.Workspace }}/src/Perpetuum.AdminToolInstaller/bin/x64/Release/en-US/*.msi
@@ -82,10 +82,10 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Setup .NET 10 (graphify tool requirement)
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 10.0.x
 

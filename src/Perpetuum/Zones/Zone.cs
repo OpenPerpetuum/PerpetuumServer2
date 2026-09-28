@@ -7,6 +7,7 @@ using Perpetuum.Log;
 using Perpetuum.Network;
 using Perpetuum.Players;
 using Perpetuum.Services.HighScores;
+using Perpetuum.Services.PathFind;
 using Perpetuum.Services.Relics;
 using Perpetuum.Services.RiftSystem;
 using Perpetuum.Services.Sessions;
@@ -82,6 +83,7 @@ namespace Perpetuum.Zones
         public HarvestLogHandler HarvestLogHandler { get; set; }
         public ZoneSession.Factory ZoneSessionFactory { get; set; }
         public IZoneEffectHandler ZoneEffectHandler { get; set; }
+        public IPathFindService PathFindService { get; set; }
 
         [CanBeNull]
         public IRiftManager RiftManager { private get; set; }
@@ -333,6 +335,9 @@ namespace Perpetuum.Zones
 
         public IEnumerable<Player> Players => _players.Values;
 
+        private readonly IntervalTimer _timerLastPlayer = new IntervalTimer(TimeSpan.FromMinutes(15), false);
+        public bool FreeFromPlayers { get; set; } = true;
+
         public Unit GetUnit(long eid)
         {
             return _units.GetValueOrDefault(eid);
@@ -362,6 +367,7 @@ namespace Perpetuum.Zones
         public override void Update(TimeSpan time)
         {
             UpdateHeightfield();
+            UpdatePlayerPresence(time);
             UpdateSessions(time);
 
             // Throttle unit physics, AI, and visibility processing when no players are in the zone.
@@ -407,6 +413,42 @@ namespace Perpetuum.Zones
             }
 
             heightfield.RecomputeDirty(terrain.Altitude, terrain.Blocks);
+        }
+
+        /// <summary>
+        /// Checks for the presence of players on the field.
+        /// </summary>
+        /// <param name="time"></param>
+        private void UpdatePlayerPresence(TimeSpan time)
+        {
+            if (FreeFromPlayers)
+            {
+                // There are no players, but if someone comes out, we’ll change the flag.
+                if (!Players.IsNullOrEmpty())
+                {
+                    _timerLastPlayer.Reset();
+                    Logger.Info($"Zone: {Id} - player enter o/");
+                    FreeFromPlayers = false;
+                }
+            }
+            else
+            {
+                // We get here if the flag indicates that there are players.
+                if (Players.IsNullOrEmpty())
+                {
+                    // If no one is around, time is ticking away.
+                    _timerLastPlayer.Update(time).IsPassed(() =>
+                    {
+                        Logger.Info($"Zone: {Id} - free from players.");
+                        FreeFromPlayers = true;
+                    });
+                }
+                else
+                {
+                    // If someone is on the field, we reset the timer.
+                    _timerLastPlayer.Reset();
+                }
+            }
         }
 
         private void UpdateUnits(TimeSpan time)

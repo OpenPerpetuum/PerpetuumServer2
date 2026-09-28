@@ -5,6 +5,16 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
 {
     public class RoamingState : NullRoamingState
     {
+        public enum RoamingMode
+        {
+            Default = 0,
+            Off,
+            Player,
+            Timer
+        }
+
+        public static RoamingMode Mode = RoamingMode.Default;
+
         public RoamingState(IRoamingPresence presence) : base(presence)
         {
         }
@@ -26,6 +36,26 @@ namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
             if (IsAllNotIdle(members))
             {
                 return;
+            }
+
+            switch (Mode)
+            {
+                case RoamingMode.Off:
+                    return;
+                case RoamingMode.Player:
+                    if (_presence.Zone.Players.IsNullOrEmpty())
+                    {
+                        return;
+                    }
+                    break;
+                case RoamingMode.Timer:
+                    if (_presence.Zone.FreeFromPlayers)
+                    {
+                        return;
+                    }
+                    break;
+                default:
+                    break;
             }
 
             RunTask(() => FindNextRoamingPosition(), t => { });
