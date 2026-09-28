@@ -374,9 +374,10 @@ namespace Perpetuum.Zones
             // Units only receive an update on the throttle tick, so they are handed the
             // accumulated elapsed time: all unit systems are timer/elapsed driven
             // (cooldowns, movement integration, recharge, AI cycles), so passing the full
-            // elapsed keeps them running at real speed.
+            // elapsed keeps them running at real speed. The throttle can be switched off at
+            // runtime (zoneIdleThrottleSet) to measure its CPU savings without a restart.
             TimeSpan unitTime = time;
-            if (_players.IsEmpty)
+            if (_players.IsEmpty && ZoneIdleThrottling.Enabled)
             {
                 _idleUpdateTimer.Update(time);
                 if (!_idleUpdateTimer.Passed)

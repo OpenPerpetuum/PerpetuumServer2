@@ -46,6 +46,43 @@ namespace Perpetuum.Tests.Unit
         }
 
         [Fact]
+        public void Disabling_the_throttle_updates_units_every_tick_and_reenabling_restores_it()
+        {
+            TestZone zone = CreateZone();
+            RecordingUnit unit = new RecordingUnit { Eid = 1 };
+            unit.AddToZone(zone, new Position(0, 0, 0));
+
+            try
+            {
+                ZoneIdleThrottling.Enabled = false;
+
+                for (int i = 0; i < 5; i++)
+                {
+                    zone.Update(Tick);
+                }
+
+                Assert.Equal(5, unit.UpdatedTimes.Count);
+                Assert.All(unit.UpdatedTimes, t => Assert.Equal(Tick, t));
+
+                ZoneIdleThrottling.Enabled = true;
+
+                // The idle timer was not running while the throttle was off, so the first
+                // full idle second after re-enabling produces exactly one throttled update.
+                for (int i = 0; i < 5; i++)
+                {
+                    zone.Update(Tick);
+                }
+
+                Assert.Equal(6, unit.UpdatedTimes.Count);
+                Assert.Equal(TimeSpan.FromSeconds(1), unit.UpdatedTimes[5]);
+            }
+            finally
+            {
+                ZoneIdleThrottling.Enabled = true;
+            }
+        }
+
+        [Fact]
         public void Idle_zone_simulates_real_time_for_units()
         {
             // Regression: units used to receive the raw tick (~200ms) once per second,

@@ -3536,6 +3536,17 @@ namespace Perpetuum
             }
         };
 
+        //GameAdmin Command — runtime on/off for the zone idle throttle (state: 1 = on, 0 = off)
+        public static readonly Command ZoneIdleThrottleSet = new()
+        {
+            Text = "zoneIdleThrottleSet",
+            AccessLevel = AccessLevel.gameAdmin,
+            Arguments =
+            {
+                new Argument<int>(k.state)
+            }
+        };
+
         //GameAdmin Command
         public static readonly Command EPBonusSet = new()
         {
