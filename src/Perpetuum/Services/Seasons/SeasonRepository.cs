@@ -583,9 +583,9 @@ namespace Perpetuum.Services.Seasons
             Db.Query(
                 "INSERT INTO season_objectives " +
                 "(season_id, name, description, activity_type, target_value, " +
-                "bonus_points, display_order, is_daily, package_id, equipment_set_id) " +
+                "bonus_points, display_order, is_daily, package_id, target_definition_id, equipment_set_id) " +
                 "SELECT @newId, name, description, activity_type, target_value, " +
-                "bonus_points, display_order, is_daily, package_id, equipment_set_id " +
+                "bonus_points, display_order, is_daily, package_id, target_definition_id, equipment_set_id " +
                 "FROM season_objectives WHERE season_id = @prevId")
                 .SetParameter("@newId", newId)
                 .SetParameter("@prevId", previous.Id)
