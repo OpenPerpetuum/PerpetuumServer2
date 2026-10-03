@@ -169,6 +169,21 @@ namespace Perpetuum.Services.Channels.ChatCommands
             data.Channel.SetAdmin(false);
             data.Channel.SendMessageToAll(data.SessionManager, data.Sender, "Channel is now public.");
         }
+        [ChatCommand("IdleThrottle")]
+        public static void IdleThrottle(AdminCommandData data)
+        {
+            // #idlethrottle[,true|false] — runtime on/off for the zone idle throttle so its
+            // CPU savings can be measured on a live server without a restart.
+            bool enabled = true;
+            if (data.Command.Args.Length > 0 && !bool.TryParse(data.Command.Args[0], out enabled))
+            {
+                SendMessageToAll(data, "Usage: #idlethrottle[,true|false]");
+                return;
+            }
+
+            ZoneIdleThrottling.Enabled = enabled;
+            SendMessageToAll(data, $"Zone idle throttling {(enabled ? "enabled" : "disabled")}.");
+        }
         [ChatCommand("Shutdown")]
         public static void Shutdown(AdminCommandData data)
         {
