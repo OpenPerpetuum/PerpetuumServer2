@@ -1,13 +1,11 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Drawing;
 using Perpetuum.Log;
 using Perpetuum.Services.EventServices;
 using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Timers;
 using Perpetuum.Zones.Terrains.Materials.Minerals.Actions;
 using Perpetuum.Zones.Terrains.Materials.Minerals.Generators;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains.Materials.Minerals
 {
@@ -81,7 +79,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             RunAction(new GenerateMineralNode(generator));
         }
 
-        public List<MineralNode> GetNodesWithinRange(Point location, int range)
+        public List<MineralNode> GetNodesWithinRange(SKPointI location, int range)
         {
             var area = Area.FromRadius(location.X, location.Y, range);
             return GetNodesByArea(area);
@@ -100,7 +98,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             return nodes;
         }
 
-        public MineralNode GetNearestNode(Point p)
+        public MineralNode GetNearestNode(SKPointI p)
         {
             MineralNode nearestNode = null;
             var nearestDistSq = double.MaxValue;
@@ -199,7 +197,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
         }
 
         [CanBeNull]
-        public MineralNode GetNode(Point p)
+        public MineralNode GetNode(SKPointI p)
         {
             MineralNode node;
             if (!TryGetNode(p, out node))
@@ -208,7 +206,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             return node;
         }
 
-        public bool TryGetNode(Point p, out MineralNode node)
+        public bool TryGetNode(SKPointI p, out MineralNode node)
         {
             return TryGetNode(p.X, p.Y, out node);
         }
@@ -243,7 +241,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             Logger.Info($"Mineral ({_configuration.ZoneId}:{Type}) {message}");
         }
 
-        public bool HasMineral(Point location)
+        public bool HasMineral(SKPointI location)
         {
             var node = GetNode(location);
             if (node == null)

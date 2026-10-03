@@ -1,7 +1,5 @@
 ﻿using Perpetuum.Zones.NpcSystem.AI;
 using Perpetuum.Zones.NpcSystem.Flocks;
-using System;
-using System.Linq;
 
 namespace Perpetuum.Zones.NpcSystem.Presences.PathFinders
 {

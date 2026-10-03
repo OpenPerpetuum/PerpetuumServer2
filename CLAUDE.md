@@ -95,8 +95,9 @@ The `docs/` directory is the authoritative source of truth.
 ## Project Structure
 - `docs/codebase/STRUCTURE.md`
 
-## Testing Constraints
+## Testing & Coverage
 - `docs/codebase/TESTING.md`
+- `docs/codebase/COVERAGE.md`
 
 ---
 

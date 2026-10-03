@@ -21,7 +21,7 @@ namespace Perpetuum.Data
         /// list when the string is usable, absent, or malformed beyond this check — in the last
         /// case the driver's own error is the better explanation and is left to stand.
         /// </summary>
-        public static IReadOnlyList<string> FindUnsupportedKeywords(string connectionString)
+        public static IReadOnlyList<string> FindUnsupportedKeywords(string? connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
             {

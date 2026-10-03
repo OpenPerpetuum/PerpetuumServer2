@@ -1,7 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Drawing;
-using Perpetuum.Builders;
+﻿using Perpetuum.Builders;
 using Perpetuum.Log;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains
 {
@@ -11,7 +10,7 @@ namespace Perpetuum.Zones.Terrains
         private readonly SlopeLayer _slopeLayer;
         private readonly IEnumerable<Position> _startPositions;
 
-        private Size _size;
+        private SKSizeI _size;
 
         public PassableMapBuilder(ILayer<BlockingInfo> blocksLayer,SlopeLayer slopeLayer,IEnumerable<Position> startPositions)
         {
@@ -19,7 +18,7 @@ namespace Perpetuum.Zones.Terrains
             _slopeLayer = slopeLayer;
             _startPositions = startPositions;
 
-            _size = new Size(blocksLayer.Width, blocksLayer.Height);
+            _size = new SKSizeI(blocksLayer.Width, blocksLayer.Height);
         }
 
         public ILayer<bool> Build()

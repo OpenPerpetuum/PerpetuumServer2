@@ -54,15 +54,20 @@ namespace Perpetuum.Zones.Teleporting.Strategies
                     player.RemoveFromZone();
                     player.CurrentSpeed = 0.0;
                     player.AddToZone(zone, validPosition, ZoneEnterType.LocalTeleport);
-                    player.SendInitSelf();
 
-                    if (ApplyTeleportSickness)
+                    // Same entry-snapshot/tick interleaving as zone auth: serialize it.
+                    lock (player.UpdateLock)
                     {
-                        player.ApplyTeleportSicknessEffect();
-                    }
-                    if (ApplyInvulnerable)
-                    {
-                        player.ApplyInvulnerableEffect();
+                        player.SendInitSelf();
+
+                        if (ApplyTeleportSickness)
+                        {
+                            player.ApplyTeleportSicknessEffect();
+                        }
+                        if (ApplyInvulnerable)
+                        {
+                            player.ApplyInvulnerableEffect();
+                        }
                     }
                 }
                 catch (Exception ex)

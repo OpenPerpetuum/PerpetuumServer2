@@ -11,6 +11,7 @@ using Perpetuum.Zones.Terrains.Materials;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
 using Perpetuum.Zones.Terrains.Materials.Minerals.Generators;
 using Perpetuum.Zones.Terrains.Materials.Plants;
+using SkiaSharp;
 
 namespace Perpetuum.Bootstrapper.Modules
 {
@@ -88,7 +89,7 @@ namespace Perpetuum.Bootstrapper.Modules
                 {
                     Terrain terrain = ctx.Resolve<Terrain>();
 
-                    System.Drawing.Size size = zone.Configuration.Size;
+                    SKSizeI size = zone.Configuration.Size;
 
                     ILayerFileIO loader = ctx.Resolve<ILayerFileIO>();
 

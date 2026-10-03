@@ -1,14 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
 using Perpetuum.Collections;
 using Perpetuum.Items;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains.Materials.Minerals
 {
     public class MineralExtractor : MineralLayerVisitor
     {
-        private readonly Point _location;
+        private readonly SKPointI _location;
         private readonly uint _amount;
         private readonly MaterialHelper _materialHelper;
 
@@ -16,7 +14,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
 
         public List<ItemInfo> Items => _items;
 
-        public MineralExtractor(Point location,uint amount,MaterialHelper materialHelper)
+        public MineralExtractor(SKPointI location,uint amount,MaterialHelper materialHelper)
         {
             _location = location;
             _amount = amount;
@@ -48,10 +46,10 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
 
         private struct MineralDistance : IComparable<MineralDistance>
         {
-            public readonly Point location;
+            public readonly SKPointI location;
             private readonly int _sqrDistance;
 
-            public MineralDistance(Point location, int sqrDistance)
+            public MineralDistance(SKPointI location, int sqrDistance)
             {
                 this.location = location;
                 _sqrDistance = sqrDistance;
@@ -79,7 +77,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
                         continue;
 
                     var d = _location.SqrDistance(x, y);
-                    pq.Enqueue(new MineralDistance(new Point(x, y), d));
+                    pq.Enqueue(new MineralDistance(new SKPointI(x, y), d));
                 }
             }
 

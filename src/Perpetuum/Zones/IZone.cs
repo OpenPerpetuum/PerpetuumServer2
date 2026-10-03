@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Drawing;
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Common.Loggers;
 using Perpetuum.Groups.Corporations;
@@ -7,7 +5,6 @@ using Perpetuum.Log;
 using Perpetuum.Players;
 using Perpetuum.Services.PathFind;
 using Perpetuum.Services.Relics;
-using Perpetuum.Services.Strongholds;
 using Perpetuum.Services.Weather;
 using Perpetuum.Units;
 using Perpetuum.Zones.Beams;
@@ -21,6 +18,7 @@ using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials.Plants;
 using Perpetuum.Zones.Terrains.Terraforming;
 using Perpetuum.Zones.ZoneEntityRepositories;
+using SkiaSharp;
 
 namespace Perpetuum.Zones
 {
@@ -30,7 +28,7 @@ namespace Perpetuum.Zones
         bool IsLayerEditLocked { get; set; }
 
         int Id { get; }
-        Size Size { get; }
+        SKSizeI Size { get; }
 
         IEnumerable<Unit> Units { get; }
         IEnumerable<Player> Players { get; }
@@ -43,6 +41,7 @@ namespace Perpetuum.Zones
         Player GetPlayer(long eid);
 
         ITerrain Terrain { get; }
+
         CorporationHandler CorporationHandler { get; }
         IPlantHandler PlantHandler { get; }
         IBeamService Beams { get; }

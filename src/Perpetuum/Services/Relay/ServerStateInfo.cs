@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Perpetuum.Data;
 using Perpetuum.Log;
@@ -93,9 +94,21 @@ namespace Perpetuum.Services.Relay
         public void PostCurrentServerInfoToWebService()
         {
             var serverInfo = GetServerInfo();
-            var data = serverInfo.Serialize();
-            var reply = Http.Post("http://www.perpetuum-online.com/Server_list", data);
-            Logger.DebugInfo(reply);
+            if (serverInfo == null || !serverInfo.IsBroadcast)
+            {
+                return;
+            }
+
+            try
+            {
+                var data = serverInfo.Serialize();
+                var reply = Http.Post("http://www.perpetuum-online.com/Server_list", data);
+                Logger.DebugInfo(reply);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Failed to post server info to web service: {ex.Message}");
+            }
         }
     }
 }

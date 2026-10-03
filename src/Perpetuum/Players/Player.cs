@@ -57,6 +57,7 @@ namespace Perpetuum.Players
         private readonly IBlobEmitter blobEmitter;
         private readonly BlobHandler<Player> blobHandler;
         private readonly PlayerMovement movement;
+        private readonly object _updateLock = new();
         private readonly IntervalTimer combatTimer = new IntervalTimer(TimeSpan.FromSeconds(10));
         private readonly GlobalConfiguration globalConfiguration;
         private CombatLogger combatLogger;
@@ -958,15 +959,25 @@ namespace Perpetuum.Players
             base.OnRemovedFromZone(zone);
         }
 
+        /// <summary>
+        /// Serializes the zone-entry snapshot (SetSession / SendInitSelf / entry effects, which run
+        /// on the socket or threadpool thread) with this player's tick update, so the snapshot is
+        /// never taken from a player that is mid-<see cref="OnUpdate"/>.
+        /// </summary>
+        public object UpdateLock => _updateLock;
+
         protected override void OnUpdate(TimeSpan time)
         {
-            base.OnUpdate(time);
-            UpdateCombat(time);
-            movement.Update(time);
-            blobHandler.Update(time);
-            MissionHandler.Update(time);
-            combatLogger?.Update(time);
-            despawnHelper?.Update(time, this);
+            lock (_updateLock)
+            {
+                base.OnUpdate(time);
+                UpdateCombat(time);
+                movement.Update(time);
+                blobHandler.Update(time);
+                MissionHandler.Update(time);
+                combatLogger?.Update(time);
+                despawnHelper?.Update(time, this);
+            }
         }
 
         private void OnUnitUpdated(Unit unit, UnitUpdatedEventArgs e)

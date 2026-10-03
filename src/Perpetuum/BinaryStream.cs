@@ -1,7 +1,7 @@
 ﻿using Perpetuum.Zones;
 using System.Diagnostics;
-using System.Drawing;
 using System.Text;
+using SkiaSharp;
 
 namespace Perpetuum
 {
@@ -98,11 +98,11 @@ namespace Perpetuum
                 return;
             }
 
-            if (o is Color color)
+            if (o is SKColor color)
             {
-                AppendByte(color.R);
-                AppendByte(color.G);
-                AppendByte(color.B);
+                AppendByte(color.Red);
+                AppendByte(color.Green);
+                AppendByte(color.Blue);
                 return;
             }
 
@@ -168,7 +168,7 @@ namespace Perpetuum
             AppendByteArray(stream.ToArray());
         }
 
-        public void AppendPoint(Point p)
+        public void AppendPoint(SKPointI p)
         {
             AppendInt(p.X);
             AppendInt(p.Y);

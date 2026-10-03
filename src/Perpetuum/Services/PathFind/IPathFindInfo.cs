@@ -1,5 +1,5 @@
 using Perpetuum.PathFinders;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Services.PathFind
 {
@@ -11,11 +11,11 @@ namespace Perpetuum.Services.PathFind
         /// <summary>
         /// Gets the starting point of the path.
         /// </summary>
-        Point Start { get; }
+        SKPointI Start { get; }
         /// <summary>
         /// Gets the ending point of the path.
         /// </summary>
-        Point End { get; }
+        SKPointI End { get; }
         /// <summary>
         /// Gets the heuristic function for pathfinding.
         /// </summary>

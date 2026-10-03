@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Perpetuum.Accounting.Characters;
+﻿using Perpetuum.Accounting.Characters;
 
 namespace Perpetuum.Zones.Artifacts
 {

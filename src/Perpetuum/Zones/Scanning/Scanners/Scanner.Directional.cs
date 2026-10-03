@@ -1,8 +1,8 @@
-﻿using System.Drawing;
-using Perpetuum.EntityFramework;
+﻿using Perpetuum.EntityFramework;
 using Perpetuum.Zones.Scanning.Ammos;
 using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Scanning.Scanners
 {
@@ -17,7 +17,7 @@ namespace Perpetuum.Zones.Scanning.Scanners
 
             var layer = _zone.Terrain.GetMineralLayerOrThrow(ammo.MaterialType);
 
-            var nearestMineralPosition = Point.Empty;
+            var nearestMineralPosition = SKPointI.Empty;
             var nearestDist = int.MaxValue;
 
             foreach (var node in layer.Nodes)
@@ -52,12 +52,12 @@ namespace Perpetuum.Zones.Scanning.Scanners
             return direction;
         }
 
-        private static Packet BuildPacket(MaterialType materialType, Position fromPosition, Point nearestMineralPosition, double direction, bool isInRange)
+        private static Packet BuildPacket(MaterialType materialType, Position fromPosition, SKPointI nearestMineralPosition, double direction, bool isInRange)
         {
             var packet = new Packet(ZoneCommand.ScanMineralDirectionalResult);
             packet.AppendInt((int) materialType);
             packet.AppendPoint(fromPosition);
-            packet.AppendBool(nearestMineralPosition != Point.Empty);
+            packet.AppendBool(nearestMineralPosition != SKPointI.Empty);
             packet.AppendByte((byte) (direction*255));
             packet.AppendBool(isInRange);
             return packet;

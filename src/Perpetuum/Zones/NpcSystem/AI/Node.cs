@@ -1,16 +1,15 @@
-﻿using System;
-using System.Drawing;
+﻿using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {
     public class Node : IComparable<Node>
     {
-        public readonly Point position;
+        public readonly SKPointI position;
         public Node parent;
         public int g;
         public int f;
 
-        public Node(Point position)
+        public Node(SKPointI position)
         {
             this.position = position;
         }

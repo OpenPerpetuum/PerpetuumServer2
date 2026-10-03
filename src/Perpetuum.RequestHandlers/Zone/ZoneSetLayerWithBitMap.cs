@@ -1,8 +1,8 @@
-﻿using System.Drawing;
-using Perpetuum.Host.Requests;
+﻿using Perpetuum.Host.Requests;
 using Perpetuum.IO;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Terrains;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone
 {
@@ -22,12 +22,12 @@ namespace Perpetuum.RequestHandlers.Zone
             var flagValue = request.Data.GetOrDefault<int>(k.flags);
             var controlFlag = EnumHelper.GetEnum<TerrainControlFlags>(flagValue);
             var path = _fileSystem.CreatePath("bitmaps", zone.CreateTerrainDataFilename(fileName, "png"));
-            var img = Image.FromFile(path);
-            using (Bitmap bmp = new Bitmap(img))
+            var img = SKImage.FromEncodedData(path);
+            using (SKBitmap bmp = SKBitmap.FromImage(img))
             {
                 zone.Terrain.Controls.UpdateAll((x, y, c) =>
                 {
-                    if (bmp.GetPixel(x, y).A == 0)
+                    if (bmp.GetPixel(x, y).Alpha == 0)
                     {
                         return c;
                     }
