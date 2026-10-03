@@ -341,13 +341,23 @@ namespace Perpetuum.Services.Seasons
               .ExecuteNonQuery();
         }
 
-        // ── Intro mail tracking ──────────────────────────────────────────────
+        public bool TryMarkSeasonAnnouncementSent(int seasonId)
+        {
+            int rows = Db.Query("UPDATE seasons SET announcement_sent = 1 " +
+                                "WHERE id = @seasonId AND announcement_sent = 0")
+                         .SetParameter("@seasonId", seasonId)
+                         .ExecuteNonQuery();
+
+            return rows == 1;
+        }
+
+        // ── Season announcement mail tracking ────────────────────────────────
 
         /// <summary>
-        /// Ensures a row exists for this character+season and marks intro mail sent.
+        /// Ensures a row exists for this character+season and marks announcement mail sent.
         /// Returns true if the mail had not been sent before.
         /// </summary>
-        public bool TryMarkIntroMailSent(int characterId, int seasonId)
+        public bool TryMarkAnnouncementMailSent(int characterId, int seasonId)
         {
             // Ensure row exists
             Db.Query(@"
@@ -356,17 +366,17 @@ namespace Perpetuum.Services.Seasons
                    ON t.character_id = s.character_id AND t.season_id = s.season_id
                 WHEN NOT MATCHED THEN
                     INSERT (character_id, season_id, total_points, last_updated,
-                            intro_mail_sent, leaderboard_reward_delivered)
-                    VALUES (@characterId, @seasonId, 0, GETUTCDATE(), 0, 0);")
+                            intro_mail_sent, announcement_mail_sent, leaderboard_reward_delivered)
+                    VALUES (@characterId, @seasonId, 0, GETUTCDATE(), 0, 0, 0);")
                 .SetParameter("@characterId", characterId)
                 .SetParameter("@seasonId", seasonId)
                 .ExecuteNonQuery();
 
             int rows = Db.Query("UPDATE season_character_points " +
-                                "SET intro_mail_sent = 1 " +
+                                "SET announcement_mail_sent = 1 " +
                                 "WHERE character_id = @characterId " +
                                 "  AND season_id    = @seasonId " +
-                                "  AND intro_mail_sent = 0")
+                                "  AND announcement_mail_sent = 0")
                          .SetParameter("@characterId", characterId)
                          .SetParameter("@seasonId", seasonId)
                          .ExecuteNonQuery();
@@ -583,9 +593,9 @@ namespace Perpetuum.Services.Seasons
             Db.Query(
                 "INSERT INTO season_objectives " +
                 "(season_id, name, description, activity_type, target_value, " +
-                "bonus_points, display_order, is_daily, package_id, equipment_set_id) " +
+                "bonus_points, display_order, is_daily, package_id, target_definition_id, equipment_set_id) " +
                 "SELECT @newId, name, description, activity_type, target_value, " +
-                "bonus_points, display_order, is_daily, package_id, equipment_set_id " +
+                "bonus_points, display_order, is_daily, package_id, target_definition_id, equipment_set_id " +
                 "FROM season_objectives WHERE season_id = @prevId")
                 .SetParameter("@newId", newId)
                 .SetParameter("@prevId", previous.Id)
