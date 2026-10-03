@@ -4,7 +4,6 @@ using Perpetuum.EntityFramework;
 using Perpetuum.Services.Channels;
 using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Services.Mail;
-using Perpetuum.Services.Sessions;
 using Perpetuum.Threading.Process;
 using System.Collections.Immutable;
 using System.Text;
@@ -18,11 +17,12 @@ namespace Perpetuum.Services.Seasons
 
         // TODO: Add some parameter or flag to character to mark it as announcer to avoid hardcoding nick lookup every time we send mail
         private const string AnnouncerNick = "[OPP] Announcer";
+        private const int DiscordMessageMaxLength = 2000;
         // TODO: Add some parameter or flag to channel to mark it as season info channel instead of hardcoding name lookup every time we send chat message
         private const string SeasonChannelName = "Seasons Info";
 
         private readonly SeasonRepository _repository;
-        private readonly ISessionManager _sessionManager;
+        private readonly ICharacterProfileRepository _characterProfileRepository;
         private readonly ICustomDictionary _customDictionary;
         private readonly Lazy<Character> _announcer = new(() => Character.GetByNick(AnnouncerNick));
         private readonly Lazy<IChannelManager> _channelManager;
@@ -34,11 +34,6 @@ namespace Perpetuum.Services.Seasons
         private ImmutableList<SeasonTier> _activeTiers = ImmutableList<SeasonTier>.Empty;
         private ImmutableList<SeasonLeaderboardReward> _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
 
-        // Tracks which season we have already dispatched intro mail for. 0 = never notified.
-        private volatile int _lastNotifiedSeasonId;
-        private readonly System.Collections.Concurrent.ConcurrentQueue<Character> _pendingIntroChars
-            = new System.Collections.Concurrent.ConcurrentQueue<Character>();
-
         // Trigger immediate load on first Update tick
         private TimeSpan _cacheAge = CacheRefreshInterval;
         private TimeSpan _leaderboardAge = LeaderboardAnnouncementInterval;
@@ -49,20 +44,14 @@ namespace Perpetuum.Services.Seasons
 
         public SeasonService(
             SeasonRepository repository,
-            ISessionManager sessionManager,
+            ICharacterProfileRepository characterProfileRepository,
             ICustomDictionary customDictionary,
             Lazy<IChannelManager> channelManager)
         {
             _repository = repository;
-            _sessionManager = sessionManager;
+            _characterProfileRepository = characterProfileRepository;
             _customDictionary = customDictionary;
-            _sessionManager.SessionAdded += OnSessionAdded;
             _channelManager = channelManager;
-        }
-
-        private void OnSessionAdded(ISession session)
-        {
-            session.CharacterSelected += (_, character) => OnCharacterLogin(character);
         }
 
         // ── Process loop ─────────────────────────────────────────────────────
@@ -138,9 +127,6 @@ namespace Perpetuum.Services.Seasons
                     if (pending != null)
                         _repository.SetSeasonActive(pending.Id, true);
                 }
-                // No active season — discard any pending login chars
-                while (_pendingIntroChars.TryDequeue(out _)) { }
-
                 return;
             }
 
@@ -170,18 +156,9 @@ namespace Perpetuum.Services.Seasons
                 }
             }
 
-            if (_lastNotifiedSeasonId != season.Id)
+            if (_repository.TryMarkSeasonAnnouncementSent(season.Id))
             {
-                _lastNotifiedSeasonId = season.Id;
-                NotifyOnlinePlayersSeasonStarted(season);
-            }
-
-            // Send intro mail to characters that connected while cache was null
-            while (_pendingIntroChars.TryDequeue(out var character))
-            {
-                if (DateTime.UtcNow <= season.EndTime &&
-                    _repository.TryMarkIntroMailSent(character.Id, season.Id))
-                    SendIntroMail(character, season);
+                NotifySeasonStarted(season);
             }
         }
 
@@ -268,17 +245,7 @@ namespace Perpetuum.Services.Seasons
 
         public void OnCharacterLogin(Character character)
         {
-            var season = _activeSeason;
-            if (season == null)
-            {
-                // Process loop hasn't warmed the cache yet — defer until RefreshCache runs
-                _pendingIntroChars.Enqueue(character);
-                return;
-            }
-            if (DateTime.UtcNow < season.StartTime || DateTime.UtcNow > season.EndTime)
-                return;
-            if (_repository.TryMarkIntroMailSent(character.Id, season.Id))
-                SendIntroMail(character, season);
+            // Kept for ISeasonService compatibility. Announcements are sent at season start to all characters.
         }
 
         // ── Reward delivery ──────────────────────────────────────────────────
@@ -432,7 +399,6 @@ namespace Perpetuum.Services.Seasons
 
             // Null the cache immediately so no further activity is recorded
             _activeSeason = null;
-            _lastNotifiedSeasonId = 0;
             _repository.DeactivateSeason(season.Id);
 
             var rankings = _repository.GetParticipantRankings(season.Id)
@@ -553,31 +519,6 @@ namespace Perpetuum.Services.Seasons
 
         // ── Mail helpers ─────────────────────────────────────────────────────
 
-        private void SendIntroMail(Character character, Season season)
-        {
-            var dict = _customDictionary.GetDictionary(0);
-            var sb = new StringBuilder();
-
-            if (!string.IsNullOrWhiteSpace(season.Description))
-                sb.AppendLine(season.Description).AppendLine();
-
-            sb.AppendLine($"Season ends: {season.EndTime:yyyy-MM-dd HH:mm} UTC");
-
-            var rates = _activeRates;
-            if (rates.Count > 0)
-            {
-                sb.AppendLine().AppendLine("-- Scoring --");
-                foreach (var rate in rates)
-                {
-                    string unitDesc = rate.UnitScale > 1 ? $" per {rate.UnitScale:N0}" : "";
-                    sb.AppendLine($"  {ActivityTypeName(rate.ActivityType)}: {rate.PointsPerUnit:G} pts{unitDesc}");
-                }
-            }
-
-            MailHandler.SendMail(_announcer.Value, character, $"Season Active: {season.Name}",
-                sb.ToString(), MailType.character, out _, out _);
-        }
-
         private void SendObjectiveCompleteMail(int characterId, SeasonObjective obj, double total)
         {
             var character = Character.Get(characterId);
@@ -652,7 +593,7 @@ namespace Perpetuum.Services.Seasons
             RefreshCache();
         }
 
-        private void NotifyOnlinePlayersSeasonStarted(Season season)
+        private void NotifySeasonStarted(Season season)
         {
             var seasonChannel = _channelManager.Value.GetChannelByName(SeasonChannelName);
             if (seasonChannel != null)
@@ -660,51 +601,79 @@ namespace Perpetuum.Services.Seasons
                 _channelManager.Value.SetTopic(SeasonChannelName, _announcer.Value, $"Season {season.Name}: {season.StartTime} - {season.EndTime}");
             }
 
-            foreach (var character in _sessionManager.SelectedCharacters)
+            var announcementParts = BuildSeasonAnnouncementParts(season);
+            foreach (var part in announcementParts)
+                _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, part);
+
+            foreach (var profile in _characterProfileRepository.GetAll())
             {
+                var character = profile.character;
                 if (character == null || character == Character.None)
                     continue;
 
-                if (_repository.TryMarkIntroMailSent(character.Id, season.Id))
-                    SendIntroMail(character, season);
+                if (_repository.TryMarkAnnouncementMailSent(character.Id, season.Id))
+                {
+                    for (int i = 0; i < announcementParts.Count; i++)
+                    {
+                        string subject = announcementParts.Count == 1
+                            ? $"Season Active: {season.Name}"
+                            : $"Season Active: {season.Name} ({i + 1}/{announcementParts.Count})";
+                        MailHandler.SendMail(_announcer.Value, character, subject, announcementParts[i],
+                            MailType.character, out _, out _);
+                    }
+                }
             }
+        }
 
-            var chatMessage = new StringBuilder();
-            chatMessage.AppendLine();
-            chatMessage.AppendLine($"New season just started!");
-            chatMessage.AppendLine();
-            chatMessage.AppendLine(season.Name);
-            chatMessage.AppendLine();
-            chatMessage.AppendLine(season.Description);
-            chatMessage.AppendLine();
-            chatMessage.AppendLine($"Season ends: {season.EndTime:yyyy-MM-dd HH:mm}");
-            chatMessage.AppendLine();
-            chatMessage.AppendLine("Activity rates:");
-            foreach (var rate in _activeRates)
+        private IReadOnlyList<string> BuildSeasonAnnouncementParts(Season season)
+        {
+            var announcement = new StringBuilder();
+            announcement.AppendLine(season.Name).AppendLine();
+            announcement.AppendLine(season.Description).AppendLine();
+            announcement.AppendLine("Objectives:").AppendLine();
+
+            SeasonActivityType? previousActivityType = null;
+            foreach (var objective in _activeObjectives
+                         .Where(objective => !objective.IsDaily)
+                         .OrderBy(objective => objective.DisplayOrder))
             {
-                string unitDesc = rate.UnitScale > 1 ? $" per {rate.UnitScale:N0}" : "";
-                chatMessage.AppendLine($"  {ActivityTypeName(rate.ActivityType)}: {rate.PointsPerUnit:G} pts{unitDesc}");
+                if (previousActivityType.HasValue && previousActivityType.Value != objective.ActivityType)
+                    announcement.AppendLine();
+
+                announcement.AppendLine($"{objective.Name} - {objective.Description}");
+                previousActivityType = objective.ActivityType;
             }
 
-            chatMessage.AppendLine();
-            chatMessage.AppendLine("Objectives:");
-            foreach (var obj in _activeObjectives.OrderBy(o => o.DisplayOrder))
+            announcement.AppendLine().AppendLine("Tiers:").AppendLine();
+            foreach (var tier in _activeTiers.OrderBy(tier => tier.TierNumber))
+                announcement.AppendLine($"{tier.TierName} - {tier.PointsRequired}");
+
+            // Discord prefixes bridged messages with **<nick>**: . Leave room for that prefix.
+            int maxPartLength = DiscordMessageMaxLength - $"**<{_announcer.Value.Nick}>**: ".Length;
+            return SplitMessage(announcement.ToString(), maxPartLength);
+        }
+
+        private static IReadOnlyList<string> SplitMessage(string message, int maxPartLength)
+        {
+            var parts = new List<string>();
+            int offset = 0;
+
+            while (message.Length - offset > maxPartLength)
             {
-                chatMessage.AppendLine($"  {obj.Name}: {obj.Description} (Bonus: {obj.BonusPoints} pts)");
-                //chatMessage.AppendLine($"    Progress by performing {ActivityTypeName(obj.ActivityType)}. Target: {obj.TargetValue:N0}");
+                int breakAt = message.LastIndexOf('\n', offset + maxPartLength - 1, maxPartLength);
+                if (breakAt < offset)
+                    breakAt = offset + maxPartLength;
+                else
+                    breakAt++;
+
+                parts.Add(message.Substring(offset, breakAt - offset));
+                offset = breakAt;
             }
 
-            chatMessage.AppendLine();
-            chatMessage.AppendLine("Tiers:");
-            foreach (var tier in _activeTiers.OrderBy(t => t.PointsRequired))
-            {
-                chatMessage.AppendLine($"  {tier.TierName}: {tier.PointsRequired} points");
-            }
+            if (offset < message.Length)
+                parts.Add(message.Substring(offset));
 
-            chatMessage.AppendLine();
-            chatMessage.AppendLine("See you on leaderboard!");
-
-            _channelManager.Value.Announcement(SeasonChannelName, _announcer.Value, chatMessage.ToString());
+            return parts;
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────

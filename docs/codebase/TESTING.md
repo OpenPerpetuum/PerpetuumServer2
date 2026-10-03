@@ -193,7 +193,7 @@ paths above. Still untested at the automated level:
 - **Module state machines** (`src/Perpetuum/Modules/ActiveModule.States.cs`) — state transitions for robot equipment are tested only by playing the game.
 - **Request handlers** (`src/Perpetuum.RequestHandlers/`) — 200+ handler classes have no test doubles or mock session/request infrastructure.
 - **Concurrent/threading code** — `ProcessManager`, `MessageSender`, `TcpConnection` use `ThreadPool` and `Task.Run` patterns that need a harness before they can be tested deterministically.
-- **Season service logic** (`src/Perpetuum/Services/Seasons/SeasonService.cs`) — tier grant, objective completion, leaderboard delivery, intro mail idempotency, and end-of-season processing are exercised only via live play.
+- **Season service logic** (`src/Perpetuum/Services/Seasons/SeasonService.cs`) — tier grant, objective completion, leaderboard delivery, announcement mail idempotency, and end-of-season processing are exercised only via live play.
 - **Mission engine** (`src/Perpetuum/Services/MissionEngine/`) — the most complex subsystem; `MissionResolveTester` exercises resolve logic but requires a live DB and has no assertions.
 
 Covering every file is not the goal. See `IMPROVEMENT-045` in `docs/backlog/improvements.md` for the

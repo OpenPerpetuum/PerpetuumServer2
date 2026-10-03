@@ -6157,6 +6157,7 @@ Rows older than 90 days are pruned by `recalculate_raw_material_prices`.
 | `total_points` | `float [not null, default: 0]` |
 | `last_updated` | `datetime [not null, default: \`getutcdate()\`]` |
 | `intro_mail_sent` | `bit [not null, default: 0]` |
+| `announcement_mail_sent` | `bit [not null, default: 0]` — season start announcement email was sent to this character |
 | `leaderboard_reward_delivered` | `bit [not null, default: 0]` |
 
 ### Indexes
@@ -6325,6 +6326,7 @@ Rows older than 90 days are pruned by `recalculate_raw_material_prices`.
 | `recurrence_base_name` | `nvarchar(255) [null]` — operator-entered name; server appends `, Run #N` |
 | `scoring_mode` | `tinyint [not null, default: 0]` — scoring mode (0 = ActivityAndGlobal, 1 = ObjectivesOnly) |
 | `daily_objectives_per_day` | `smallint [null]` — when set, draw exactly N daily objectives per UTC day using a deterministic seed; NULL = all daily objectives active |
+| `announcement_sent` | `bit [not null, default: 0]` — season start announcement was claimed for dispatch |
 
 ### Indexes
 
