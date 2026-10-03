@@ -74,36 +74,48 @@ namespace Perpetuum.Tests.Unit
                 Task updateTask = null;
                 CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
-                // Manual monitor instead of a lock statement: the entry lock has to be held
-                // across the awaits below.
-                Monitor.Enter(player.UpdateLock);
-                try
+                // The entry lock has to be held across the observation window, but
+                // Monitor.Enter/Exit must run on one thread while the test body is full of
+                // awaits (which reschedule onto the thread pool). A dedicated holder thread
+                // therefore owns the monitor for the duration of the window.
+                using SemaphoreSlim lockHeld = new(0, 1);
+                using SemaphoreSlim releaseLock = new(0, 1);
+
+                Task holderTask = Task.Run(() =>
                 {
-                    updateTask = Task.Run(() =>
-                    {
-                        updateThreadId = Environment.CurrentManagedThreadId;
-                        player.Update(TimeSpan.FromMilliseconds(50));
-                    }, cancellationToken);
-
-                    // Wait until the tick thread has actually started, so the assertion below
-                    // cannot pass vacuously.
-                    await WaitUntilAsync(() => updateThreadId != 0, TimeSpan.FromSeconds(5),
-                        "the tick thread never started", cancellationToken);
-
-                    // The update body is in-memory and takes a small fraction of this window;
-                    // a player update completing inside it was not blocked by the entry lock.
-                    await Task.Delay(300, cancellationToken);
-
-                    if (updateTask.IsCompleted)
-                    {
-                        await updateTask; // rethrows if the update faulted
-                        Assert.Fail("Player.Update completed while the entry lock was held; OnUpdate is not serialized under UpdateLock");
-                    }
-                }
-                finally
-                {
+                    Monitor.Enter(player.UpdateLock);
+                    lockHeld.Release();
+                    releaseLock.Wait(cancellationToken);
                     Monitor.Exit(player.UpdateLock);
+                }, cancellationToken);
+
+                await lockHeld.WaitAsync(cancellationToken);
+
+                updateTask = Task.Run(() =>
+                {
+                    updateThreadId = Environment.CurrentManagedThreadId;
+                    player.Update(TimeSpan.FromMilliseconds(50));
+                }, cancellationToken);
+
+                // Wait until the tick thread has actually started, so the assertion below
+                // cannot pass vacuously.
+                await WaitUntilAsync(() => updateThreadId != 0, TimeSpan.FromSeconds(5),
+                    "the tick thread never started", cancellationToken);
+
+                // The update body is in-memory and takes a small fraction of this window;
+                // a player update completing inside it was not blocked by the entry lock.
+                await Task.Delay(300, cancellationToken);
+
+                if (updateTask.IsCompleted)
+                {
+                    await updateTask; // rethrows if the update faulted
                 }
+
+                Assert.False(updateTask.IsCompleted,
+                    "Player.Update completed while the entry lock was held; OnUpdate is not serialized under UpdateLock");
+
+                releaseLock.Release();
+                await holderTask.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
 
                 await updateTask.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
             }
