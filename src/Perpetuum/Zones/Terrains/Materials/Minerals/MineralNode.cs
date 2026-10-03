@@ -1,8 +1,7 @@
-using System;
 using System.Diagnostics;
-using System.Drawing;
 using Perpetuum.Threading;
 using Perpetuum.Timers;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains.Materials.Minerals
 {
@@ -86,7 +85,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             return offset;
         }
 
-        public bool HasValue(Point p)
+        public bool HasValue(SKPointI p)
         {
             return HasValue(p.X, p.Y);
         }
@@ -97,7 +96,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             return v > 0;
         }
 
-        public uint DecreaseValue(Point p, uint value)
+        public uint DecreaseValue(SKPointI p, uint value)
         {
             OnDecrease();
             return DecreaseValue(p.X, p.Y, value);
@@ -150,7 +149,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             return sum;
         }
 
-        public uint GetValue(Point p)
+        public uint GetValue(SKPointI p)
         {
             return GetValue(p.X, p.Y);
         }
@@ -166,7 +165,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             return value;
         }
 
-        public void SetValue(Point p,uint value)
+        public void SetValue(SKPointI p,uint value)
         {
             SetValue(p.X,p.Y,value);
         }
@@ -212,9 +211,9 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
             OnUpdated();
         }
 
-        public Point GetNearestMineralPosition(Point p)
+        public SKPointI GetNearestMineralPosition(SKPointI p)
         {
-            var nearest = Point.Empty;
+            var nearest = SKPointI.Empty;
             var nearestDist = int.MaxValue;
 
             var offset = 0;
@@ -230,7 +229,7 @@ namespace Perpetuum.Zones.Terrains.Materials.Minerals
                     if (d >= nearestDist)
                         continue;
 
-                    nearest = new Point(ax,ay);
+                    nearest = new SKPointI(ax,ay);
                     nearestDist = d;
                 }
             }

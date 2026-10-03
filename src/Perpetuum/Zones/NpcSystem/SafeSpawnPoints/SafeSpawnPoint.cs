@@ -1,5 +1,4 @@
-using System.Collections.Generic;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.SafeSpawnPoints
 {
@@ -7,7 +6,7 @@ namespace Perpetuum.Zones.NpcSystem.SafeSpawnPoints
     {
         public int Id { get; set; }
         public int ZoneId { private get; set; }
-        public Point Location { get; set; }
+        public SKPointI Location { get; set; }
 
         public IDictionary<string, object> ToDictionary()
         {

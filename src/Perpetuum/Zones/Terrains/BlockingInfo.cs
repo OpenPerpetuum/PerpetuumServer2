@@ -1,5 +1,3 @@
-using System;
-
 namespace Perpetuum.Zones.Terrains
 {
     [Serializable]

@@ -7,6 +7,11 @@ namespace Perpetuum.Zones.Terrains
     {
         private TerrainControlFlags _flags;
 
+        public TerrainControlInfo(TerrainControlFlags flags)
+        {
+            _flags = flags;
+        }
+
         public TerrainControlFlags Flags
         {
             get { return _flags; }

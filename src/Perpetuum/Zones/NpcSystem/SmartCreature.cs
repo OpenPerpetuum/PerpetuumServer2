@@ -38,8 +38,9 @@ namespace Perpetuum.Zones.NpcSystem
         public const double FleeCoreThreshold = 0.20;
         public const double FleeCoreRestoreThreshold = 0.80;
         // Disabled per IMPROVEMENT-044 (player feedback). Flip to re-enable; FleeAI and the
-        // thresholds above are left intact for later rework/reuse.
-        private const bool FleeBehaviorEnabled = false;
+        // thresholds above are left intact for later rework/reuse. static readonly (not const)
+        // so the disabled branch stays reachable code instead of a CS0162.
+        private static readonly bool FleeBehaviorEnabled = false;
         private readonly TimeKeeper debounceBodyPull = new(TimeSpan.FromSeconds(2.5));
         private readonly TimeKeeper debounceLockChange = new(TimeSpan.FromSeconds(2.5));
         private readonly IntervalTimer pseudoUpdateFreq = new(TimeSpan.FromMilliseconds(650));

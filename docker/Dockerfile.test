@@ -1,0 +1,42 @@
+# Test dockerfile for PerpetuumServer2
+# Builds both test tiers once, then reuses the image to run unit or integration tests:
+#   docker compose --profile test run --rm test <dotnet test command>
+#
+# Uses the SDK 8 image so the net8.0 test host runs without roll-forward.
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+# Install the missing GSSAPI/Kerberos dependency used by the SQL client and fontconfig for SkiaSharp
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 libfontconfig1 && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /repo
+
+COPY Directory.Build.targets ./
+COPY PerpetuumServer2.sln ./
+COPY src ./src
+# The schema conformance tests locate the repository root via the .sln and read the
+# documented object names from docs/db_structure
+COPY docs/db_structure ./docs/db_structure
+
+ARG SERVER_PORT=17700
+ARG ASSET_URL=http://localhost:16999
+ARG CONNECTION_STRING
+
+# Pre-build both tiers so `dotnet test --no-build` is fast and build failures surface at image build time
+RUN dotnet build src/Perpetuum.Tests/Perpetuum.Tests.csproj -c Release -p:Platform=x64 && \
+    dotnet build src/Perpetuum.Tests.Integration/Perpetuum.Tests.Integration.csproj -c Release -p:Platform=x64
+
+# Game root for the integration tier: perpetuum.ini with the database connection string,
+# same pattern as Dockerfile.migration.dev (the password ends up in the image layers,
+# same trade-off as the migration image).
+COPY template/perpetuum.ini.template /data/perpetuum.ini
+
+RUN sed -i "s/{SERVER_PORT}/${SERVER_PORT}/" /data/perpetuum.ini && \
+    sed -i "s#{ASSET_URL}#${ASSET_URL}#" /data/perpetuum.ini && \
+    sed -i "s/{CONNECTION_STRING}/${CONNECTION_STRING}/" /data/perpetuum.ini
+
+ENV PERPETUUM_GAMEROOT=/data
+ENV GameRoot=/data
+
+# Default command: unit tier
+CMD ["dotnet", "test", "src/Perpetuum.Tests/Perpetuum.Tests.csproj", "-c", "Release", "-p:Platform=x64", "--no-build"]

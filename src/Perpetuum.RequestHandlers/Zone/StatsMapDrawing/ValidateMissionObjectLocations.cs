@@ -1,11 +1,10 @@
-﻿using System.Drawing;
-using System.Linq;
-using Perpetuum.Log;
+﻿using Perpetuum.Log;
 using Perpetuum.Services.MissionEngine;
 using Perpetuum.Services.MissionEngine.MissionStructures;
 using Perpetuum.Units.DockingBases;
 using Perpetuum.Units.FieldTerminals;
 using Perpetuum.Zones;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 {
@@ -13,18 +12,18 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
     {
 
 
-        public Bitmap ValidateMissionObjectLocations()
+        public SKBitmap ValidateMissionObjectLocations()
         {
             var b = _zone.CreatePassableBitmap(_passableColor);
-            var g = Graphics.FromImage(b);
+            var c = new SKCanvas(b);
             var circle = 10f;
             
             var randomPointTargets = _missionDataCache.GetAllMissionTargets.Where(t => t.ZoneId == _zone.Id && t.Type == MissionTargetType.rnd_point).ToList();
               
-            var greebrush = new SolidBrush(Color.LawnGreen);
-            var redBrush = new SolidBrush(Color.OrangeRed);
-            var yellowBrush = new SolidBrush(Color.Yellow);
-            var redPen = new Pen(Color.Red, 4);
+            var greenbrush = new SKPaint { Color = SKColors.LawnGreen, Style = SKPaintStyle.Fill };
+            var redBrush = new SKPaint { Color = SKColors.OrangeRed, Style = SKPaintStyle.Fill };
+            var yellowBrush = new SKPaint { Color = SKColors.Yellow, Style = SKPaintStyle.Fill };
+            var redPen = new SKPaint { Color = SKColors.Red, Style = SKPaintStyle.Stroke, StrokeWidth = 4 };
 
             foreach (var randomPointTarget in randomPointTargets)
             {
@@ -32,11 +31,13 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
                 if (CheckConditionsAroundPosition(p, randomPointBlockRadius, randomPointIslandRadius, true))
                 {
-                    g.FillEllipse(greebrush,(float)( randomPointTarget.targetPosition.X - circle ), (float)( randomPointTarget.targetPosition.Y - circle ), circle*2, circle*2);
+                    var rect = new SKRect((float)(randomPointTarget.targetPosition.X - circle), (float)(randomPointTarget.targetPosition.Y - circle), circle * 2, circle * 2);
+                    c.DrawOval(rect, greenbrush);
                 }
                 else
                 {
-                    g.FillEllipse(redBrush, (float)(randomPointTarget.targetPosition.X - circle ), (float)(randomPointTarget.targetPosition.Y - circle ), circle*2, circle*2);
+                    var rect = new SKRect((float)(randomPointTarget.targetPosition.X - circle ), (float)(randomPointTarget.targetPosition.Y - circle ), circle*2, circle*2);
+                    c.DrawOval(rect, redBrush);
                 }
             }
 
@@ -50,7 +51,8 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
                 if (strucureTarget == null)
                 {
                     Logger.Error("no target was found for structure:" + structureUnit.Eid + " " + structureUnit.TargetType);
-                    g.FillEllipse(yellowBrush, structureUnit.CurrentPosition.intX - circle, structureUnit.CurrentPosition.intY - circle, circle*2, circle*2);
+                    var rect = new SKRect(structureUnit.CurrentPosition.intX - circle, structureUnit.CurrentPosition.intY - circle, circle*2, circle*2);
+                    c.DrawOval(rect, yellowBrush);
                     continue;
 
                 }
@@ -68,7 +70,8 @@ namespace Perpetuum.RequestHandlers.Zone.StatsMapDrawing
 
                 if (location == null)
                 {
-                    g.DrawEllipse(redPen, locationUnit.CurrentPosition.intX - circle, locationUnit.CurrentPosition.intY - circle, circle * 2, circle * 2);
+                    var rect = new SKRect(locationUnit.CurrentPosition.intX - circle, locationUnit.CurrentPosition.intY - circle, circle * 2, circle * 2);
+                    c.DrawOval(rect, redPen);
                     Logger.Error("no location was found for " + locationUnit);
                     continue;
                 }

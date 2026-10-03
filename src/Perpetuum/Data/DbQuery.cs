@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.Common;
 using System.Transactions;
 
@@ -6,7 +6,7 @@ namespace Perpetuum.Data
 {
     public delegate IDbConnection DbConnectionFactory();
 
-    public class DbQuery(DbConnectionFactory connectionFactory)
+    public class DbQuery(DbConnectionFactory connectionFactory, GlobalConfiguration configuration)
     {
         private readonly DbConnectionFactory _connectionFactory = connectionFactory;
 
@@ -51,33 +51,55 @@ namespace Perpetuum.Data
 
         private T ExecuteHelper<T>(Func<IDbCommand, T> execute)
         {
-            using IDbConnection connection = _connectionFactory();
-            connection.Open();
+            Transaction? currentTx = Transaction.Current;
+            IDbConnection connection;
+            bool shouldDisposeConnection = true;
 
-            if (Transaction.Current != null && connection is DbConnection dbConnection)
+            if (currentTx != null)
             {
-                dbConnection.EnlistTransaction(Transaction.Current);
+                connection = DbConnectionManager.GetOrCreateConnection(currentTx, _connectionFactory);
+                shouldDisposeConnection = false;
+            }
+            else
+            {
+                connection = _connectionFactory();
+                connection.Open();
             }
 
-            IDbCommand command = connection.CreateCommand();
-            command.CommandText = _commandText;
-            command.CommandType = _commandText.Contains(' ') ? CommandType.Text : CommandType.StoredProcedure;
-            command.CommandTimeout = _commandTimeout;
-
-            if (_parameters != null)
+            try
             {
-                foreach (KeyValuePair<string, object> kvp in _parameters)
+                if (configuration.DistributedTransactions && currentTx != null && connection is DbConnection dbConnection)
                 {
-                    IDbDataParameter parameter = command.CreateParameter();
-                    parameter.ParameterName = kvp.Key;
-                    parameter.Value = kvp.Value ?? DBNull.Value;
-                    command.Parameters.Add(parameter);
+                    dbConnection.EnlistTransaction(currentTx);
+                }
+
+                IDbCommand command = connection.CreateCommand();
+                command.CommandText = _commandText;
+                command.CommandType = _commandText.Contains(' ') ? CommandType.Text : CommandType.StoredProcedure;
+                command.CommandTimeout = _commandTimeout;
+
+                if (_parameters != null)
+                {
+                    foreach (KeyValuePair<string, object> kvp in _parameters)
+                    {
+                        IDbDataParameter parameter = command.CreateParameter();
+                        parameter.ParameterName = kvp.Key;
+                        parameter.Value = kvp.Value ?? DBNull.Value;
+                        command.Parameters.Add(parameter);
+                    }
+                }
+
+                using (command)
+                {
+                    return execute(command);
                 }
             }
-
-            using (command)
+            finally
             {
-                return execute(command);
+                if (shouldDisposeConnection)
+                {
+                    connection.Dispose();
+                }
             }
         }
 

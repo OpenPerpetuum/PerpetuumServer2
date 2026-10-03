@@ -95,7 +95,7 @@ namespace Perpetuum.Tests.Unit
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Absent_or_blank_input_reports_nothing(string input)
+        public void Absent_or_blank_input_reports_nothing(string? input)
         {
             Assert.Empty(ConnectionStringSupport.FindUnsupportedKeywords(input));
         }

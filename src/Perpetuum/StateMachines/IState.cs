@@ -1,5 +1,3 @@
-using System;
-
 namespace Perpetuum.StateMachines
 {
     public interface IState

@@ -6,7 +6,7 @@ using Perpetuum.Timers;
 using Perpetuum.Units;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.Movements;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {
@@ -300,7 +300,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                             return;
                         }
 
-                        List<Point> path = t.Result;
+                        List<SKPointI> path = t.Result;
                         if (path == null)
                         {
                             return;
@@ -353,7 +353,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return r != null && !r.hit;
         }
 
-        private Task<List<Point>> FindNewSupportPositionAsync(Unit target)
+        private Task<List<SKPointI>> FindNewSupportPositionAsync(Unit target)
         {
             // T7: snapshot the screen-positioning inputs on the main thread so the
             // worker doesn't iterate live ThreatManager / Group / Visibility state.
@@ -388,12 +388,12 @@ namespace Perpetuum.Zones.NpcSystem.AI
         // valid tiles, then score `distance(target) + screenBonus` and return the
         // best — so support bots prefer to sit behind a friendly relative to the
         // hostile centroid when otherwise equivalent.
-        private List<Point> FindSupportPosition(Unit target, Position? threatCentroid, List<Position> friendlyPositions, CancellationToken cancellationToken)
+        private List<SKPointI> FindSupportPosition(Unit target, Position? threatCentroid, List<Position> friendlyPositions, CancellationToken cancellationToken)
         {
             try
             {
                 int approachRange = (int)Math.Max(1, supportRange * 0.7);
-                Point end = target.CurrentPosition.GetRandomPositionInRange2D(0, approachRange).ToPoint();
+                SKPointI end = target.CurrentPosition.GetRandomPositionInRange2D(0, approachRange).ToPoint();
 
                 double maxNode = Math.Pow(smartCreature.HomeRange, 2) * Math.PI;
                 PriorityQueue<Node> priorityQueue = new((int)maxNode);
@@ -401,7 +401,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
 
                 priorityQueue.Enqueue(startNode);
 
-                HashSet<Point> closed =
+                HashSet<SKPointI> closed =
                 [
                     startNode.position
                 ];
@@ -424,7 +424,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                         }
                     }
 
-                    foreach (Point n in current.position.GetNeighbours())
+                    foreach (SKPointI n in current.position.GetNeighbours())
                     {
                         if (closed.Contains(n))
                         {
@@ -483,7 +483,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             }
         }
 
-        private static double ScoreCandidate(Point candidate, Position targetPosition, Position? threatCentroid, List<Position> friendlyPositions)
+        private static double ScoreCandidate(SKPointI candidate, Position targetPosition, Position? threatCentroid, List<Position> friendlyPositions)
         {
             double distance = targetPosition.TotalDistance2D(candidate);
             double bonus = HasScreeningFriendly(candidate, threatCentroid, friendlyPositions) ? ScreenBonus : 0.0;
@@ -491,7 +491,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return distance + bonus;
         }
 
-        private static bool HasScreeningFriendly(Point candidate, Position? threatCentroid, List<Position> friendlyPositions)
+        private static bool HasScreeningFriendly(SKPointI candidate, Position? threatCentroid, List<Position> friendlyPositions)
         {
             if (!threatCentroid.HasValue || friendlyPositions == null || friendlyPositions.Count == 0)
             {
@@ -539,7 +539,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return false;
         }
 
-        private bool IsValidSupportPosition(Unit target, Point position)
+        private bool IsValidSupportPosition(Unit target, SKPointI position)
         {
             IZone zone = smartCreature.Zone;
             if (zone == null)
@@ -559,9 +559,9 @@ namespace Perpetuum.Zones.NpcSystem.AI
             return r != null && !r.hit;
         }
 
-        private static List<Point> BuildPath(Node current)
+        private static List<SKPointI> BuildPath(Node current)
         {
-            Stack<Point> stack = new();
+            Stack<SKPointI> stack = new();
             Node node = current;
 
             while (node != null)

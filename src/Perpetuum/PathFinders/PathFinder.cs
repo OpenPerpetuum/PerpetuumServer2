@@ -1,17 +1,15 @@
 using System.Diagnostics;
-using System.Drawing;
-using System.Threading;
-using System.Threading.Tasks;
+using SkiaSharp;
 
 namespace Perpetuum.PathFinders
 {
     public class PathFinderNode
     {
-        public Point Location { get; private set; }
+        public SKPointI Location { get; private set; }
 
         public PathFinderNode(int x,int y)
         {
-            Location = new Point(x,y);
+            Location = new SKPointI(x,y);
         }
 
         public override string ToString()
@@ -29,7 +27,7 @@ namespace Perpetuum.PathFinders
     {
         public const float SQRT2 = 1.41f;
 
-        protected static readonly Point[] EmptyPath = new Point[0];
+        protected static readonly SKPointI[] EmptyPath = [];
 
         public delegate bool PathFinderNodePassableHandler(int x, int y);
 
@@ -40,18 +38,18 @@ namespace Perpetuum.PathFinders
         #endif
 
         [CanBeNull]
-        public Point[] FindPath(Point start, Point end)
+        public SKPointI[] FindPath(SKPointI start, SKPointI end)
         {
             return FindPath(start, end, CancellationToken.None);
         }
 
-        public Task<Point[]> FindPathAsync(Point start, Point end)
+        public Task<SKPointI[]> FindPathAsync(SKPointI start, SKPointI end)
         {
             return Task.Run(() => FindPath(start, end));
         }
 
         [CanBeNull]
-        public abstract Point[] FindPath(Point start, Point end, CancellationToken cancellationToken);
+        public abstract SKPointI[] FindPath(SKPointI start, SKPointI end, CancellationToken cancellationToken);
 
         [Conditional("DEBUG")]
         public void RegisterDebugHandler(PathFinderDebugHandler handler)

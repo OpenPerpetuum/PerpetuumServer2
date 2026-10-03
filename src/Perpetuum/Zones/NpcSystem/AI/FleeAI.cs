@@ -4,6 +4,7 @@ using Perpetuum.PathFinders;
 using Perpetuum.Robots;
 using Perpetuum.Zones.Movements;
 using Perpetuum.Zones.NpcSystem.ThreatManaging;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI
 {
@@ -111,7 +112,7 @@ namespace Perpetuum.Zones.NpcSystem.AI
                 .FindPathAsync(start, destination)
                 .ContinueWith(t =>
                 {
-                    System.Drawing.Point[] path = t.Result;
+                    SKPointI[] path = t.Result;
 
                     if (path == null)
                     {

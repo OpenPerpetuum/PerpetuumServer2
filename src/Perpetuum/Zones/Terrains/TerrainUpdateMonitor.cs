@@ -1,6 +1,5 @@
-using System;
 using System.Collections.Immutable;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Terrains
 {
@@ -8,9 +7,9 @@ namespace Perpetuum.Zones.Terrains
     {
         public LayerType Type { get; }
 
-        public Point Position { get; }
+        public SKPointI Position { get; }
 
-        protected TerrainUpdateInfo(LayerType type, Point position)
+        protected TerrainUpdateInfo(LayerType type, SKPointI position)
         {
             Position = position;
             Type = type;
@@ -68,7 +67,7 @@ namespace Perpetuum.Zones.Terrains
 
     public class TileUpdateInfo : TerrainUpdateInfo
     {
-        public TileUpdateInfo(LayerType type, Point position)
+        public TileUpdateInfo(LayerType type, SKPointI position)
             : base(type, position)
         {
         }
@@ -178,7 +177,7 @@ namespace Perpetuum.Zones.Terrains
 
         private void OnTileUpdated(LayerType layerType, int x, int y)
         {
-            var info = new TileUpdateInfo(layerType,new Point(x,y));
+            var info = new TileUpdateInfo(layerType, new SKPointI(x,y));
             AddUpdateInfo(info);
         }
 
