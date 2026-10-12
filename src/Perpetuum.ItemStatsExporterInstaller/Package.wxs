@@ -1,0 +1,11 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="Perpetuum Sparky Service" Manufacturer="Open Perpetuum" Version="1.0.0.0" UpgradeCode="{EB1E6D7F-9D09-4CEA-8A1F-41ED714D298D}">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Perpetuum Sparky Service is already installed." />
+
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+
+    <Feature Id="Main" Title="Perpetuum Sparky Service" Level="1">
+      <ComponentGroupRef Id="SparkyServiceComponents" />
+    </Feature>
+  </Package>
+</Wix>

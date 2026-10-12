@@ -14,6 +14,8 @@ PerpetuumServer2.sln
 ├── src/Perpetuum.ServerService2/       # Windows service wrapper
 ├── src/Perpetuum.ServerService2Installer/ # Windows service installer
 ├── src/Perpetuum.AdminTool/            # WPF admin/tooling application
+├── src/Perpetuum.ItemStatsExporter/    # Offline item/recipe export, HTTPS loopback API, and supervised reverse SSH client
+├── src/Perpetuum.ItemStatsExporterInstaller/ # Self-contained Windows service installer for Sparky
 ├── src/Open.Nat/                       # UPnP library (vendored)
 ├── docs/                               # DB schema docs (authoritative)
 │   └── db_structure/
@@ -36,6 +38,8 @@ PerpetuumServer2.sln
 | `Perpetuum.Server` | `Program.cs` — parses CLI args, calls `PerpetuumBootstrapper.Init/Start` |
 | `Perpetuum.ServerService2` | Windows service host wrapping bootstrapper |
 | `Perpetuum.AdminTool` | Standalone WPF tool for admin operations (NPC editing, seasons, loot, etc.) |
+| `Perpetuum.ItemStatsExporter` | Offline weapon-stat and production-recipe export, recursive full-material projection, deterministic lookup, LM Studio answer generation, and optional HTTPS loopback Windows service with restricted reverse SSH supervision; uses game entity/property/production-component logic without starting game server services |
+| `Perpetuum.ItemStatsExporterInstaller` | WiX installer for the self-contained Sparky Windows service; does not package machine-specific exports, credentials, SSH keys, or certificates |
 
 ## Source Organisation — `src/Perpetuum/`
 
@@ -91,7 +95,8 @@ src/Perpetuum/
 │   ├── MissionEngine/      # Missions, targets, transport assignments, data cache
 │   ├── ProductionEngine/   # Crafting, research, calibration, reprocessing
 │   ├── Seasons/            # Season lifecycle and bonus system
-│   ├── EventServices/      # Pub/sub event bus, NPC spawn events
+│   ├── EventServices/      # Pub/sub event bus, Discord bridge, async Sparky response delivery
+│   ├── Sparky/             # Bounded AI API client, caller-local volatile follow-up context
 │   ├── Standing/           # Faction/corp standing
 │   ├── Social/             # Friends, blocks, social list
 │   ├── Channels/           # Chat channels, chat commands

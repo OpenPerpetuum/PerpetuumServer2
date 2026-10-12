@@ -5,6 +5,7 @@ using Perpetuum.Services.Channels.ChatCommands;
 using Perpetuum.Services.EventServices;
 using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Services.Sessions;
+using Perpetuum.Services.Sparky;
 using System.Collections.Concurrent;
 
 namespace Perpetuum.Services.Channels
@@ -22,6 +23,7 @@ namespace Perpetuum.Services.Channels
         private readonly AdminCommandRouter _adminCommand;
         private readonly GlobalConfiguration _globalConfiguration;
         private readonly EventListenerService _eventChannel;
+        private readonly SparkyRequestCoordinator _sparkyCoordinator;
 
         public ChannelManager(
             ISessionManager sessionManager,
@@ -31,7 +33,8 @@ namespace Perpetuum.Services.Channels
             ChannelLoggerFactory channelLoggerFactory,
             AdminCommandRouter adminCommand,
             EventListenerService eventListener,
-            GlobalConfiguration globalConfiguration)
+            GlobalConfiguration globalConfiguration,
+            SparkyRequestCoordinator sparkyCoordinator)
         {
             _sessionManager = sessionManager;
             _sessionManager.SessionAdded += OnSessionAdded;
@@ -49,6 +52,7 @@ namespace Perpetuum.Services.Channels
 
             _eventChannel = eventListener;
             _globalConfiguration = globalConfiguration;
+            _sparkyCoordinator = sparkyCoordinator;
         }
 
         private void OnSessionAdded(ISession session)
@@ -319,6 +323,15 @@ namespace Perpetuum.Services.Channels
                             sender.Nick,
                             message));
                 }
+
+                const string trigger = "Sparky,";
+                if (message.StartsWith(trigger, StringComparison.OrdinalIgnoreCase))
+                {
+                    _sparkyCoordinator.TrySubmitGameQuestion(
+                        channelName,
+                        sender,
+                        message[trigger.Length..].Trim());
+                }
             }
         }
 
@@ -356,6 +369,18 @@ namespace Perpetuum.Services.Channels
             };
             MessageBuilder builder = channel.CreateNotificationMessage(ChannelNotify.Message, data);
             channel.SendToOne(_sessionManager, recipient, builder);
+        }
+
+        public bool GameOnlyAnnouncement(string channelName, Character sender, string message)
+        {
+            if (!_channels.TryGetValue(channelName, out Channel? channel))
+            {
+                return false;
+            }
+
+            channel.Logger.LogMessage(sender, message);
+            channel.SendMessageToAll(_sessionManager, sender, message);
+            return true;
         }
 
         public void PinnedAnnouncement(string channelName, Character sender, string message, PinSlot pinSlot)

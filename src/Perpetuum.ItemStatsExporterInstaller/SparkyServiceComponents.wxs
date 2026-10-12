@@ -1,0 +1,28 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <ComponentGroup Id="SparkyServiceComponents" Directory="INSTALLFOLDER">
+      <Files Include="$(var.SparkyPublishDir)**">
+        <Exclude Files="$(var.SparkyPublishDir)Perpetuum.ItemStatsExporter.exe" />
+      </Files>
+
+      <Component Id="SparkyServiceExecutable" Guid="{C9836F94-C8FB-4782-94CF-4BED9AE65CF9}">
+        <File Id="SparkyServiceExecutableFile" Source="$(var.SparkyPublishDir)Perpetuum.ItemStatsExporter.exe" KeyPath="yes" />
+        <ServiceInstall Id="SparkyServiceInstall"
+                        Type="ownProcess"
+                        Name="Perpetuum.Sparky"
+                        DisplayName="Perpetuum Sparky Service"
+                        Description="Local AI service and restricted reverse SSH tunnel for Perpetuum."
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="NT AUTHORITY\LocalService"
+                        Arguments="--serve &quot;C:\ProgramData\Sparky\output.json&quot; --config &quot;C:\ProgramData\Sparky\service-settings.json&quot;" />
+
+        <ServiceControl Id="SparkyServiceControl"
+                        Name="Perpetuum.Sparky"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="true" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

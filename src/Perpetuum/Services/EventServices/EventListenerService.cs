@@ -6,6 +6,9 @@ using Perpetuum.Services.EventServices.EventProcessors;
 using Perpetuum.Threading.Process;
 using Perpetuum.Timers;
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
+using System.Threading.Channels;
+using Perpetuum.Services.Sparky;
 
 namespace Perpetuum.Services.EventServices
 {
@@ -22,8 +25,15 @@ namespace Perpetuum.Services.EventServices
         //private readonly DiscordSocketClient _client;
         private readonly GlobalConfiguration _globalConfiguration;
         private readonly IDiscordPinStateRepository _pinStateRepository;
+        private readonly Func<SparkyRequestCoordinator> _sparkyCoordinatorFactory;
+        private Channel<SparkyDiscordReply>? _sparkyDiscordQueue;
+        private CancellationTokenSource? _sparkyDiscordShutdown;
+        private Task? _sparkyDiscordWorker;
 
-        public EventListenerService(GlobalConfiguration globalConfiguration, IDiscordPinStateRepository pinStateRepository)
+        public EventListenerService(
+            GlobalConfiguration globalConfiguration,
+            IDiscordPinStateRepository pinStateRepository,
+            Func<SparkyRequestCoordinator> sparkyCoordinatorFactory)
         {
             _observers = new Dictionary<EventType, IList<IEventProcessor>>();
             _queue = new ConcurrentQueue<IEventMessage>();
@@ -35,6 +45,7 @@ namespace Perpetuum.Services.EventServices
 
             _globalConfiguration = globalConfiguration;
             _pinStateRepository = pinStateRepository;
+            _sparkyCoordinatorFactory = sparkyCoordinatorFactory;
         }
 
         /// <summary>
@@ -108,6 +119,11 @@ namespace Perpetuum.Services.EventServices
             }
         }
 
+        internal bool TryQueueSparkyDiscordReply(ulong channelId, string message)
+        {
+            return _sparkyDiscordQueue?.Writer.TryWrite(new SparkyDiscordReply(channelId, message)) == true;
+        }
+
         public void NotifyListeners(IEventMessage message)
         {
             lock (_lock)
@@ -155,6 +171,31 @@ namespace Perpetuum.Services.EventServices
 
         public override void Stop()
         {
+            _sparkyDiscordQueue?.Writer.TryComplete();
+            _sparkyDiscordShutdown?.Cancel();
+            if (_sparkyDiscordWorker is not null)
+            {
+                try
+                {
+                    if (!_sparkyDiscordWorker.Wait(TimeSpan.FromSeconds(5)))
+                    {
+                        Logger.Error("[Sparky] Discord reply worker did not stop within the shutdown grace period.");
+                    }
+                }
+                catch (AggregateException)
+                {
+                    Logger.Error("[Sparky] Discord reply worker failed during shutdown.");
+                }
+            }
+
+            if (_sparkyDiscordWorker is null || _sparkyDiscordWorker.IsCompleted)
+            {
+                _sparkyDiscordShutdown?.Dispose();
+                _sparkyDiscordShutdown = null;
+                _sparkyDiscordWorker = null;
+                _sparkyDiscordQueue = null;
+            }
+
             Task.Run(async () =>
             {
                 await _client.LogoutAsync();
@@ -170,6 +211,23 @@ namespace Perpetuum.Services.EventServices
         public override void Start()
         {
             base.Start();
+
+            if (_globalConfiguration.EnableSparky &&
+                (_sparkyDiscordWorker is null || _sparkyDiscordWorker.IsCompleted))
+            {
+                var capacity = Math.Clamp(_globalConfiguration.SparkyQueueCapacity, 1, 512);
+                _sparkyDiscordQueue = Channel.CreateBounded<SparkyDiscordReply>(new BoundedChannelOptions(capacity)
+                {
+                    FullMode = BoundedChannelFullMode.Wait,
+                    SingleReader = true,
+                    SingleWriter = false,
+                    AllowSynchronousContinuations = false
+                });
+                _sparkyDiscordShutdown = new CancellationTokenSource();
+                _sparkyDiscordWorker = ProcessSparkyDiscordRepliesAsync(
+                    _sparkyDiscordQueue.Reader,
+                    _sparkyDiscordShutdown.Token);
+            }
 
             string discordBotToken = _globalConfiguration.DiscordBotToken;
 
@@ -195,10 +253,65 @@ namespace Perpetuum.Services.EventServices
                 string nick = message.Author.GlobalName;
 
                 PublishMessage(new DiscordIntegrationMessage(EventType.DiscordToPerpetuum, message.Channel.Id, nick, message.CleanContent));
+
+                if (message is SocketUserMessage userMessage &&
+                    _client.CurrentUser is { } botUser &&
+                    userMessage.MentionedUsers.Any(user => user.Id == botUser.Id))
+                {
+                    var content = userMessage.CleanContent
+                        .Replace($"@{botUser.Username}", string.Empty, StringComparison.OrdinalIgnoreCase);
+                    if (!string.IsNullOrWhiteSpace(botUser.GlobalName))
+                    {
+                        content = content.Replace(
+                            $"@{botUser.GlobalName}",
+                            string.Empty,
+                            StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    // CleanContent resolves normal mentions to display names. Remove any unresolved
+                    // mention tokens too, so raw Discord IDs cannot be forwarded to the Sparky API.
+                    content = Regex.Replace(content, "<@!?\\d+>|<@&\\d+>|<#\\d+>", string.Empty).Trim();
+
+                    _sparkyCoordinatorFactory().TrySubmitDiscordQuestion(
+                        message.Channel.Id,
+                        message.Author.Id,
+                        content);
+                }
             }
 
             return Task.CompletedTask;
         }
+
+        private async Task ProcessSparkyDiscordRepliesAsync(
+            ChannelReader<SparkyDiscordReply> reader,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await foreach (var reply in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    try
+                    {
+                        if (_client.GetChannel(reply.ChannelId) is IMessageChannel discordChannel)
+                        {
+                            await discordChannel.SendMessageAsync(
+                                reply.Message,
+                                allowedMentions: AllowedMentions.None).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        Logger.Error("[Sparky] Discord reply could not be sent.");
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Expected during service shutdown.
+            }
+        }
+
+        private sealed record SparkyDiscordReply(ulong ChannelId, string Message);
 
         private Task Log(LogMessage msg)
         {

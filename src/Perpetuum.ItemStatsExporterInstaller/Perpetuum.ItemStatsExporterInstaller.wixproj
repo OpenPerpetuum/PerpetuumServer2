@@ -1,0 +1,17 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <SparkyPublishDir>$(MSBuildProjectDirectory)\..\..\.superpowers\sdd\2026-10-11-sparky-vdm-reverse-ssh\publish\</SparkyPublishDir>
+    <DefineConstants>$(DefineConstants);SparkyPublishDir=$(SparkyPublishDir)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+  </ItemGroup>
+
+  <Target Name="PublishSparkySelfContained" BeforeTargets="CoreCompile">
+    <Exec Command="dotnet publish ..\Perpetuum.ItemStatsExporter\Perpetuum.ItemStatsExporter.csproj --configuration $(Configuration) --runtime win-x64 --self-contained true -p:Platform=x64 -m:1 --output &quot;$(SparkyPublishDir)&quot;" />
+    <Error Condition="!Exists('$(SparkyPublishDir)Perpetuum.ItemStatsExporter.exe')" Text="The self-contained Sparky publish did not produce Perpetuum.ItemStatsExporter.exe." />
+  </Target>
+</Project>

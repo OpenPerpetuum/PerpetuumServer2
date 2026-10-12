@@ -53,6 +53,33 @@ namespace Perpetuum
 
         public string OpHelpChannelId { get; set; }
 
+        public bool EnableSparky { get; set; }
+
+        public string SparkyApiUrl { get; set; } = "https://127.0.0.1:5080/v1/answer";
+
+        public string SparkyProtectedSettingsPath { get; set; } = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "Sparky",
+            "vdm-client-settings.json");
+
+        public int SparkyRequestTimeoutSeconds { get; set; } = 90;
+
+        public int SparkyMaxQuestionCharacters { get; set; } = 1000;
+
+        public int SparkyMaxAnswerCharacters { get; set; } = 2000;
+
+        public int SparkyQueueCapacity { get; set; } = 64;
+
+        public int SparkyWorkerCount { get; set; } = 2;
+
+        public int SparkyPendingPerCallerLimit { get; set; } = 1;
+
+        public int SparkyContextLifetimeMinutes { get; set; } = 15;
+
+        public int SparkyContextCapacity { get; set; } = 2048;
+
+        public string SparkySenderCharacterNick { get; set; } = "[OPP] Sparky - The Syndicate Welcome Agent";
+
         // Default roaming mode.
         [DefaultValue(RoamingState.RoamingMode.Default)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]

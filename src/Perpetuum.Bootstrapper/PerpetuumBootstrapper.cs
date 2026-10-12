@@ -46,6 +46,7 @@ using Perpetuum.Services.Sessions;
 using Perpetuum.Services.Social;
 using Perpetuum.Services.Sparks;
 using Perpetuum.Services.Sparks.Teleports;
+using Perpetuum.Services.Sparky;
 using Perpetuum.Services.Standing;
 using Perpetuum.Services.Steam;
 using Perpetuum.Services.TechTree;
@@ -630,6 +631,12 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<NpcReinforcementSpawner>().As<NpcSpawnEventHandler<NpcReinforcementsMessage>>();
             //_ = _builder.RegisterType<SapAttackerSpawner>().As<NpcSpawnEventHandler<SapAttackersSpawnMessage>>();
             _ = _builder.RegisterType<DiscordIntegrationHandler>();
+            _ = _builder.RegisterType<SparkyResponseProcessor>();
+            _ = _builder.RegisterType<SparkyRequestCoordinator>().SingleInstance().OnActivated(e =>
+            {
+                e.Context.Resolve<IProcessManager>().AddProcess(
+                    e.Instance.ToAsync().AsTimed(TimeSpan.FromSeconds(1)));
+            });
 
             _ = _builder.RegisterType<EventListenerService>().SingleInstance().OnActivated(e =>
             {
@@ -641,6 +648,7 @@ namespace Perpetuum.Bootstrapper
                 e.Instance.AttachListener(e.Context.Resolve<NpcStateAnnouncer>());
                 e.Instance.AttachListener(e.Context.Resolve<SapStateAnnouncer>());
                 e.Instance.AttachListener(e.Context.Resolve<DiscordIntegrationHandler>());
+                e.Instance.AttachListener(e.Context.Resolve<SparkyResponseProcessor>());
                 GameTimeObserver obs = new GameTimeObserver(e.Instance);
                 obs.Subscribe(e.Context.Resolve<IGameTimeService>());
             });

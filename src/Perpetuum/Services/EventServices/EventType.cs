@@ -15,5 +15,6 @@
         NpcSapAttackers,
         DiscordToPerpetuum,
         PerpetuumToDiscord,
+        SparkyResponse,
     }
 }

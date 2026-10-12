@@ -71,6 +71,12 @@
 | `HostStateService` | Tracks server lifecycle state (Off/Init/Starting/Online/Stopping) | `src/Perpetuum/Host/HostStateService.cs` |
 | `Db` | Static fluent query factory backed by SQL Server | `src/Perpetuum/Data/Db.cs` |
 
+## Sparky Local Answer Service
+
+`Perpetuum.ItemStatsExporter` runs on the AI PC, reads an offline item/recipe export, and exposes an authenticated HTTPS API on IPv4 loopback through the reverse SSH forward. The game server keeps the integration disabled by default. When enabled, in-game `Sparky, ...` messages and Discord bot mentions are admitted to a bounded request queue; tracked workers send only the question and an optional public item display name to the AI PC. Caller IDs, channel routing, session state, and delivery decisions stay in the game-server process.
+
+HTTP completions return as `SparkyResponse` events through `EventListenerService`. The game event processor posts game answers without the normal Discord mirror, sends offline answers through character mail, and routes Discord answers only to their source channel with mentions disabled. Short-lived follow-up context is volatile and source-separated. The VDM-side bearer token is DPAPI-protected in a separately ACL-restricted file; it is not stored in `perpetuum.ini`. The API and reverse-tunnel service are documented in `src/Perpetuum.ItemStatsExporter/` and `docs/superpowers/sparky-vdm-reverse-ssh-operations.md`; client setup is in `docs/superpowers/sparky-vdm-client-setup.md`.
+
 ## Key Patterns
 
 ### Dependency Injection (Autofac)
