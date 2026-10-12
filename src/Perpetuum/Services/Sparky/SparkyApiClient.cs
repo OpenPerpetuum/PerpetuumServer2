@@ -28,6 +28,7 @@ internal sealed class SparkyApiClient : IDisposable
     public async Task<SparkyApiResult> AnswerAsync(
         string question,
         string? contextItem,
+        int? contextLanguageId,
         CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -35,7 +36,7 @@ internal sealed class SparkyApiClient : IDisposable
 
         using var request = new HttpRequestMessage(HttpMethod.Post, _options.ApiUri)
         {
-            Content = JsonContent.Create(new SparkyApiRequest(question, contextItem), options: JsonOptions)
+            Content = JsonContent.Create(new SparkyApiRequest(question, contextItem, contextLanguageId), options: JsonOptions)
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiToken);
 
@@ -62,13 +63,26 @@ internal sealed class SparkyApiClient : IDisposable
                 SparkyResultKind.Answered,
                 parsed.Answer,
                 Limit(parsed.Item, 256),
-                []),
-            "not_found" => new SparkyApiResult(SparkyResultKind.NotFound, null, null, []),
+                [],
+                parsed.LanguageId),
+            "not_found" => new SparkyApiResult(
+                SparkyResultKind.NotFound,
+                Limit(parsed.Answer, 2000),
+                null,
+                [],
+                parsed.LanguageId),
             "ambiguous" => new SparkyApiResult(
                 SparkyResultKind.Ambiguous,
+                Limit(parsed.Answer, 2000),
                 null,
+                (parsed.Candidates ?? []).Take(10).Select(candidate => Limit(candidate, 256)!).ToArray(),
+                parsed.LanguageId),
+            "busy" => new SparkyApiResult(
+                SparkyResultKind.Busy,
+                Limit(parsed.Answer, 2000),
                 null,
-                (parsed.Candidates ?? []).Take(10).Select(candidate => Limit(candidate, 256)!).ToArray()),
+                [],
+                parsed.LanguageId),
             _ => SparkyApiResult.Unavailable
         };
     }
@@ -112,13 +126,14 @@ internal sealed class SparkyApiClient : IDisposable
 
     public void Dispose() => _httpClient.Dispose();
 
-    private sealed record SparkyApiRequest(string Question, string? ContextItem);
+    private sealed record SparkyApiRequest(string Question, string? ContextItem, int? ContextLanguageId);
     private sealed class SparkyApiResponse
     {
         public string? Status { get; init; }
         public string? Item { get; init; }
         public string? Answer { get; init; }
         public string[]? Candidates { get; init; }
+        public int? LanguageId { get; init; }
     }
 }
 
@@ -137,7 +152,8 @@ internal sealed record SparkyApiResult(
     SparkyResultKind Kind,
     string? Answer,
     string? ItemDisplayName,
-    IReadOnlyList<string> Candidates)
+    IReadOnlyList<string> Candidates,
+    int? LanguageId = null)
 {
     public static SparkyApiResult Unavailable { get; } = new(SparkyResultKind.Unavailable, null, null, []);
 }

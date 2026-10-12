@@ -15,4 +15,11 @@
     <ProjectReference Include="..\Perpetuum\Perpetuum.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\tools\Refresh-SparkyKnowledge.ps1"
+             Link="tools\Refresh-SparkyKnowledge.ps1"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Perpetuum.Services.Sparky;
 
 namespace Perpetuum.ItemStatsExporter;
 
@@ -24,7 +25,7 @@ internal static class SparkyHttpService
     };
 
     public static async Task<int> RunAsync(
-        ExportDocument export,
+        SparkyKnowledgeBundle bundle,
         SparkyServiceOptions options,
         CancellationToken cancellationToken)
     {
@@ -61,8 +62,14 @@ internal static class SparkyHttpService
         await using var app = builder.Build();
         var logger = app.Logger;
         using var inferenceSlots = new SemaphoreSlim(options.MaxConcurrentRequests);
+        var interpreter = new SparkyQuestionInterpreter(options);
+        var answerRouter = new SparkyAnswerRouter(options);
 
-        app.MapGet("/health", () => Results.Json(new { status = "ok" }));
+        app.MapGet("/health", () => Results.Json(new
+        {
+            status = "ok",
+            bundleVersion = bundle.Manifest.BundleVersion[..Math.Min(bundle.Manifest.BundleVersion.Length, 16)]
+        }));
         app.MapPost("/v1/answer", async (HttpContext context) =>
         {
             var timer = Stopwatch.StartNew();
@@ -137,61 +144,38 @@ internal static class SparkyHttpService
                     return Results.Json(new SparkyApiError("invalid_request"), statusCode: statusCode);
                 }
 
-                var lookup = ItemStatsLookup.Resolve(question, export.Items, export.ProductionRecipes, request.ContextItem);
-                if (lookup.Status == "not_found")
+                if (!inferenceSlots.Wait(0))
                 {
-                    outcome = "not_found";
+                    int busyLanguageId = bundle.Languages.Any(language => language.LanguageId == request.ContextLanguageId)
+                        ? request.ContextLanguageId!.Value
+                        : bundle.Languages.FirstOrDefault(language => language.LanguageId == 0)?.LanguageId
+                          ?? bundle.Languages[0].LanguageId;
+                    outcome = "busy";
                     statusCode = StatusCodes.Status200OK;
-                    return Results.Json(new SparkyApiResponse("not_found"), JsonOptions);
-                }
-
-                if (lookup.Status == "ambiguous")
-                {
-                    outcome = "ambiguous";
-                    statusCode = StatusCodes.Status200OK;
-                    var candidates = lookup.Candidates
-                        .Where(candidate => !string.Equals(
-                            candidate.DisplayName,
-                            candidate.DefinitionName,
-                            StringComparison.OrdinalIgnoreCase))
-                        .Select(candidate => candidate.DisplayName)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToArray();
-                    return Results.Json(new SparkyApiResponse("ambiguous", Candidates: candidates), JsonOptions);
-                }
-
-                if (lookup.Item is null || !inferenceSlots.Wait(0))
-                {
-                    outcome = lookup.Item is null ? "lookup_error" : "busy";
-                    statusCode = lookup.Item is null
-                        ? StatusCodes.Status502BadGateway
-                        : StatusCodes.Status429TooManyRequests;
-                    if (statusCode == StatusCodes.Status429TooManyRequests)
-                    {
-                        context.Response.Headers.RetryAfter = "1";
-                    }
-
-                    return Results.Json(
-                        new SparkyApiError(lookup.Item is null ? "service_error" : "busy"),
-                        statusCode: statusCode);
+                    return Results.Json(new SparkyApiResponse(
+                        "busy",
+                        Answer: SparkyResponseTemplates.Get(busyLanguageId, SparkyResponseTemplateKey.Busy),
+                        LanguageId: busyLanguageId), JsonOptions);
                 }
 
                 try
                 {
-                    var answer = await LocalModelAnswerer.AnswerAsync(
-                        options.ModelBaseUrl,
-                        options.ModelId,
+                    var interpretation = await interpreter.InterpretAsync(
                         question,
-                        lookup.Item,
-                        options.MaxAnswerCharacters,
-                        options.MaxCompletionTokens,
-                        options.InferenceTimeout,
-                        apiToken: options.ModelApiToken,
-                        cancellationToken: context.RequestAborted);
-                    outcome = "answered";
+                        bundle.Languages,
+                        request.ContextLanguageId,
+                        context.RequestAborted).ConfigureAwait(false);
+                    var answer = await answerRouter.AnswerAsync(
+                        question,
+                        interpretation,
+                        bundle,
+                        request.ContextItem,
+                        request.ContextLanguageId,
+                        context.RequestAborted).ConfigureAwait(false);
+                    outcome = answer.Status;
                     statusCode = StatusCodes.Status200OK;
                     return Results.Json(
-                        new SparkyApiResponse("answered", lookup.Item.ContextDisplayName, answer),
+                        new SparkyApiResponse(answer.Status, answer.Item, answer.Answer, answer.Candidates, answer.LanguageId),
                         JsonOptions);
                 }
                 catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)

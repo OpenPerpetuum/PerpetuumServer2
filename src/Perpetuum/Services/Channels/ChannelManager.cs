@@ -324,13 +324,12 @@ namespace Perpetuum.Services.Channels
                             message));
                 }
 
-                const string trigger = "Sparky,";
-                if (message.StartsWith(trigger, StringComparison.OrdinalIgnoreCase))
+                if (SparkyQuestionParser.TryExtractGameQuestion(message, out string question))
                 {
                     _sparkyCoordinator.TrySubmitGameQuestion(
                         channelName,
                         sender,
-                        message[trigger.Length..].Trim());
+                        question);
                 }
             }
         }

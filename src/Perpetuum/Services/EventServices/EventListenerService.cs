@@ -258,19 +258,7 @@ namespace Perpetuum.Services.EventServices
                     _client.CurrentUser is { } botUser &&
                     userMessage.MentionedUsers.Any(user => user.Id == botUser.Id))
                 {
-                    var content = userMessage.CleanContent
-                        .Replace($"@{botUser.Username}", string.Empty, StringComparison.OrdinalIgnoreCase);
-                    if (!string.IsNullOrWhiteSpace(botUser.GlobalName))
-                    {
-                        content = content.Replace(
-                            $"@{botUser.GlobalName}",
-                            string.Empty,
-                            StringComparison.OrdinalIgnoreCase);
-                    }
-
-                    // CleanContent resolves normal mentions to display names. Remove any unresolved
-                    // mention tokens too, so raw Discord IDs cannot be forwarded to the Sparky API.
-                    content = Regex.Replace(content, "<@!?\\d+>|<@&\\d+>|<#\\d+>", string.Empty).Trim();
+                    string content = StripBotMention(userMessage.CleanContent, botUser);
 
                     _sparkyCoordinatorFactory().TrySubmitDiscordQuestion(
                         message.Channel.Id,
@@ -280,6 +268,47 @@ namespace Perpetuum.Services.EventServices
             }
 
             return Task.CompletedTask;
+        }
+
+        private static string StripBotMention(string content, SocketUser botUser)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return string.Empty;
+            }
+
+            string[] botNames = new[] { botUser.Username, botUser.GlobalName }
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            if (botNames.Length > 0)
+            {
+                string namesPattern = string.Join("|", botNames.Select(Regex.Escape));
+                string botMentionPattern = $@"@(?:{namesPattern})(?=$|[\s,!?\.:;])";
+                content = Regex.Replace(
+                    content,
+                    botMentionPattern,
+                    "\uE000",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            }
+
+            // CleanContent resolves normal mentions to display names. Remove any unresolved
+            // mention tokens too, so raw Discord IDs cannot be forwarded to the Sparky API.
+            content = Regex.Replace(content, "<@!?\\d+>|<@&\\d+>|<#\\d+>", " ");
+
+            // A trailing mention is a vocative: remove its preceding comma and retain sentence
+            // punctuation after the mention (for example, "..., right, @Sparky?").
+            content = Regex.Replace(
+                content,
+                @"\s*,?\s*\uE000\s*([?!\.])?\s*$",
+                "$1",
+                RegexOptions.CultureInvariant);
+
+            // For a mention inside or at the start of a sentence, remove its following separator.
+            content = Regex.Replace(content, @"\uE000\s*[,;:]?\s*", string.Empty, RegexOptions.CultureInvariant);
+            content = Regex.Replace(content, @"\s+([,;:.!?])", "$1").Trim();
+            return content;
         }
 
         private async Task ProcessSparkyDiscordRepliesAsync(

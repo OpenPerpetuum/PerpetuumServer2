@@ -56,14 +56,17 @@
 - Config: `GlobalConfiguration.DiscordBotToken`, `GlobalConfiguration.OpHelpChannelId`, `GlobalConfiguration.WebHookId`, `GlobalConfiguration.WebHookOAuth`
 - Integration is optional; bot token left empty disables it
 
-**Sparky local item-answer service:**
-- The API runs on the separate AI PC and uses an offline export; it does not query the live game database.
+**Sparky local knowledge service:**
+- `Perpetuum.ItemStatsExporter --build-knowledge` runs on the Main development machine and combines the local database copy, included custom dictionaries, and the reviewed `tools/sparky-knowledge-sources.json` allowlist into a versioned bundle. The AI PC receives only this bundle and has no live database or source-repository access.
+- The two curated mechanics passages are stored under `docs/sparky/knowledge/` and hashed together with their supporting gameplay source files. Eleven specifically named lore files under `E:\Perpetuum-lore` are also allowlisted and hashed from their text. The builder reads only those filenames, not the whole directory; the AI PC receives only the resulting passages and hashes, never the source path.
+- The AI-machine API uses the offline bundle; it does not query the live game database.
 - The game server reaches `https://127.0.0.1:5080/v1/answer` through the established reverse SSH tunnel. The API remains bound to loopback and validates a bearer token in addition to SSH/TLS.
 - `GlobalConfiguration.EnableSparky` defaults to `false`. Other `Sparky*` settings in `perpetuum.ini` tune the loopback URL, request timeout, answer/message caps, bounded queue, worker count, per-caller pending limit, context lifetime/capacity, and sender character.
 - The bearer token is stored separately under `%ProgramData%\Sparky\vdm-client-settings.json`, encrypted with machine-scope DPAPI, and ACL-restricted to the explicitly configured game-server service identity, SYSTEM, and local Administrators.
-- Only the question and an optional public item display name cross the API boundary. Game/Discord identities, channel IDs, account data, session state, and live database content remain local to the game server.
+- Only the question, optional public item display name, and supported language ID cross the API boundary. Game/Discord identities, channel IDs, account data, online state, and session state remain local to the game server. No player identifiers or private data enter LM Studio prompts.
+- `/health` returns the active bundle version prefix. `tools/Refresh-SparkyKnowledge.ps1` validates a staged bundle, activates it by restarting only `Perpetuum.Sparky`, checks the pinned loopback HTTPS health response, and rolls back to the previous file if activation fails.
 - Game answers bypass Discord mirroring; Discord answers return only to the source channel and disable mentions. Offline in-game callers receive character mail.
-- Implementation and operator steps: `src/Perpetuum/Services/Sparky/`, `src/Perpetuum.ItemStatsExporter/`, and `docs/superpowers/sparky-vdm-client-setup.md`.
+- Implementation and operator steps: `src/Perpetuum/Services/Sparky/`, `src/Perpetuum.ItemStatsExporter/`, `docs/superpowers/sparky-knowledge-refresh.md`, and `docs/superpowers/sparky-vdm-client-setup.md`.
 
 **UPnP / NAT Traversal:**
 - Library: `SharpOpenNat` 4.0.17

@@ -80,17 +80,21 @@ public sealed class SparkyResponseProcessor : EventProcessor
 
     private static string FormatResult(SparkyApiResult result)
     {
+        int languageId = result.LanguageId ?? 0;
         return result.Kind switch
         {
             SparkyResultKind.Answered => result.Answer ?? "I could not prepare a verified answer.",
-            SparkyResultKind.NotFound => "I couldn't identify an item in the server's verified item data. Name the item, and I'll check its stats or recipe.",
+            SparkyResultKind.NotFound => result.Answer ?? SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.MissingTerm),
             SparkyResultKind.Ambiguous => result.Candidates.Count == 0
-                ? "I found more than one possible item. Please include its full translated name."
-                : $"I found several possible items: {string.Join(", ", result.Candidates)}. Please include the full item name.",
-            SparkyResultKind.Busy => result.Answer ?? "I'm handling several requests at the moment. Please try again shortly.",
-            SparkyResultKind.Usage => "Ask me about an item, for example: Sparky, what are the stats for Standard medium HCL laser?",
-            SparkyResultKind.QuestionTooLong => "Please shorten your question and ask again.",
-            _ => "My local data link is unavailable right now. Please try again later."
+                ? result.Answer ?? SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.AmbiguousItem)
+                : result.Answer ?? SparkyResponseTemplates.Format(
+                    languageId,
+                    SparkyResponseTemplateKey.AmbiguousItem,
+                    string.Join(", ", result.Candidates)),
+            SparkyResultKind.Busy => result.Answer ?? SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.Busy),
+            SparkyResultKind.Usage => SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.Usage),
+            SparkyResultKind.QuestionTooLong => SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.QuestionTooLong),
+            _ => SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.Unavailable)
         };
     }
 

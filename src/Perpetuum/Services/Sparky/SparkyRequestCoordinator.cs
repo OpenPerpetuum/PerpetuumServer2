@@ -11,9 +11,6 @@ namespace Perpetuum.Services.Sparky;
 
 public sealed class SparkyRequestCoordinator : Process
 {
-    private const string BusyText = "I'm handling several requests at the moment. Please try again shortly.";
-    private const string QuestionTooLongText = "Please shorten your question and ask again.";
-
     private readonly GlobalConfiguration _configuration;
     private readonly Func<EventListenerService> _eventListenerFactory;
     private readonly SparkyContextStore _contextStore;
@@ -173,35 +170,37 @@ public sealed class SparkyRequestCoordinator : Process
         ulong discordChannelId,
         string question)
     {
+        var now = DateTimeOffset.UtcNow;
+        var context = _contextStore.GetAndTouch(identity, now);
+        int? fallbackLanguageId = context?.LanguageId ?? GetCharacterLanguage(caller);
         question = question.Trim();
         if (question.Length == 0)
         {
             PublishImmediate(identity.Source, caller, channelName, discordChannelId,
-                new SparkyApiResult(SparkyResultKind.Usage, null, null, []));
+                new SparkyApiResult(SparkyResultKind.Usage, null, null, [], fallbackLanguageId));
             return;
         }
 
         if (question.Length > _options!.MaxQuestionCharacters)
         {
             PublishImmediate(identity.Source, caller, channelName, discordChannelId,
-                new SparkyApiResult(SparkyResultKind.QuestionTooLong, null, null, []));
+                new SparkyApiResult(SparkyResultKind.QuestionTooLong, null, null, [], fallbackLanguageId));
             return;
         }
 
         if (!TryAddPending(identity, _options.PendingPerCallerLimit))
         {
             PublishImmediate(identity.Source, caller, channelName, discordChannelId,
-                new SparkyApiResult(SparkyResultKind.Busy, BusyText, null, []));
+                new SparkyApiResult(SparkyResultKind.Busy, null, null, [], fallbackLanguageId));
             return;
         }
 
-        var contextItem = _contextStore.GetAndTouch(identity, DateTimeOffset.UtcNow);
-        var work = new SparkyWorkItem(identity, caller, channelName, discordChannelId, question, contextItem);
+        var work = new SparkyWorkItem(identity, caller, channelName, discordChannelId, question, context);
         if (_queue?.Writer.TryWrite(work) != true)
         {
             RemovePending(identity);
             PublishImmediate(identity.Source, caller, channelName, discordChannelId,
-                new SparkyApiResult(SparkyResultKind.Busy, BusyText, null, []));
+                new SparkyApiResult(SparkyResultKind.Busy, null, null, [], fallbackLanguageId));
         }
     }
 
@@ -215,7 +214,11 @@ public sealed class SparkyRequestCoordinator : Process
                 SparkyApiResult result;
                 try
                 {
-                    result = await _apiClient!.AnswerAsync(work.Question, work.ContextItem, cancellationToken)
+                    result = await _apiClient!.AnswerAsync(
+                            work.Question,
+                            work.Context?.ItemDisplayName,
+                            work.Context?.LanguageId,
+                            cancellationToken)
                         .ConfigureAwait(false);
                     if (cancellationToken.IsCancellationRequested)
                     {
@@ -223,9 +226,12 @@ public sealed class SparkyRequestCoordinator : Process
                         return;
                     }
 
-                    if (result.Kind == SparkyResultKind.Answered && !string.IsNullOrWhiteSpace(result.ItemDisplayName))
+                    int? languageId = result.LanguageId ?? work.Context?.LanguageId;
+                    if (languageId is not null ||
+                        (result.Kind == SparkyResultKind.Answered && !string.IsNullOrWhiteSpace(result.ItemDisplayName)))
                     {
-                        _contextStore.Set(work.Identity, result.ItemDisplayName, DateTimeOffset.UtcNow);
+                        string? itemDisplayName = result.ItemDisplayName ?? work.Context?.ItemDisplayName;
+                        _contextStore.Set(work.Identity, itemDisplayName, languageId, DateTimeOffset.UtcNow);
                     }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -235,7 +241,7 @@ public sealed class SparkyRequestCoordinator : Process
                 }
                 catch (Exception exception)
                 {
-                    result = SparkyApiResult.Unavailable;
+                    result = SparkyApiResult.Unavailable with { LanguageId = work.Context?.LanguageId };
                     Logger.Error($"[Sparky] Upstream request failed ({exception.GetType().Name}).");
                 }
 
@@ -290,6 +296,13 @@ public sealed class SparkyRequestCoordinator : Process
         }
     }
 
+    private static int? GetCharacterLanguage(Character? character)
+    {
+        return character is not null && CustomDictionary.LanguageNames.ContainsKey(character.Language)
+            ? character.Language
+            : 0;
+    }
+
     private void PublishImmediate(
         SparkySource source,
         Character? caller,
@@ -314,5 +327,5 @@ public sealed class SparkyRequestCoordinator : Process
         string? ChannelName,
         ulong DiscordChannelId,
         string Question,
-        string? ContextItem);
+        SparkyContextEntry? Context);
 }

@@ -1,6 +1,9 @@
 using System.Text.Json;
 using System.Runtime.Versioning;
 using System.Globalization;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Perpetuum.Bootstrapper;
 using Perpetuum.Data;
 using Perpetuum.EntityFramework;
@@ -42,10 +45,14 @@ internal static class Program
             return 0;
         }
 
-        if (args.Length != 3 &&
-            !(args.Length == 4 && args[0] == "--ask") &&
-            !(args.Length == 2 && args[0] == "--serve") &&
-            !(args.Length == 4 && args[0] == "--serve" && args[2] == "--config"))
+        bool validArguments =
+            (args.Length == 3 && args[0] is not "--serve" and not "--build-knowledge" and not "--validate-bundle") ||
+            (args.Length == 4 && args[0] == "--ask") ||
+            (args.Length == 2 && args[0] is "--serve" or "--validate-bundle") ||
+            (args.Length == 4 && args[0] == "--serve" && args[2] == "--config") ||
+            (args.Length == 6 && args[0] == "--build-knowledge");
+
+        if (!validArguments)
         {
             PrintUsage();
             return 2;
@@ -53,20 +60,33 @@ internal static class Program
 
         try
         {
+            if (args[0] == "--validate-bundle")
+            {
+                var bundle = ReadKnowledgeBundle(args[1]);
+                Console.WriteLine($"Valid Sparky knowledge bundle {bundle.Manifest.BundleVersion} ({bundle.Languages.Count} languages, {bundle.Items.Count} items, {bundle.ProductionRecipes.Count} recipes, {bundle.KnowledgePassages.Count} knowledge passages).");
+                return 0;
+            }
+
+            if (args[0] == "--build-knowledge")
+            {
+                var bundle = BuildKnowledgeBundle(args[1], args[2], args[3], args[4]);
+                WriteJson(bundle, args[5]);
+                Console.WriteLine($"Built Sparky knowledge bundle {bundle.Manifest.BundleVersion} with {bundle.Languages.Count} languages, {bundle.Items.Count} items, and {bundle.ProductionRecipes.Count} recipes.");
+                Console.WriteLine($"Bundle: {Path.GetFullPath(args[5])}");
+                return 0;
+            }
+
             if (args[0] == "--serve")
             {
                 var configurationPath = args.Length == 4 ? args[3] : null;
                 using var options = SparkyServiceOptions.Load(args[1], configurationPath);
-                var export = JsonSerializer.Deserialize<ExportDocument>(File.ReadAllText(options.ExportPath))
-                    ?? throw new InvalidDataException("The input export did not contain a JSON object.");
-                ValidateExportDocument(export);
-                return await SparkyHttpService.RunAsync(export, options, CancellationToken.None);
+                var bundle = ReadKnowledgeBundleOrLegacy(options.ExportPath);
+                return await SparkyHttpService.RunAsync(bundle, options, CancellationToken.None);
             }
 
             if (args[0] == "--ask")
             {
-                var askExport = JsonSerializer.Deserialize<ExportDocument>(File.ReadAllText(args[1]))
-                    ?? throw new InvalidDataException("The input export did not contain a JSON object.");
+                var askExport = ReadExportOrBundle(args[1]);
                 var lookup = ItemStatsLookup.Resolve(args[3], askExport.Items, askExport.ProductionRecipes);
                 if (lookup.Status != "found" || lookup.Item is null)
                 {
@@ -100,8 +120,7 @@ internal static class Program
 
             if (args[0] == "--answer")
             {
-                var answerExport = JsonSerializer.Deserialize<ExportDocument>(File.ReadAllText(args[1]))
-                    ?? throw new InvalidDataException("The input export did not contain a JSON object.");
+                var answerExport = ReadExportOrBundle(args[1]);
                 var response = ItemStatsLookup.Resolve(args[2], answerExport.Items, answerExport.ProductionRecipes);
                 Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true }));
                 return 0;
@@ -194,6 +213,8 @@ internal static class Program
         Console.WriteLine("   or: Perpetuum.ItemStatsExporter --answer <input.json> <question>");
         Console.WriteLine("   or: Perpetuum.ItemStatsExporter --ask <input.json> <model-id> <question>");
         Console.WriteLine("   or: Perpetuum.ItemStatsExporter --serve <input.json> [--config <settings.json>]");
+        Console.WriteLine("   or: Perpetuum.ItemStatsExporter --build-knowledge <game-root> <custom-dictionary-dir> <source-root> <lore-root> <bundle-path>");
+        Console.WriteLine("   or: Perpetuum.ItemStatsExporter --validate-bundle <bundle-path>");
         Console.WriteLine("Runs offline and does not start the game server.");
         Console.WriteLine("--ask sends only the matched item's verified stats, ammo, recipe, and full-material facts to LM Studio.");
         Console.WriteLine("SPARKY_LMSTUDIO_BASE_URL defaults to http://localhost:1234/v1.");
@@ -234,7 +255,8 @@ internal static class Program
     private static ExportDocument BuildExport(
         IEntityDefaultReader reader,
         IReadOnlyDictionary<string, string> translations,
-        IReadOnlyDictionary<int, AggregateFieldMetadata> metadata)
+        IReadOnlyDictionary<int, AggregateFieldMetadata> metadata,
+        SparkyDictionaryCatalog? dictionaryCatalog = null)
     {
         var items = new List<WeaponItem>();
         var definitions = reader.GetAll().ToArray();
@@ -293,12 +315,19 @@ internal static class Program
             items.Add(item);
         }
 
-        return new ExportDocument
+        var export = new ExportDocument
         {
             Source = "Perpetuum entity factory and initialized item properties; production recipes and recursive material totals use ProductionComponent semantics and the production_data visibility filter.",
             Items = items,
             ProductionRecipes = productionRecipes
         };
+
+        if (dictionaryCatalog is not null)
+        {
+            AddLocalizedViews(export, definitions, dictionaryCatalog);
+        }
+
+        return export;
     }
 
     private static List<ProductionRecipe> BuildProductionRecipes(
@@ -560,17 +589,60 @@ internal static class Program
         };
     }
 
+    private static ItemAnswerView BuildAnswerView(
+        WeaponItem item,
+        IReadOnlyDictionary<string, string> translations,
+        int languageId)
+    {
+        return new ItemAnswerView
+        {
+            Stats = item.BaseStats
+                .Select(stat => BuildAnswerStat(stat, translations, languageId))
+                .Where(stat => stat is not null)
+                .Cast<AnswerStat>()
+                .ToList(),
+            AmmoVariants = item.AmmoVariants
+                .Where(ammo => translations.TryGetValue(ammo.DefinitionName, out var displayName) &&
+                               !string.IsNullOrWhiteSpace(displayName))
+                .Select(ammo => new AmmoAnswerView
+                {
+                    DisplayName = translations[ammo.DefinitionName],
+                    Damage = ammo.Damage.Select(damage => new AnswerDamage
+                    {
+                        Type = damage.Type,
+                        Value = FormatNumber(damage.Value, 2)
+                    }).ToList()
+                })
+                .ToList()
+        };
+    }
+
     private static AnswerStat? BuildAnswerStat(StatValue stat)
     {
+        return BuildAnswerStat(stat, translations: null, languageId: 0);
+    }
+
+    private static AnswerStat? BuildAnswerStat(
+        StatValue stat,
+        IReadOnlyDictionary<string, string>? translations,
+        int languageId)
+    {
         var metadata = stat.Metadata;
-        var label = stat.Label;
-        if (string.IsNullOrWhiteSpace(label) && stat.FieldEnumName is not null)
+        var label = translations is null
+            ? stat.Label
+            : translations.GetValueOrDefault(stat.LabelTranslationKey);
+        if (string.IsNullOrWhiteSpace(label) && stat.FieldEnumName is not null && (translations is null || languageId == 0))
         {
             label = HumanizeAggregateName(stat.FieldEnumName);
 
             // Enum names provide a useful English fallback for known fields. If neither a
             // translated unit nor a translated field label exists, avoid emitting a guess.
-            if (string.IsNullOrWhiteSpace(metadata?.MeasurementUnit))
+            var fallbackUnit = translations is null
+                ? metadata?.MeasurementUnit
+                : metadata?.MeasurementUnitKey is { } fallbackUnitKey
+                    ? translations.GetValueOrDefault(fallbackUnitKey)
+                    : null;
+            if (string.IsNullOrWhiteSpace(fallbackUnit))
             {
                 return null;
             }
@@ -582,7 +654,11 @@ internal static class Program
         }
 
         var value = stat.Value * metadata.MeasurementMultiplier + metadata.MeasurementOffset;
-        var unit = metadata.MeasurementUnit;
+        var unit = translations is null
+            ? metadata.MeasurementUnit
+            : metadata.MeasurementUnitKey is { } localizedUnitKey
+                ? translations.GetValueOrDefault(localizedUnitKey)
+                : null;
         if (unit == "•")
         {
             unit = null;
@@ -595,6 +671,290 @@ internal static class Program
             Value = FormatNumber(value, metadata.Digits),
             Unit = string.IsNullOrWhiteSpace(unit) ? null : unit
         };
+    }
+
+    private static void AddLocalizedViews(
+        ExportDocument export,
+        IReadOnlyCollection<EntityDefault> definitions,
+        SparkyDictionaryCatalog dictionaryCatalog)
+    {
+        foreach (var language in dictionaryCatalog.Languages)
+        {
+            foreach (var item in export.Items)
+            {
+                string? localizedName = dictionaryCatalog.GetTranslation(language.LanguageId, item.DefinitionName);
+                string? englishName = dictionaryCatalog.GetTranslation(0, item.DefinitionName);
+                item.LocalizedViews[language.LanguageId] = new SparkyLocalizedItemView
+                {
+                    DisplayName = localizedName ?? englishName,
+                    HasLocalizedDisplayName = localizedName is not null,
+                    AnswerView = BuildAnswerView(item, language.Translations, language.LanguageId)
+                };
+            }
+
+            var localizedRecipes = export.ProductionRecipes.Select(recipe => new ProductionRecipe
+            {
+                ProductDefinition = recipe.ProductDefinition,
+                DefinitionName = recipe.DefinitionName,
+                DisplayName = dictionaryCatalog.GetTranslation(language.LanguageId, recipe.DefinitionName),
+                OutputQuantity = recipe.OutputQuantity,
+                Components = recipe.Components.Select(component => new ProductionRecipeComponent
+                {
+                    Definition = component.Definition,
+                    DefinitionName = component.DefinitionName,
+                    DisplayName = dictionaryCatalog.GetTranslation(language.LanguageId, component.DefinitionName),
+                    Amount = component.Amount,
+                    BaseAmount = component.BaseAmount
+                }).ToList()
+            }).ToList();
+
+            foreach (var recipe in localizedRecipes)
+            {
+                bool completeTranslations = !string.IsNullOrWhiteSpace(recipe.DisplayName) &&
+                                            recipe.Components.All(component => !string.IsNullOrWhiteSpace(component.DisplayName));
+                if (completeTranslations)
+                {
+                    recipe.AnswerView = new ProductionRecipeAnswerView
+                    {
+                        OutputQuantity = recipe.OutputQuantity,
+                        Components = recipe.Components.Select(component => new ProductionRecipeAnswerComponent
+                        {
+                            DisplayName = component.DisplayName!,
+                            Amount = component.BaseAmount
+                        }).ToList()
+                    };
+                }
+            }
+
+            var recipesByDefinition = localizedRecipes.ToDictionary(recipe => recipe.ProductDefinition);
+            var definitionById = definitions.ToDictionary(definition => definition.Definition);
+            foreach (var recipe in localizedRecipes.Where(recipe => recipe.AnswerView is not null))
+            {
+                var materials = new Dictionary<int, ExpandedMaterial>();
+                if (TryExpandRecipe(
+                        recipe,
+                        1,
+                        recipesByDefinition,
+                        definitionById,
+                        new HashSet<int>(),
+                        materials))
+                {
+                    recipe.FullMaterialsAnswerView = new FullMaterialsAnswerView
+                    {
+                        OutputQuantity = recipe.OutputQuantity,
+                        Materials = materials.Values
+                            .OrderBy(material => material.DisplayName, StringComparer.OrdinalIgnoreCase)
+                            .Select(material => new ProductionRecipeAnswerComponent
+                            {
+                                DisplayName = material.DisplayName,
+                                Amount = material.Amount
+                            })
+                            .ToList()
+                    };
+                }
+            }
+
+            var localizedByDefinition = localizedRecipes.ToDictionary(recipe => recipe.DefinitionName, StringComparer.OrdinalIgnoreCase);
+            foreach (var recipe in export.ProductionRecipes)
+            {
+                var localized = localizedByDefinition[recipe.DefinitionName];
+                recipe.LocalizedViews[language.LanguageId] = new SparkyLocalizedRecipeView
+                {
+                    DisplayName = localized.DisplayName,
+                    HasCompleteTranslations = localized.AnswerView is not null,
+                    AnswerView = localized.AnswerView,
+                    FullMaterialsAnswerView = localized.FullMaterialsAnswerView
+                };
+            }
+        }
+    }
+
+    private static SparkyKnowledgeBundle BuildKnowledgeBundle(
+        string gameRoot,
+        string dictionaryDirectory,
+        string sourceRoot,
+        string loreRoot)
+    {
+        string resolvedSourceRoot = Path.GetFullPath(sourceRoot);
+        if (!Directory.Exists(resolvedSourceRoot))
+        {
+            throw new DirectoryNotFoundException($"Source repository root was not found: {resolvedSourceRoot}");
+        }
+
+        var dictionaryCatalog = SparkyDictionaryCatalog.Load(dictionaryDirectory);
+        string sourceRevision = ReadRepositoryRevision(resolvedSourceRoot);
+        var sourceCatalog = SparkyKnowledgeSourceCatalog.Load(resolvedSourceRoot);
+        var knowledgeIndex = SparkyKnowledgeIndexBuilder.Build(resolvedSourceRoot, loreRoot, sourceCatalog);
+        using var runtime = OfflineContentRuntime.Initialize(gameRoot);
+        var reader = runtime.Resolve<IEntityDefaultReader>();
+        var metadata = LoadAggregateMetadata(dictionaryCatalog.English.Translations);
+        var export = BuildExport(reader, dictionaryCatalog.English.Translations, metadata, dictionaryCatalog);
+        string gameContentRevision = Hash(JsonSerializer.SerializeToUtf8Bytes(export));
+        DateTimeOffset builtAtUtc = DateTimeOffset.UtcNow;
+        var dictionaryHashes = dictionaryCatalog.Languages.ToDictionary(language => language.LanguageId, language => language.DictionaryHash);
+        var sourceHashes = knowledgeIndex.SourceHashes.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
+        sourceHashes["serverRepositoryCommit"] = sourceRevision;
+        string versionSeed = string.Join("|", new[]
+        {
+            gameContentRevision,
+            sourceRevision,
+            builtAtUtc.ToString("O", CultureInfo.InvariantCulture),
+            string.Join("|", dictionaryHashes.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}:{entry.Value}")),
+            string.Join("|", sourceHashes.OrderBy(entry => entry.Key, StringComparer.Ordinal).Select(entry => $"{entry.Key}:{entry.Value}"))
+        });
+        var manifest = new SparkyBundleManifest(
+            Hash(Encoding.UTF8.GetBytes(versionSeed))[..16],
+            gameContentRevision,
+            builtAtUtc,
+            dictionaryHashes,
+            sourceHashes);
+
+        var bundle = new SparkyKnowledgeBundle(
+            SparkyKnowledgeBundle.CurrentSchemaVersion,
+            manifest,
+            dictionaryCatalog.ToSupportedLanguages(),
+            export.Items,
+            export.ProductionRecipes,
+            knowledgeIndex.Passages,
+            knowledgeIndex.SearchIndex with
+            {
+                AmbiguousAliases = SparkyAliasCatalog.Build(
+                    dictionaryCatalog.ToSupportedLanguages(),
+                    export.Items,
+                    export.ProductionRecipes)
+            });
+        SparkyKnowledgeBundleValidator.Validate(bundle);
+        return bundle;
+    }
+
+    private static string ReadRepositoryRevision(string sourceRoot)
+    {
+        var startInfo = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = sourceRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        startInfo.ArgumentList.Add("rev-parse");
+        startInfo.ArgumentList.Add("HEAD");
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidDataException("Could not start git to read the server source revision.");
+        string revision = process.StandardOutput.ReadToEnd().Trim();
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0 || revision.Length != 40 || !revision.All(Uri.IsHexDigit))
+        {
+            throw new InvalidDataException($"Could not read a complete server source revision from '{sourceRoot}': {error.Trim()}");
+        }
+
+        return revision.ToLowerInvariant();
+    }
+
+    private static string Hash(byte[] value)
+    {
+        return Convert.ToHexString(SHA256.HashData(value));
+    }
+
+    private static SparkyKnowledgeBundle ReadKnowledgeBundle(string path)
+    {
+        var bundle = JsonSerializer.Deserialize<SparkyKnowledgeBundle>(File.ReadAllText(path))
+            ?? throw new InvalidDataException("The input file did not contain a Sparky knowledge bundle.");
+        SparkyKnowledgeBundleValidator.Validate(bundle);
+        return bundle;
+    }
+
+    private static SparkyKnowledgeBundle ReadKnowledgeBundleOrLegacy(string path)
+    {
+        using var json = JsonDocument.Parse(File.ReadAllText(path));
+        if (json.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidDataException("The input export did not contain a JSON object.");
+        }
+
+        if (json.RootElement.TryGetProperty("SchemaVersion", out _) ||
+            json.RootElement.TryGetProperty("schemaVersion", out _))
+        {
+            return ReadKnowledgeBundle(path);
+        }
+
+        var export = JsonSerializer.Deserialize<ExportDocument>(json.RootElement.GetRawText())
+            ?? throw new InvalidDataException("The input export did not contain a JSON object.");
+        ValidateExportDocument(export);
+
+        string exportHash = Hash(File.ReadAllBytes(path));
+        var emptyTranslations = new Dictionary<string, string>(StringComparer.Ordinal);
+        string dictionaryHash = SparkyDictionaryCatalog.ComputeDictionaryHash(emptyTranslations);
+        foreach (var item in export.Items)
+        {
+            item.LocalizedViews[0] = new SparkyLocalizedItemView
+            {
+                DisplayName = item.DisplayName,
+                HasLocalizedDisplayName = !string.IsNullOrWhiteSpace(item.DisplayName),
+                AnswerView = item.AnswerView
+            };
+        }
+
+        foreach (var recipe in export.ProductionRecipes)
+        {
+            recipe.LocalizedViews[0] = new SparkyLocalizedRecipeView
+            {
+                DisplayName = recipe.DisplayName,
+                HasCompleteTranslations = recipe.AnswerView is not null,
+                AnswerView = recipe.AnswerView,
+                FullMaterialsAnswerView = recipe.FullMaterialsAnswerView
+            };
+        }
+
+        var legacyBundle = new SparkyKnowledgeBundle(
+            SparkyKnowledgeBundle.CurrentSchemaVersion,
+            new SparkyBundleManifest(
+                $"legacy-{exportHash[..16]}",
+                exportHash,
+                DateTimeOffset.UtcNow,
+                new Dictionary<int, string> { [0] = dictionaryHash },
+                new Dictionary<string, string> { ["legacyExport"] = exportHash }),
+            [new SparkySupportedLanguage(0, "English", dictionaryHash, emptyTranslations)],
+            export.Items,
+            export.ProductionRecipes,
+            [],
+            new SparkySearchIndex(
+                new Dictionary<string, IReadOnlyList<int>>(StringComparer.Ordinal),
+                SparkyAliasCatalog.Build([new SparkySupportedLanguage(0, "English", dictionaryHash, emptyTranslations)], export.Items, export.ProductionRecipes)));
+        SparkyKnowledgeBundleValidator.Validate(legacyBundle);
+        return legacyBundle;
+    }
+
+    private static ExportDocument ReadExportOrBundle(string path)
+    {
+        using var json = JsonDocument.Parse(File.ReadAllText(path));
+        if (json.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidDataException("The input export did not contain a JSON object.");
+        }
+
+        if (json.RootElement.TryGetProperty("SchemaVersion", out _) ||
+            json.RootElement.TryGetProperty("schemaVersion", out _))
+        {
+            var bundle = ReadKnowledgeBundle(path);
+            return new ExportDocument
+            {
+                Items = bundle.Items.ToList(),
+                ProductionRecipes = bundle.ProductionRecipes.ToList()
+            };
+        }
+
+        return JsonSerializer.Deserialize<ExportDocument>(json.RootElement.GetRawText())
+            ?? throw new InvalidDataException("The input export did not contain a JSON object.");
+    }
+
+    private static void WriteJson<T>(T value, string outputFile)
+    {
+        var outputPath = Path.GetFullPath(outputFile);
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+        File.WriteAllText(outputPath, JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     private static string HumanizeAggregateName(string enumName)
@@ -645,6 +1005,7 @@ internal sealed class ProductionRecipe
     public List<ProductionRecipeComponent> Components { get; init; } = [];
     public ProductionRecipeAnswerView? AnswerView { get; set; }
     public FullMaterialsAnswerView? FullMaterialsAnswerView { get; set; }
+    public Dictionary<int, SparkyLocalizedRecipeView> LocalizedViews { get; init; } = [];
 }
 
 internal sealed class ProductionRecipeComponent
@@ -683,6 +1044,7 @@ internal sealed class WeaponItem
     public List<StatValue> BaseStats { get; init; } = [];
     public List<AmmoVariant> AmmoVariants { get; init; } = [];
     public ItemAnswerView AnswerView { get; set; } = new();
+    public Dictionary<int, SparkyLocalizedItemView> LocalizedViews { get; init; } = [];
 }
 
 internal sealed class ItemAnswerView

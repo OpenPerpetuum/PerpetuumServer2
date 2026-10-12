@@ -1,6 +1,6 @@
 # Sparky Knowledge Expansion Design
 
-**Status:** Draft for user review
+**Status:** Approved 2026-10-12
 **Date:** 2026-10-12
 
 ## Goal
@@ -19,8 +19,19 @@ The game and Discord integration has been exercised against the local debug game
 
 ## Approved design decisions
 
+### Natural addressing
+
+Support natural direct address in both platforms while retaining each platform's trigger rules:
+
+- In-game, recognize a case-insensitive `Sparky,` at the start, optionally preceded by a greeting such as `Hey`: `Sparky, what is ...?` and `Hey Sparky, how about ...?`.
+- In-game, also recognize a trailing vocative: `The value of ... is ..., right, Sparky?`.
+- On Discord, continue to require an actual mention of the bot account. The mention may appear in natural phrasing, such as `Hey, @Sparky, how about ...?` or `The value of ... is ..., right, @Sparky?`. A plain-text name does not trigger Sparky.
+
+Strip the direct address or actual mention and its adjacent vocative separator before submitting the question; preserve the question's final punctuation. A textual name match elsewhere does not trigger in-game Sparky. A bare address/mention continues to receive a short usage hint without calling the AI service. Keep the existing case-insensitive in-game match and Discord account-ID-based mention recognition.
+
 ### Runtime and privacy boundary
 
+- Build the complete offline bundle on the Main development machine, which has the repository and local database copy. Read mechanics summaries from the repository and lore from explicitly named files under `E:\Perpetuum-lore`; do not recursively index either source root. Transfer the validated bundle to the AI machine; the AI machine reads only that bundle and never connects to the database or needs access to the repository or lore directory.
 - Continue to use the existing local reverse-SSH and authenticated HTTPS path. Do not add a public listener, third-party inference service, external search, or direct live database access.
 - Keep the game server as the owner of short-lived, per-source context and delivery metadata. Send only the question, optional public item context, and optional prior language context to the AI machine. The AI service returns the selected language with the answer result. Verified public facts and retrieved public excerpts are sent only from the AI service to LM Studio.
 - Do not send account IDs, character IDs, Discord IDs, online state, account data, or private player data to Sparky or LM Studio.
@@ -44,7 +55,7 @@ The game and Discord integration has been exercised against the local debug game
 Keep deterministic data answers separate from retrieval-based answers:
 
 1. **Structured item facts:** Use the exporter and server-derived calculations for stats, compatible ammo, direct recipes, and recursive materials. Recognize common intent wording deterministically where feasible, including full/total/raw materials and follow-ups referring to the last item.
-2. **Game mechanics and lore:** Build an offline search index from approved project documentation, mechanics-related server-code behavior, and allowlisted public game-content data from the local database copy. Preserve source/version metadata for every indexed passage. Exclude secrets, credentials, account or character data, authentication and authorization internals, administrative-only behavior, and operational infrastructure details.
+2. **Game mechanics and lore:** Build an offline search index from reviewed project documentation, mechanics-related server-code behavior, allowlisted public game-content data from the local database copy, and the exact lore filenames approved in `tools/sparky-knowledge-sources.json`. The initial lore files are the `.txt` files in `E:\Perpetuum-lore` at approval time; later additions require explicit allowlist review. Preserve content hashes and source IDs for every indexed passage, without recording the absolute lore root in the bundle. Exclude secrets, credentials, account or character data, authentication and authorization internals, administrative-only behavior, and operational infrastructure details.
 3. **Small talk:** Allow short greetings, thanks, and light in-character banter. This path must not present ungrounded mechanics, lore, or current-world facts.
 
 For mechanics and lore questions, retrieve a bounded set of relevant passages and provide only those passages plus the question and response language to LM Studio. Retrieval must work across supported question languages while the source material may be English. The local model may summarize and connect retrieved evidence, but it must not fill gaps with unsupported claims.

@@ -1,8 +1,10 @@
 # Perpetuum Item Stats Exporter
 
-This Windows tool exports translated weapon-module defaults, compatible weapon-ammo variants, and base production recipes from a local Perpetuum content database. It also provides an optional loopback-only HTTP prototype that answers supported item questions from the generated offline export through LM Studio.
+This Windows tool exports translated weapon-module defaults, compatible weapon-ammo variants, and base production recipes from a local Perpetuum content database. It also builds a versioned multilingual Sparky knowledge bundle and provides an optional loopback-only HTTPS API that answers item questions and source-grounded mechanics questions through LM Studio.
 
-It uses the server's entity factory and property classes to construct and initialize items. The output preserves raw server values and aggregate metadata, and also includes an `AnswerView` projection for player-facing responses. The projection applies the database multiplier, offset, and precision, uses dictionary labels when present, and otherwise humanizes known `AggregateField` enum names when a translated unit is available. Recipe components are selected from products exposed by the `production_data` view and their base one-unit quantity is calculated through the server's `ProductionComponent` logic. A recipe gets a player-facing answer view only when its product and every component have English dictionary translations.
+It uses the server's entity factory and property classes to construct and initialize items. The output preserves raw server values and aggregate metadata, and also includes an `AnswerView` projection for player-facing responses. The projection applies the database multiplier, offset, and precision, uses dictionary labels when present, and otherwise humanizes known `AggregateField` enum names when a translated unit is available. Recipe components are selected from products exposed by the `production_data` view and their base one-unit quantity is calculated through the server's `ProductionComponent` logic. A recipe gets a player-facing answer view only when its product and every component have translations in that language.
+
+The versioned knowledge bundle can include any of the game's dictionaries found in a numeric `customDictionary/<language-id>.json` file. Language IDs and display names come from `CustomDictionary.LanguageNames`; `0.json` is mandatory and defines the canonical public translation-key inventory. Missing translated names are kept as missing and incomplete recipes are not exposed as complete recipes.
 
 ## Run
 
@@ -12,7 +14,24 @@ From the repository root:
 dotnet run --project src/Perpetuum.ItemStatsExporter -c Release -- <GameRoot> <path-to-customDictionary-0.json> <output.json>
 ```
 
-`<GameRoot>` must contain the normal `perpetuum.ini` with a connection string targeting a local database copy. Pass the complete English `customDictionary/0.json` from the Sparky machine. The tool writes the resulting JSON to `<output.json>`.
+`<GameRoot>` must contain the normal `perpetuum.ini` with a connection string targeting a local database copy. The single-export command accepts the English `customDictionary/0.json`; it writes the resulting JSON to `<output.json>`.
+
+To build and validate the versioned multilingual bundle on the Main development machine, pass the game data root, the directory containing the dictionary files, the repository root, the approved lore directory, and the output path:
+
+```powershell
+$gameRoot = 'G:\PerpetuumServer\data'
+$dictionaryDirectory = 'E:\MyStuff\Projects\OPDB\Patches\Live_36\Server\data\customDictionary'
+$sourceRoot = 'E:\MyStuff\Projects\PerpetuumServer2'
+$loreRoot = 'E:\Perpetuum-lore'
+$bundlePath = 'E:\MyStuff\Projects\PerpetuumServer2\sparky-knowledge.bundle.json'
+
+dotnet run --project src/Perpetuum.ItemStatsExporter -c Release -- --build-knowledge $gameRoot $dictionaryDirectory $sourceRoot $loreRoot $bundlePath
+dotnet run --project src/Perpetuum.ItemStatsExporter -c Release -- --validate-bundle $bundlePath
+```
+
+The builder reads the local database copy through the offline content initializer, exports the same server-calculated item and recipe values, and adds one localized answer view for each dictionary included in the directory. The manifest records a derived game-content fingerprint, repository revision, UTC build time, and dictionary hashes. No credentials or player/account rows are included. This command does not connect to the live VDI.
+
+Mechanics and lore passages come only from `tools/sparky-knowledge-sources.json`. The two mechanics summaries under `docs/sparky/knowledge/` are hashed together with their supporting gameplay source files. Eleven named lore text files under `E:\Perpetuum-lore` are explicitly allowlisted; the builder does not enumerate that directory. Each lore revision is hashed from its text, and only source IDs and passage hashes enter the bundle manifest. The absolute lore directory and source file paths are not included in the bundle or model prompt. The lexical index has fixed source, passage, text-size, and retrieval limits; questions without relevant evidence receive a localized clarification instead of guessed lore.
 
 The offline initializer registers only the content/entity modules and their readers. It does not call `PerpetuumBootstrapper.Init()`, execute `initServer` or `PersonalConfig`, start auto-activated server processes, or open game/relay listeners. Export code reads entity defaults, definition configs, extensions, aggregate values, module-property mappings, robot-template relations, and aggregate-field metadata. It does not query account or character tables.
 
@@ -119,7 +138,7 @@ Receive-Job -Job $serviceJob -Keep
 Get-NetTCPConnection -LocalPort 5080 -State Listen -ErrorAction SilentlyContinue
 ```
 
-`GET /health` returns `{"status":"ok"}` and does not need authentication. `POST /v1/answer` requires the bearer token and accepts a JSON `question` string plus an optional `contextItem` display name of at most 256 characters. The API validates the hint against public names in the loaded export, uses it only for a clear item follow-up with no explicit item match, and always gives a currently named item precedence. Invalid hints are ignored. The API does not retain context or accept caller identities.
+`GET /health` returns `{"status":"ok","bundleVersion":"..."}` and does not need authentication. `POST /v1/answer` requires the bearer token and accepts a JSON `question` string plus optional `contextItem` and `contextLanguageId` hints. The API validates the item hint against public names in the loaded bundle and accepts a context language only when the bundle contains it. The game server, not the API, stores those short-lived hints. The API does not retain context or accept caller identities.
 
 ```json
 {"status":"answered","item":"Standard medium HCL laser","answer":"Accuracy: 12"}
@@ -127,6 +146,10 @@ Get-NetTCPConnection -LocalPort 5080 -State Listen -ErrorAction SilentlyContinue
 {"status":"ambiguous","candidates":["Standard medium HCL laser","... another match"]}
 ```
 
-Unauthenticated requests receive 401; malformed input receives 400; requests over a configured limit receive 413; saturated inference capacity receives 429; model failures return a generic 502 or 504. The service does not log question/answer contents, context names, or tokens; does not accept account/character identifiers; and does not retain follow-up context. A not-found or ambiguous lookup does not call LM Studio.
+Unauthenticated requests receive 401; malformed input receives 400; requests over a configured limit receive 413; saturated inference capacity returns a localized `busy` response; model failures return a generic 502 or 504. The service does not log question/answer contents, context names, or tokens; does not accept account/character identifiers; and does not retain follow-up context. A not-found or ambiguous structured lookup can trigger the small interpretation call, but it does not send an answer-generation prompt with item facts.
+
+### Refreshing the AI-machine bundle
+
+Use [`docs/superpowers/sparky-knowledge-refresh.md`](../../docs/superpowers/sparky-knowledge-refresh.md) for the repeatable Main-machine build, transfer hash check, AI-machine validation and activation, health verification, backup retention, and rollback steps. The refresh script restarts only the Sparky Windows service; it does not restart the game server.
 
 Do not expose this endpoint on a LAN or through router port forwarding. Keep the reverse tunnel, API bearer token, and normal TLS certificate validation enabled for VDM access.

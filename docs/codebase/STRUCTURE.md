@@ -17,7 +17,8 @@ PerpetuumServer2.sln
 ├── src/Perpetuum.ItemStatsExporter/    # Offline item/recipe export, HTTPS loopback API, and supervised reverse SSH client
 ├── src/Perpetuum.ItemStatsExporterInstaller/ # Self-contained Windows service installer for Sparky
 ├── src/Open.Nat/                       # UPnP library (vendored)
-├── docs/                               # DB schema docs (authoritative)
+├── docs/                               # Architecture, DB schema, curated Sparky knowledge, and project docs
+│   ├── sparky/knowledge/               # Reviewed player-facing mechanics summaries for offline bundle retrieval
 │   └── db_structure/
 │       ├── database_schema_documentation.md
 │       ├── stored_procedures/
@@ -38,7 +39,7 @@ PerpetuumServer2.sln
 | `Perpetuum.Server` | `Program.cs` — parses CLI args, calls `PerpetuumBootstrapper.Init/Start` |
 | `Perpetuum.ServerService2` | Windows service host wrapping bootstrapper |
 | `Perpetuum.AdminTool` | Standalone WPF tool for admin operations (NPC editing, seasons, loot, etc.) |
-| `Perpetuum.ItemStatsExporter` | Offline weapon-stat and production-recipe export, recursive full-material projection, deterministic lookup, LM Studio answer generation, and optional HTTPS loopback Windows service with restricted reverse SSH supervision; uses game entity/property/production-component logic without starting game server services |
+| `Perpetuum.ItemStatsExporter` | Offline multilingual item/recipe export and versioned bundle build, deterministic lexical retrieval over allowlisted mechanics summaries and lore text, grounded LM Studio answer routing, bundle validation, and optional HTTPS loopback Windows service with restricted reverse SSH supervision; uses game entity/property/production-component logic without starting game server services |
 | `Perpetuum.ItemStatsExporterInstaller` | WiX installer for the self-contained Sparky Windows service; does not package machine-specific exports, credentials, SSH keys, or certificates |
 
 ## Source Organisation — `src/Perpetuum/`

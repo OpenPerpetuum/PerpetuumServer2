@@ -13,7 +13,7 @@ internal sealed class SparkyContextStore
         _lifetime = lifetime;
     }
 
-    public string? GetAndTouch(SparkyRequestIdentity identity, DateTimeOffset now)
+    public SparkyContextEntry? GetAndTouch(SparkyRequestIdentity identity, DateTimeOffset now)
     {
         lock (_lock)
         {
@@ -24,13 +24,18 @@ internal sealed class SparkyContextStore
             }
 
             _entries[identity] = entry with { LastActivity = now };
-            return entry.ItemDisplayName;
+            return new SparkyContextEntry(entry.ItemDisplayName, entry.LanguageId);
         }
     }
 
-    public void Set(SparkyRequestIdentity identity, string itemDisplayName, DateTimeOffset now)
+    public void Set(SparkyRequestIdentity identity, string? itemDisplayName, int? languageId, DateTimeOffset now)
     {
         if (string.IsNullOrWhiteSpace(itemDisplayName))
+        {
+            itemDisplayName = null;
+        }
+
+        if (itemDisplayName is null && languageId is null)
         {
             return;
         }
@@ -44,7 +49,7 @@ internal sealed class SparkyContextStore
                 _entries.Remove(oldest);
             }
 
-            _entries[identity] = new ContextEntry(itemDisplayName, now);
+            _entries[identity] = new ContextEntry(itemDisplayName, languageId, now);
         }
     }
 
@@ -67,5 +72,7 @@ internal sealed class SparkyContextStore
         }
     }
 
-    private sealed record ContextEntry(string ItemDisplayName, DateTimeOffset LastActivity);
+    private sealed record ContextEntry(string? ItemDisplayName, int? LanguageId, DateTimeOffset LastActivity);
 }
+
+internal sealed record SparkyContextEntry(string? ItemDisplayName, int? LanguageId);

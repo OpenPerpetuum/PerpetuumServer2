@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "weapon-range-and-damage",
+      "category": "mechanics",
+      "contentRoot": "repository",
+      "contentPath": "docs/sparky/knowledge/weapon-range-and-damage.md",
+      "sourcePaths": [
+        "src/Perpetuum/Modules/Weapons/WeaponModule.cs",
+        "src/Perpetuum/Modules/Weapons/Damage.cs",
+        "src/Perpetuum/Modules/Weapons/WeaponAmmo.cs",
+        "src/Perpetuum/Modules/ActiveModule.cs"
+      ]
+    },
+    {
+      "id": "production-recipes",
+      "category": "mechanics",
+      "contentRoot": "repository",
+      "contentPath": "docs/sparky/knowledge/production-recipes.md",
+      "sourcePaths": [
+        "src/Perpetuum/Services/ProductionEngine/ProductionComponent.cs",
+        "src/Perpetuum/Services/ProductionEngine/ProductionDescription.cs",
+        "src/Perpetuum.ItemStatsExporter/Program.cs"
+      ]
+    },
+    {
+      "id": "lore-archer-and-weasel",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Archer and Weasel.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-background",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Background.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-corporation-restructuring",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Corporation restructuring.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-agent-hostilities-memo",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Memo Agent vs Agent hostilities.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-niani-cult-first-contact",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Niani Cult first contact.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-recruitment-drive",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Recruitment drive.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-silk-purse-sows-ear",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Silk purse sows year.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-stolen-spectators",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Stolen Spectators.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-syndicate-management-brief",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Syndicate management brief.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-francis-winkler",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "The Tragic Tale of Francis Winkler.txt",
+      "sourcePaths": []
+    },
+    {
+      "id": "lore-theseus-files",
+      "category": "lore",
+      "contentRoot": "lore",
+      "contentPath": "Theseus Files.txt",
+      "sourcePaths": []
+    }
+  ]
+}
