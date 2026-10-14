@@ -637,6 +637,7 @@ namespace Perpetuum.Bootstrapper
                 e.Context.Resolve<IProcessManager>().AddProcess(
                     e.Instance.ToAsync().AsTimed(TimeSpan.FromSeconds(1)));
             });
+            _ = _builder.RegisterType<SparkyQuestionCaptureService>().SingleInstance();
 
             _ = _builder.RegisterType<EventListenerService>().SingleInstance().OnActivated(e =>
             {

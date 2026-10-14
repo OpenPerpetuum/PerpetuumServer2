@@ -97,7 +97,7 @@ src/Perpetuum/
 │   ├── ProductionEngine/   # Crafting, research, calibration, reprocessing
 │   ├── Seasons/            # Season lifecycle and bonus system
 │   ├── EventServices/      # Pub/sub event bus, Discord bridge, async Sparky response delivery
-│   ├── Sparky/             # Bounded AI API client, caller-local volatile follow-up context
+│   ├── Sparky/             # AI API client, volatile follow-up context, local passive question capture
 │   ├── Standing/           # Faction/corp standing
 │   ├── Social/             # Friends, blocks, social list
 │   ├── Channels/           # Chat channels, chat commands
@@ -227,6 +227,7 @@ src/Perpetuum.RequestHandlers/
 **Configuration:**
 - `src/Perpetuum.ServerService2/appsettings.json` — sets `GameRoot` path
 - `perpetuum.ini` (inside GameRoot) — SQL connection string, ports, zone config, feature flags
+- Passive Sparky pilot settings and JSONL/session file lifecycle — `docs/superpowers/sparky-question-capture.md`
 
 ## Module Organisation (Autofac)
 

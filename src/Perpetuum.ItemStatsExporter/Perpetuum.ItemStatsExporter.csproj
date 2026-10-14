@@ -9,8 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Perpetuum.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.1" />
+    <PackageReference Include="System.Text.Json" Version="9.0.1" />
     <ProjectReference Include="..\Perpetuum.Bootstrapper\Perpetuum.Bootstrapper.csproj" />
     <ProjectReference Include="..\Perpetuum\Perpetuum.csproj" />
   </ItemGroup>

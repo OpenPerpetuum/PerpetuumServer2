@@ -26,6 +26,7 @@ namespace Perpetuum.Services.EventServices
         private readonly GlobalConfiguration _globalConfiguration;
         private readonly IDiscordPinStateRepository _pinStateRepository;
         private readonly Func<SparkyRequestCoordinator> _sparkyCoordinatorFactory;
+        private readonly SparkyQuestionCaptureService _questionCapture;
         private Channel<SparkyDiscordReply>? _sparkyDiscordQueue;
         private CancellationTokenSource? _sparkyDiscordShutdown;
         private Task? _sparkyDiscordWorker;
@@ -33,7 +34,8 @@ namespace Perpetuum.Services.EventServices
         public EventListenerService(
             GlobalConfiguration globalConfiguration,
             IDiscordPinStateRepository pinStateRepository,
-            Func<SparkyRequestCoordinator> sparkyCoordinatorFactory)
+            Func<SparkyRequestCoordinator> sparkyCoordinatorFactory,
+            SparkyQuestionCaptureService questionCapture)
         {
             _observers = new Dictionary<EventType, IList<IEventProcessor>>();
             _queue = new ConcurrentQueue<IEventMessage>();
@@ -46,6 +48,7 @@ namespace Perpetuum.Services.EventServices
             _globalConfiguration = globalConfiguration;
             _pinStateRepository = pinStateRepository;
             _sparkyCoordinatorFactory = sparkyCoordinatorFactory;
+            _questionCapture = questionCapture;
         }
 
         /// <summary>
@@ -119,9 +122,9 @@ namespace Perpetuum.Services.EventServices
             }
         }
 
-        internal bool TryQueueSparkyDiscordReply(ulong channelId, string message)
+        internal bool TryQueueSparkyDiscordReply(long requestId, ulong channelId, ulong callerId, string message)
         {
-            return _sparkyDiscordQueue?.Writer.TryWrite(new SparkyDiscordReply(channelId, message)) == true;
+            return _sparkyDiscordQueue?.Writer.TryWrite(new SparkyDiscordReply(requestId, channelId, callerId, message)) == true;
         }
 
         public void NotifyListeners(IEventMessage message)
@@ -203,6 +206,8 @@ namespace Perpetuum.Services.EventServices
             });
 
             _client.Log -= Log;
+            _client.Connected -= OnDiscordConnected;
+            _client.Disconnected -= OnDiscordDisconnected;
             _client.MessageReceived -= OnMessageReceived;
 
             base.Stop();
@@ -234,6 +239,8 @@ namespace Perpetuum.Services.EventServices
             if (!string.IsNullOrEmpty(discordBotToken))
             {
                 _client.Log += Log;
+                _client.Connected += OnDiscordConnected;
+                _client.Disconnected += OnDiscordDisconnected;
                 _client.MessageReceived += OnMessageReceived;
 
                 // Run the async logic in the background
@@ -250,24 +257,92 @@ namespace Perpetuum.Services.EventServices
 
             if (!message.Author.IsBot && !string.IsNullOrEmpty(message.CleanContent))
             {
+                _questionCapture.TryCaptureDiscordMessage(
+                    message.Channel.Id,
+                    message.Channel.Name,
+                    message.CleanContent,
+                    message.Content);
+
                 string nick = message.Author.GlobalName;
 
                 PublishMessage(new DiscordIntegrationMessage(EventType.DiscordToPerpetuum, message.Channel.Id, nick, message.CleanContent));
 
                 if (message is SocketUserMessage userMessage &&
-                    _client.CurrentUser is { } botUser &&
-                    userMessage.MentionedUsers.Any(user => user.Id == botUser.Id))
+                    _client.CurrentUser is { } botUser)
                 {
-                    string content = StripBotMention(userMessage.CleanContent, botUser);
+                    bool resolvedBotMention = userMessage.MentionedUsers.Any(user => user.Id == botUser.Id);
+                    bool rawBotMention = ContainsRawUserMention(userMessage.Content, botUser.Id);
+                    bool actualBotMention = resolvedBotMention || rawBotMention;
+                    bool textBotAddress = !actualBotMention && ContainsTextualBotAddress(userMessage.CleanContent, botUser);
+                    bool addressesSparky = actualBotMention || textBotAddress;
+                    if (actualBotMention)
+                    {
+                        Logger.Info($"[Sparky] Discord bot mention received (rawToken={rawBotMention}, resolvedMention={resolvedBotMention}).");
+                    }
+                    else if (textBotAddress)
+                    {
+                        Logger.Info("[Sparky] Discord text address received.");
+                    }
+                    else if (_globalConfiguration.SparkyLogQuestionAndAnswerContent &&
+                             ContainsBotName(userMessage.CleanContent, botUser))
+                    {
+                        string candidateQuestion = StripBotMention(userMessage.CleanContent, botUser);
+                        string safeQuestion = SparkyRequestCoordinator.EscapeDiagnosticText(candidateQuestion, 1000);
+                        Logger.Info($"[Sparky][Discord] name-call candidate did not resolve to a bot mention question=\"{safeQuestion}\"");
+                    }
 
-                    _sparkyCoordinatorFactory().TrySubmitDiscordQuestion(
-                        message.Channel.Id,
-                        message.Author.Id,
-                        content);
+                    if (addressesSparky)
+                    {
+                        string content = StripBotMention(userMessage.CleanContent, botUser);
+                        bool accepted = _sparkyCoordinatorFactory().TrySubmitDiscordQuestion(
+                            message.Channel.Id,
+                            message.Author.Id,
+                            content);
+                        if (!accepted)
+                        {
+                            Logger.Warning("[Sparky] Discord address was received while the request adapter was disabled.");
+                        }
+                    }
                 }
             }
 
             return Task.CompletedTask;
+        }
+
+        private static bool ContainsRawUserMention(string content, ulong userId)
+        {
+            string userMention = $"<@{userId}>";
+            string nicknameMention = $"<@!{userId}>";
+            return content.Contains(userMention, StringComparison.Ordinal) ||
+                   content.Contains(nicknameMention, StringComparison.Ordinal);
+        }
+
+        private static bool ContainsBotName(string content, SocketUser botUser)
+        {
+            return new[] { botUser.Username, botUser.GlobalName }
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Any(name => content.Contains(name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool ContainsTextualBotAddress(string content, SocketUser botUser)
+        {
+            string[] botNames = new[] { botUser.Username, botUser.GlobalName }
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (botNames.Length == 0)
+            {
+                return false;
+            }
+
+            string namesPattern = string.Join("|", botNames.Select(Regex.Escape));
+            string botAddress = $@"@(?:{namesPattern})(?:#\d{{4}})?";
+            string openingAddress = $@"^\s*(?:hey(?:[\s,]+))?{botAddress}(?=$|[\s,!\?:.;])";
+            string trailingAddress = $@",\s*{botAddress}[?!.,]?\s*$";
+            const RegexOptions options = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
+
+            return Regex.IsMatch(content, openingAddress, options) ||
+                   Regex.IsMatch(content, trailingAddress, options);
         }
 
         private static string StripBotMention(string content, SocketUser botUser)
@@ -285,7 +360,7 @@ namespace Perpetuum.Services.EventServices
             if (botNames.Length > 0)
             {
                 string namesPattern = string.Join("|", botNames.Select(Regex.Escape));
-                string botMentionPattern = $@"@(?:{namesPattern})(?=$|[\s,!?\.:;])";
+                string botMentionPattern = $@"@(?:{namesPattern})(?:#\d{{4}})?(?=$|[\s,!?\.:;])";
                 content = Regex.Replace(
                     content,
                     botMentionPattern,
@@ -325,12 +400,17 @@ namespace Perpetuum.Services.EventServices
                         {
                             await discordChannel.SendMessageAsync(
                                 reply.Message,
-                                allowedMentions: AllowedMentions.None).ConfigureAwait(false);
+                                allowedMentions: new AllowedMentions { UserIds = [reply.CallerId] }).ConfigureAwait(false);
+                            Logger.Info($"[Sparky] Discord reply for request #{reply.RequestId:D6} sent.");
+                        }
+                        else
+                        {
+                            Logger.Warning($"[Sparky] Discord reply channel for request #{reply.RequestId:D6} was unavailable or not message-capable.");
                         }
                     }
-                    catch (Exception)
+                    catch (Exception exception)
                     {
-                        Logger.Error("[Sparky] Discord reply could not be sent.");
+                        Logger.Error($"[Sparky] Discord reply for request #{reply.RequestId:D6} could not be sent ({exception.GetType().Name}).");
                     }
                 }
             }
@@ -340,12 +420,35 @@ namespace Perpetuum.Services.EventServices
             }
         }
 
-        private sealed record SparkyDiscordReply(ulong ChannelId, string Message);
+        private sealed record SparkyDiscordReply(long RequestId, ulong ChannelId, ulong CallerId, string Message);
 
         private Task Log(LogMessage msg)
         {
-            // There has to be logging logic but meh.
+            string exceptionType = msg.Exception is null ? string.Empty : $" ({msg.Exception.GetType().Name})";
 
+            switch (msg.Severity)
+            {
+                case LogSeverity.Critical:
+                case LogSeverity.Error:
+                    Logger.Error($"[Discord] {msg.Severity} from {msg.Source}{exceptionType}.");
+                    break;
+                case LogSeverity.Warning:
+                    Logger.Warning($"[Discord] {msg.Severity} from {msg.Source}{exceptionType}.");
+                    break;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Task OnDiscordConnected()
+        {
+            Logger.Info("[Discord] Gateway connected.");
+            return Task.CompletedTask;
+        }
+
+        private Task OnDiscordDisconnected(Exception exception)
+        {
+            Logger.Warning($"[Discord] Gateway disconnected ({exception.GetType().Name}).");
             return Task.CompletedTask;
         }
     }

@@ -21,21 +21,97 @@ function Invoke-SparkyHealth {
     param([string]$ExpectedBundleVersion, [int]$TimeoutSeconds)
 
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    $lastCheck = 'No health response received.'
     do {
         try {
             $health = Invoke-RestMethod -Uri $HealthUri -Method Get -TimeoutSec 5
-            if ($health.status -eq 'ok' -and
-                (-not $ExpectedBundleVersion -or $health.bundleVersion -eq $ExpectedBundleVersion.Substring(0, [Math]::Min(16, $ExpectedBundleVersion.Length)))) {
+            if ($health.status -ne 'ok') {
+                $lastCheck = "Health returned status '$($health.status)'."
+            }
+            elseif (-not $ExpectedBundleVersion -or
+                $health.bundleVersion -eq $ExpectedBundleVersion.Substring(0, [Math]::Min(16, $ExpectedBundleVersion.Length))) {
                 return $health
+            }
+            else {
+                $lastCheck = "Health reported bundle version '$($health.bundleVersion)'."
             }
         }
         catch {
+            $lastCheck = $_.Exception.Message
             Start-Sleep -Seconds 2
         }
         Start-Sleep -Seconds 1
     } while ([DateTime]::UtcNow -lt $deadline)
 
-    throw "Sparky HTTPS health did not report the expected bundle version within $TimeoutSeconds seconds."
+    throw "Sparky HTTPS health did not report the expected bundle version within $TimeoutSeconds seconds. Last check: $lastCheck"
+}
+
+function New-SparkyCertificatePinCallback {
+    param([Parameter(Mandatory = $true)][string]$Thumbprint)
+
+    if (-not ('SparkyCertificatePinValidator' -as [type])) {
+        Add-Type -Language CSharp -TypeDefinition @'
+using System;
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+
+public static class SparkyCertificatePinValidator
+{
+    private static string expectedThumbprint;
+
+    public static RemoteCertificateValidationCallback Create(string thumbprint)
+    {
+        if (String.IsNullOrWhiteSpace(thumbprint))
+            throw new ArgumentException("A certificate thumbprint is required.", "thumbprint");
+
+        expectedThumbprint = Normalize(thumbprint);
+        return new RemoteCertificateValidationCallback(Validate);
+    }
+
+    private static bool Validate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors errors)
+    {
+        HttpWebRequest request = sender as HttpWebRequest;
+        if (request == null || certificate == null)
+            return false;
+
+        Uri uri = request.RequestUri;
+        if (uri == null || uri.Scheme != Uri.UriSchemeHttps ||
+            !String.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+            !String.Equals(uri.AbsolutePath, "/health", StringComparison.Ordinal) ||
+            uri.Query.Length != 0 || uri.Fragment.Length != 0)
+            return false;
+
+        using (X509Certificate2 presented = new X509Certificate2(certificate))
+            return String.Equals(Normalize(presented.Thumbprint), expectedThumbprint, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Normalize(string thumbprint)
+    {
+        return thumbprint.Replace(" ", String.Empty).Replace(":", String.Empty);
+    }
+}
+'@
+    }
+
+    return [SparkyCertificatePinValidator]::Create($Thumbprint)
+}
+
+function Invoke-SparkyPinnedHealth {
+    param(
+        [string]$ExpectedBundleVersion,
+        [int]$TimeoutSeconds,
+        [System.Net.Security.RemoteCertificateValidationCallback]$CertificateCallback
+    )
+
+    $previousValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+    try {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $CertificateCallback
+        return Invoke-SparkyHealth -ExpectedBundleVersion $ExpectedBundleVersion -TimeoutSeconds $TimeoutSeconds
+    }
+    finally {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $previousValidationCallback
+    }
 }
 
 if (-not [IO.Path]::IsPathRooted($StagedBundlePath) -or
@@ -57,6 +133,8 @@ if ((Get-Item -LiteralPath $StagedBundlePath).Length -gt 100MB) { throw 'The sta
 if (-not $HealthUri.StartsWith('https://127.0.0.1:', [StringComparison]::OrdinalIgnoreCase)) {
     throw 'HealthUri must use HTTPS on IPv4 loopback (127.0.0.1).'
 }
+$expectedThumbprint = (New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertificatePath)).Thumbprint -replace '\s', ''
+$certificateValidationCallback = New-SparkyCertificatePinCallback -Thumbprint $expectedThumbprint
 
 $activeDirectory = [IO.Path]::GetDirectoryName($ActiveBundlePath)
 if (-not (Test-Path -LiteralPath $activeDirectory -PathType Container)) { throw "Active bundle directory not found: $activeDirectory" }
@@ -107,27 +185,10 @@ try {
         Start-Service -Name $ServiceName
         (Get-Service -Name $ServiceName).WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(45))
 
-        $previousValidationCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
-        $expectedThumbprint = (New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertificatePath)).Thumbprint -replace '\s', ''
-        try {
-            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [System.Net.Security.RemoteCertificateValidationCallback]{
-                param($sender, $certificate, $chain, $sslPolicyErrors)
-                try {
-                    $request = [System.Net.HttpWebRequest]$sender
-                    if ($request.RequestUri.Scheme -ne 'https' -or $request.RequestUri.Host -ne '127.0.0.1') { return $false }
-                    $presented = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certificate)
-                    return (($presented.Thumbprint -replace '\s', '') -eq $expectedThumbprint)
-                }
-                catch {
-                    return $false
-                }
-            }
-
-            $health = Invoke-SparkyHealth -ExpectedBundleVersion $expectedBundleVersion -TimeoutSeconds $HealthTimeoutSeconds
-        }
-        finally {
-            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $previousValidationCallback
-        }
+        $health = Invoke-SparkyPinnedHealth `
+            -ExpectedBundleVersion $expectedBundleVersion `
+            -TimeoutSeconds $HealthTimeoutSeconds `
+            -CertificateCallback $certificateValidationCallback
 
         Get-ChildItem -LiteralPath $backupDirectory -Filter 'output-*.json' -File |
             Sort-Object LastWriteTimeUtc -Descending |
@@ -155,10 +216,16 @@ try {
                 (Get-Service -Name $ServiceName).WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(45))
 
                 if ($oldBundleVersion) {
-                    $null = Invoke-SparkyHealth -ExpectedBundleVersion $oldBundleVersion -TimeoutSeconds $HealthTimeoutSeconds
+                    $null = Invoke-SparkyPinnedHealth `
+                        -ExpectedBundleVersion $oldBundleVersion `
+                        -TimeoutSeconds $HealthTimeoutSeconds `
+                        -CertificateCallback $certificateValidationCallback
                 }
                 else {
-                    $null = Invoke-SparkyHealth -ExpectedBundleVersion '' -TimeoutSeconds $HealthTimeoutSeconds
+                    $null = Invoke-SparkyPinnedHealth `
+                        -ExpectedBundleVersion '' `
+                        -TimeoutSeconds $HealthTimeoutSeconds `
+                        -CertificateCallback $certificateValidationCallback
                 }
             }
             catch {

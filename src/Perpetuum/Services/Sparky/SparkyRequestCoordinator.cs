@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Threading.Channels;
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Log;
@@ -25,6 +26,7 @@ public sealed class SparkyRequestCoordinator : Process
     private Character? _senderCharacter;
     private int _started;
     private int _enabled;
+    private long _requestSequence;
 
     public SparkyRequestCoordinator(
         GlobalConfiguration configuration,
@@ -42,6 +44,17 @@ public sealed class SparkyRequestCoordinator : Process
     public Character? SenderCharacter => _senderCharacter;
 
     public int MaxAnswerCharacters => _options?.MaxAnswerCharacters ?? 2000;
+
+    internal void LogDiagnosticAnswer(long requestId, SparkySource source, SparkyResultKind resultKind, string answer)
+    {
+        if (!_configuration.SparkyLogQuestionAndAnswerContent)
+        {
+            return;
+        }
+
+        string safeAnswer = EscapeDiagnosticText(answer, MaxAnswerCharacters);
+        Logger.Info($"[Sparky][{requestId:D6}][{source}] result={resultKind} answer=\"{safeAnswer}\"");
+    }
 
     public override void Start()
     {
@@ -155,6 +168,7 @@ public sealed class SparkyRequestCoordinator : Process
     {
         if (!IsEnabled)
         {
+            Logger.Warning("[Sparky] Discord request was not accepted because the adapter is disabled.");
             return false;
         }
 
@@ -170,38 +184,45 @@ public sealed class SparkyRequestCoordinator : Process
         ulong discordChannelId,
         string question)
     {
+        long requestId = Interlocked.Increment(ref _requestSequence);
         var now = DateTimeOffset.UtcNow;
         var context = _contextStore.GetAndTouch(identity, now);
         int? fallbackLanguageId = context?.LanguageId ?? GetCharacterLanguage(caller);
         question = question.Trim();
+        LogDiagnosticQuestion(requestId, identity.Source, question);
         if (question.Length == 0)
         {
-            PublishImmediate(identity.Source, caller, channelName, discordChannelId,
+            PublishImmediate(requestId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.Usage, null, null, [], fallbackLanguageId));
             return;
         }
 
         if (question.Length > _options!.MaxQuestionCharacters)
         {
-            PublishImmediate(identity.Source, caller, channelName, discordChannelId,
+            PublishImmediate(requestId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.QuestionTooLong, null, null, [], fallbackLanguageId));
             return;
         }
 
         if (!TryAddPending(identity, _options.PendingPerCallerLimit))
         {
-            PublishImmediate(identity.Source, caller, channelName, discordChannelId,
+            Logger.Warning($"[Sparky] {identity.Source} request #{requestId:D6} was rejected because the caller already has the maximum number of pending requests.");
+            PublishImmediate(requestId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.Busy, null, null, [], fallbackLanguageId));
             return;
         }
 
-        var work = new SparkyWorkItem(identity, caller, channelName, discordChannelId, question, context);
+        var work = new SparkyWorkItem(requestId, identity, caller, channelName, discordChannelId, question, context);
         if (_queue?.Writer.TryWrite(work) != true)
         {
             RemovePending(identity);
-            PublishImmediate(identity.Source, caller, channelName, discordChannelId,
+            Logger.Warning($"[Sparky] {identity.Source} request #{requestId:D6} was rejected because the work queue was unavailable or full.");
+            PublishImmediate(requestId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.Busy, null, null, [], fallbackLanguageId));
+            return;
         }
+
+        Logger.Info($"[Sparky] {identity.Source} request #{requestId:D6} queued.");
     }
 
     private async Task WorkerLoopAsync(ChannelReader<SparkyWorkItem> reader, CancellationToken cancellationToken)
@@ -242,13 +263,13 @@ public sealed class SparkyRequestCoordinator : Process
                 catch (Exception exception)
                 {
                     result = SparkyApiResult.Unavailable with { LanguageId = work.Context?.LanguageId };
-                    Logger.Error($"[Sparky] Upstream request failed ({exception.GetType().Name}).");
+                    Logger.Error($"[Sparky] Upstream request #{work.RequestId:D6} failed ({exception.GetType().Name}).");
                 }
 
                 timer.Stop();
                 RemovePending(work.Identity);
-                Logger.Info($"[Sparky] Request completed with {result.Kind} in {timer.ElapsedMilliseconds} ms.");
-                PublishImmediate(work.Identity.Source, work.Caller, work.ChannelName, work.DiscordChannelId, result);
+                Logger.Info($"[Sparky] {work.Identity.Source} request #{work.RequestId:D6} completed with {result.Kind} in {timer.ElapsedMilliseconds} ms.");
+                PublishImmediate(work.RequestId, work.Identity.Source, work.Caller, work.ChannelName, work.DiscordChannelId, work.Identity.Id, result);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -304,24 +325,76 @@ public sealed class SparkyRequestCoordinator : Process
     }
 
     private void PublishImmediate(
+        long requestId,
         SparkySource source,
         Character? caller,
         string? channelName,
         ulong discordChannelId,
+        ulong callerId,
         SparkyApiResult result)
     {
         try
         {
             _eventListenerFactory().PublishMessage(
-                new SparkyResponseMessage(source, caller, channelName, discordChannelId, result));
+                new SparkyResponseMessage(requestId, source, caller, channelName, discordChannelId, callerId, result));
         }
         catch (Exception exception)
         {
-            Logger.Error($"[Sparky] Could not queue a response ({exception.GetType().Name}).");
+            Logger.Error($"[Sparky] Could not queue response #{requestId:D6} ({exception.GetType().Name}).");
         }
     }
 
+    private void LogDiagnosticQuestion(long requestId, SparkySource source, string question)
+    {
+        if (!_configuration.SparkyLogQuestionAndAnswerContent)
+        {
+            return;
+        }
+
+        int maxQuestionCharacters = Math.Clamp(_options?.MaxQuestionCharacters ?? 1000, 1, 1000);
+        string safeQuestion = EscapeDiagnosticText(question, maxQuestionCharacters);
+        Logger.Info($"[Sparky][{requestId:D6}][{source}] question=\"{safeQuestion}\"");
+    }
+
+    internal static string EscapeDiagnosticText(string text, int maxCharacters)
+    {
+        int length = Math.Min(text.Length, Math.Clamp(maxCharacters, 1, 2000));
+        var builder = new StringBuilder(length + 1);
+        for (int index = 0; index < length; index++)
+        {
+            char character = text[index];
+            switch (character)
+            {
+                case '\\': builder.Append("\\\\"); break;
+                case '"': builder.Append("\\\""); break;
+                case '\r': builder.Append("\\r"); break;
+                case '\n': builder.Append("\\n"); break;
+                case '\t': builder.Append("\\t"); break;
+                case '\u2028': builder.Append("\\u2028"); break;
+                case '\u2029': builder.Append("\\u2029"); break;
+                default:
+                    if (char.IsControl(character))
+                    {
+                        builder.Append("\\u").Append(((int)character).ToString("X4"));
+                    }
+                    else
+                    {
+                        builder.Append(character);
+                    }
+                    break;
+            }
+        }
+
+        if (text.Length > length)
+        {
+            builder.Append('…');
+        }
+
+        return builder.ToString();
+    }
+
     private sealed record SparkyWorkItem(
+        long RequestId,
         SparkyRequestIdentity Identity,
         Character? Caller,
         string? ChannelName,

@@ -24,6 +24,7 @@ namespace Perpetuum.Services.Channels
         private readonly GlobalConfiguration _globalConfiguration;
         private readonly EventListenerService _eventChannel;
         private readonly SparkyRequestCoordinator _sparkyCoordinator;
+        private readonly SparkyQuestionCaptureService _questionCapture;
 
         public ChannelManager(
             ISessionManager sessionManager,
@@ -34,7 +35,8 @@ namespace Perpetuum.Services.Channels
             AdminCommandRouter adminCommand,
             EventListenerService eventListener,
             GlobalConfiguration globalConfiguration,
-            SparkyRequestCoordinator sparkyCoordinator)
+            SparkyRequestCoordinator sparkyCoordinator,
+            SparkyQuestionCaptureService questionCapture)
         {
             _sessionManager = sessionManager;
             _sessionManager.SessionAdded += OnSessionAdded;
@@ -53,6 +55,7 @@ namespace Perpetuum.Services.Channels
             _eventChannel = eventListener;
             _globalConfiguration = globalConfiguration;
             _sparkyCoordinator = sparkyCoordinator;
+            _questionCapture = questionCapture;
         }
 
         private void OnSessionAdded(ISession session)
@@ -312,6 +315,7 @@ namespace Perpetuum.Services.Channels
             }
             else
             {
+                _questionCapture.TryCaptureGameMessage(channel.Name, channel.DiscordId, message);
                 channel.SendMessageToAll(_sessionManager, sender, message);
 
                 if (channel.DiscordId != null)

@@ -10,8 +10,10 @@ using Perpetuum.EntityFramework;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Items;
 using Perpetuum.Items.Ammos;
+using Perpetuum.Items.Templates;
 using Perpetuum.Modules.Weapons;
 using Perpetuum.Services.ProductionEngine;
+using Perpetuum.Services.ExtensionService;
 
 [assembly: SupportedOSPlatform("windows")]
 
@@ -63,7 +65,7 @@ internal static class Program
             if (args[0] == "--validate-bundle")
             {
                 var bundle = ReadKnowledgeBundle(args[1]);
-                Console.WriteLine($"Valid Sparky knowledge bundle {bundle.Manifest.BundleVersion} ({bundle.Languages.Count} languages, {bundle.Items.Count} items, {bundle.ProductionRecipes.Count} recipes, {bundle.KnowledgePassages.Count} knowledge passages).");
+                Console.WriteLine($"Valid Sparky knowledge bundle {bundle.Manifest.BundleVersion} ({bundle.Languages.Count} languages, {bundle.Items.Count} items, {bundle.ProductionRecipes.Count} recipes, {bundle.KnowledgePassages.Count} knowledge passages, {bundle.Robots.Count} robots, {bundle.RobotModules.Count} robot modules, {bundle.SkippedRobotCount} skipped robots).");
                 return 0;
             }
 
@@ -71,7 +73,7 @@ internal static class Program
             {
                 var bundle = BuildKnowledgeBundle(args[1], args[2], args[3], args[4]);
                 WriteJson(bundle, args[5]);
-                Console.WriteLine($"Built Sparky knowledge bundle {bundle.Manifest.BundleVersion} with {bundle.Languages.Count} languages, {bundle.Items.Count} items, and {bundle.ProductionRecipes.Count} recipes.");
+                Console.WriteLine($"Built Sparky knowledge bundle {bundle.Manifest.BundleVersion} with {bundle.Languages.Count} languages, {bundle.Items.Count} items, {bundle.ProductionRecipes.Count} recipes, {bundle.Robots.Count} robots, {bundle.RobotModules.Count} robot modules, and {bundle.SkippedRobotCount} skipped robots.");
                 Console.WriteLine($"Bundle: {Path.GetFullPath(args[5])}");
                 return 0;
             }
@@ -534,7 +536,7 @@ internal static class Program
             });
     }
 
-    private static List<StatValue> ReadStats(
+    internal static List<StatValue> ReadStats(
         IDictionary<string, object> properties,
         IReadOnlyDictionary<string, string> translations,
         IReadOnlyDictionary<int, AggregateFieldMetadata> metadata)
@@ -622,7 +624,7 @@ internal static class Program
         return BuildAnswerStat(stat, translations: null, languageId: 0);
     }
 
-    private static AnswerStat? BuildAnswerStat(
+    internal static AnswerStat? BuildAnswerStat(
         StatValue stat,
         IReadOnlyDictionary<string, string>? translations,
         int languageId)
@@ -631,17 +633,19 @@ internal static class Program
         var label = translations is null
             ? stat.Label
             : translations.GetValueOrDefault(stat.LabelTranslationKey);
-        if (string.IsNullOrWhiteSpace(label) && stat.FieldEnumName is not null && (translations is null || languageId == 0))
+        if (string.IsNullOrWhiteSpace(label) && translations is not null && stat.FieldEnumName is { } enumName)
+        {
+            // Legacy dictionaries expose some aggregate labels under their AggregateField enum names.
+            label = translations.GetValueOrDefault(enumName);
+        }
+
+        if (string.IsNullOrWhiteSpace(label) && stat.FieldEnumName is not null && translations is null)
         {
             label = HumanizeAggregateName(stat.FieldEnumName);
 
-            // Enum names provide a useful English fallback for known fields. If neither a
-            // translated unit nor a translated field label exists, avoid emitting a guess.
-            var fallbackUnit = translations is null
-                ? metadata?.MeasurementUnit
-                : metadata?.MeasurementUnitKey is { } fallbackUnitKey
-                    ? translations.GetValueOrDefault(fallbackUnitKey)
-                    : null;
+            // Dictionary-backed answers must use public translated labels. This fallback is
+            // only for the legacy console export path that has no dictionary catalog.
+            var fallbackUnit = metadata?.MeasurementUnit;
             if (string.IsNullOrWhiteSpace(fallbackUnit))
             {
                 return null;
@@ -789,7 +793,18 @@ internal static class Program
         var reader = runtime.Resolve<IEntityDefaultReader>();
         var metadata = LoadAggregateMetadata(dictionaryCatalog.English.Translations);
         var export = BuildExport(reader, dictionaryCatalog.English.Translations, metadata, dictionaryCatalog);
-        string gameContentRevision = Hash(JsonSerializer.SerializeToUtf8Bytes(export));
+        var robotExport = new SparkyRobotKnowledgeBuilder().Build(
+            reader,
+            runtime.Resolve<IRobotTemplateRelations>(),
+            runtime.Resolve<IExtensionReader>(),
+            dictionaryCatalog,
+            metadata);
+        foreach (string diagnostic in robotExport.Diagnostics)
+        {
+            Console.Error.WriteLine($"Sparky robot export: {diagnostic}");
+        }
+
+        string gameContentRevision = ComputeGameContentRevision(export, robotExport);
         DateTimeOffset builtAtUtc = DateTimeOffset.UtcNow;
         var dictionaryHashes = dictionaryCatalog.Languages.ToDictionary(language => language.LanguageId, language => language.DictionaryHash);
         var sourceHashes = knowledgeIndex.SourceHashes.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
@@ -821,8 +836,15 @@ internal static class Program
                 AmbiguousAliases = SparkyAliasCatalog.Build(
                     dictionaryCatalog.ToSupportedLanguages(),
                     export.Items,
-                    export.ProductionRecipes)
-            });
+                    export.ProductionRecipes,
+                    robotExport.Robots,
+                    robotExport.RobotModules)
+            })
+        {
+            Robots = robotExport.Robots,
+            RobotModules = robotExport.RobotModules,
+            SkippedRobotCount = robotExport.SkippedRobotCount
+        };
         SparkyKnowledgeBundleValidator.Validate(bundle);
         return bundle;
     }
@@ -856,6 +878,17 @@ internal static class Program
     private static string Hash(byte[] value)
     {
         return Convert.ToHexString(SHA256.HashData(value));
+    }
+
+    internal static string ComputeGameContentRevision(ExportDocument export, SparkyRobotKnowledgeExport robotExport)
+    {
+        return Hash(JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            export.Items,
+            export.ProductionRecipes,
+            robotExport.Robots,
+            robotExport.RobotModules
+        }));
     }
 
     private static SparkyKnowledgeBundle ReadKnowledgeBundle(string path)

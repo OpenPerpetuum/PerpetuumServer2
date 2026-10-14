@@ -29,7 +29,8 @@ This guide configures the VDM-side game-server adapter. It does not change the l
      "sparkyPendingPerCallerLimit": 1,
      "sparkyContextLifetimeMinutes": 15,
      "sparkyContextCapacity": 2048,
-     "sparkySenderCharacterNick": "[OPP] Sparky - The Syndicate Welcome Agent"
+     "sparkySenderCharacterNick": "[OPP] Sparky - The Syndicate Welcome Agent",
+     "sparkyLogQuestionAndAnswerContent": false
    }
    ```
 
@@ -40,13 +41,13 @@ This guide configures the VDM-side game-server adapter. It does not change the l
 ## Supported behavior
 
 - In-game: `Sparky, ...` in a channel. The original message follows normal channel logging and channel-to-Discord forwarding. The answer is posted only in the original game channel while the caller is online; otherwise it is sent by in-game mail.
-- Discord: mention the Sparky bot in any channel it can access. The reply stays in that Discord channel and cannot ping users. Existing mapped Discord-to-game forwarding remains unchanged.
+- Discord: either select the Sparky bot from mention autocomplete or type `@Sparky` as an address at the start (optionally after “Hey”) or as a trailing vocative such as `..., right, @Sparky?`. A plain-text address elsewhere in a sentence does not trigger a reply. The reply stays in that Discord channel and cannot ping users. Existing mapped Discord-to-game forwarding remains unchanged.
 - Follow-up context is in memory, isolated by game character or Discord author, and stores only the last successfully resolved public item display name. It expires after the configured inactivity interval and is cleared at server shutdown.
 - The API receives only the question and optional public item display name. No character, account, Discord, or channel identifier crosses the API boundary.
 - Whole final messages are capped at 2,000 characters. Do not raise `sparkyMaxAnswerCharacters` above 2,000.
 
 ## Non-live validation and rollback
 
-Check a normal item-stat question, direct recipe, recursive materials, a follow-up, and a follow-up that explicitly names another item. Check a bare trigger, an online response, logout during inference and mail delivery, a linked channel with no answer mirrored to Discord, Discord mentions in mapped and unmapped channels, queue saturation, API/tunnel/TLS/auth failure, and output truncation. Review logs to confirm they contain no question text, answer text, tokens, or caller IDs.
+Check a normal item-stat question, direct recipe, recursive materials, a follow-up, and a follow-up that explicitly names another item. Check a bare trigger, an online response, logout during inference and mail delivery, a linked channel with no answer mirrored to Discord, actual Discord mentions and plain-text `@Sparky` addresses in mapped and unmapped channels, queue saturation, API/tunnel/TLS/auth failure, and output truncation. Question/answer content logging is disabled by default. For local diagnostics only, set `sparkyLogQuestionAndAnswerContent` to `true`; match the sanitized question and final response by their local request number, then set it back to `false`. Never enable it on the live server. Logs do not include caller or channel IDs.
 
 Invalid Sparky-only configuration or an unresolved sender disables Sparky without blocking normal server startup. To roll back, set `enableSparky` to false and remove the protected token file when convenient. Do not change, restart, or reboot the live VDI as part of this development validation; live deployment requires its own maintenance-window decision.

@@ -61,12 +61,20 @@
 - The two curated mechanics passages are stored under `docs/sparky/knowledge/` and hashed together with their supporting gameplay source files. Eleven specifically named lore files under `E:\Perpetuum-lore` are also allowlisted and hashed from their text. The builder reads only those filenames, not the whole directory; the AI PC receives only the resulting passages and hashes, never the source path.
 - The AI-machine API uses the offline bundle; it does not query the live game database.
 - The game server reaches `https://127.0.0.1:5080/v1/answer` through the established reverse SSH tunnel. The API remains bound to loopback and validates a bearer token in addition to SSH/TLS.
-- `GlobalConfiguration.EnableSparky` defaults to `false`. Other `Sparky*` settings in `perpetuum.ini` tune the loopback URL, request timeout, answer/message caps, bounded queue, worker count, per-caller pending limit, context lifetime/capacity, and sender character.
+- `GlobalConfiguration.EnableSparky` defaults to `false`. Other `Sparky*` settings in `perpetuum.ini` tune the loopback URL, request timeout, answer/message caps, bounded queue, worker count, per-caller pending limit, context lifetime/capacity, sender character, and optional question/answer content logging.
+- `sparkyLogQuestionAndAnswerContent` defaults to `false`. When explicitly enabled, the game server logs sanitized question and final response text with a local request number; it does not log caller or channel IDs. Enable only for local diagnostics, then turn it off.
 - The bearer token is stored separately under `%ProgramData%\Sparky\vdm-client-settings.json`, encrypted with machine-scope DPAPI, and ACL-restricted to the explicitly configured game-server service identity, SYSTEM, and local Administrators.
 - Only the question, optional public item display name, and supported language ID cross the API boundary. Game/Discord identities, channel IDs, account data, online state, and session state remain local to the game server. No player identifiers or private data enter LM Studio prompts.
 - `/health` returns the active bundle version prefix. `tools/Refresh-SparkyKnowledge.ps1` validates a staged bundle, activates it by restarting only `Perpetuum.Sparky`, checks the pinned loopback HTTPS health response, and rolls back to the previous file if activation fails.
 - Game answers bypass Discord mirroring; Discord answers return only to the source channel and disable mentions. Offline in-game callers receive character mail.
 - Implementation and operator steps: `src/Perpetuum/Services/Sparky/`, `src/Perpetuum.ItemStatsExporter/`, `docs/superpowers/sparky-knowledge-refresh.md`, and `docs/superpowers/sparky-vdm-client-setup.md`.
+
+**Sparky passive question capture (local pilot):**
+- `SparkyQuestionCaptureEnabled` is a separate opt-in from `EnableSparky`, defaults to `false`, and captures likely questions only from the four explicitly configured Discord channel IDs. The game path uses each mapped channel's Discord ID, so an in-game post is recorded as `Game` before its Discord mirror; bot-authored messages are ignored to prevent duplicates.
+- `SparkyQuestionCaptureDurationHours` defaults to 48 and accepts 1–48 hours. The original UTC start and expiry are stored beside the archive and survive restarts without extending the session. `SparkyQuestionCapturePath` defaults to `<GameRoot>\logs\sparky-question-capture.jsonl`; its metadata is `<archive path>.session.json`. Both paths must be on a local drive.
+- Each durable JSONL line stores `capturedAtUtc`, `source`, `channel`, and `text`. It omits author names and platform/account/channel/message IDs, replaces raw Discord user mention tokens, and can still contain names or other details players typed into the message. Accepted lines are flushed to disk synchronously; capture failures disable capture without blocking chat delivery.
+- Discord capture requires the Discord Message Content privileged intent to be enabled in the Developer Portal. Captured text stays on the local development machine and is not sent to Sparky, LM Studio, or another service. Keep this pilot disabled on VDI.
+- Configuration and lifecycle steps: `docs/superpowers/sparky-question-capture.md`.
 
 **UPnP / NAT Traversal:**
 - Library: `SharpOpenNat` 4.0.17
@@ -78,7 +86,7 @@
 
 **GameRoot directory** (path from `appsettings.json` → `GlobalConfiguration.GameRoot`):
 - `perpetuum.ini` — main server config: SQL connection string, ports, zone config, feature flags (stored as `GlobalConfiguration` JSON)
-- `Sparky*` entries in `perpetuum.ini` contain only non-secret game-side settings; Sparky remains disabled unless `enableSparky` is explicitly true
+- `Sparky*` entries in `perpetuum.ini` contain only non-secret game-side settings; Sparky remains disabled unless `enableSparky` is explicitly true. Question and answer text logging remains off unless `sparkyLogQuestionAndAnswerContent` is explicitly true.
 - Zone terrain data and map files — loaded by `src/Perpetuum/Zones/Terrains/`
 - Robot templates and definition data — referenced at startup via `EntityDefault` / `IEntityDefaultReader`
 - `src/Perpetuum/IO/IFileSystem.cs` — abstraction over file I/O; implementations at `src/Perpetuum/IO/FileSystem.cs`

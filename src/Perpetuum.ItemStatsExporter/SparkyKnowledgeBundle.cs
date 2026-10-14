@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -16,7 +17,11 @@ internal sealed record SparkyKnowledgeBundle(
     IReadOnlyList<SparkyKnowledgePassage> KnowledgePassages,
     SparkySearchIndex SearchIndex)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 3;
+
+    public IReadOnlyList<SparkyRobotRecord> Robots { get; init; } = [];
+    public IReadOnlyList<SparkyRobotModuleRecord> RobotModules { get; init; } = [];
+    public int SkippedRobotCount { get; init; }
 }
 
 internal sealed record SparkyBundleManifest(
@@ -69,7 +74,7 @@ internal static class SparkyKnowledgeBundleValidator
 {
     public static void Validate(SparkyKnowledgeBundle bundle)
     {
-        if (bundle.SchemaVersion != SparkyKnowledgeBundle.CurrentSchemaVersion)
+        if (bundle.SchemaVersion is not (1 or 2 or SparkyKnowledgeBundle.CurrentSchemaVersion))
         {
             throw new InvalidDataException($"Unsupported Sparky bundle schema version {bundle.SchemaVersion}.");
         }
@@ -91,9 +96,21 @@ internal static class SparkyKnowledgeBundleValidator
 
         if (bundle.Languages is null || bundle.Languages.Count == 0 ||
             bundle.Items is null || bundle.ProductionRecipes is null ||
-            bundle.KnowledgePassages is null || bundle.SearchIndex?.TokenToPassageIndexes is null)
+            bundle.KnowledgePassages is null || bundle.SearchIndex?.TokenToPassageIndexes is null ||
+            bundle.Robots is null || bundle.RobotModules is null)
         {
             throw new InvalidDataException("The Sparky bundle is missing one or more required sections.");
+        }
+
+        if (bundle.SchemaVersion == 1 &&
+            (bundle.Robots.Count != 0 || bundle.RobotModules.Count != 0 || bundle.SkippedRobotCount != 0))
+        {
+            throw new InvalidDataException("Schema 1 Sparky bundles must not contain robot knowledge data.");
+        }
+
+        if (bundle.SkippedRobotCount < 0)
+        {
+            throw new InvalidDataException("The Sparky bundle contains an invalid skipped-robot count.");
         }
 
         var languages = new Dictionary<int, SparkySupportedLanguage>();
@@ -152,6 +169,8 @@ internal static class SparkyKnowledgeBundleValidator
             }
         }
 
+        ValidateRobotSections(bundle, languages.Keys);
+
         for (var index = 0; index < bundle.KnowledgePassages.Count; index++)
         {
             var passage = bundle.KnowledgePassages[index];
@@ -193,16 +212,183 @@ internal static class SparkyKnowledgeBundleValidator
             throw new InvalidDataException("The Sparky bundle search index does not match its passage text.");
         }
 
-        var expectedAmbiguities = SparkyAliasCatalog.Build(bundle.Languages, bundle.Items, bundle.ProductionRecipes);
-        if (bundle.SearchIndex.AmbiguousAliases is null ||
-            expectedAmbiguities.Count != bundle.SearchIndex.AmbiguousAliases.Count ||
-            expectedAmbiguities.Where((expected, index) =>
-                expected.LanguageId != bundle.SearchIndex.AmbiguousAliases[index].LanguageId ||
-                !string.Equals(expected.Alias, bundle.SearchIndex.AmbiguousAliases[index].Alias, StringComparison.Ordinal) ||
-                !expected.Definitions.SequenceEqual(bundle.SearchIndex.AmbiguousAliases[index].Definitions, StringComparer.Ordinal)).Any())
+        var storedAmbiguities = bundle.SearchIndex.AmbiguousAliases;
+        if (storedAmbiguities is null || storedAmbiguities.Any(ambiguity =>
+                ambiguity is null || string.IsNullOrWhiteSpace(ambiguity.Alias) || ambiguity.Definitions is null ||
+                ambiguity.Definitions.Count < 2 || ambiguity.Definitions.Any(string.IsNullOrWhiteSpace) ||
+                ambiguity.Definitions.Distinct(StringComparer.OrdinalIgnoreCase).Count() != ambiguity.Definitions.Count))
         {
-            throw new InvalidDataException("The Sparky bundle alias ambiguity records do not match its localized item and recipe names.");
+            throw new InvalidDataException("The Sparky bundle contains an invalid alias ambiguity record.");
         }
+
+        var expectedAmbiguities = SparkyAliasCatalog.Build(
+            bundle.Languages,
+            bundle.Items,
+            bundle.ProductionRecipes,
+            bundle.Robots,
+            bundle.RobotModules);
+        if (expectedAmbiguities.Count != storedAmbiguities.Count ||
+            expectedAmbiguities.Where((expected, index) =>
+                expected.LanguageId != storedAmbiguities[index].LanguageId ||
+                !string.Equals(expected.Alias, storedAmbiguities[index].Alias, StringComparison.Ordinal) ||
+                !expected.Definitions.SequenceEqual(storedAmbiguities[index].Definitions, StringComparer.Ordinal)).Any())
+        {
+            throw new InvalidDataException("The Sparky bundle alias ambiguity records do not match its localized item, recipe, robot, and module names.");
+        }
+    }
+
+    private static void ValidateRobotSections(SparkyKnowledgeBundle bundle, IEnumerable<int> languageIds)
+    {
+        var languageSet = languageIds.ToHashSet();
+        var moduleDefinitions = new HashSet<string>(
+            bundle.RobotModules.Where(module => module is not null && !string.IsNullOrWhiteSpace(module.DefinitionName))
+                .Select(module => module.DefinitionName),
+            StringComparer.OrdinalIgnoreCase);
+        var robotDefinitions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (SparkyRobotRecord? robot in bundle.Robots)
+        {
+            if (robot is null || string.IsNullOrWhiteSpace(robot.DefinitionName) ||
+                !robotDefinitions.Add(robot.DefinitionName) || robot.ComponentDefinitionNames is null ||
+                robot.ComponentDefinitionNames.Any(string.IsNullOrWhiteSpace) ||
+                robot.ComponentDefinitionNames.Distinct(StringComparer.OrdinalIgnoreCase).Count() != robot.ComponentDefinitionNames.Count ||
+                robot.Compatibility is null || robot.ChassisBonusSources is null || robot.LocalizedViews is null ||
+                languageSet.Any(languageId => !robot.LocalizedViews.ContainsKey(languageId)) ||
+                robot.LocalizedViews.Keys.Any(languageId => !languageSet.Contains(languageId)))
+            {
+                throw new InvalidDataException("The Sparky bundle contains an invalid robot record or incomplete localized robot views.");
+            }
+
+            var componentDefinitions = new HashSet<string>(robot.ComponentDefinitionNames, StringComparer.OrdinalIgnoreCase);
+            foreach (SparkyRobotChassisBonusSource? source in robot.ChassisBonusSources)
+            {
+                if (source is null || source.ExtensionId <= 0 || source.AggregateFieldId <= 0 ||
+                    !double.IsFinite(source.BonusPerLevel) || source.Metadata is null ||
+                    !double.IsFinite(source.Metadata.MeasurementMultiplier) ||
+                    !double.IsFinite(source.Metadata.MeasurementOffset) || source.ComponentDefinitionNames is null ||
+                    source.ComponentDefinitionNames.Count == 0 ||
+                    source.ComponentDefinitionNames.Any(name => !componentDefinitions.Contains(name)))
+                {
+                    throw new InvalidDataException($"Robot '{robot.DefinitionName}' contains an invalid chassis-bonus source.");
+                }
+            }
+
+            var componentSlotCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (KeyValuePair<int, SparkyLocalizedRobotView> localizedEntry in robot.LocalizedViews)
+            {
+                SparkyLocalizedRobotView? view = localizedEntry.Value;
+                if (view is null || view.AssembledStats is null || view.Components is null || view.ChassisBonuses is null ||
+                    !IsSafeOptionalPublicText(view.DisplayName, [robot.DefinitionName]))
+                {
+                    throw new InvalidDataException($"Robot '{robot.DefinitionName}' contains an invalid localized view.");
+                }
+
+                ValidateStats(view.AssembledStats, $"robot '{robot.DefinitionName}' assembled stats", [robot.DefinitionName]);
+                var localizedComponentDefinitions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (SparkyLocalizedRobotComponentView? component in view.Components)
+                {
+                    if (component is null || string.IsNullOrWhiteSpace(component.DefinitionName) ||
+                        !componentDefinitions.Contains(component.DefinitionName) || component.SlotCount < 0 ||
+                        string.IsNullOrWhiteSpace(component.DisplayName) ||
+                        !localizedComponentDefinitions.Add(component.DefinitionName) ||
+                        !IsSafePublicText(component.DisplayName, [robot.DefinitionName, component.DefinitionName]) ||
+                        component.Stats is null)
+                    {
+                        throw new InvalidDataException($"Robot '{robot.DefinitionName}' contains an invalid localized component.");
+                    }
+
+                    componentSlotCounts[component.DefinitionName] = component.SlotCount;
+                    ValidateStats(component.Stats, $"robot '{robot.DefinitionName}' component stats", [robot.DefinitionName, component.DefinitionName]);
+                }
+
+                foreach (SparkyLocalizedChassisBonus? bonus in view.ChassisBonuses)
+                {
+                    var forbiddenNames = new List<string> { robot.DefinitionName };
+                    forbiddenNames.AddRange(robot.ComponentDefinitionNames);
+                    if (bonus is null || bonus.ExtensionLevel != 1 ||
+                        !IsFiniteNumber(bonus.Value) || string.IsNullOrWhiteSpace(bonus.ExtensionName) ||
+                        !IsSafePublicText(bonus.ExtensionName, forbiddenNames) ||
+                        string.IsNullOrWhiteSpace(bonus.PropertyName) ||
+                        !IsSafePublicText(bonus.PropertyName, forbiddenNames) || bonus.ComponentNames is null ||
+                        bonus.ComponentNames.Count == 0 ||
+                        bonus.ComponentNames.Any(name => string.IsNullOrWhiteSpace(name) || !IsSafePublicText(name, forbiddenNames)) ||
+                        !IsSafeOptionalPublicText(bonus.Unit, forbiddenNames))
+                    {
+                        throw new InvalidDataException($"Robot '{robot.DefinitionName}' contains an invalid localized chassis bonus.");
+                    }
+                }
+            }
+
+            var compatibilityKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (SparkyRobotCompatibility? relation in robot.Compatibility)
+            {
+                if (relation is null || string.IsNullOrWhiteSpace(relation.ComponentDefinitionName) ||
+                    string.IsNullOrWhiteSpace(relation.ModuleDefinitionName) ||
+                    !componentDefinitions.Contains(relation.ComponentDefinitionName) ||
+                    !moduleDefinitions.Contains(relation.ModuleDefinitionName) || relation.EligibleSlots is null ||
+                    relation.EligibleSlots.Count == 0 || relation.EligibleSlots.Any(slot => slot < 1) ||
+                    relation.EligibleSlots.Distinct().Count() != relation.EligibleSlots.Count ||
+                    componentSlotCounts.TryGetValue(relation.ComponentDefinitionName, out int slotCount) &&
+                    relation.EligibleSlots.Any(slot => slot > slotCount) ||
+                    !compatibilityKeys.Add($"{relation.ComponentDefinitionName}\0{relation.ModuleDefinitionName}"))
+                {
+                    throw new InvalidDataException($"Robot '{robot.DefinitionName}' contains an invalid or dangling compatibility reference.");
+                }
+            }
+        }
+
+        var seenModuleDefinitions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (SparkyRobotModuleRecord? module in bundle.RobotModules)
+        {
+            if (module is null || string.IsNullOrWhiteSpace(module.DefinitionName) ||
+                !seenModuleDefinitions.Add(module.DefinitionName) ||
+                (bundle.SchemaVersion >= 3 && module.IsLaser is null) ||
+                module.LocalizedViews is null ||
+                languageSet.Any(languageId => !module.LocalizedViews.ContainsKey(languageId)) ||
+                module.LocalizedViews.Keys.Any(languageId => !languageSet.Contains(languageId)))
+            {
+                throw new InvalidDataException("The Sparky bundle contains an invalid robot module or incomplete localized module views.");
+            }
+
+            foreach (SparkyLocalizedRobotModuleView? view in module.LocalizedViews.Values)
+            {
+                if (view is null || view.CpuAndPowerGridStats is null ||
+                    !IsSafeOptionalPublicText(view.DisplayName, [module.DefinitionName]))
+                {
+                    throw new InvalidDataException($"Robot module '{module.DefinitionName}' contains an invalid localized view.");
+                }
+
+                ValidateStats(view.CpuAndPowerGridStats, $"robot module '{module.DefinitionName}' stats", [module.DefinitionName]);
+            }
+        }
+    }
+
+    private static void ValidateStats(IEnumerable<AnswerStat> stats, string description, IReadOnlyList<string> internalNames)
+    {
+        foreach (AnswerStat? stat in stats)
+        {
+            if (stat is null || string.IsNullOrWhiteSpace(stat.Label) || !IsSafePublicText(stat.Label, internalNames) || !IsFiniteNumber(stat.Value) ||
+                !IsSafeOptionalPublicText(stat.Unit, internalNames))
+            {
+                throw new InvalidDataException($"The Sparky bundle contains invalid or non-finite {description}.");
+            }
+        }
+    }
+
+    private static bool IsFiniteNumber(string value)
+    {
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double number) && double.IsFinite(number);
+    }
+
+    private static bool IsSafeOptionalPublicText(string? value, IReadOnlyList<string> internalNames)
+    {
+        return value is null || (!string.IsNullOrWhiteSpace(value) && IsSafePublicText(value, internalNames));
+    }
+
+    private static bool IsSafePublicText(string? value, IReadOnlyList<string> internalNames)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+               (!internalNames.Any(name => string.Equals(value, name, StringComparison.OrdinalIgnoreCase)) &&
+                !Regex.IsMatch(value, @"\A(?:def_[a-z0-9_]+|ext_[a-z0-9_]+|Aggregate_(?:unknown_)?[0-9]+|[0-9]+)\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
     }
 }
 
@@ -213,7 +399,9 @@ internal static class SparkyAliasCatalog
     public static IReadOnlyList<SparkyAliasAmbiguity> Build(
         IReadOnlyList<SparkySupportedLanguage> languages,
         IReadOnlyList<WeaponItem> items,
-        IReadOnlyList<ProductionRecipe> recipes)
+        IReadOnlyList<ProductionRecipe> recipes,
+        IReadOnlyList<SparkyRobotRecord>? robots = null,
+        IReadOnlyList<SparkyRobotModuleRecord>? robotModules = null)
     {
         var ambiguities = new List<SparkyAliasAmbiguity>();
         foreach (var language in languages.OrderBy(language => language.LanguageId))
@@ -232,6 +420,18 @@ internal static class SparkyAliasCatalog
                 recipe.LocalizedViews.TryGetValue(language.LanguageId, out var view);
                 Add(view?.DisplayName, recipe.DefinitionName);
                 Add(recipe.DisplayName, recipe.DefinitionName);
+            }
+
+            foreach (SparkyRobotRecord robot in robots ?? [])
+            {
+                robot.LocalizedViews.TryGetValue(language.LanguageId, out SparkyLocalizedRobotView? view);
+                Add(view?.DisplayName, robot.DefinitionName);
+            }
+
+            foreach (SparkyRobotModuleRecord module in robotModules ?? [])
+            {
+                module.LocalizedViews.TryGetValue(language.LanguageId, out SparkyLocalizedRobotModuleView? view);
+                Add(view?.DisplayName, module.DefinitionName);
             }
 
             ambiguities.AddRange(aliases

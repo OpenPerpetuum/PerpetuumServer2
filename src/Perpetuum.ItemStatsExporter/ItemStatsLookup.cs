@@ -100,13 +100,18 @@ internal static class ItemStatsLookup
             item.RecipeTranslationsComplete = localizedRecipe?.HasCompleteTranslations == true;
         }
 
-        var normalizedQuestion = Normalize(question);
-        var matches = string.IsNullOrEmpty(normalizedQuestion)
+        string[] normalizedQueries = new[] { question, englishFollowUpQuery }
+            .Where(query => !string.IsNullOrWhiteSpace(query))
+            .Select(query => Normalize(query!))
+            .Where(query => query.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var matches = normalizedQueries.Length == 0
             ? Array.Empty<ItemMatch>()
             : catalog.Values.Select(item => new ItemMatch(
                     item,
                     GetAliases(item)
-                        .Where(alias => ContainsPhrase(normalizedQuestion, alias))
+                        .Where(alias => normalizedQueries.Any(query => ContainsPhrase(query, alias)))
                         .ToArray()))
                 .Where(match => match.Aliases.Length > 0)
                 .ToArray();

@@ -172,6 +172,22 @@ internal static class SparkyHttpService
                         request.ContextItem,
                         request.ContextLanguageId,
                         context.RequestAborted).ConfigureAwait(false);
+                    logger.LogInformation(
+                        "Sparky request {RequestId} interpreted intent={Intent}/{SmallTalkKind}; query={EnglishSearchQuery}; entities={MentionedEntities}; selected source IDs={SelectedSourceIds}",
+                        requestId,
+                        interpretation.Intent,
+                        interpretation.SmallTalkKind,
+                        interpretation.EnglishSearchQuery ??
+                            (interpretation.MentionedEntities is { Count: > 0 } queryEntities
+                                ? string.Join(",", queryEntities)
+                                : "(none)"),
+                        interpretation.MentionedEntities is { Count: > 0 } mentionedEntities
+                            ? string.Join(",", mentionedEntities)
+                            : "(none)",
+                        answer.SelectedSourceIds is { Count: > 0 } selectedSourceIds
+                            ? string.Join(",", selectedSourceIds)
+                            : "(none)");
+
                     outcome = answer.Status;
                     statusCode = StatusCodes.Status200OK;
                     return Results.Json(

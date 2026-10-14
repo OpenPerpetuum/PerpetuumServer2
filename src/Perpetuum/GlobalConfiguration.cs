@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Perpetuum.Zones.NpcSystem.Presences.PathFinders;
+using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace Perpetuum
@@ -54,6 +55,16 @@ namespace Perpetuum
         public string OpHelpChannelId { get; set; }
 
         public bool EnableSparky { get; set; }
+
+        public bool SparkyLogQuestionAndAnswerContent { get; set; }
+
+        public bool SparkyQuestionCaptureEnabled { get; set; }
+
+        public int SparkyQuestionCaptureDurationHours { get; set; } = 48;
+
+        public List<ulong> SparkyQuestionCaptureDiscordChannelIds { get; set; } = new();
+
+        public string SparkyQuestionCapturePath { get; set; }
 
         public string SparkyApiUrl { get; set; } = "https://127.0.0.1:5080/v1/answer";
 
