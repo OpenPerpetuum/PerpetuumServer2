@@ -122,9 +122,9 @@ namespace Perpetuum.Services.EventServices
             }
         }
 
-        internal bool TryQueueSparkyDiscordReply(long requestId, ulong channelId, ulong callerId, string message)
+        internal bool TryQueueSparkyDiscordReply(long requestId, Guid traceId, ulong channelId, ulong callerId, string message)
         {
-            return _sparkyDiscordQueue?.Writer.TryWrite(new SparkyDiscordReply(requestId, channelId, callerId, message)) == true;
+            return _sparkyDiscordQueue?.Writer.TryWrite(new SparkyDiscordReply(requestId, traceId, channelId, callerId, message)) == true;
         }
 
         public void NotifyListeners(IEventMessage message)
@@ -283,12 +283,9 @@ namespace Perpetuum.Services.EventServices
                     {
                         Logger.Info("[Sparky] Discord text address received.");
                     }
-                    else if (_globalConfiguration.SparkyLogQuestionAndAnswerContent &&
-                             ContainsBotName(userMessage.CleanContent, botUser))
+                    else if (ContainsBotName(userMessage.CleanContent, botUser))
                     {
-                        string candidateQuestion = StripBotMention(userMessage.CleanContent, botUser);
-                        string safeQuestion = SparkyRequestCoordinator.EscapeDiagnosticText(candidateQuestion, 1000);
-                        Logger.Info($"[Sparky][Discord] name-call candidate did not resolve to a bot mention question=\"{safeQuestion}\"");
+                        Logger.Info("[Sparky] Discord bot-name candidate was ignored because it did not contain a bot mention.");
                     }
 
                     if (addressesSparky)
@@ -401,15 +398,18 @@ namespace Perpetuum.Services.EventServices
                             await discordChannel.SendMessageAsync(
                                 reply.Message,
                                 allowedMentions: new AllowedMentions { UserIds = [reply.CallerId] }).ConfigureAwait(false);
+                            _sparkyCoordinatorFactory().RecordDelivery(reply.TraceId, SparkySource.Discord, "sent", "discord_sent");
                             Logger.Info($"[Sparky] Discord reply for request #{reply.RequestId:D6} sent.");
                         }
                         else
                         {
+                            _sparkyCoordinatorFactory().RecordDelivery(reply.TraceId, SparkySource.Discord, "failed", "discord_channel_unavailable");
                             Logger.Warning($"[Sparky] Discord reply channel for request #{reply.RequestId:D6} was unavailable or not message-capable.");
                         }
                     }
                     catch (Exception exception)
                     {
+                        _sparkyCoordinatorFactory().RecordDelivery(reply.TraceId, SparkySource.Discord, "failed", "discord_send_error");
                         Logger.Error($"[Sparky] Discord reply for request #{reply.RequestId:D6} could not be sent ({exception.GetType().Name}).");
                     }
                 }
@@ -420,7 +420,7 @@ namespace Perpetuum.Services.EventServices
             }
         }
 
-        private sealed record SparkyDiscordReply(long RequestId, ulong ChannelId, ulong CallerId, string Message);
+        private sealed record SparkyDiscordReply(long RequestId, Guid TraceId, ulong ChannelId, ulong CallerId, string Message);
 
         private Task Log(LogMessage msg)
         {

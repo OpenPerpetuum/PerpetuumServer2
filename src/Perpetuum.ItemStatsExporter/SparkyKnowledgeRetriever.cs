@@ -21,10 +21,13 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
         int maxPassages = DefaultMaximumPassages,
         int maxCharacters = DefaultCharacterBudget,
         IReadOnlyList<string>? mentionedEntities = null,
-        bool prioritizeEntityDefinitions = false)
+        bool prioritizeEntityDefinitions = false,
+        double minimumRelevanceScore = MinimumRelevanceScore,
+        IReadOnlyList<string>? sourceCategories = null)
     {
         if ((string.IsNullOrWhiteSpace(playerQuery) && string.IsNullOrWhiteSpace(englishQuery)) ||
             maxPassages <= 0 || maxCharacters <= 0 ||
+            !double.IsFinite(minimumRelevanceScore) || minimumRelevanceScore is < 0 or > 1 ||
             bundle.KnowledgePassages.Count == 0)
         {
             return [];
@@ -103,7 +106,7 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
             foreach (var (index, matchedWeight) in matchedWeights)
             {
                 double score = matchedWeight / totalWeight;
-                if (score < MinimumRelevanceScore)
+                if (score < minimumRelevanceScore)
                 {
                     continue;
                 }
@@ -124,6 +127,8 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
         }
 
         int[] rankedIndexes = passageMatches
+            .Where(entry => sourceCategories is null || sourceCategories.Contains(
+                bundle.KnowledgePassages[entry.Key].SourceCategory, StringComparer.Ordinal))
             .OrderByDescending(entry => entry.Value.HasEntityDefinition)
             .ThenByDescending(entry => entry.Value.BestScore)
             .ThenByDescending(entry => entry.Value.QueryMatchCount)

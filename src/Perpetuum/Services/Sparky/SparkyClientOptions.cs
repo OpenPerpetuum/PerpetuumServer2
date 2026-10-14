@@ -2,12 +2,15 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Perpetuum.Services.Sparky;
 
 internal sealed record SparkyClientOptions(
     Uri ApiUri,
     string ApiToken,
+    string Profile,
+    bool UsesLegacySettings,
     TimeSpan RequestTimeout,
     int MaxQuestionCharacters,
     int MaxAnswerCharacters,
@@ -18,7 +21,10 @@ internal sealed record SparkyClientOptions(
     int ContextCapacity,
     string SenderCharacterNick)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+    };
 
     public static bool TryCreate(GlobalConfiguration configuration, out SparkyClientOptions? options)
     {
@@ -72,7 +78,8 @@ internal sealed record SparkyClientOptions(
 
             var settingsJson = File.ReadAllText(path, Encoding.UTF8);
             var settings = JsonSerializer.Deserialize<ProtectedSettings>(settingsJson, JsonOptions);
-            if (settings?.Version != 1 || string.IsNullOrWhiteSpace(settings.ProtectedToken))
+            if (settings is null || string.IsNullOrWhiteSpace(settings.ProtectedToken) ||
+                !TryResolveProtectedProfile(settings.Version, settings.Profile, out var profile, out var usesLegacySettings))
             {
                 return false;
             }
@@ -94,6 +101,8 @@ internal sealed record SparkyClientOptions(
                 options = new SparkyClientOptions(
                     apiUri,
                     token,
+                    profile,
+                    usesLegacySettings,
                     TimeSpan.FromSeconds(configuration.SparkyRequestTimeoutSeconds),
                     configuration.SparkyMaxQuestionCharacters,
                     configuration.SparkyMaxAnswerCharacters,
@@ -119,9 +128,34 @@ internal sealed record SparkyClientOptions(
         }
     }
 
+    internal static bool TryResolveProtectedProfile(
+        int version,
+        string? configuredProfile,
+        out string profile,
+        out bool usesLegacySettings)
+    {
+        usesLegacySettings = false;
+        if (version == 1)
+        {
+            profile = "dev";
+            usesLegacySettings = true;
+            return true;
+        }
+
+        if (version == 2 && configuredProfile is "dev" or "live")
+        {
+            profile = configuredProfile;
+            return true;
+        }
+
+        profile = string.Empty;
+        return false;
+    }
+
     private sealed class ProtectedSettings
     {
         public int Version { get; init; }
+        public string? Profile { get; init; }
         public string? ProtectedToken { get; init; }
     }
 }

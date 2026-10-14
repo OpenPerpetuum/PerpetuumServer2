@@ -83,13 +83,16 @@ Named higher-tier items can use lower-tier items as recipe components. Direct re
 
 ### Local HTTP prototype
 
-The `--serve` mode reads an existing export once and exposes a small local API. It does not connect to the live database. It binds only to IPv4 loopback and uses HTTPS; the VDM game server reaches it through the configured SSH reverse forward, not through a public or LAN listener.
+The `--serve` mode reads an existing export once and exposes the game API and a separate admin panel. It does not connect to the live database. Both HTTPS listeners bind only to IPv4 loopback; the game API remains on port 5080 and the admin panel defaults to port 5081. The VDM game server and Main admin browser reach their respective listeners through separate SSH reverse forwards, not through public or LAN listeners.
 
 | Environment variable | Default | Purpose |
 | --- | --- | --- |
-| `SPARKY_API_TOKEN` | Required | Bearer token, at least 32 characters |
+| `SPARKY_DEV_API_TOKEN` | Required | Dev profile bearer token, at least 32 characters |
+| `SPARKY_LIVE_API_TOKEN` | Disabled when empty | Separate Live profile bearer token; must differ from Dev and admin tokens |
+| `SPARKY_ADMIN_API_TOKEN` | Required | Separate admin bearer token, at least 32 characters; must differ from Dev/Live API tokens |
 | `SPARKY_LMSTUDIO_MODEL_ID` | Required | Model identifier configured in LM Studio |
 | `SPARKY_SERVICE_URL` | `https://127.0.0.1:5080` | Local HTTPS listener URL; must remain on IPv4 loopback |
+| `SPARKY_ADMIN_SERVICE_URL` | `https://127.0.0.1:5081` | Separate local HTTPS admin listener; must remain on IPv4 loopback and use a different port |
 | `SPARKY_SERVICE_CERT_PATH` | Required | HTTPS certificate PFX path; the certificate must include the `127.0.0.1` IP SAN |
 | `SPARKY_SERVICE_CERT_PASSWORD` | Empty | Optional PFX password |
 | `SPARKY_LMSTUDIO_BASE_URL` | `http://localhost:1234/v1` | OpenAI-compatible LM Studio endpoint |
@@ -100,6 +103,18 @@ The `--serve` mode reads an existing export once and exposes a small local API. 
 | `SPARKY_LMSTUDIO_MAX_COMPLETION_TOKENS` | `700` | Model completion budget |
 | `SPARKY_LMSTUDIO_TIMEOUT_SECONDS` | `120` | Maximum wait for one model response |
 | `SPARKY_SERVICE_MAX_CONCURRENCY` | `2` | Maximum simultaneous model requests |
+| `SPARKY_TRACE_DB_PATH` | `%ProgramData%\Sparky\traces\sparky-traces.db` | Local SQLite trace, profile, feedback, evaluation, and replay store |
+| `SPARKY_DEV_TRACE_CAPTURE_CONTENT` | `true` | Store Dev question/answer content; queries and entity candidates expire under content retention |
+| `SPARKY_LIVE_TRACE_CAPTURE_CONTENT` | `false` | Store Live question/answer content |
+| `SPARKY_TRACE_CONTENT_RETENTION_DAYS` | `30` | Days before captured text and replay content is cleared |
+| `SPARKY_TRACE_METADATA_RETENTION_DAYS` | `90` | Days before trace metadata and related records are deleted |
+| `SPARKY_ADMIN_TUNNEL_ENABLED` | `false` | Enable the separate AI-to-Main admin reverse tunnel |
+| `SPARKY_ADMIN_SSH_HOST` | Required when enabled | Main machine SSH host for the admin tunnel |
+| `SPARKY_ADMIN_SSH_PORT` | `22` | Main machine SSH port for the admin tunnel |
+| `SPARKY_ADMIN_SSH_USER` | Required when enabled | Restricted Main machine tunnel account |
+| `SPARKY_ADMIN_SSH_PRIVATE_KEY_PATH` | Required when enabled | Admin-only SSH private key; keep it separate from the game API tunnel key |
+| `SPARKY_ADMIN_SSH_KNOWN_HOSTS_PATH` | Required when enabled | Admin tunnel host-key pin file; keep a separate copy |
+| `SPARKY_ADMIN_FORWARD_PORT` | `5082` | Main-side loopback listener forwarded to the AI admin listener |
 
 Generate an ephemeral bearer token for the current PowerShell session, set the model, and start the service:
 
@@ -108,6 +123,10 @@ $tokenBytes = [byte[]]::new(32)
 $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
 try { $rng.GetBytes($tokenBytes) } finally { $rng.Dispose() }
 $env:SPARKY_API_TOKEN = [Convert]::ToBase64String($tokenBytes)
+$adminTokenBytes = [byte[]]::new(32)
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($adminTokenBytes) } finally { $rng.Dispose() }
+$env:SPARKY_ADMIN_API_TOKEN = [Convert]::ToBase64String($adminTokenBytes)
 $env:SPARKY_LMSTUDIO_MODEL_ID = "your-loaded-model-id"
 $env:SPARKY_LMSTUDIO_BASE_URL = "http://localhost:1235/v1"
 
@@ -160,10 +179,28 @@ Get-NetTCPConnection -LocalPort 5080 -State Listen -ErrorAction SilentlyContinue
 {"status":"ambiguous","candidates":["Standard medium HCL laser","... another match"]}
 ```
 
-Unauthenticated requests receive 401; malformed input receives 400; requests over a configured limit receive 413; saturated inference capacity returns a localized `busy` response; model failures return a generic 502 or 504. The service does not log question/answer contents, context names, or tokens; does not accept account/character identifiers; and does not retain follow-up context. A not-found or ambiguous structured lookup can trigger the small interpretation call, but it does not send an answer-generation prompt with item facts.
+Unauthenticated requests receive 401; malformed input receives 400; requests over a configured limit receive 413; saturated inference capacity returns a localized `busy` response; model failures return a generic 502 or 504. Normal application logs exclude question/answer contents, context names, and tokens. The local trace database can capture question/answer contents only when that profile's content-capture setting is enabled, and retention later clears them. The service does not accept account/character identifiers or retain follow-up context. A not-found or ambiguous structured lookup can trigger the small interpretation call, but it does not send an answer-generation prompt with item facts.
+
+### Admin panel, hot configuration, and replay
+
+The panel is served at `https://127.0.0.1:5081/sparky-admin/` on the AI machine. If the separate admin tunnel is enabled, open `https://127.0.0.1:5082/sparky-admin/` on Main. The AI and Main URLs are loopback-only; the panel does not bind to a LAN interface. The game API tunnel remains on Main port 5080 and cannot reach the admin listener.
+
+The panel token is independent from both game API credentials. Keep the clear admin token in a password manager; the service settings helper stores only a machine-DPAPI-protected value in `service-settings.json`. The browser retains the token only in `sessionStorage` for the current tab and clears it on logout. The panel shows request traces, tunnel state, profile status, model/bundle versions, and content-capture settings. Trace filters are bounded and support UTC date range, profile, source, outcome, and feedback label.
+
+Dev and Live revisions are separate. Edit the Dev profile, validate it, then activate the selected draft without restarting the service. Changes to Live require an explicit Dev-to-Live promotion confirmation; rollback creates a new revision from the previous activated version. Route aliases are literal phrases with an intent, language, priority, and optional excluded phrases; the validator rejects arbitrary regular expressions. Bundle refresh stages a validated immutable bundle in the local catalog; select that version in a profile draft before activating it.
+
+For model tuning, label a trace with feedback, then explicitly add it as a reviewed evaluation case with an expected intent and optional properties. Feedback alone never changes routing or answers. Replay compares the active revision against one selected draft using up to 100 reviewed cases. It uses the same concurrency limits and writes results to the local replay store; it has no game or Discord delivery path. Start with a few examples because each case is evaluated against both revisions and can take multiple model calls. Replay is not a fact checker: compare routes, selected evidence IDs, and wording against the reviewed expectation.
+
+Captured questions, answers, search queries, entity candidates, review notes, and replay output are cleared under content retention. Trace/profile metadata and related records expire under metadata retention. The database remains local to AI. When trace storage is unavailable, the panel marks it and profile edits/replay are disabled rather than silently presenting volatile edits as durable.
+
+Trace JSON export is server-generated and bounded. By default it omits question/answer text, search queries, entity candidates, and feedback notes; it includes selected source IDs and revision metadata. Content can be included explicitly when it was captured and has not expired.
+
+For a manual PowerShell session, the independent admin token is in `$env:SPARKY_ADMIN_API_TOKEN`; the service never returns it. The authenticated API provides profile drafts, validation, activation, promotion and rollback; staged bundle management; trace summaries/timelines and export; feedback; reviewed examples; replay creation and retrieval; and tunnel status. The general game endpoint `GET /health` remains unauthenticated on port 5080 and reports the active Dev bundle version.
+
+For the second reverse-forward key, Main OpenSSH restrictions, known-host pinning, and the PowerShell settings script parameters, follow [Sparky VDM reverse SSH operations](../../docs/superpowers/sparky-vdm-reverse-ssh-operations.md#separate-admin-panel-tunnel). Do not reuse the game API tunnel key or its permitted listen port.
 
 ### Refreshing the AI-machine bundle
 
-Use [`docs/superpowers/sparky-knowledge-refresh.md`](../../docs/superpowers/sparky-knowledge-refresh.md) for the repeatable Main-machine build, transfer hash check, AI-machine validation and activation, health verification, backup retention, and rollback steps. The refresh script restarts only the Sparky Windows service; it does not restart the game server.
+Use [`docs/superpowers/sparky-knowledge-refresh.md`](../../docs/superpowers/sparky-knowledge-refresh.md) for the repeatable Main-machine build, transfer hash check, AI-machine validation, bundle staging, profile activation, health verification, and rollback steps. Bundle activation is a hot profile change; it does not restart Sparky or the game server.
 
 Do not expose this endpoint on a LAN or through router port forwarding. Keep the reverse tunnel, API bearer token, and normal TLS certificate validation enabled for VDM access.

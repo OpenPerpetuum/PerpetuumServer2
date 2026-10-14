@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Perpetuum.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="Zones\LootContainers\**" />
     <EmbeddedResource Remove="Zones\LootContainers\**" />
     <None Remove="Zones\LootContainers\**" />

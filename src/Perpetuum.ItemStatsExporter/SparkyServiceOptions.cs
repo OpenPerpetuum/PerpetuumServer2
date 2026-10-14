@@ -19,17 +19,37 @@ internal sealed record SparkyServiceOptions(
     int MaxCompletionTokens,
     TimeSpan InferenceTimeout,
     int MaxConcurrentRequests,
-    SparkyTunnelOptions? Tunnel) : IDisposable
+    SparkyTunnelOptions? Tunnel,
+    string? LiveApiToken = null,
+    string? TraceDatabasePath = null,
+    bool DevTraceCaptureContent = true,
+    bool LiveTraceCaptureContent = false,
+    int TraceContentRetentionDays = 30,
+    int TraceMetadataRetentionDays = 90,
+    Uri? AdminServiceUri = null,
+    string? AdminApiToken = null,
+    SparkyTunnelOptions? AdminTunnel = null) : IDisposable
 {
     private const string DefaultModelBaseUrl = "http://localhost:1234/v1";
+
+    public bool ShouldCaptureTraceContent(SparkyApiProfile profile) =>
+        profile == SparkyApiProfile.Live ? LiveTraceCaptureContent : DevTraceCaptureContent;
 
     public static SparkyServiceOptions Load(string exportPath, string? configurationPath = null)
     {
         var settings = SparkySettings.Load(configurationPath);
-        var apiToken = settings.GetRequired("SPARKY_API_TOKEN");
+        var apiToken = settings.Get("SPARKY_DEV_API_TOKEN", settings.Get("SPARKY_API_TOKEN", string.Empty));
         if (apiToken.Length < 32)
         {
-            throw new InvalidDataException("SPARKY_API_TOKEN must be at least 32 characters long.");
+            throw new InvalidDataException("SPARKY_DEV_API_TOKEN or SPARKY_API_TOKEN must be at least 32 characters long.");
+        }
+
+        var liveApiTokenValue = settings.Get("SPARKY_LIVE_API_TOKEN", string.Empty);
+        var liveApiToken = string.IsNullOrWhiteSpace(liveApiTokenValue) ? null : liveApiTokenValue;
+        _ = new SparkyApiCredentialResolver(apiToken, liveApiToken);
+        var adminApiToken = settings.GetRequired("SPARKY_ADMIN_API_TOKEN");
+        using (var adminAuthentication = new SparkyAdminAuthentication(adminApiToken, apiToken, liveApiToken))
+        {
         }
 
         var modelId = settings.GetRequired("SPARKY_LMSTUDIO_MODEL_ID");
@@ -37,7 +57,9 @@ internal sealed record SparkyServiceOptions(
         var modelUri = ReadModelUri(modelBaseUrl);
         var modelApiToken = settings.Get("SPARKY_LMSTUDIO_API_TOKEN", string.Empty);
 
-        var serviceUri = ReadLoopbackServiceUri(settings.Get("SPARKY_SERVICE_URL", "https://127.0.0.1:5080"));
+        var serviceUri = ReadLoopbackServiceUri(settings.Get("SPARKY_SERVICE_URL", "https://127.0.0.1:5080"), "SPARKY_SERVICE_URL");
+        var adminServiceUri = ReadLoopbackServiceUri(settings.Get("SPARKY_ADMIN_SERVICE_URL", "https://127.0.0.1:5081"), "SPARKY_ADMIN_SERVICE_URL");
+        EnsureDifferentListenerPorts(serviceUri, adminServiceUri);
         var certificatePath = settings.GetRequired("SPARKY_SERVICE_CERT_PATH");
         if (!Path.IsPathFullyQualified(certificatePath))
         {
@@ -80,6 +102,19 @@ internal sealed record SparkyServiceOptions(
         {
             var tunnelEnabled = settings.GetBoolean("SPARKY_TUNNEL_ENABLED", defaultValue: false);
             var tunnel = tunnelEnabled ? LoadTunnelOptions(serviceUri, settings) : null;
+            var adminTunnelEnabled = settings.GetBoolean("SPARKY_ADMIN_TUNNEL_ENABLED", defaultValue: false);
+            var adminTunnel = adminTunnelEnabled
+                ? LoadTunnelOptions(
+                    adminServiceUri,
+                    settings,
+                    prefix: "SPARKY_ADMIN",
+                    forwardPortSetting: "SPARKY_ADMIN_FORWARD_PORT",
+                    name: "admin-panel")
+                : null;
+            if (tunnel is not null && adminTunnel is not null && tunnel.ForwardPort == adminTunnel.ForwardPort)
+            {
+                throw new InvalidDataException("The game API and admin tunnels must use different loopback ports on the remote SSH host.");
+            }
 
             var requestBodyBytes = settings.GetPositiveInteger("SPARKY_MAX_REQUEST_BODY_BYTES", 8192);
             var maxQuestionCharacters = settings.GetPositiveInteger("SPARKY_MAX_QUESTION_CHARACTERS", 2000);
@@ -87,6 +122,30 @@ internal sealed record SparkyServiceOptions(
             var maxCompletionTokens = settings.GetPositiveInteger("SPARKY_LMSTUDIO_MAX_COMPLETION_TOKENS", 700);
             var timeoutSeconds = settings.GetPositiveInteger("SPARKY_LMSTUDIO_TIMEOUT_SECONDS", 120);
             var maxConcurrentRequests = settings.GetPositiveInteger("SPARKY_SERVICE_MAX_CONCURRENCY", 2);
+            var commonApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            if (string.IsNullOrWhiteSpace(commonApplicationData))
+            {
+                commonApplicationData = Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory) ?? string.Empty, "ProgramData");
+            }
+
+            var defaultTraceDirectory = Path.Combine(commonApplicationData, "Sparky", "traces");
+            var traceDatabasePath = settings.Get(
+                "SPARKY_TRACE_DB_PATH",
+                Path.Combine(defaultTraceDirectory, "sparky-traces.db"));
+            if (!Path.IsPathFullyQualified(traceDatabasePath))
+            {
+                traceDatabasePath = Path.GetFullPath(traceDatabasePath);
+            }
+
+            var devTraceCaptureContent = settings.GetBoolean("SPARKY_DEV_TRACE_CAPTURE_CONTENT", defaultValue: true);
+            var liveTraceCaptureContent = settings.GetBoolean("SPARKY_LIVE_TRACE_CAPTURE_CONTENT", defaultValue: false);
+            var traceContentRetentionDays = settings.GetPositiveInteger("SPARKY_TRACE_CONTENT_RETENTION_DAYS", 30);
+            var traceMetadataRetentionDays = settings.GetPositiveInteger("SPARKY_TRACE_METADATA_RETENTION_DAYS", 90);
+            if (traceContentRetentionDays > 3650 || traceMetadataRetentionDays > 3650 ||
+                traceMetadataRetentionDays < traceContentRetentionDays)
+            {
+                throw new InvalidDataException("Sparky trace retention must be at most ten years and metadata retention cannot be shorter than content retention.");
+            }
 
             if (!Path.IsPathFullyQualified(exportPath))
             {
@@ -107,7 +166,16 @@ internal sealed record SparkyServiceOptions(
                 maxCompletionTokens,
                 TimeSpan.FromSeconds(timeoutSeconds),
                 maxConcurrentRequests,
-                tunnel);
+                tunnel,
+                liveApiToken,
+                traceDatabasePath,
+                devTraceCaptureContent,
+                liveTraceCaptureContent,
+                traceContentRetentionDays,
+                traceMetadataRetentionDays,
+                adminServiceUri,
+                adminApiToken,
+                adminTunnel);
         }
         catch
         {
@@ -118,26 +186,36 @@ internal sealed record SparkyServiceOptions(
 
     public void Dispose() => ServiceCertificate.Dispose();
 
-    private static SparkyTunnelOptions LoadTunnelOptions(Uri serviceUri, SparkySettings settings)
+    public SparkyApiCredentialResolver CreateApiCredentialResolver() =>
+        new(ApiToken, LiveApiToken);
+
+    private static SparkyTunnelOptions LoadTunnelOptions(
+        Uri serviceUri,
+        SparkySettings settings,
+        string prefix = "SPARKY",
+        string forwardPortSetting = "SPARKY_VDM_FORWARD_PORT",
+        string name = "game-api")
     {
-        var host = settings.GetRequired("SPARKY_SSH_HOST");
+        var host = settings.GetRequired($"{prefix}_SSH_HOST");
         if (host.StartsWith("-", StringComparison.Ordinal) || host.Any(char.IsWhiteSpace) ||
             Uri.CheckHostName(host) == UriHostNameType.Unknown)
         {
-            throw new InvalidDataException("SPARKY_SSH_HOST must be a valid host name or IP address.");
+            throw new InvalidDataException($"{prefix}_SSH_HOST must be a valid host name or IP address.");
         }
 
-        var user = settings.GetRequired("SPARKY_SSH_USER");
+        var user = settings.GetRequired($"{prefix}_SSH_USER");
         if (user.StartsWith("-", StringComparison.Ordinal) ||
             user.Any(character => !(char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.')))
         {
-            throw new InvalidDataException("SPARKY_SSH_USER contains unsupported characters.");
+            throw new InvalidDataException($"{prefix}_SSH_USER contains unsupported characters.");
         }
 
-        var privateKeyPath = ReadRequiredPath("SPARKY_SSH_PRIVATE_KEY_PATH", settings);
-        var knownHostsPath = ReadRequiredPath("SPARKY_SSH_KNOWN_HOSTS_PATH", settings);
+        var privateKeySetting = $"{prefix}_SSH_PRIVATE_KEY_PATH";
+        var knownHostsSetting = $"{prefix}_SSH_KNOWN_HOSTS_PATH";
+        var privateKeyPath = ReadRequiredPath(privateKeySetting, settings);
+        var knownHostsPath = ReadRequiredPath(knownHostsSetting, settings);
         var sshPath = settings.Get(
-            "SPARKY_SSH_CLIENT_PATH",
+            $"{prefix}_SSH_CLIENT_PATH",
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "OpenSSH", "ssh.exe"));
 
         if (!Path.IsPathFullyQualified(sshPath))
@@ -147,26 +225,26 @@ internal sealed record SparkyServiceOptions(
 
         if (!File.Exists(privateKeyPath))
         {
-            throw new InvalidDataException("SPARKY_SSH_PRIVATE_KEY_PATH does not exist.");
+            throw new InvalidDataException($"{privateKeySetting} does not exist.");
         }
 
         if (!File.Exists(knownHostsPath))
         {
-            throw new InvalidDataException("SPARKY_SSH_KNOWN_HOSTS_PATH does not exist.");
+            throw new InvalidDataException($"{knownHostsSetting} does not exist.");
         }
 
         if (!File.Exists(sshPath))
         {
-            throw new InvalidDataException("SPARKY_SSH_CLIENT_PATH does not exist.");
+            throw new InvalidDataException($"{prefix}_SSH_CLIENT_PATH does not exist.");
         }
 
-        var sshPort = settings.GetPositiveInteger("SPARKY_SSH_PORT", 22);
-        var forwardPort = settings.GetPositiveInteger("SPARKY_VDM_FORWARD_PORT", 5080);
-        var reconnectMinSeconds = settings.GetPositiveInteger("SPARKY_SSH_RECONNECT_MIN_SECONDS", 5);
-        var reconnectMaxSeconds = settings.GetPositiveInteger("SPARKY_SSH_RECONNECT_MAX_SECONDS", 60);
+        var sshPort = settings.GetPositiveInteger($"{prefix}_SSH_PORT", 22);
+        var forwardPort = settings.GetPositiveInteger(forwardPortSetting, serviceUri.Port + (name == "admin-panel" ? 1 : 0));
+        var reconnectMinSeconds = settings.GetPositiveInteger($"{prefix}_SSH_RECONNECT_MIN_SECONDS", 5);
+        var reconnectMaxSeconds = settings.GetPositiveInteger($"{prefix}_SSH_RECONNECT_MAX_SECONDS", 60);
         if (sshPort > 65535 || forwardPort > 65535 || reconnectMaxSeconds < reconnectMinSeconds)
         {
-            throw new InvalidDataException("SSH ports must be valid TCP ports and the reconnect maximum must not be less than the minimum.");
+            throw new InvalidDataException($"{prefix} SSH ports must be valid TCP ports and the reconnect maximum must not be less than the minimum.");
         }
 
         return new SparkyTunnelOptions(
@@ -179,7 +257,8 @@ internal sealed record SparkyServiceOptions(
             sshPath,
             serviceUri.Port,
             reconnectMinSeconds,
-            reconnectMaxSeconds);
+            reconnectMaxSeconds,
+            name);
     }
 
     private static string ReadRequiredPath(string name, SparkySettings settings)
@@ -188,7 +267,7 @@ internal sealed record SparkyServiceOptions(
         return Path.IsPathFullyQualified(path) ? path : Path.GetFullPath(path);
     }
 
-    private static Uri ReadLoopbackServiceUri(string value)
+    internal static Uri ReadLoopbackServiceUri(string value, string settingName = "SPARKY_SERVICE_URL")
     {
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
             uri.Scheme != Uri.UriSchemeHttps ||
@@ -201,10 +280,18 @@ internal sealed record SparkyServiceOptions(
             uri.Fragment.Length > 0 ||
             uri.AbsolutePath != "/")
         {
-            throw new InvalidDataException("SPARKY_SERVICE_URL must be an HTTPS URL on the IPv4 loopback address with no path or credentials.");
+            throw new InvalidDataException($"{settingName} must be an HTTPS URL on the IPv4 loopback address with no path or credentials.");
         }
 
         return uri;
+    }
+
+    internal static void EnsureDifferentListenerPorts(Uri gameApiUri, Uri adminApiUri)
+    {
+        if (gameApiUri.Port == adminApiUri.Port)
+        {
+            throw new InvalidDataException("SPARKY_SERVICE_URL and SPARKY_ADMIN_SERVICE_URL must use different ports.");
+        }
     }
 
     private static Uri ReadModelUri(string value)
@@ -282,4 +369,5 @@ internal sealed record SparkyTunnelOptions(
     string SshClientPath,
     int LocalServicePort,
     int ReconnectMinSeconds,
-    int ReconnectMaxSeconds);
+    int ReconnectMaxSeconds,
+    string Name = "game-api");

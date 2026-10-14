@@ -11,7 +11,7 @@
                         Type="ownProcess"
                         Name="Perpetuum.Sparky"
                         DisplayName="Perpetuum Sparky Service"
-                        Description="Local AI service and restricted reverse SSH tunnel for Perpetuum."
+                        Description="Local AI service, admin panel, and restricted reverse SSH tunnels for Perpetuum."
                         Start="auto"
                         ErrorControl="normal"
                         Account="NT AUTHORITY\LocalService"

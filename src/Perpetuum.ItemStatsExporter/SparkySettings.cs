@@ -9,8 +9,11 @@ internal sealed class SparkySettings
     private static readonly HashSet<string> ProtectedSettings = new(StringComparer.Ordinal)
     {
         "SPARKY_API_TOKEN",
+        "SPARKY_DEV_API_TOKEN",
+        "SPARKY_LIVE_API_TOKEN",
         "SPARKY_LMSTUDIO_API_TOKEN",
-        "SPARKY_SERVICE_CERT_PASSWORD"
+        "SPARKY_SERVICE_CERT_PASSWORD",
+        "SPARKY_ADMIN_API_TOKEN"
     };
 
     private readonly IReadOnlyDictionary<string, string> _values;

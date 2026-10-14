@@ -41,13 +41,14 @@ public sealed class SparkyResponseProcessor : EventProcessor
         {
             string discordAnswer = FormatResult(message.Result);
             var discordText = Limit($"Sparky, Syndicate Technician Chief: <@{message.CallerId}>, {discordAnswer}", _coordinator.MaxAnswerCharacters);
-            _coordinator.LogDiagnosticAnswer(message.RequestId, message.Source, message.Result.Kind, discordAnswer);
-            if (!_eventListenerFactory().TryQueueSparkyDiscordReply(message.RequestId, message.DiscordChannelId, message.CallerId, discordText))
+            if (!_eventListenerFactory().TryQueueSparkyDiscordReply(message.RequestId, message.TraceId, message.DiscordChannelId, message.CallerId, discordText))
             {
+                _coordinator.RecordDelivery(message.TraceId, message.Source, "failed", "discord_queue_full");
                 Logger.Error($"[Sparky] Discord response queue is full for request #{message.RequestId:D6}; response was not sent.");
             }
             else
             {
+                _coordinator.RecordDelivery(message.TraceId, message.Source, "queued", "discord_queue");
                 Logger.Info($"[Sparky] Discord response #{message.RequestId:D6} queued for delivery.");
             }
 
@@ -58,6 +59,7 @@ public sealed class SparkyResponseProcessor : EventProcessor
         var sender = _coordinator.SenderCharacter;
         if (caller is null || sender is null)
         {
+            _coordinator.RecordDelivery(message.TraceId, message.Source, "failed", "missing_character");
             Logger.Error($"[Sparky] In-game response #{message.RequestId:D6} could not be delivered because a character reference was unavailable.");
             return;
         }
@@ -70,29 +72,31 @@ public sealed class SparkyResponseProcessor : EventProcessor
                 _coordinator.MaxAnswerCharacters);
             if (_channelManager.GameOnlyAnnouncement(message.OriginChannel, sender, chatBody))
             {
-                _coordinator.LogDiagnosticAnswer(message.RequestId, message.Source, message.Result.Kind, chatBody);
+                _coordinator.RecordDelivery(message.TraceId, message.Source, "sent", "game_chat");
                 Logger.Info($"[Sparky] Game response #{message.RequestId:D6} posted to its source channel.");
                 return;
             }
         }
 
         var body = Limit($"Syndicate Technician Chief Sparky:\n{answer}", _coordinator.MaxAnswerCharacters);
-        _coordinator.LogDiagnosticAnswer(message.RequestId, message.Source, message.Result.Kind, body);
 
         try
         {
             var result = MailHandler.SendMail(sender, caller, "Sparky response", body, MailType.character, out _, out _);
             if (result != ErrorCodes.NoError)
             {
+                _coordinator.RecordDelivery(message.TraceId, message.Source, "failed", "game_mail_error");
                 Logger.Error($"[Sparky] Offline response mail failed for request #{message.RequestId:D6} ({result}).");
             }
             else
             {
+                _coordinator.RecordDelivery(message.TraceId, message.Source, "sent", "game_mail");
                 Logger.Info($"[Sparky] Offline response for request #{message.RequestId:D6} mailed.");
             }
         }
         catch (Exception exception)
         {
+            _coordinator.RecordDelivery(message.TraceId, message.Source, "failed", "game_mail_error");
             Logger.Error($"[Sparky] Offline response mail failed for request #{message.RequestId:D6} ({exception.GetType().Name}).");
         }
     }

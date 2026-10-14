@@ -75,6 +75,60 @@ For the first integration test, run the Sparky API and SSH client on the AI mach
 
 This keeps the test traffic on the local network and the VDI-side listener loopback-only. After the flow works, the VDM deployment uses the same tunnel design with VDM's LAN/public SSH reachability and firewall policy.
 
+## Separate admin panel tunnel
+
+The Sparky service keeps the game API at `https://127.0.0.1:5080` on AI and serves the admin panel at `https://127.0.0.1:5081`. Main reaches the panel through a second AI-initiated SSH reverse tunnel whose Main-side listener is `127.0.0.1:5082`. The two listeners use the same TLS certificate, but the admin API token and SSH key are separate from the game API credentials and tunnel key.
+
+On AI, create a second Ed25519 key pair and a separate host-key pin file. Do not reuse the private key or known-hosts file used for the game API tunnel:
+
+```powershell
+ssh-keygen -t ed25519 -f 'C:\ProgramData\Sparky\ssh\sparky_admin_panel_ed25519' -C 'sparky-admin-panel'
+```
+
+Verify the Main machine's SSH host-key fingerprint using the existing trusted process and save its host-key line in `C:\ProgramData\Sparky\ssh\admin_known_hosts`. Protect the new private key so only Local Service can read it. The updated `Configure-SparkyServiceSettings.ps1` applies a Local Service-only private-key ACL and a service-readable ACL to the separate known-hosts file.
+
+On Main, append the new AI public key to the restricted tunnel account's `authorized_keys` with a different exact listener restriction:
+
+```text
+restrict,port-forwarding,permitlisten="127.0.0.1:5082" ssh-ed25519 AAAA... sparky-admin-panel
+```
+
+The existing game key retains `permitlisten="127.0.0.1:5080"`. If both keys use the same Windows account, the matching `Match User` block's `PermitListen` directive must allow both loopback ports while each `authorized_keys` line limits its own key to one port:
+
+```text
+Match User sparky-tunnel
+    AuthenticationMethods publickey
+    PasswordAuthentication no
+    AllowTcpForwarding remote
+    PermitListen 127.0.0.1:5080 127.0.0.1:5082
+    GatewayPorts no
+    AllowAgentForwarding no
+    PermitTTY no
+    MaxSessions 0
+```
+
+Keep the existing SSH host, service account, source-restricted firewall rule, no-shell settings, strict host-key checking, and public TLS certificate trust. The key-level restrictions remain the narrower allowlist: the game key can request only port 5080, and the admin key can request only port 5082. Re-run `sshd.exe -t -f "$env:ProgramData\ssh\sshd_config"` after editing. The Main-side 5082 listener remains bound to loopback and does not require a new inbound firewall rule because it is created inside the existing SSH connection.
+
+Update the AI service settings with a different admin token and the admin tunnel values. This helper re-prompts for the existing game API token and PFX password and rewrites the complete DPAPI-protected settings file, so use the token values stored in your password manager:
+
+```powershell
+& 'E:\MyStuff\Projects\PerpetuumServer2\tools\Configure-SparkyServiceSettings.ps1' `
+    -SettingsPath 'C:\ProgramData\Sparky\service-settings.json' `
+    -ModelId '<loaded-LM-Studio-model-id>' `
+    -ModelBaseUrl 'http://127.0.0.1:1235/v1' `
+    -ServiceCertificatePath 'C:\ProgramData\Sparky\sparky-api.pfx' `
+    -SshHost '<Main-LAN-IP-or-VDM-host>' -SshPort 22 -SshUser 'sparky-tunnel' `
+    -SshPrivateKeyPath 'C:\ProgramData\Sparky\ssh\sparky_vdm_tunnel_ed25519' `
+    -SshKnownHostsPath 'C:\ProgramData\Sparky\ssh\known_hosts' -VdmForwardPort 5080 `
+    -AdminSshHost '<same-Main-LAN-IP-or-VDM-host>' -AdminSshPort 22 -AdminSshUser 'sparky-tunnel' `
+    -AdminSshPrivateKeyPath 'C:\ProgramData\Sparky\ssh\sparky_admin_panel_ed25519' `
+    -AdminSshKnownHostsPath 'C:\ProgramData\Sparky\ssh\admin_known_hosts' -AdminForwardPort 5082
+```
+
+The helper prompts for the game API token, separate admin token, optional LM Studio token, and PFX password. Keep the clear admin token outside the settings file; enter it into the browser when the panel prompts. After publishing the updated exporter and static assets, restart only `Perpetuum.Sparky` on AI. Do not restart the game server or VDI SSH service for this setup.
+
+Verify AI has its loopback panel listener on 5081 and Main has a loopback-only forwarded listener on 5082. Open `https://127.0.0.1:5082/sparky-admin/` from Main and enter the admin token. Confirm `/admin/api/health` works with that token, rejects the game API token, and remains unavailable on Main port 5080. Stopping the admin tunnel should make the Main panel unavailable while leaving the game API tunnel and local AI panel working.
+
 ## Findings from the Windows 11 LAN proof-of-concept
 
 Recorded 11 October 2026 so the VDI setup can reuse the working sequence. These notes describe the tested two-PC setup, not the final VDI host.

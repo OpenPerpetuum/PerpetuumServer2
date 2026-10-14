@@ -56,8 +56,6 @@ namespace Perpetuum
 
         public bool EnableSparky { get; set; }
 
-        public bool SparkyLogQuestionAndAnswerContent { get; set; }
-
         public bool SparkyQuestionCaptureEnabled { get; set; }
 
         public int SparkyQuestionCaptureDurationHours { get; set; } = 48;
@@ -67,6 +65,10 @@ namespace Perpetuum
         public string SparkyQuestionCapturePath { get; set; }
 
         public string SparkyApiUrl { get; set; } = "https://127.0.0.1:5080/v1/answer";
+
+        public string SparkyTraceSpoolPath { get; set; } = "logs/sparky-trace-spool.jsonl";
+
+        public int SparkyTraceSpoolMaxBytes { get; set; } = 32 * 1024 * 1024;
 
         public string SparkyProtectedSettingsPath { get; set; } = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),

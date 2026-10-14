@@ -11,14 +11,29 @@ internal sealed record SparkyAnswerResult(
     int? LanguageId,
     IReadOnlyList<string>? Candidates = null,
     string? EnglishSearchQuery = null,
-    IReadOnlyList<string>? SelectedSourceIds = null);
+    IReadOnlyList<string>? SelectedSourceIds = null,
+    string? FinishStatus = null);
 
 internal sealed record SparkyEntityCoverage(
     IReadOnlyList<string> Present,
     IReadOnlyList<string> Missing);
 
-internal sealed class SparkyAnswerRouter(SparkyServiceOptions options)
+internal sealed class SparkyAnswerRouter
 {
+    private readonly SparkyServiceOptions options;
+    private readonly SparkyRetrievalSettings retrieval;
+    private readonly string? personaStyle;
+
+    public SparkyAnswerRouter(
+        SparkyServiceOptions options,
+        SparkyRetrievalSettings? retrieval = null,
+        string? personaStyle = null)
+    {
+        this.options = options;
+        this.retrieval = retrieval ?? new SparkyRetrievalSettings(5, 4200, 0.25);
+        this.personaStyle = personaStyle;
+    }
+
     private static readonly Regex NumberPattern = new(@"\b\d+(?:\.\d+)?\b", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex NumericQuestionPattern = new(
         @"\b(?:how\s+(?:many|much|old|long|far|often|big|fast)|when\s+(?:did|was|were|is|are)|(?:year|date|time|number|amount|quantity|percentage|percent|age|population|size|value|cost|duration|range|stats?)\b|\d+(?:\.\d+)?\b)",
@@ -99,8 +114,9 @@ internal sealed class SparkyAnswerRouter(SparkyServiceOptions options)
                     options.MaxCompletionTokens,
                     options.InferenceTimeout,
                     apiToken: options.ModelApiToken,
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
-                return new SparkyAnswerResult("answered", banter.Answer, null, banter.LanguageId);
+                    cancellationToken: cancellationToken,
+                    personaStyle: personaStyle).ConfigureAwait(false);
+                return new SparkyAnswerResult("answered", banter.Answer, null, banter.LanguageId, FinishStatus: banter.FinishStatus);
             }
 
             var templateKey = isPlainGreeting
@@ -175,7 +191,8 @@ internal sealed class SparkyAnswerRouter(SparkyServiceOptions options)
                 options.MaxCompletionTokens,
                 options.InferenceTimeout,
                 apiToken: options.ModelApiToken,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken,
+                personaStyle: personaStyle).ConfigureAwait(false);
             string robotText = robotFocus == SparkyRobotQuestionFocus.ModuleCompatibility
                 ? SparkyRobotAnswerFormatter.AppendCompatibilityScope(
                     robotAnswer.Answer,
@@ -290,8 +307,9 @@ internal sealed class SparkyAnswerRouter(SparkyServiceOptions options)
                 options.MaxCompletionTokens,
                 options.InferenceTimeout,
                 apiToken: options.ModelApiToken,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-            return new SparkyAnswerResult("answered", answer.Answer, item.ContextDisplayName, answer.LanguageId);
+                cancellationToken: cancellationToken,
+                personaStyle: personaStyle).ConfigureAwait(false);
+            return new SparkyAnswerResult("answered", answer.Answer, item.ContextDisplayName, answer.LanguageId, FinishStatus: answer.FinishStatus);
         }
 
         string searchQuery = interpretation.EnglishSearchQuery ??
@@ -304,7 +322,11 @@ internal sealed class SparkyAnswerRouter(SparkyServiceOptions options)
             question,
             searchQuery,
             mentionedEntities: interpretation.MentionedEntities,
-            prioritizeEntityDefinitions: prioritizeEntityDefinitions);
+            prioritizeEntityDefinitions: prioritizeEntityDefinitions,
+            minimumRelevanceScore: retrieval.MinimumScore,
+            sourceCategories: retrieval.SourceCategories,
+            maxPassages: retrieval.MaxPassages,
+            maxCharacters: retrieval.MaxCharacters);
         string[] selectedSourceIds = passages
             .Select(passage => passage.SourceId)
             .Distinct(StringComparer.Ordinal)
@@ -404,7 +426,8 @@ internal sealed class SparkyAnswerRouter(SparkyServiceOptions options)
             options.MaxCompletionTokens,
             options.InferenceTimeout,
             apiToken: options.ModelApiToken,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken,
+            personaStyle: personaStyle).ConfigureAwait(false);
         return new SparkyAnswerResult(
             "answered",
             groundedAnswer.Answer,
@@ -550,13 +573,15 @@ internal sealed class SparkyAnswerRouter(SparkyServiceOptions options)
                 options.MaxCompletionTokens,
                 options.InferenceTimeout,
                 apiToken: options.ModelApiToken,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken,
+                personaStyle: personaStyle).ConfigureAwait(false);
             return new SparkyAnswerResult(
                 status,
                 answer.Answer,
                 item,
                 answer.LanguageId,
-                Candidates: evidence.CandidateNames.Count > 0 ? evidence.CandidateNames : null);
+                Candidates: evidence.CandidateNames.Count > 0 ? evidence.CandidateNames : null,
+                FinishStatus: answer.FinishStatus);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

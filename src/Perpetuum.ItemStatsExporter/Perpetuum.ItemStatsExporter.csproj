@@ -15,6 +15,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
     <PackageReference Include="System.Text.Json" Version="9.0.1" />
     <ProjectReference Include="..\Perpetuum.Bootstrapper\Perpetuum.Bootstrapper.csproj" />
     <ProjectReference Include="..\Perpetuum\Perpetuum.csproj" />
@@ -23,6 +24,9 @@
   <ItemGroup>
     <Content Include="..\..\tools\Refresh-SparkyKnowledge.ps1"
              Link="tools\Refresh-SparkyKnowledge.ps1"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="wwwroot\sparky-admin\**"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

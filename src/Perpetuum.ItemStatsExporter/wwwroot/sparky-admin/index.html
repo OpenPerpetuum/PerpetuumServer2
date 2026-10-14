@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Sparky Admin</title>
+  <link rel="stylesheet" href="/sparky-admin/styles.css">
+  <script src="/sparky-admin/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Local operations</p>
+      <h1>Sparky Admin</h1>
+    </div>
+    <div class="topbar-actions">
+      <span id="connection-state" class="badge">Disconnected</span>
+      <button id="logout" class="quiet-button" type="button" hidden>Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="status-grid" aria-label="Service status">
+      <article class="status-card"><span>Service</span><strong id="service-status">—</strong></article>
+      <article class="status-card"><span>Model</span><strong id="model-status">—</strong></article>
+      <article class="status-card"><span>Knowledge bundle</span><strong id="bundle-status">—</strong></article>
+      <article class="status-card"><span>Trace storage</span><strong id="storage-status">—</strong></article>
+      <article class="status-card"><span>Dev content capture</span><strong id="dev-capture">—</strong></article>
+      <article class="status-card"><span>Live content capture</span><strong id="live-capture">—</strong></article>
+    </section>
+
+    <section class="panel-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">Operations</p><h2>Tunnels</h2></div>
+        <button id="refresh-status" class="quiet-button" type="button">Refresh</button>
+      </div>
+      <div id="tunnel-list" class="tunnel-list"><p class="muted">Connect to Sparky to see tunnel status.</p></div>
+    </section>
+
+    <section class="panel-card" id="profiles-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">Hot configuration</p><h2>Profiles and bundles</h2></div>
+        <button id="refresh-profiles" class="quiet-button" type="button">Load profiles</button>
+      </div>
+      <p id="profile-summary" class="muted">Connect to Sparky to inspect Dev and Live profiles.</p>
+      <div class="profile-grid">
+        <label>Profile<select id="profile-select"><option value="Dev">Dev</option><option value="Live">Live</option></select></label>
+        <label>Model ID<input id="profile-model-id" maxlength="128"></label>
+        <label>Answer character limit<input id="profile-answer-limit" type="number" min="80" max="2000"></label>
+        <label>Completion token limit<input id="profile-token-limit" type="number" min="32" max="4096"></label>
+        <label>Inference timeout (seconds)<input id="profile-timeout" type="number" min="5" max="300"></label>
+        <label>Profile concurrency<input id="profile-concurrency" type="number" min="1" max="16"></label>
+        <label>Capture question and answer<select id="profile-capture"><option value="true">Enabled</option><option value="false">Metadata only</option></select></label>
+        <label>Content retention (days)<input id="profile-content-retention" type="number" min="1" max="3650"></label>
+        <label>Metadata retention (days)<input id="profile-metadata-retention" type="number" min="1" max="3650"></label>
+        <label>Maximum retrieved passages<input id="profile-max-passages" type="number" min="1" max="8"></label>
+        <label>Retrieval character budget<input id="profile-max-retrieval-chars" type="number" min="200" max="8000"></label>
+        <label>Minimum retrieval score<input id="profile-min-score" type="number" min="0.1" max="0.9" step="0.01"></label>
+        <label>Knowledge bundle<select id="profile-bundle"></select></label>
+        <label class="wide-field">Persona and style<textarea id="profile-persona" maxlength="500" rows="2"></textarea></label>
+        <label class="wide-field">Literal route aliases (JSON)<textarea id="profile-route-aliases" rows="6" spellcheck="false">[]</textarea></label>
+        <label class="wide-field">Allowed source categories<select id="profile-source-categories" multiple size="2"><option value="mechanics">Mechanics</option><option value="lore">Lore</option></select></label>
+      </div>
+      <label class="wide-field">Change reason<input id="profile-reason" maxlength="500" placeholder="Why are you changing this profile?"></label>
+      <div class="button-row">
+        <button id="save-draft" class="quiet-button" type="button">Save draft</button>
+        <button id="validate-draft" class="quiet-button" type="button">Validate current form</button>
+        <label>Revision to activate<select id="revision-select"></select></label>
+        <button id="activate-draft" class="primary-button" type="button">Activate revision</button>
+        <button id="promote-live" class="quiet-button" type="button">Promote Dev revision to Live</button>
+        <button id="rollback-profile" class="quiet-button" type="button">Rollback profile</button>
+      </div>
+      <p id="profile-operation-result" class="message" role="status" aria-live="polite"></p>
+      <div class="upload-row">
+        <label>Stage validated knowledge bundle<input id="bundle-file" type="file" accept="application/json,.json"></label>
+        <button id="stage-bundle" class="quiet-button" type="button">Stage bundle</button>
+      </div>
+      <div id="bundle-list" class="bundle-list"><p class="muted">No staged bundles loaded.</p></div>
+    </section>
+
+    <section class="panel-card" id="evaluation-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">Reviewed examples</p><h2>Evaluation cases and replay</h2></div>
+        <button id="refresh-evaluations" class="quiet-button" type="button">Load cases</button>
+      </div>
+      <p class="muted">Only examples you explicitly review are saved. Replay compares the active revision with a selected draft and never sends a message to game chat or Discord.</p>
+      <div id="evaluation-list" class="evaluation-list"><p class="muted">Load reviewed cases for the selected profile.</p></div>
+      <div class="button-row">
+        <label>Draft revision to compare<select id="replay-draft-revision"></select></label>
+        <button id="run-replay" class="primary-button" type="button" disabled>Replay selected cases</button>
+      </div>
+      <div id="replay-results" class="replay-results" aria-live="polite"></div>
+    </section>
+
+    <section class="panel-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">Request history</p><h2>Traces</h2></div>
+        <button id="refresh-traces" class="primary-button" type="button">Load traces</button>
+      </div>
+      <form id="filters" class="filters">
+        <label>Profile<select id="environment"><option>Dev</option><option>Live</option></select></label>
+        <label>From (UTC)<input id="from-utc" type="datetime-local"></label>
+        <label>To (UTC)<input id="to-utc" type="datetime-local"></label>
+        <label>Source<select id="source"><option value="">Any</option><option>Game</option><option>Discord</option><option>AI</option></select></label>
+        <label>Status<input id="status-filter" maxlength="64" placeholder="answered"></label>
+        <label>Feedback label<select id="label-filter"><option value="">Any</option>
+          <option value="wrong_route">Wrong route</option><option value="missed_entity">Missed entity</option>
+          <option value="retrieval_miss">Retrieval miss</option><option value="incorrect_fact">Incorrect fact</option>
+          <option value="language">Language / translation</option><option value="style">Style / format</option>
+          <option value="context">Context / follow-up</option><option value="delivery">Delivery</option>
+          <option value="infrastructure">Infrastructure</option></select></label>
+        <label>Limit<select id="limit"><option>25</option><option>50</option><option>100</option></select></label>
+      </form>
+      <p id="capture-indicator" class="notice" hidden></p>
+      <div class="trace-layout">
+        <div class="trace-list-wrap"><div id="trace-list" class="trace-list"><p class="muted">Load traces to inspect recent requests.</p></div></div>
+        <section id="trace-detail" class="trace-detail" aria-live="polite"><p class="muted">Select a trace to inspect its timeline.</p></section>
+      </div>
+      <section id="review-tools" class="review-tools" hidden>
+        <div class="review-grid">
+          <form id="feedback-form" class="review-form">
+            <h3>Label this trace</h3>
+            <label>Issue<select id="feedback-label"><option value="wrong_route">Wrong route</option><option value="missed_entity">Missed entity</option><option value="retrieval_miss">Retrieval miss</option><option value="incorrect_fact">Incorrect fact</option><option value="language">Language / translation</option><option value="style">Style / format</option><option value="context">Context / follow-up</option><option value="delivery">Delivery</option><option value="infrastructure">Infrastructure</option></select></label>
+            <label>Note (optional)<textarea id="feedback-note" maxlength="500" rows="2"></textarea></label>
+            <button class="quiet-button" type="submit">Save feedback</button>
+          </form>
+          <form id="evaluation-form" class="review-form">
+            <h3>Add reviewed evaluation case</h3>
+            <label>Expected intent<select id="expected-intent"><option value="">Not specified</option><option>StructuredItem</option><option>StructuredRobot</option><option>StructuredModuleCatalog</option><option>MechanicsLore</option><option>Combined</option><option>SmallTalk</option><option>Unsupported</option></select></label>
+            <label>Expected properties (comma separated)<input id="expected-properties" maxlength="600" placeholder="entity:Theseus, focus:Stats"></label>
+            <button class="quiet-button" type="submit">Save reviewed case</button>
+          </form>
+        </div>
+        <p id="review-result" class="message" role="status" aria-live="polite"></p>
+      </section>
+      <div class="export-row">
+        <label class="checkbox-label"><input id="export-content" type="checkbox"> Include captured questions and answers in export</label>
+        <button id="export-trace" class="quiet-button" type="button" disabled>Export selected trace</button>
+      </div>
+    </section>
+    <p id="message" class="message" role="status" aria-live="polite"></p>
+  </main>
+
+  <dialog id="token-dialog">
+    <form id="token-form" method="dialog">
+      <p class="eyebrow">Protected local connection</p>
+      <h2>Admin token</h2>
+      <p>Enter the Sparky admin API token. It stays in this browser tab and is cleared when you log out or close the tab.</p>
+      <label for="token-input">Bearer token</label>
+      <input id="token-input" type="password" autocomplete="current-password" required minlength="32">
+      <div class="dialog-actions"><button id="cancel-token" class="quiet-button" type="button">Cancel</button><button class="primary-button" value="connect">Connect</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

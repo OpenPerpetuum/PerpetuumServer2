@@ -632,6 +632,16 @@ namespace Perpetuum.Bootstrapper
             //_ = _builder.RegisterType<SapAttackerSpawner>().As<NpcSpawnEventHandler<SapAttackersSpawnMessage>>();
             _ = _builder.RegisterType<DiscordIntegrationHandler>();
             _ = _builder.RegisterType<SparkyResponseProcessor>();
+            _ = _builder.Register(c =>
+            {
+                var configuration = c.Resolve<GlobalConfiguration>();
+                string configuredPath = configuration.SparkyTraceSpoolPath;
+                string spoolPath = System.IO.Path.IsPathFullyQualified(configuredPath)
+                    ? configuredPath
+                    : System.IO.Path.Combine(configuration.GameRoot, configuredPath);
+                return new SparkyTraceSpool(spoolPath, configuration.SparkyTraceSpoolMaxBytes);
+            }).SingleInstance();
+            _ = _builder.RegisterType<SparkyTraceUploader>();
             _ = _builder.RegisterType<SparkyRequestCoordinator>().SingleInstance().OnActivated(e =>
             {
                 e.Context.Resolve<IProcessManager>().AddProcess(

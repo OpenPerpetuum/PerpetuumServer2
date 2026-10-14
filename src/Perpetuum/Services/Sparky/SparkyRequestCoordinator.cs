@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text;
 using System.Threading.Channels;
 using Perpetuum.Accounting.Characters;
 using Perpetuum.Log;
@@ -14,6 +13,7 @@ public sealed class SparkyRequestCoordinator : Process
 {
     private readonly GlobalConfiguration _configuration;
     private readonly Func<EventListenerService> _eventListenerFactory;
+    private readonly Func<SparkyTraceUploader> _traceUploaderFactory;
     private readonly SparkyContextStore _contextStore;
     private readonly object _pendingLock = new();
     private readonly Dictionary<SparkyRequestIdentity, int> _pendingByCaller = new();
@@ -22,18 +22,22 @@ public sealed class SparkyRequestCoordinator : Process
     private CancellationTokenSource? _shutdown;
     private SparkyApiClient? _apiClient;
     private SparkyClientOptions? _options;
+    private SparkyTraceUploader? _traceUploader;
     private Task[] _workers = [];
     private Character? _senderCharacter;
     private int _started;
     private int _enabled;
+    private int _traceErrorLogged;
     private long _requestSequence;
 
     public SparkyRequestCoordinator(
         GlobalConfiguration configuration,
-        Func<EventListenerService> eventListenerFactory)
+        Func<EventListenerService> eventListenerFactory,
+        Func<SparkyTraceUploader> traceUploaderFactory)
     {
         _configuration = configuration;
         _eventListenerFactory = eventListenerFactory;
+        _traceUploaderFactory = traceUploaderFactory;
         _contextStore = new SparkyContextStore(
             Math.Clamp(configuration.SparkyContextCapacity, 1, 100000),
             TimeSpan.FromMinutes(Math.Clamp(configuration.SparkyContextLifetimeMinutes, 1, 1440)));
@@ -44,17 +48,6 @@ public sealed class SparkyRequestCoordinator : Process
     public Character? SenderCharacter => _senderCharacter;
 
     public int MaxAnswerCharacters => _options?.MaxAnswerCharacters ?? 2000;
-
-    internal void LogDiagnosticAnswer(long requestId, SparkySource source, SparkyResultKind resultKind, string answer)
-    {
-        if (!_configuration.SparkyLogQuestionAndAnswerContent)
-        {
-            return;
-        }
-
-        string safeAnswer = EscapeDiagnosticText(answer, MaxAnswerCharacters);
-        Logger.Info($"[Sparky][{requestId:D6}][{source}] result={resultKind} answer=\"{safeAnswer}\"");
-    }
 
     public override void Start()
     {
@@ -74,6 +67,11 @@ public sealed class SparkyRequestCoordinator : Process
             return;
         }
 
+        if (_options.UsesLegacySettings)
+        {
+            Logger.Warning("[Sparky] Protected client settings v1 are treated as Dev; migrate them to version 2 with Configure-SparkyVdmClientSettings.ps1.");
+        }
+
         try
         {
             _senderCharacter = Character.GetByNick(_options.SenderCharacterNick);
@@ -86,6 +84,18 @@ public sealed class SparkyRequestCoordinator : Process
 
             _apiClient = new SparkyApiClient(_options);
             _shutdown = new CancellationTokenSource();
+            try
+            {
+                _traceUploader = _traceUploaderFactory();
+                _traceUploader.Start(_options);
+                Interlocked.Exchange(ref _traceErrorLogged, 0);
+            }
+            catch (Exception exception)
+            {
+                _traceUploader = null;
+                Logger.Warning($"[Sparky trace] Uploader setup failed ({exception.GetType().Name}); Sparky answers remain enabled.");
+            }
+
             _queue = Channel.CreateBounded<SparkyWorkItem>(new BoundedChannelOptions(_options.QueueCapacity)
             {
                 FullMode = BoundedChannelFullMode.Wait,
@@ -112,12 +122,14 @@ public sealed class SparkyRequestCoordinator : Process
     {
         Volatile.Write(ref _enabled, 0);
         _queue?.Writer.TryComplete();
+        Task traceShutdown = _traceUploader?.StopAsync() ?? Task.CompletedTask;
         _shutdown?.Cancel();
-        if (_workers.Length > 0)
+        Task[] shutdownTasks = _workers.Append(traceShutdown).ToArray();
+        if (shutdownTasks.Length > 0)
         {
             try
             {
-                if (!Task.WaitAll(_workers, TimeSpan.FromSeconds(5)))
+                if (!Task.WaitAll(shutdownTasks, TimeSpan.FromSeconds(5)))
                 {
                     Logger.Error("[Sparky] Background workers did not stop within the shutdown grace period.");
                 }
@@ -134,12 +146,14 @@ public sealed class SparkyRequestCoordinator : Process
             _pendingByCaller.Clear();
         }
 
-        if (_workers.All(worker => worker.IsCompleted))
+        if (_workers.All(worker => worker.IsCompleted) && traceShutdown.IsCompleted)
         {
             _shutdown?.Dispose();
             _apiClient?.Dispose();
+            _traceUploader?.Dispose();
             _shutdown = null;
             _apiClient = null;
+            _traceUploader = null;
             _workers = [];
             _queue = null;
             _senderCharacter = null;
@@ -185,43 +199,49 @@ public sealed class SparkyRequestCoordinator : Process
         string question)
     {
         long requestId = Interlocked.Increment(ref _requestSequence);
+        Guid traceId = CreateTraceId();
+        RecordTrace(traceId, identity.Source, "trigger", "accepted", detailCode: "addressed");
         var now = DateTimeOffset.UtcNow;
         var context = _contextStore.GetAndTouch(identity, now);
         int? fallbackLanguageId = context?.LanguageId ?? GetCharacterLanguage(caller);
         question = question.Trim();
-        LogDiagnosticQuestion(requestId, identity.Source, question);
         if (question.Length == 0)
         {
-            PublishImmediate(requestId, identity.Source, caller, channelName, discordChannelId, identity.Id,
+            RecordTrace(traceId, identity.Source, "queue", "rejected", detailCode: "empty_question");
+            PublishImmediate(requestId, traceId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.Usage, null, null, [], fallbackLanguageId));
             return;
         }
 
         if (question.Length > _options!.MaxQuestionCharacters)
         {
-            PublishImmediate(requestId, identity.Source, caller, channelName, discordChannelId, identity.Id,
+            RecordTrace(traceId, identity.Source, "queue", "rejected", detailCode: "question_too_long");
+            PublishImmediate(requestId, traceId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.QuestionTooLong, null, null, [], fallbackLanguageId));
             return;
         }
 
         if (!TryAddPending(identity, _options.PendingPerCallerLimit))
         {
+            RecordTrace(traceId, identity.Source, "queue", "dropped", detailCode: "caller_limit");
             Logger.Warning($"[Sparky] {identity.Source} request #{requestId:D6} was rejected because the caller already has the maximum number of pending requests.");
-            PublishImmediate(requestId, identity.Source, caller, channelName, discordChannelId, identity.Id,
+            PublishImmediate(requestId, traceId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.Busy, null, null, [], fallbackLanguageId));
             return;
         }
 
-        var work = new SparkyWorkItem(requestId, identity, caller, channelName, discordChannelId, question, context);
+        var work = new SparkyWorkItem(requestId, traceId, identity, caller, channelName, discordChannelId, question, context);
         if (_queue?.Writer.TryWrite(work) != true)
         {
             RemovePending(identity);
+            RecordTrace(traceId, identity.Source, "queue", "dropped", detailCode: "queue_full");
             Logger.Warning($"[Sparky] {identity.Source} request #{requestId:D6} was rejected because the work queue was unavailable or full.");
-            PublishImmediate(requestId, identity.Source, caller, channelName, discordChannelId, identity.Id,
+            PublishImmediate(requestId, traceId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.Busy, null, null, [], fallbackLanguageId));
             return;
         }
 
+        RecordTrace(traceId, identity.Source, "queue", "queued", detailCode: "accepted");
         Logger.Info($"[Sparky] {identity.Source} request #{requestId:D6} queued.");
     }
 
@@ -236,6 +256,7 @@ public sealed class SparkyRequestCoordinator : Process
                 try
                 {
                     result = await _apiClient!.AnswerAsync(
+                            work.TraceId,
                             work.Question,
                             work.Context?.ItemDisplayName,
                             work.Context?.LanguageId,
@@ -243,6 +264,7 @@ public sealed class SparkyRequestCoordinator : Process
                         .ConfigureAwait(false);
                     if (cancellationToken.IsCancellationRequested)
                     {
+                        RecordTrace(work.TraceId, work.Identity.Source, "api", "cancelled", timer.ElapsedMilliseconds);
                         RemovePending(work.Identity);
                         return;
                     }
@@ -257,6 +279,7 @@ public sealed class SparkyRequestCoordinator : Process
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
+                    RecordTrace(work.TraceId, work.Identity.Source, "api", "cancelled", timer.ElapsedMilliseconds);
                     RemovePending(work.Identity);
                     return;
                 }
@@ -267,9 +290,16 @@ public sealed class SparkyRequestCoordinator : Process
                 }
 
                 timer.Stop();
+                RecordTrace(
+                    work.TraceId,
+                    work.Identity.Source,
+                    "api",
+                    GetTraceOutcome(result.Kind),
+                    timer.ElapsedMilliseconds,
+                    "completed");
                 RemovePending(work.Identity);
                 Logger.Info($"[Sparky] {work.Identity.Source} request #{work.RequestId:D6} completed with {result.Kind} in {timer.ElapsedMilliseconds} ms.");
-                PublishImmediate(work.RequestId, work.Identity.Source, work.Caller, work.ChannelName, work.DiscordChannelId, work.Identity.Id, result);
+                PublishImmediate(work.RequestId, work.TraceId, work.Identity.Source, work.Caller, work.ChannelName, work.DiscordChannelId, work.Identity.Id, result);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -326,6 +356,7 @@ public sealed class SparkyRequestCoordinator : Process
 
     private void PublishImmediate(
         long requestId,
+        Guid traceId,
         SparkySource source,
         Character? caller,
         string? channelName,
@@ -336,65 +367,63 @@ public sealed class SparkyRequestCoordinator : Process
         try
         {
             _eventListenerFactory().PublishMessage(
-                new SparkyResponseMessage(requestId, source, caller, channelName, discordChannelId, callerId, result));
+                new SparkyResponseMessage(requestId, traceId, source, caller, channelName, discordChannelId, callerId, result));
+            RecordTrace(traceId, source, "delivery", "queued", detailCode: "event_queue");
         }
         catch (Exception exception)
         {
+            RecordTrace(traceId, source, "delivery", "failed", detailCode: "event_queue");
             Logger.Error($"[Sparky] Could not queue response #{requestId:D6} ({exception.GetType().Name}).");
         }
     }
 
-    private void LogDiagnosticQuestion(long requestId, SparkySource source, string question)
+    internal void RecordDelivery(Guid traceId, SparkySource source, string outcome, string detailCode)
     {
-        if (!_configuration.SparkyLogQuestionAndAnswerContent)
+        RecordTrace(traceId, source, "delivery", outcome, detailCode: detailCode);
+    }
+
+    private void RecordTrace(
+        Guid traceId,
+        SparkySource source,
+        string stage,
+        string outcome,
+        long? elapsedMilliseconds = null,
+        string? detailCode = null)
+    {
+        if (traceId == Guid.Empty || _traceUploader is null)
         {
             return;
         }
 
-        int maxQuestionCharacters = Math.Clamp(_options?.MaxQuestionCharacters ?? 1000, 1, 1000);
-        string safeQuestion = EscapeDiagnosticText(question, maxQuestionCharacters);
-        Logger.Info($"[Sparky][{requestId:D6}][{source}] question=\"{safeQuestion}\"");
-    }
-
-    internal static string EscapeDiagnosticText(string text, int maxCharacters)
-    {
-        int length = Math.Min(text.Length, Math.Clamp(maxCharacters, 1, 2000));
-        var builder = new StringBuilder(length + 1);
-        for (int index = 0; index < length; index++)
+        try
         {
-            char character = text[index];
-            switch (character)
+            var traceEvent = SparkyTraceEvent.Create(traceId, source.ToString(), stage, outcome, elapsedMilliseconds, detailCode);
+            _traceUploader.TryRecord(traceEvent);
+        }
+        catch (Exception exception)
+        {
+            if (Interlocked.Exchange(ref _traceErrorLogged, 1) == 0)
             {
-                case '\\': builder.Append("\\\\"); break;
-                case '"': builder.Append("\\\""); break;
-                case '\r': builder.Append("\\r"); break;
-                case '\n': builder.Append("\\n"); break;
-                case '\t': builder.Append("\\t"); break;
-                case '\u2028': builder.Append("\\u2028"); break;
-                case '\u2029': builder.Append("\\u2029"); break;
-                default:
-                    if (char.IsControl(character))
-                    {
-                        builder.Append("\\u").Append(((int)character).ToString("X4"));
-                    }
-                    else
-                    {
-                        builder.Append(character);
-                    }
-                    break;
+                Logger.Warning($"[Sparky trace] Metadata could not be queued ({exception.GetType().Name}); answers remain enabled.");
             }
         }
-
-        if (text.Length > length)
-        {
-            builder.Append('…');
-        }
-
-        return builder.ToString();
     }
+
+    private static string GetTraceOutcome(SparkyResultKind resultKind) => resultKind switch
+    {
+        SparkyResultKind.Answered => "answered",
+        SparkyResultKind.NotFound => "not_found",
+        SparkyResultKind.Ambiguous => "unsupported",
+        SparkyResultKind.Busy => "busy",
+        SparkyResultKind.Usage or SparkyResultKind.QuestionTooLong => "invalid_request",
+        _ => "unavailable"
+    };
+
+    internal static Guid CreateTraceId() => Guid.NewGuid();
 
     private sealed record SparkyWorkItem(
         long RequestId,
+        Guid TraceId,
         SparkyRequestIdentity Identity,
         Character? Caller,
         string? ChannelName,

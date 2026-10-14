@@ -7,6 +7,7 @@ namespace Perpetuum.ItemStatsExporter;
 
 internal sealed class SparkyTunnelSupervisor(
     SparkyTunnelOptions options,
+    SparkyTunnelStatusRegistry statusRegistry,
     ILogger<SparkyTunnelSupervisor> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -16,6 +17,7 @@ internal sealed class SparkyTunnelSupervisor(
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            statusRegistry.Set(options.Name, "connecting");
             using var process = new Process
             {
                 StartInfo = CreateStartInfo(options),
@@ -26,13 +28,17 @@ internal sealed class SparkyTunnelSupervisor(
             {
                 if (!process.Start())
                 {
-                    logger.LogWarning("Sparky SSH tunnel process did not start; retrying in {RetrySeconds} seconds", retryDelay.TotalSeconds);
+                    statusRegistry.Set(options.Name, "retrying");
+                    logger.LogWarning("Sparky {TunnelName} SSH tunnel process did not start; retrying in {RetrySeconds} seconds", options.Name, retryDelay.TotalSeconds);
                 }
                 else
                 {
-                    logger.LogInformation("Sparky SSH tunnel process started for the configured VDM endpoint");
+                    statusRegistry.Set(options.Name, "connected");
+                    logger.LogInformation("Sparky {TunnelName} SSH tunnel process started for the configured endpoint", options.Name);
                     await process.WaitForExitAsync(stoppingToken);
-                    logger.LogWarning("Sparky SSH tunnel process exited with code {ExitCode}; retrying in {RetrySeconds} seconds",
+                    statusRegistry.Set(options.Name, "retrying");
+                    logger.LogWarning("Sparky {TunnelName} SSH tunnel process exited with code {ExitCode}; retrying in {RetrySeconds} seconds",
+                        options.Name,
                         process.ExitCode,
                         retryDelay.TotalSeconds);
                 }
@@ -40,12 +46,15 @@ internal sealed class SparkyTunnelSupervisor(
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 StopProcess(process);
+                statusRegistry.Set(options.Name, "stopped");
                 return;
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {
+                statusRegistry.Set(options.Name, "retrying");
                 logger.LogWarning(
-                    "Sparky SSH tunnel process failed with {ExceptionType}; retrying in {RetrySeconds} seconds",
+                    "Sparky {TunnelName} SSH tunnel process failed with {ExceptionType}; retrying in {RetrySeconds} seconds",
+                    options.Name,
                     exception.GetType().Name,
                     retryDelay.TotalSeconds);
             }
@@ -53,6 +62,7 @@ internal sealed class SparkyTunnelSupervisor(
             if (stoppingToken.IsCancellationRequested)
             {
                 StopProcess(process);
+                statusRegistry.Set(options.Name, "stopped");
                 return;
             }
 
@@ -62,15 +72,17 @@ internal sealed class SparkyTunnelSupervisor(
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
+                statusRegistry.Set(options.Name, "stopped");
                 return;
             }
 
             var nextTicks = Math.Min(retryDelay.Ticks * 2, maximumDelay.Ticks);
             retryDelay = TimeSpan.FromTicks(nextTicks);
         }
+        statusRegistry.Set(options.Name, "stopped");
     }
 
-    private static ProcessStartInfo CreateStartInfo(SparkyTunnelOptions options)
+    internal static ProcessStartInfo CreateStartInfo(SparkyTunnelOptions options)
     {
         var startInfo = new ProcessStartInfo
         {

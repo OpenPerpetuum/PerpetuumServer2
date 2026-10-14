@@ -26,6 +26,7 @@ internal sealed class SparkyApiClient : IDisposable
     }
 
     public async Task<SparkyApiResult> AnswerAsync(
+        Guid traceId,
         string question,
         string? contextItem,
         int? contextLanguageId,
@@ -36,7 +37,7 @@ internal sealed class SparkyApiClient : IDisposable
 
         using var request = new HttpRequestMessage(HttpMethod.Post, _options.ApiUri)
         {
-            Content = JsonContent.Create(new SparkyApiRequest(question, contextItem, contextLanguageId), options: JsonOptions)
+            Content = JsonContent.Create(new SparkyApiRequest(traceId, question, contextItem, contextLanguageId), options: JsonOptions)
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiToken);
 
@@ -126,7 +127,6 @@ internal sealed class SparkyApiClient : IDisposable
 
     public void Dispose() => _httpClient.Dispose();
 
-    private sealed record SparkyApiRequest(string Question, string? ContextItem, int? ContextLanguageId);
     private sealed class SparkyApiResponse
     {
         public string? Status { get; init; }
@@ -136,6 +136,12 @@ internal sealed class SparkyApiClient : IDisposable
         public int? LanguageId { get; init; }
     }
 }
+
+internal sealed record SparkyApiRequest(
+    Guid RequestId,
+    string Question,
+    string? ContextItem = null,
+    int? ContextLanguageId = null);
 
 internal enum SparkyResultKind
 {

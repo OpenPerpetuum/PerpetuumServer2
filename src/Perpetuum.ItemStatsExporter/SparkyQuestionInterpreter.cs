@@ -89,12 +89,13 @@ internal sealed class SparkyQuestionInterpreter
         string question,
         IReadOnlyList<SparkySupportedLanguage> supportedLanguages,
         int? contextLanguageId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<SparkyRouteAlias>? routeAliases = null)
     {
         int fallbackLanguageId = GetFallbackLanguageId(supportedLanguages, contextLanguageId);
         if (supportedLanguages.Count == 0)
         {
-            return new SparkyQuestionInterpretation(0, SparkyIntent.Unsupported, null);
+            return ApplyRouteAliases(question, new SparkyQuestionInterpretation(0, SparkyIntent.Unsupported, null), routeAliases);
         }
 
         var payload = new
@@ -152,15 +153,75 @@ internal sealed class SparkyQuestionInterpreter
         using var responseJson = JsonDocument.Parse(await response.Content.ReadAsStringAsync(linkedCancellation.Token).ConfigureAwait(false));
         if (!TryReadAssistantContent(responseJson.RootElement, out string? content))
         {
-            return new SparkyQuestionInterpretation(fallbackLanguageId, SparkyIntent.Unsupported, null);
+            return ApplyRouteAliases(question, new SparkyQuestionInterpretation(fallbackLanguageId, SparkyIntent.Unsupported, null), routeAliases);
         }
 
         if (content is null || !TryParseInterpretation(content, supportedLanguages, fallbackLanguageId, out var interpretation))
         {
-            return new SparkyQuestionInterpretation(fallbackLanguageId, SparkyIntent.Unsupported, null);
+            return ApplyRouteAliases(question, new SparkyQuestionInterpretation(fallbackLanguageId, SparkyIntent.Unsupported, null), routeAliases);
         }
 
-        return interpretation;
+        return ApplyRouteAliases(question, interpretation, routeAliases);
+    }
+
+    internal static SparkyQuestionInterpretation ApplyRouteAliases(
+        string question,
+        SparkyQuestionInterpretation interpretation,
+        IReadOnlyList<SparkyRouteAlias>? routeAliases)
+    {
+        string normalizedQuestion = NormalizeForAlias(question);
+        if (normalizedQuestion.Length == 0 || routeAliases is null)
+            return interpretation;
+
+        SparkyRouteAlias? selected = routeAliases
+            .Where(alias => alias.LanguageId is null || alias.LanguageId == interpretation.LanguageId)
+            .Where(alias => PhraseOccurs(normalizedQuestion, NormalizeForAlias(alias.Phrase)))
+            .Where(alias => alias.ExcludedPhrases is null ||
+                            !alias.ExcludedPhrases.Any(exclusion => PhraseOccurs(normalizedQuestion, NormalizeForAlias(exclusion))))
+            .OrderByDescending(alias => alias.Priority)
+            .ThenByDescending(alias => NormalizeForAlias(alias.Phrase).Length)
+            .FirstOrDefault();
+        if (selected is null)
+            return interpretation;
+
+        return interpretation with
+        {
+            Intent = selected.Intent,
+            RobotFocus = selected.Intent == SparkyIntent.StructuredRobot
+                ? interpretation.RobotFocus ?? SparkyRobotQuestionFocus.General
+                : null,
+            CatalogFocus = selected.Intent == SparkyIntent.StructuredModuleCatalog
+                ? interpretation.CatalogFocus ?? SparkyModuleCatalogFocus.Lasers
+                : null,
+            SmallTalkKind = selected.Intent == SparkyIntent.SmallTalk
+                ? interpretation.SmallTalkKind ?? SparkySmallTalkKind.Banter
+                : null
+        };
+    }
+
+    private static bool PhraseOccurs(string normalizedQuestion, string normalizedPhrase) =>
+        normalizedPhrase.Length > 0 && $" {normalizedQuestion} ".Contains($" {normalizedPhrase} ", StringComparison.Ordinal);
+
+    private static string NormalizeForAlias(string value)
+    {
+        var characters = new List<char>(value.Length);
+        bool pendingSpace = false;
+        foreach (char character in value.Normalize())
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                if (pendingSpace && characters.Count > 0)
+                    characters.Add(' ');
+                characters.Add(char.ToLowerInvariant(character));
+                pendingSpace = false;
+            }
+            else
+            {
+                pendingSpace = true;
+            }
+        }
+
+        return new string(characters.ToArray());
     }
 
     internal static bool TryParseInterpretation(

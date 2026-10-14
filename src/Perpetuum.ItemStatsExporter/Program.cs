@@ -891,7 +891,7 @@ internal static class Program
         }));
     }
 
-    private static SparkyKnowledgeBundle ReadKnowledgeBundle(string path)
+    internal static SparkyKnowledgeBundle ReadKnowledgeBundle(string path)
     {
         var bundle = JsonSerializer.Deserialize<SparkyKnowledgeBundle>(File.ReadAllText(path))
             ?? throw new InvalidDataException("The input file did not contain a Sparky knowledge bundle.");

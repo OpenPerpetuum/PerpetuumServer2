@@ -4,6 +4,9 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$ServiceIdentity,
 
+    [ValidateSet('dev', 'live')]
+    [string]$Profile = 'dev',
+
     [string]$SettingsPath = (Join-Path $env:ProgramData 'Sparky\vdm-client-settings.json')
 )
 
@@ -98,7 +101,7 @@ foreach ($sid in @($systemSid, $administratorsSid)) {
 $directoryAcl.SetOwner($administratorsSid)
 Set-Acl -LiteralPath $directory -AclObject $directoryAcl
 
-$secureToken = Read-Host 'Enter the Sparky API bearer token' -AsSecureString
+$secureToken = Read-Host "Enter the Sparky $Profile API bearer token" -AsSecureString
 if ($secureToken.Length -lt 16) {
     throw 'The token is empty or too short.'
 }
@@ -119,7 +122,8 @@ try {
         [Security.Cryptography.DataProtectionScope]::LocalMachine)
 
     $settings = @{
-        version = 1
+        version = 2
+        profile = $Profile
         protectedToken = [Convert]::ToBase64String($protectedBytes)
     } | ConvertTo-Json -Compress
 

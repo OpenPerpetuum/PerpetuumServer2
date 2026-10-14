@@ -50,35 +50,27 @@ Use a fresh timestamped publish directory for each build; reusing an older direc
 
 The service executable is also the command-line bundle validator. New builds use schema 3 with localized robot/module facts, validated compatibility references, and laser module categories derived from server category flags. `--validate-bundle` accepts schema 1 only when its robot sections are empty, accepts schema 2 without the laser category for rollback, and validates schema 3 category data before activation. The validator reads the bundle only; it does not need database or repository access. If only the refresh script changed, transfer the updated `tools\Refresh-SparkyKnowledge.ps1` instead of recopying the executable directories.
 
-## 3. Validate and activate on the AI machine
+## 3. Validate and stage on the AI machine
 
-Run an elevated PowerShell session if required to update Program Files or control the service. The script copies the staged bundle to a temporary file beside the active file, runs `--validate-bundle`, stops only `Perpetuum.Sparky`, atomically replaces `C:\ProgramData\Sparky\output.json`, starts the service, and checks `/health` for the expected bundle-version prefix. Health TLS is pinned to the configured public certificate at `C:\ProgramData\Sparky\sparky-api.cer`.
+The refresh script copies the bundle to a temporary file in the protected immutable bundle catalog, runs `--validate-bundle`, and stages it under its bundle version. It does not replace the legacy `output.json`, stop or restart the service, or activate the bundle. The currently active profile bundle remains available while staging occurs.
 
 ```powershell
 & 'D:\Sparky\SparkyItemStatsExporter\tools\Refresh-SparkyKnowledge.ps1' `
   -StagedBundlePath 'D:\Sparky\staging\sparky-knowledge.bundle.json'
 ```
 
-It defaults to service `Perpetuum.Sparky`, active bundle `C:\ProgramData\Sparky\output.json`, exporter `C:\Program Files\PerpetuumSparky\Perpetuum.ItemStatsExporter.exe`, and health URL `https://127.0.0.1:5080/health`. The health probe pins the configured certificate using a compiled .NET callback so Windows PowerShell's asynchronous request thread does not need to execute a PowerShell script block. Failure diagnostics include the last reported bundle version or request error.
+The script defaults to the installed exporter `C:\Program Files\PerpetuumSparky\Perpetuum.ItemStatsExporter.exe` and protected catalog `C:\ProgramData\Sparky\bundles`. A successful result includes `Status = Staged`, bundle version, validation output, destination path, and a reminder to select and activate it from the panel. If that version already exists, identical file content is accepted; a different file under the same immutable version is rejected.
 
-A successful result includes `Status = Activated`, the health bundle version, the validation output, and the retained backup path. Backups are stored in `C:\ProgramData\Sparky\knowledge-backups` and the ten newest are kept by default. A rejected bundle is never activated. A service start or health-version failure triggers rollback to the previous bundle and a service restart.
+Open the Sparky Admin Panel on AI at `https://127.0.0.1:5081/sparky-admin/` or on Main through the dedicated tunnel at `https://127.0.0.1:5082/sparky-admin/`. Select the intended profile, choose the staged version in **Knowledge bundle**, save the draft, validate it, and activate it. Activation swaps one immutable in-memory profile snapshot atomically; in-flight requests continue with the snapshot they already captured. The panel keeps revision history and can roll back by activating the previous configuration as a new revision. Promoting a Dev revision to Live is a separate explicit action.
 
 ## 4. Verify and resume local acceptance
 
-On the AI machine, the service health response should report `status: ok` and the first 16 characters of the built bundle version. Confirm the Sparky service is running. Then, on Main, use the loopback/reverse-tunnel health and answer commands already documented in the Item Stats Exporter README. Verify the new bundle answers robot stat, component, chassis-bonus, and module-compatibility questions in the supported languages where the required labels exist; also confirm an unknown robot and an untranslated component do not expose internal names. Try a fastest-robot question, a maximum-speed question naming one robot, a top-speed comparison naming two robots, and a comparison of robot recipes or chassis bonuses; the named questions should not be treated as a global ranking or as an ordinary stat comparison. List laser modules, then ask what a laser module is and ask about ammo or stats for a specific laser item; only the explicit category-list request should return the laser catalog. Verify comparison values are computed from matching stat fields and the laser catalog contains only modules marked by the exported server category. Ask for stats for an item name that is absent from the bundle and confirm the response does not use an unrelated lore passage. Check that a no-evidence answer asks a brief, natural clarification in the caller's language. Existing item, recipe, and lore answers should remain available. The local Visual Studio Debug server remains running throughout bundle refresh.
+After activation, `/health` should report the active Dev bundle version prefix without any service restart. Use the Main Dev API tunnel for the same item, recipe, robot, and lore acceptance questions listed above. Confirm the intended profile's panel summary shows the new bundle/revision while Live remains unchanged unless you explicitly promote it. The local Visual Studio Debug server remains running throughout bundle refresh and activation.
 
 Do not use this runbook to roll the bundle into VDI or the live server. That deployment remains a separate decision after Main-machine acceptance.
 
 ## Manual recovery
 
-The activation script attempts automatic rollback. If it reports rollback failure, inspect its printed backup path. Restore a known-good bundle while the service is stopped, then start and check health:
+To roll back a profile, select it in the panel and use **Rollback profile**. This creates and activates a new revision from the prior activated configuration, including its bundle version. The game server and Sparky service do not need to restart. If the panel or profile database is unavailable, restore trace-store access before changing `output.json`; that file is only the legacy seed used when no Dev profile revision exists.
 
-```powershell
-Stop-Service -Name 'Perpetuum.Sparky'
-Copy-Item -LiteralPath 'C:\ProgramData\Sparky\knowledge-backups\output-<timestamp>.json' `
-  -Destination 'C:\ProgramData\Sparky\output.json' -Force
-Start-Service -Name 'Perpetuum.Sparky'
-Invoke-RestMethod -Uri 'https://127.0.0.1:5080/health'
-```
-
-If Windows PowerShell rejects the self-signed HTTPS certificate for a manual health call, use the pinned refresh-script check or the existing certificate-pinned curl procedure; do not disable TLS validation globally.
+If normal TLS validation fails on a manual health call, use the pinned certificate procedure in the service operations documentation; do not disable TLS validation globally.

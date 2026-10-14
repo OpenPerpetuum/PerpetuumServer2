@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-    <SparkyPublishDir>$(MSBuildProjectDirectory)\..\..\.superpowers\sdd\2026-10-11-sparky-vdm-reverse-ssh\publish\</SparkyPublishDir>
+    <SparkyPublishDir>$(MSBuildProjectDirectory)\..\..\.superpowers\sdd\2026-10-14-sparky-admin-panel\publish\</SparkyPublishDir>
     <DefineConstants>$(DefineConstants);SparkyPublishDir=$(SparkyPublishDir)</DefineConstants>
   </PropertyGroup>
 
@@ -11,7 +11,13 @@
   </ItemGroup>
 
   <Target Name="PublishSparkySelfContained" BeforeTargets="CoreCompile">
+    <!-- This publish directory is generated installer input; clear it so WiX cannot harvest stale files from an earlier publish. -->
+    <RemoveDir Directories="$(SparkyPublishDir)" />
+    <MakeDir Directories="$(SparkyPublishDir)" />
     <Exec Command="dotnet publish ..\Perpetuum.ItemStatsExporter\Perpetuum.ItemStatsExporter.csproj --configuration $(Configuration) --runtime win-x64 --self-contained true -p:Platform=x64 -m:1 --output &quot;$(SparkyPublishDir)&quot;" />
     <Error Condition="!Exists('$(SparkyPublishDir)Perpetuum.ItemStatsExporter.exe')" Text="The self-contained Sparky publish did not produce Perpetuum.ItemStatsExporter.exe." />
+    <Error Condition="!Exists('$(SparkyPublishDir)wwwroot\sparky-admin\index.html')" Text="The self-contained Sparky publish is missing the admin panel index.html asset." />
+    <Error Condition="!Exists('$(SparkyPublishDir)wwwroot\sparky-admin\app.js')" Text="The self-contained Sparky publish is missing the admin panel app.js asset." />
+    <Error Condition="!Exists('$(SparkyPublishDir)wwwroot\sparky-admin\styles.css')" Text="The self-contained Sparky publish is missing the admin panel styles.css asset." />
   </Target>
 </Project>

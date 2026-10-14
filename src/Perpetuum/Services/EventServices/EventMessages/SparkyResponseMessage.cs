@@ -5,6 +5,7 @@ namespace Perpetuum.Services.EventServices.EventMessages;
 
 internal sealed record SparkyResponseMessage(
     long RequestId,
+    Guid TraceId,
     SparkySource Source,
     Character? Caller,
     string? OriginChannel,
