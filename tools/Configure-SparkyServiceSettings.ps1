@@ -292,13 +292,46 @@ if ($adminTunnelEnabled) {
     $tunnelPrivateKeyPaths += [IO.Path]::GetFullPath($AdminSshPrivateKeyPath)
 }
 foreach ($tunnelPrivateKeyPath in $tunnelPrivateKeyPaths) {
-    & icacls.exe $tunnelPrivateKeyPath /setowner '*S-1-5-19' | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Could not set the SSH private key owner to Local Service.'
+    $privateKeyAcl = Get-Acl -LiteralPath $tunnelPrivateKeyPath -ErrorAction Stop
+    $privateKeyOwnerSid = $privateKeyAcl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+
+    # Windows OpenSSH accepts Local Administrators, LocalSystem, or the current
+    # account as the private-key owner. Local Service is the SSH process account.
+    # When the key is already owned by Local Service, a normal elevated admin
+    # cannot inspect or rewrite its service-only DACL; leave that configured key
+    # untouched so rerunning this helper remains safe.
+    if ($privateKeyOwnerSid -eq 'S-1-5-19') {
+        continue
     }
-    & icacls.exe $tunnelPrivateKeyPath /inheritance:r /grant:r '*S-1-5-19:R' | Out-Null
+
+    # Use Administrators as the stable owner for keys that need normalization.
+    # That owner is accepted by Windows OpenSSH and remains manageable on later
+    # helper runs. Do not try to assign the key to Local Service, which requires
+    # a privilege ordinary elevated admin shells may not have enabled.
+    & takeown.exe /F $tunnelPrivateKeyPath /A | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        throw 'Could not restrict the SSH private key to Local Service.'
+        throw 'Could not take administrative ownership of the SSH private key.'
+    }
+
+    # Replace the whole DACL. /grant:r only replaces entries for the named
+    # identity, leaving inherited or explicit Administrators/SYSTEM/user ACEs
+    # on a pre-existing key. OpenSSH permits Administrators as owner; the service
+    # account receives read access and no unrelated account receives access.
+    $privateKeyAcl = Get-Acl -LiteralPath $tunnelPrivateKeyPath -ErrorAction Stop
+    $privateKeyAcl.SetAccessRuleProtection($true, $false)
+    foreach ($existingRule in @($privateKeyAcl.Access)) {
+        [void]$privateKeyAcl.RemoveAccessRuleSpecific($existingRule)
+    }
+    $serviceReadRule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+        ([System.Security.Principal.SecurityIdentifier]::new('S-1-5-19')),
+        [System.Security.AccessControl.FileSystemRights]::Read,
+        [System.Security.AccessControl.AccessControlType]::Allow)
+    $privateKeyAcl.AddAccessRule($serviceReadRule)
+    try {
+        Set-Acl -LiteralPath $tunnelPrivateKeyPath -AclObject $privateKeyAcl -ErrorAction Stop
+    }
+    catch {
+        throw 'Could not restrict the SSH private key to the service account.'
     }
 }
 
