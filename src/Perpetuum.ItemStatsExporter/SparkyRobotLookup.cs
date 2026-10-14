@@ -43,15 +43,60 @@ internal static class SparkyRobotLookup
             .Where(value => value.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var robotMatches = FindRobotMatches(queries, bundle, languageId);
+        SparkyEntityResolutionResult? tieredRobotResolution = null;
+        List<RobotMatch> robotMatches;
+        if (HasTierAwareCatalog(bundle) && focus != SparkyRobotQuestionFocus.CompareStats)
+        {
+            tieredRobotResolution = ResolveTierAwareRobots(question, englishSearchQuery, bundle, languageId);
+            robotMatches = FindTieredRobotMatches(tieredRobotResolution, queries, bundle, languageId);
+        }
+        else
+        {
+            robotMatches = FindRobotMatches(queries, bundle, languageId);
+        }
+
         if (focus == SparkyRobotQuestionFocus.CompareStats)
         {
             return ResolveComparison(robotMatches, languageId, queries.FirstOrDefault() ?? string.Empty);
         }
 
-        var moduleMatches = focus == SparkyRobotQuestionFocus.ModuleCompatibility
-            ? FindModuleMatches(queries, bundle, languageId)
-            : [];
+        SparkyEntityResolutionResult? tieredModuleResolution = null;
+        List<ModuleMatch> moduleMatches;
+        if (focus != SparkyRobotQuestionFocus.ModuleCompatibility)
+        {
+            moduleMatches = [];
+        }
+        else if (HasTierAwareCatalog(bundle))
+        {
+            tieredModuleResolution = ResolveTierAwareModules(question, englishSearchQuery, bundle, languageId, robotMatches);
+            moduleMatches = FindTieredModuleMatches(tieredModuleResolution, queries, bundle, languageId);
+        }
+        else
+        {
+            moduleMatches = FindModuleMatches(queries, bundle, languageId);
+        }
+
+        if (tieredRobotResolution?.Status is "ambiguous" or "conflicting_tiers")
+        {
+            IEnumerable<string?> names = tieredRobotResolution.CandidateDefinitionNames.Count > 0
+                ? tieredRobotResolution.CandidateDefinitionNames.Select(definition =>
+                    bundle.Robots.FirstOrDefault(robot => string.Equals(robot.DefinitionName, definition, StringComparison.OrdinalIgnoreCase)))
+                    .Where(robot => robot is not null)
+                    .Select(robot => PublicRobotName(robot!, languageId))
+                : robotMatches.Select(match => PublicRobotName(match.Record, languageId));
+            return AmbiguousTiered(names);
+        }
+
+        if (tieredModuleResolution?.Status is "ambiguous" or "conflicting_tiers")
+        {
+            IEnumerable<string?> names = tieredModuleResolution.CandidateDefinitionNames.Count > 0
+                ? tieredModuleResolution.CandidateDefinitionNames.Select(definition =>
+                    bundle.RobotModules.FirstOrDefault(module => string.Equals(module.DefinitionName, definition, StringComparison.OrdinalIgnoreCase)))
+                    .Where(module => module is not null)
+                    .Select(module => PublicModuleName(module!, languageId))
+                : [];
+            return AmbiguousTiered(names);
+        }
 
         if (robotMatches.Count > 1)
         {
@@ -66,6 +111,7 @@ internal static class SparkyRobotLookup
         RobotMatch? selectedRobot = SelectLongest(robotMatches);
         ModuleMatch? selectedModule = SelectLongest(moduleMatches);
         if (selectedRobot is null && IsFollowUp(question, englishSearchQuery) &&
+            (tieredRobotResolution is null || !tieredRobotResolution.HasNameQuery) &&
             TryResolveContextRobot(contextItem, bundle, languageId, out SparkyRobotRecord? contextRobot))
         {
             selectedRobot = new RobotMatch(contextRobot!, new HashSet<string>(StringComparer.Ordinal));
@@ -145,13 +191,7 @@ internal static class SparkyRobotLookup
             return false;
         }
 
-        string[] queries = new[] { question, englishSearchQuery }
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Select(value => Normalize(value!))
-            .Where(value => value.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        return FindRobotMatches(queries, bundle, languageId).Count > 0;
+        return FindMentionedRobots(question, englishSearchQuery, bundle, languageId).Count > 0;
     }
 
     public static IReadOnlyList<SparkyRobotRecord> FindMentionedRobots(
@@ -166,9 +206,28 @@ internal static class SparkyRobotLookup
             .Where(value => value.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        return FindRobotMatches(queries, bundle, languageId)
-            .Select(match => match.Record)
-            .ToArray();
+        List<RobotMatch> nameMatches = FindRobotMatches(queries, bundle, languageId);
+        if (!HasTierAwareCatalog(bundle) || nameMatches.Count == 0)
+        {
+            return nameMatches.Select(match => match.Record).ToArray();
+        }
+
+        SparkyEntityResolutionResult resolution = ResolveTierAwareRobots(
+            question, englishSearchQuery, bundle, languageId);
+        return resolution.Status switch
+        {
+            "found" when resolution.DefinitionName is not null => bundle.Robots
+                .Where(robot => string.Equals(robot.DefinitionName, resolution.DefinitionName, StringComparison.OrdinalIgnoreCase))
+                .ToArray(),
+            "ambiguous" => resolution.CandidateDefinitionNames
+                .Select(definition => bundle.Robots.FirstOrDefault(robot =>
+                    string.Equals(robot.DefinitionName, definition, StringComparison.OrdinalIgnoreCase)))
+                .Where(robot => robot is not null)
+                .Cast<SparkyRobotRecord>()
+                .ToArray(),
+            "conflicting_tiers" => nameMatches.Select(match => match.Record).ToArray(),
+            _ => []
+        };
     }
 
     private static SparkyRobotLookupResult ResolveFastest(SparkyKnowledgeBundle bundle, int languageId)
@@ -541,6 +600,172 @@ internal static class SparkyRobotLookup
         return KeepLongest(matches, match => match.Aliases, queries);
     }
 
+    private static bool HasTierAwareCatalog(SparkyKnowledgeBundle bundle)
+    {
+        if (bundle.SchemaVersion < 4)
+        {
+            return false;
+        }
+
+        if (bundle.EntityResolutionRules is null ||
+            bundle.Robots.Any(robot => robot.TierMetadata is null) ||
+            bundle.RobotModules.Any(module => module.TierMetadata is null))
+        {
+            throw new InvalidDataException("Schema 4 robot and module catalogs require tier metadata and entity-resolution rules.");
+        }
+
+        return true;
+    }
+
+    private static SparkyEntityResolutionResult ResolveTierAwareRobots(
+        string question,
+        string? englishSearchQuery,
+        SparkyKnowledgeBundle bundle,
+        int languageId)
+    {
+        SparkyEntityCandidate[] candidates = bundle.Robots
+            .Where(robot => robot.TierMetadata is not null)
+            .Select(robot => new SparkyEntityCandidate
+            {
+                DefinitionName = robot.DefinitionName,
+                EntityKind = SparkyEntityKind.Robot,
+                TierMetadata = robot.TierMetadata!,
+                PublicAliases = GetRobotPublicAliases(robot, languageId),
+                IsCalibrationTemplate = false
+            })
+            .Where(candidate => candidate.PublicAliases.Count > 0)
+            .ToArray();
+
+        return SparkyTierAwareEntityResolver.Resolve(
+            question,
+            englishSearchQuery,
+            SparkyEntityKind.Robot,
+            candidates,
+            bundle.EntityResolutionRules!,
+            languageId,
+            matchAliasWithinQuestion: true);
+    }
+
+    private static SparkyEntityResolutionResult ResolveTierAwareModules(
+        string question,
+        string? englishSearchQuery,
+        SparkyKnowledgeBundle bundle,
+        int languageId,
+        IReadOnlyList<RobotMatch> robotMatches)
+    {
+        SparkyEntityCandidate[] candidates = bundle.RobotModules
+            .Where(module => module.TierMetadata is not null)
+            .Select(module => new SparkyEntityCandidate
+            {
+                DefinitionName = module.DefinitionName,
+                EntityKind = SparkyEntityKind.Item,
+                TierMetadata = module.TierMetadata!,
+                PublicAliases = GetModulePublicAliases(module, languageId),
+                IsCalibrationTemplate = module.DefinitionName.EndsWith(
+                    bundle.EntityResolutionRules!.CalibrationTemplate.Suffix,
+                    StringComparison.OrdinalIgnoreCase)
+            })
+            .Where(candidate => candidate.PublicAliases.Count > 0)
+            .ToArray();
+
+        return SparkyTierAwareEntityResolver.Resolve(
+            RemoveRobotMentionForModuleQuery(question, robotMatches, bundle.EntityResolutionRules!, languageId),
+            englishSearchQuery is null
+                ? null
+                : RemoveRobotMentionForModuleQuery(englishSearchQuery, robotMatches, bundle.EntityResolutionRules!, languageId),
+            SparkyEntityKind.Item,
+            candidates,
+            bundle.EntityResolutionRules!,
+            languageId,
+            matchAliasWithinQuestion: true);
+    }
+
+    private static string RemoveRobotMentionForModuleQuery(
+        string question,
+        IReadOnlyList<RobotMatch> robotMatches,
+        SparkyEntityResolutionRules rules,
+        int languageId)
+    {
+        var robotPhrases = new List<string>();
+        foreach (RobotMatch match in robotMatches)
+        {
+            string[] robotNames = GetRobotPublicAliases(match.Record, languageId);
+            robotPhrases.AddRange(robotNames);
+
+            SparkyEntityTierMetadata? tier = match.Record.TierMetadata;
+            SparkyEntityTierRule? tierRule = tier is null
+                ? null
+                : rules.FindTierRule(SparkyEntityKind.Robot, tier.TierType, tier.TierLevel);
+            if (tierRule is null)
+            {
+                continue;
+            }
+
+            foreach (string tierAlias in rules.GetAliases(tierRule, languageId))
+            {
+                foreach (string robotName in robotNames)
+                {
+                    robotPhrases.Add($"{tierAlias} {robotName}");
+                    robotPhrases.Add($"{robotName} {tierAlias}");
+                }
+            }
+        }
+
+        return RemoveRobotAliases(Normalize(question), robotPhrases.Select(Normalize).ToArray());
+    }
+
+    private static List<RobotMatch> FindTieredRobotMatches(
+        SparkyEntityResolutionResult resolution,
+        IReadOnlyList<string> queries,
+        SparkyKnowledgeBundle bundle,
+        int languageId)
+    {
+        return resolution.CandidateDefinitionNames
+            .Select(definition => bundle.Robots.FirstOrDefault(robot =>
+                string.Equals(robot.DefinitionName, definition, StringComparison.OrdinalIgnoreCase)))
+            .Where(robot => robot is not null)
+            .Cast<SparkyRobotRecord>()
+            .Select(robot => new RobotMatch(robot, GetRobotPublicAliases(robot, languageId)
+                .Where(alias => queries.Any(query => ContainsPhrase(query, Normalize(alias))))
+                .Select(Normalize)
+                .ToHashSet(StringComparer.Ordinal)))
+            .ToList();
+    }
+
+    private static List<ModuleMatch> FindTieredModuleMatches(
+        SparkyEntityResolutionResult resolution,
+        IReadOnlyList<string> queries,
+        SparkyKnowledgeBundle bundle,
+        int languageId)
+    {
+        return resolution.CandidateDefinitionNames
+            .Select(definition => bundle.RobotModules.FirstOrDefault(module =>
+                string.Equals(module.DefinitionName, definition, StringComparison.OrdinalIgnoreCase)))
+            .Where(module => module is not null)
+            .Cast<SparkyRobotModuleRecord>()
+            .Select(module => new ModuleMatch(module, GetModulePublicAliases(module, languageId)
+                .Where(alias => queries.Any(query => ContainsPhrase(query, Normalize(alias))))
+                .Select(Normalize)
+                .ToHashSet(StringComparer.Ordinal)))
+            .ToList();
+    }
+
+    private static string[] GetRobotPublicAliases(SparkyRobotRecord robot, int languageId) =>
+        new[] { GetRobotView(robot, languageId)?.DisplayName, GetRobotView(robot, 0)?.DisplayName }
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!.Trim())
+            .Where(name => SafePublicName(name, robot.DefinitionName) is not null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static string[] GetModulePublicAliases(SparkyRobotModuleRecord module, int languageId) =>
+        new[] { GetModuleView(module, languageId)?.DisplayName, GetModuleView(module, 0)?.DisplayName }
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!.Trim())
+            .Where(name => SafePublicName(name, module.DefinitionName) is not null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
     private static List<ModuleMatch> FindModuleMatches(
         IReadOnlyList<string> queries,
         SparkyKnowledgeBundle bundle,
@@ -733,6 +958,17 @@ internal static class SparkyRobotLookup
         return candidates.Length > 1
             ? new SparkyRobotLookupResult("ambiguous", null, candidates)
             : NotFound();
+    }
+
+    private static SparkyRobotLookupResult AmbiguousTiered(IEnumerable<string?> names)
+    {
+        string[] candidates = names.Where(name => !string.IsNullOrWhiteSpace(name))
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .ToArray();
+        return new SparkyRobotLookupResult("ambiguous", null, candidates);
     }
 
     private static SparkyRobotLookupResult NotFound() => new("not_found", null, []);

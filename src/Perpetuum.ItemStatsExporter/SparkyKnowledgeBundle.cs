@@ -17,11 +17,12 @@ internal sealed record SparkyKnowledgeBundle(
     IReadOnlyList<SparkyKnowledgePassage> KnowledgePassages,
     SparkySearchIndex SearchIndex)
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     public IReadOnlyList<SparkyRobotRecord> Robots { get; init; } = [];
     public IReadOnlyList<SparkyRobotModuleRecord> RobotModules { get; init; } = [];
     public int SkippedRobotCount { get; init; }
+    public SparkyEntityResolutionRules? EntityResolutionRules { get; init; }
 }
 
 internal sealed record SparkyBundleManifest(
@@ -74,7 +75,7 @@ internal static class SparkyKnowledgeBundleValidator
 {
     public static void Validate(SparkyKnowledgeBundle bundle)
     {
-        if (bundle.SchemaVersion is not (1 or 2 or SparkyKnowledgeBundle.CurrentSchemaVersion))
+        if (bundle.SchemaVersion is not (1 or 2 or 3 or SparkyKnowledgeBundle.CurrentSchemaVersion))
         {
             throw new InvalidDataException($"Unsupported Sparky bundle schema version {bundle.SchemaVersion}.");
         }
@@ -92,6 +93,25 @@ internal static class SparkyKnowledgeBundleValidator
                 !entry.Value.All(Uri.IsHexDigit)))
         {
             throw new InvalidDataException("The Sparky bundle manifest is incomplete.");
+        }
+
+        if (bundle.SchemaVersion >= 4)
+        {
+            if (bundle.EntityResolutionRules is null ||
+                !bundle.Manifest.SourceHashes.TryGetValue("sparkyEntityResolutionRules", out string? rulesHash) ||
+                rulesHash.Length != 64)
+            {
+                throw new InvalidDataException("Schema 4 Sparky bundles require validated entity-resolution rules and their SHA-256 source hash.");
+            }
+
+            try
+            {
+                bundle.EntityResolutionRules.Validate();
+            }
+            catch (InvalidDataException exception)
+            {
+                throw new InvalidDataException("Schema 4 Sparky bundles contain invalid entity-resolution rules.", exception);
+            }
         }
 
         if (bundle.Languages is null || bundle.Languages.Count == 0 ||
@@ -153,19 +173,23 @@ internal static class SparkyKnowledgeBundleValidator
         {
             if (item is null || string.IsNullOrWhiteSpace(item.DefinitionName) ||
                 !itemDefinitions.Add(item.DefinitionName) || item.LocalizedViews is null ||
-                languages.Keys.Any(languageId => !item.LocalizedViews.ContainsKey(languageId)))
+                languages.Keys.Any(languageId => !item.LocalizedViews.ContainsKey(languageId)) ||
+                bundle.SchemaVersion >= 4 && item.TierMetadata is null)
             {
-                throw new InvalidDataException("The Sparky bundle contains an invalid item or incomplete localized item views.");
+                throw new InvalidDataException("The Sparky bundle contains an invalid item, missing schema 4 tier metadata, or incomplete localized item views.");
             }
         }
 
+        var recipeDefinitions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var recipe in bundle.ProductionRecipes)
         {
             if (recipe is null || string.IsNullOrWhiteSpace(recipe.DefinitionName) ||
+                bundle.SchemaVersion >= 4 && !recipeDefinitions.Add(recipe.DefinitionName) ||
                 recipe.LocalizedViews is null ||
-                languages.Keys.Any(languageId => !recipe.LocalizedViews.ContainsKey(languageId)))
+                languages.Keys.Any(languageId => !recipe.LocalizedViews.ContainsKey(languageId)) ||
+                bundle.SchemaVersion >= 4 && recipe.TierMetadata is null)
             {
-                throw new InvalidDataException("The Sparky bundle contains an invalid recipe or incomplete localized recipe views.");
+                throw new InvalidDataException("The Sparky bundle contains an invalid or duplicate recipe, missing schema 4 tier metadata, or incomplete localized recipe views.");
             }
         }
 
@@ -252,6 +276,7 @@ internal static class SparkyKnowledgeBundleValidator
                 robot.ComponentDefinitionNames.Any(string.IsNullOrWhiteSpace) ||
                 robot.ComponentDefinitionNames.Distinct(StringComparer.OrdinalIgnoreCase).Count() != robot.ComponentDefinitionNames.Count ||
                 robot.Compatibility is null || robot.ChassisBonusSources is null || robot.LocalizedViews is null ||
+                bundle.SchemaVersion >= 4 && robot.TierMetadata is null ||
                 languageSet.Any(languageId => !robot.LocalizedViews.ContainsKey(languageId)) ||
                 robot.LocalizedViews.Keys.Any(languageId => !languageSet.Contains(languageId)))
             {
@@ -342,6 +367,7 @@ internal static class SparkyKnowledgeBundleValidator
             if (module is null || string.IsNullOrWhiteSpace(module.DefinitionName) ||
                 !seenModuleDefinitions.Add(module.DefinitionName) ||
                 (bundle.SchemaVersion >= 3 && module.IsLaser is null) ||
+                (bundle.SchemaVersion >= 4 && module.TierMetadata is null) ||
                 module.LocalizedViews is null ||
                 languageSet.Any(languageId => !module.LocalizedViews.ContainsKey(languageId)) ||
                 module.LocalizedViews.Keys.Any(languageId => !languageSet.Contains(languageId)))

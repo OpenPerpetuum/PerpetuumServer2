@@ -21,10 +21,11 @@ internal sealed class SparkyRobotKnowledgeBuilder
         IRobotTemplateRelations relations,
         IExtensionReader extensions,
         SparkyDictionaryCatalog dictionaries,
-        IReadOnlyDictionary<int, AggregateFieldMetadata> metadata)
+        IReadOnlyDictionary<int, AggregateFieldMetadata> metadata,
+        IReadOnlyDictionary<int, SparkyEntityTierMetadata> tierMetadata)
     {
         var diagnostics = new List<string>();
-        var moduleEntries = BuildModules(defaults, dictionaries, metadata, diagnostics);
+        var moduleEntries = BuildModules(defaults, dictionaries, metadata, tierMetadata, diagnostics);
         var moduleRecords = moduleEntries.Select(entry => entry.Record).ToArray();
         var robots = new List<SparkyRobotRecord>();
         int skippedRobots = 0;
@@ -83,7 +84,10 @@ internal sealed class SparkyRobotKnowledgeBuilder
                     componentDefinitionNames,
                     compatibility,
                     chassisBonusSources,
-                    localizedViews));
+                    localizedViews)
+                {
+                    TierMetadata = RequireTierMetadata(tierMetadata, definition)
+                });
             }
             catch (Exception exception)
             {
@@ -99,6 +103,7 @@ internal sealed class SparkyRobotKnowledgeBuilder
         IEntityDefaultReader defaults,
         SparkyDictionaryCatalog dictionaries,
         IReadOnlyDictionary<int, AggregateFieldMetadata> metadata,
+        IReadOnlyDictionary<int, SparkyEntityTierMetadata> tierMetadata,
         ICollection<string> diagnostics)
     {
         var modules = new List<ModuleEntry>();
@@ -127,7 +132,8 @@ internal sealed class SparkyRobotKnowledgeBuilder
                     module,
                     new SparkyRobotModuleRecord(definition.Name, localizedViews)
                     {
-                        IsLaser = definition.CategoryFlags.IsCategory(CategoryFlags.cf_lasers)
+                        IsLaser = definition.CategoryFlags.IsCategory(CategoryFlags.cf_lasers),
+                        TierMetadata = RequireTierMetadata(tierMetadata, definition)
                     }));
             }
             catch (Exception exception)
@@ -137,6 +143,15 @@ internal sealed class SparkyRobotKnowledgeBuilder
         }
 
         return modules;
+    }
+
+    private static SparkyEntityTierMetadata RequireTierMetadata(
+        IReadOnlyDictionary<int, SparkyEntityTierMetadata> tierMetadata,
+        EntityDefault definition)
+    {
+        return tierMetadata.TryGetValue(definition.Definition, out SparkyEntityTierMetadata? metadata)
+            ? metadata
+            : throw new InvalidDataException($"Tier metadata is missing for entity definition ID {definition.Definition}.");
     }
 
     private static SparkyLocalizedRobotView BuildRobotView(

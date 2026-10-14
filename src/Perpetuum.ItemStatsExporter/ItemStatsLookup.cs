@@ -19,6 +19,14 @@ internal static class ItemStatsLookup
             return new ItemStatsLookupResponse { Status = "not_found", Query = question };
         }
 
+        if (bundle.SchemaVersion >= 4 &&
+            (bundle.EntityResolutionRules is null ||
+             bundle.Items.Any(item => item.TierMetadata is null) ||
+             bundle.ProductionRecipes.Any(recipe => recipe.TierMetadata is null)))
+        {
+            throw new InvalidDataException("Schema 4 item and recipe catalogs require tier metadata and entity-resolution rules.");
+        }
+
         var catalog = new Dictionary<string, LookupItem>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in bundle.Items)
         {
@@ -52,6 +60,8 @@ internal static class ItemStatsLookup
                 ContextDisplayName = displayName,
                 PublicAliases = aliases,
                 ContextAliases = contextAliases,
+                TierMetadata = item.TierMetadata,
+                IsCalibrationTemplate = IsCalibrationTemplateKey(item.DefinitionName, bundle.EntityResolutionRules),
                 Stats = localizedView?.AnswerView.Stats ?? [],
                 AmmoVariants = localizedView?.AnswerView.AmmoVariants ?? []
             };
@@ -68,30 +78,50 @@ internal static class ItemStatsLookup
                 continue;
             }
 
+            string[] aliases = new[] { localizedName, englishName }
+                .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                .Select(alias => Normalize(alias!))
+                .Where(alias => alias.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            string[] contextAliases = recipe.LocalizedViews.Values
+                .Where(view => !string.IsNullOrWhiteSpace(view.DisplayName))
+                .Select(view => Normalize(view.DisplayName!))
+                .Append(englishName is null ? string.Empty : Normalize(englishName))
+                .Where(alias => alias.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
             if (!catalog.TryGetValue(recipe.DefinitionName, out var item))
             {
-                string[] aliases = new[] { localizedName, englishName }
-                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
-                    .Select(alias => Normalize(alias!))
-                    .Where(alias => alias.Length > 0)
-                    .Distinct(StringComparer.Ordinal)
-                    .ToArray();
-                string[] contextAliases = recipe.LocalizedViews.Values
-                    .Where(view => !string.IsNullOrWhiteSpace(view.DisplayName))
-                    .Select(view => Normalize(view.DisplayName!))
-                    .Append(englishName is null ? string.Empty : Normalize(englishName))
-                    .Where(alias => alias.Length > 0)
-                    .Distinct(StringComparer.Ordinal)
-                    .ToArray();
                 item = new LookupItem
                 {
                     DefinitionName = recipe.DefinitionName,
                     DisplayName = publicName,
                     ContextDisplayName = publicName,
                     PublicAliases = aliases,
-                    ContextAliases = contextAliases
+                    ContextAliases = contextAliases,
+                    TierMetadata = recipe.TierMetadata,
+                    IsCalibrationTemplate = IsCalibrationTemplateKey(recipe.DefinitionName, bundle.EntityResolutionRules)
                 };
                 catalog.Add(item.DefinitionName, item);
+            }
+            else
+            {
+                if (item.TierMetadata is not null && recipe.TierMetadata is not null && item.TierMetadata != recipe.TierMetadata)
+                {
+                    throw new InvalidDataException($"Item and recipe tier metadata disagree for '{recipe.DefinitionName}'.");
+                }
+
+                item.TierMetadata ??= recipe.TierMetadata;
+                item.IsCalibrationTemplate |= IsCalibrationTemplateKey(recipe.DefinitionName, bundle.EntityResolutionRules);
+                item.PublicAliases = (item.PublicAliases ?? [])
+                    .Concat(aliases)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray();
+                item.ContextAliases = (item.ContextAliases ?? [])
+                    .Concat(contextAliases)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray();
             }
 
             item.Recipe = localizedRecipe?.AnswerView;
@@ -106,29 +136,74 @@ internal static class ItemStatsLookup
             .Where(query => query.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var matches = normalizedQueries.Length == 0
-            ? Array.Empty<ItemMatch>()
-            : catalog.Values.Select(item => new ItemMatch(
-                    item,
-                    GetAliases(item)
-                        .Where(alias => normalizedQueries.Any(query => ContainsPhrase(query, alias)))
-                        .ToArray()))
-                .Where(match => match.Aliases.Length > 0)
-                .ToArray();
-
-        var independentMatches = matches
-            .Where(match => match.Aliases.Any(alias => !IsNestedAlias(alias, match.Item, matches)))
-            .OrderBy(match => match.Item.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
         bool isFollowUp = IsItemFollowUp(question) || IsItemFollowUp(englishFollowUpQuery ?? string.Empty);
-        if (matches.Length == 0 && independentMatches.Length == 0 &&
-            isFollowUp && TryGetContextItem(contextItem, contextLanguageId, catalog, out var contextMatch))
+        ItemMatch[] independentMatches;
+        bool preserveAmbiguity = false;
+        SparkyEntityResolutionResult? tieredResolution = null;
+        if (bundle.SchemaVersion >= 4)
+        {
+            SparkyEntityCandidate[] candidates = catalog.Values
+                .Where(item => item.TierMetadata is not null)
+                .Select(item => new SparkyEntityCandidate
+                {
+                    DefinitionName = item.DefinitionName,
+                    EntityKind = SparkyEntityKind.Item,
+                    TierMetadata = item.TierMetadata!,
+                    PublicAliases = item.PublicAliases ?? [],
+                    IsCalibrationTemplate = item.IsCalibrationTemplate
+                })
+                .ToArray();
+            tieredResolution = SparkyTierAwareEntityResolver.Resolve(
+                question,
+                englishFollowUpQuery,
+                SparkyEntityKind.Item,
+                candidates,
+                bundle.EntityResolutionRules!,
+                languageId);
+
+            if (tieredResolution.Status == "found" && tieredResolution.DefinitionName is not null &&
+                catalog.TryGetValue(tieredResolution.DefinitionName, out LookupItem? resolvedItem))
+            {
+                independentMatches = [new ItemMatch(resolvedItem, GetAliases(resolvedItem))];
+            }
+            else
+            {
+                independentMatches = tieredResolution.CandidateDefinitionNames
+                    .Where(catalog.ContainsKey)
+                    .Select(definition => catalog[definition])
+                    .Where(item => !string.IsNullOrWhiteSpace(item.DisplayName))
+                    .DistinctBy(item => item.DefinitionName, StringComparer.OrdinalIgnoreCase)
+                    .Select(item => new ItemMatch(item, GetAliases(item)))
+                    .ToArray();
+                preserveAmbiguity = tieredResolution.Status is "ambiguous" or "conflicting_tiers";
+            }
+        }
+        else
+        {
+            var matches = normalizedQueries.Length == 0
+                ? Array.Empty<ItemMatch>()
+                : catalog.Values.Select(item => new ItemMatch(
+                        item,
+                        GetAliases(item)
+                            .Where(alias => normalizedQueries.Any(query => ContainsPhrase(query, alias)))
+                            .ToArray()))
+                    .Where(match => match.Aliases.Length > 0)
+                    .ToArray();
+
+            independentMatches = matches
+                .Where(match => match.Aliases.Any(alias => !IsNestedAlias(alias, match.Item, matches)))
+                .OrderBy(match => match.Item.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        if (independentMatches.Length == 0 && !preserveAmbiguity && isFollowUp &&
+            (tieredResolution is null || !tieredResolution.HasNameQuery) &&
+            TryGetContextItem(contextItem, contextLanguageId, catalog, out var contextMatch))
         {
             independentMatches = [new ItemMatch(contextMatch, GetAliases(contextMatch))];
         }
 
-        if (independentMatches.Length == 1)
+        if (independentMatches.Length == 1 && !preserveAmbiguity)
         {
             var item = independentMatches[0].Item;
             return new ItemStatsLookupResponse
@@ -154,7 +229,7 @@ internal static class ItemStatsLookup
 
         return new ItemStatsLookupResponse
         {
-            Status = independentMatches.Length == 0 ? "not_found" : "ambiguous",
+            Status = preserveAmbiguity || independentMatches.Length > 0 ? "ambiguous" : "not_found",
             Query = question,
             Candidates = independentMatches
                 .Select(match => new ItemStatsLookupCandidate
@@ -290,6 +365,11 @@ internal static class ItemStatsLookup
             : displayName.Trim();
     }
 
+    private static bool IsCalibrationTemplateKey(string definitionName, SparkyEntityResolutionRules? rules)
+    {
+        return rules is not null && definitionName.EndsWith(rules.CalibrationTemplate.Suffix, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool TryGetContextItem(
         string? contextItem,
         IReadOnlyDictionary<string, LookupItem> catalog,
@@ -365,8 +445,10 @@ internal static class ItemStatsLookup
         public List<AmmoAnswerView> AmmoVariants { get; init; } = [];
         public ProductionRecipeAnswerView? Recipe { get; set; }
         public FullMaterialsAnswerView? FullMaterials { get; set; }
-        public string[]? PublicAliases { get; init; }
-        public string[]? ContextAliases { get; init; }
+        public string[]? PublicAliases { get; set; }
+        public string[]? ContextAliases { get; set; }
+        public SparkyEntityTierMetadata? TierMetadata { get; set; }
+        public bool IsCalibrationTemplate { get; set; }
         public bool RecipeAvailable { get; set; }
         public bool RecipeTranslationsComplete { get; set; } = true;
     }

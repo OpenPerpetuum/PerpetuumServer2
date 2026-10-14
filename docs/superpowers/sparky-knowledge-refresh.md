@@ -22,6 +22,10 @@ The build requires `customDictionary\0.json`, rejects unsupported language IDs a
 
 The curated source allowlist is `tools\sparky-knowledge-sources.json`; it currently names two mechanics summaries and eleven lore text files under `$loreRoot`. The builder does not enumerate the lore folder. It includes only those passages and source hashes in the bundle; no absolute path is written to the bundle. Do not add database tables, repository trees, or new source files without reviewing them for player-visible content and private/operational data.
 
+Tier wording is maintained in `tools\sparky-entity-resolution-rules.json`. Each rule pairs an entity kind with the exact nullable `tiertype`/`tierlevel` values and lists accepted aliases under `aliasesByLanguage`; language `0` is shared English, and localized aliases should be added only when supported by reviewed wording. Item and robot tiers are separate. Calibration-template aliases are in the same file, and only a canonical definition/dictionary key ending exactly in `_cprg` qualifies as a template. Tier shorthand selects a record before its facts are formatted; an unqualified name can remain ambiguous, and a tier label without a base name never selects a record.
+
+The bundle manifest records the catalog hash as `SourceHashes.sparkyEntityResolutionRules`, and that hash contributes to the bundle version. Alias-only edits therefore use the normal build, validation, transfer, stage, and profile activation workflow below; they do not require another executable deployment once schema 4 support is installed. New parsing behavior still requires an executable update.
+
 ## 2. Transfer and update the AI-machine executable
 
 Transfer the validated bundle and its SHA-256 value to the AI machine through the already-approved private file-transfer method. On the AI machine, compare its hash with the Main-machine hash:
@@ -48,7 +52,7 @@ Use a fresh timestamped publish directory for each build; reusing an older direc
 & "$publishPath\Perpetuum.ItemStatsExporter.exe" --validate-bundle $bundlePath
 ```
 
-The service executable is also the command-line bundle validator. New builds use schema 3 with localized robot/module facts, validated compatibility references, and laser module categories derived from server category flags. `--validate-bundle` accepts schema 1 only when its robot sections are empty, accepts schema 2 without the laser category for rollback, and validates schema 3 category data before activation. The validator reads the bundle only; it does not need database or repository access. If only the refresh script changed, transfer the updated `tools\Refresh-SparkyKnowledge.ps1` instead of recopying the executable directories.
+The service executable is also the command-line bundle validator. New builds use schema 4 with localized robot/module facts, exact nullable tier metadata for items, recipes, robots, and modules, and the validated entity-resolution rules. The one-time schema 4 rollout requires updating both AI-machine executable installations before activating a schema 4 bundle. `--validate-bundle` continues to accept schema 1 only when its robot sections are empty, schema 2 without the laser category, and schema 3 without tier metadata for rollback; schema 4 requires complete tier metadata and valid resolution rules. Schemas 1–3 remain name-only at runtime. The validator reads the bundle only; it does not need database or repository access. If only the refresh script changed, transfer the updated `tools\Refresh-SparkyKnowledge.ps1` instead of recopying the executable directories.
 
 ## 3. Validate and stage on the AI machine
 
@@ -65,7 +69,7 @@ Open the Sparky Admin Panel on AI at `https://127.0.0.1:5081/sparky-admin/` or o
 
 ## 4. Verify and resume local acceptance
 
-After activation, `/health` should report the active Dev bundle version prefix without any service restart. Use the Main Dev API tunnel for the same item, recipe, robot, and lore acceptance questions listed above. Confirm the intended profile's panel summary shows the new bundle/revision while Live remains unchanged unless you explicitly promote it. The local Visual Studio Debug server remains running throughout bundle refresh and activation.
+After activation, `/health` should report the active Dev bundle version prefix without any service restart. Use the Main Dev API tunnel for the same item, recipe, robot, and lore acceptance questions listed above. For schema 4, also try `T1 medium plate`, `T2+ Scorcher`, `T4 prototype sensor amplifier`, a `_cprg` calibration template, `Mk2 Arbalest`, `Mk3 Weasel`, an unqualified unique robot name, and a prototype robot. Confirm a tier-qualified request selects the exact record, an unqualified collision asks for clarification, and an unsupported tier does not fall back to another tier's facts. Confirm the intended profile's panel summary shows the new bundle/revision while Live remains unchanged. The local Visual Studio Debug server remains running throughout bundle refresh and activation.
 
 Do not use this runbook to roll the bundle into VDI or the live server. That deployment remains a separate decision after Main-machine acceptance.
 

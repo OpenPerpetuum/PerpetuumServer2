@@ -7,6 +7,8 @@ namespace Perpetuum.Tests.Unit;
 
 public sealed class SparkyRobotLookupTests
 {
+    private static readonly SparkyEntityResolutionRules TierRules = SparkyEntityResolutionRules.Load(TestRepositoryRoot);
+
     [Theory]
     [InlineData("What are stats for Sample robot?", "stats for Sample robot", "Stats")]
     [InlineData("What bonuses does Sample robot have?", "Sample robot bonuses", "ChassisBonus")]
@@ -588,6 +590,161 @@ public sealed class SparkyRobotLookupTests
     }
 
     [Fact]
+    public void Mk2RobotAliasSelectsTheExactTierAndMentionHelpersAgree()
+    {
+        SparkyKnowledgeBundle source = CreateBundle();
+        SparkyRobotRecord template = source.Robots.Single();
+        SparkyKnowledgeBundle bundle = CreateTierAwareBundle(
+            RobotVariant(template, "def_arbalest_mk1", "Arbalest", 1, 1),
+            RobotVariant(template, "def_arbalest_mk2", "Arbalest", 1, 2));
+
+        SparkyRobotLookupResult result = SparkyRobotLookup.Resolve(
+            "What are the stats for Mk2 Arbalest?",
+            "stats for Mark 2 Arbalest",
+            bundle,
+            0,
+            null,
+            SparkyRobotQuestionFocus.Stats);
+
+        Assert.Equal("found", result.Status);
+        Assert.Equal("Arbalest", result.Facts!.RobotName);
+        Assert.True(SparkyRobotLookup.ContainsRobotMention("Mk2 Arbalest", null, bundle, 0));
+        Assert.Equal("def_arbalest_mk2", Assert.Single(
+            SparkyRobotLookup.FindMentionedRobots("Mk2 Arbalest", null, bundle, 0)).DefinitionName);
+    }
+
+    [Fact]
+    public void Mk3WeaselAndUnqualifiedUniqueWeaselResolve()
+    {
+        SparkyRobotRecord template = CreateBundle().Robots.Single();
+        SparkyKnowledgeBundle bundle = CreateTierAwareBundle(
+            RobotVariant(template, "def_weasel_mk3", "Weasel", 1, 3));
+
+        SparkyRobotLookupResult tiered = SparkyRobotLookup.Resolve(
+            "Tell me about Mk3 Weasel", "Mk3 Weasel", bundle, 0, null, SparkyRobotQuestionFocus.General);
+        SparkyRobotLookupResult unqualified = SparkyRobotLookup.Resolve(
+            "Tell me about Weasel", "Weasel", bundle, 0, null, SparkyRobotQuestionFocus.General);
+
+        Assert.Equal("found", tiered.Status);
+        Assert.Equal("Weasel", tiered.Facts!.RobotName);
+        Assert.Equal("found", unqualified.Status);
+        Assert.Equal("Weasel", unqualified.Facts!.RobotName);
+    }
+
+    [Fact]
+    public void ShortenedTieredRobotNameMatchesPublicNameTokens()
+    {
+        SparkyRobotRecord template = CreateBundle().Robots.Single();
+        SparkyKnowledgeBundle bundle = CreateTierAwareBundle(
+            RobotVariant(template, "def_arbalest_mk2", "Standard Medium Arbalest", 1, 2));
+
+        SparkyRobotLookupResult result = SparkyRobotLookup.Resolve(
+            "What are the stats for Mk2 medium Arbalest?", "Mk2 medium Arbalest stats", bundle, 0, null,
+            SparkyRobotQuestionFocus.Stats);
+
+        Assert.Equal("found", result.Status);
+        Assert.Equal("Standard Medium Arbalest", result.Facts!.RobotName);
+    }
+
+    [Fact]
+    public void PrototypeAliasMatchesRobotTypeTwoWithNullTierLevel()
+    {
+        SparkyRobotRecord template = CreateBundle().Robots.Single();
+        SparkyKnowledgeBundle bundle = CreateTierAwareBundle(
+            RobotVariant(template, "def_weasel_prototype", "Weasel", 2, null),
+            RobotVariant(template, "def_weasel_mk2", "Weasel", 1, 2));
+
+        SparkyRobotLookupResult result = SparkyRobotLookup.Resolve(
+            "What are the stats for P Weasel?", "prototype Weasel stats", bundle, 0, null,
+            SparkyRobotQuestionFocus.Stats);
+
+        Assert.Equal("found", result.Status);
+        Assert.Equal("Weasel", result.Facts!.RobotName);
+    }
+
+    [Fact]
+    public void TieredModuleCompatibilityUsesItemTierRulesAlongsideRobotTierRules()
+    {
+        SparkyKnowledgeBundle source = CreateBundle();
+        SparkyRobotRecord robot = RobotVariant(source.Robots.Single(), "def_arbalest_mk2", "Arbalest", 1, 2);
+        SparkyRobotModuleRecord t4 = CreateModule("def_sensor_amplifier_t4", "Sensor amplifier", false,
+            "Sensor amplifier", "Amplificador de sensor", "Усилитель сенсора") with
+        {
+            TierMetadata = Tier(1, 4)
+        };
+        SparkyRobotModuleRecord t4Prototype = CreateModule("def_sensor_amplifier_t4p", "Sensor amplifier", false,
+            "Sensor amplifier", "Amplificador de sensor", "Усилитель сенсора") with
+        {
+            TierMetadata = Tier(2, 4)
+        };
+        SparkyKnowledgeBundle bundle = CreateTierAwareBundle([robot], [t4, t4Prototype]);
+
+        SparkyRobotLookupResult result = SparkyRobotLookup.Resolve(
+            "Would T4 prototype sensor amplifier fit Mk2 Arbalest?",
+            "Would T4 prototype sensor amplifier fit Mark 2 Arbalest?",
+            bundle,
+            0,
+            null,
+            SparkyRobotQuestionFocus.ModuleCompatibility);
+
+        Assert.Equal("found", result.Status);
+        Assert.NotNull(result.Facts!.Module);
+        Assert.Equal("Sensor amplifier", result.Facts.Module.DisplayName);
+    }
+
+    [Fact]
+    public void ShortenedTieredModuleNameResolvesWithinRobotCompatibilityQuestion()
+    {
+        SparkyKnowledgeBundle source = CreateBundle();
+        SparkyRobotRecord robot = RobotVariant(source.Robots.Single(), "def_arbalest_mk2", "Arbalest", 1, 2);
+        SparkyRobotModuleRecord module = CreateModule("def_medium_armor_plate_t4", "Standard medium armor plate", false,
+            "Standard medium armor plate", "Standard mittlere Panzerplatte", "Placa média padrão") with
+        {
+            TierMetadata = Tier(1, 4)
+        };
+        SparkyKnowledgeBundle bundle = CreateTierAwareBundle([robot], [module]);
+
+        SparkyRobotLookupResult result = SparkyRobotLookup.Resolve(
+            "Would T4 medium plate fit Mk2 Arbalest?", "Would T4 medium plate fit Mark 2 Arbalest?",
+            bundle, 0, null, SparkyRobotQuestionFocus.ModuleCompatibility);
+
+        Assert.Equal("found", result.Status);
+        Assert.NotNull(result.Facts!.Module);
+        Assert.Equal("Standard medium armor plate", result.Facts.Module.DisplayName);
+    }
+
+    [Fact]
+    public void UnqualifiedRobotNameCollisionAcrossTiersIsAmbiguous()
+    {
+        SparkyRobotRecord template = CreateBundle().Robots.Single();
+        SparkyKnowledgeBundle bundle = CreateTierAwareBundle(
+            RobotVariant(template, "def_arbalest_mk1", "Arbalest", 1, 1),
+            RobotVariant(template, "def_arbalest_mk2", "Arbalest", 1, 2));
+
+        SparkyRobotLookupResult result = SparkyRobotLookup.Resolve(
+            "What are the stats for Arbalest?", "Arbalest stats", bundle, 0, null,
+            SparkyRobotQuestionFocus.Stats);
+
+        Assert.Equal("ambiguous", result.Status);
+        Assert.Null(result.Facts);
+    }
+
+    [Fact]
+    public void UnsupportedRobotTierDoesNotResolveByNameOrPriorContext()
+    {
+        SparkyRobotRecord template = CreateBundle().Robots.Single();
+        SparkyKnowledgeBundle bundle = CreateTierAwareBundle(
+            RobotVariant(template, "def_arbalest_mk2", "Arbalest", 1, 2));
+
+        SparkyRobotLookupResult result = SparkyRobotLookup.Resolve(
+            "What about Mk4 Arbalest?", "Mk4 Arbalest", bundle, 0, "Arbalest",
+            SparkyRobotQuestionFocus.Stats);
+
+        Assert.Equal("not_found", result.Status);
+        Assert.Null(result.Facts);
+    }
+
+    [Fact]
     public void ChassisBonusFocusReturnsTranslatedLevelOneResults()
     {
         SparkyRobotLookupResult result = SparkyRobotLookup.Resolve(
@@ -830,6 +987,62 @@ public sealed class SparkyRobotLookupTests
         Assert.Equal("ambiguous", result.Status);
         Assert.Contains("possible matches", result.Answer, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("items", result.Answer, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static SparkyKnowledgeBundle CreateTierAwareBundle(params SparkyRobotRecord[] robots)
+    {
+        SparkyRobotModuleRecord[] modules = CreateBundle().RobotModules
+            .Select(module => module with { TierMetadata = Tier(null, null) })
+            .ToArray();
+        return CreateTierAwareBundle(robots, modules);
+    }
+
+    private static SparkyKnowledgeBundle CreateTierAwareBundle(
+        IReadOnlyList<SparkyRobotRecord> robots,
+        IReadOnlyList<SparkyRobotModuleRecord> modules)
+    {
+        SparkyKnowledgeBundle bundle = CreateBundle();
+        return bundle with
+        {
+            SchemaVersion = 4,
+            EntityResolutionRules = TierRules,
+            Robots = robots,
+            RobotModules = modules
+        };
+    }
+
+    private static SparkyRobotRecord RobotVariant(
+        SparkyRobotRecord template,
+        string definitionName,
+        string displayName,
+        int? tierType,
+        int? tierLevel) => template with
+    {
+        DefinitionName = definitionName,
+        TierMetadata = Tier(tierType, tierLevel),
+        LocalizedViews = template.LocalizedViews.ToDictionary(
+            entry => entry.Key,
+            entry => entry.Value with { DisplayName = displayName })
+    };
+
+    private static SparkyEntityTierMetadata Tier(int? tierType, int? tierLevel) => new()
+    {
+        TierType = tierType,
+        TierLevel = tierLevel
+    };
+
+    private static string TestRepositoryRoot
+    {
+        get
+        {
+            DirectoryInfo? current = new(AppContext.BaseDirectory);
+            while (current is not null && !File.Exists(Path.Combine(current.FullName, "tools", "sparky-entity-resolution-rules.json")))
+            {
+                current = current.Parent;
+            }
+
+            return current?.FullName ?? throw new DirectoryNotFoundException("Could not locate the entity-resolution rules catalog.");
+        }
     }
 
     private static SparkyKnowledgeBundle CreateBundle(string? germanRobotName = "Sample robot", bool includeAliasCollision = false)

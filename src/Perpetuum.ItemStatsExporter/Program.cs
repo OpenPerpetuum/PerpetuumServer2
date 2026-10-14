@@ -258,11 +258,12 @@ internal static class Program
         IEntityDefaultReader reader,
         IReadOnlyDictionary<string, string> translations,
         IReadOnlyDictionary<int, AggregateFieldMetadata> metadata,
-        SparkyDictionaryCatalog? dictionaryCatalog = null)
+        SparkyDictionaryCatalog? dictionaryCatalog = null,
+        IReadOnlyDictionary<int, SparkyEntityTierMetadata>? tierMetadata = null)
     {
         var items = new List<WeaponItem>();
         var definitions = reader.GetAll().ToArray();
-        var productionRecipes = BuildProductionRecipes(definitions, translations);
+        var productionRecipes = BuildProductionRecipes(definitions, translations, tierMetadata);
         var translatedDefinitions = definitions
             .Where(definition => definition.CategoryFlags.IsAny(WeaponCategories))
             .Where(definition => translations.ContainsKey(definition.Name))
@@ -282,6 +283,7 @@ internal static class Program
             {
                 DefinitionName = definition.Name,
                 DisplayName = translations[definition.Name],
+                TierMetadata = GetTierMetadata(tierMetadata, definition.Definition),
                 BaseStats = ReadStats(module.BuildPropertiesDictionary(), translations, metadata)
             };
 
@@ -334,7 +336,8 @@ internal static class Program
 
     private static List<ProductionRecipe> BuildProductionRecipes(
         IReadOnlyCollection<EntityDefault> definitions,
-        IReadOnlyDictionary<string, string> translations)
+        IReadOnlyDictionary<string, string> translations,
+        IReadOnlyDictionary<int, SparkyEntityTierMetadata>? tierMetadata)
     {
         // Use the documented player-facing production_data view to apply its purchasable,
         // enabled, and visible product filter. The component IDs and amounts still come
@@ -373,6 +376,7 @@ internal static class Program
                 ProductDefinition = product.Definition,
                 DefinitionName = product.Name,
                 DisplayName = translations.GetValueOrDefault(product.Name),
+                TierMetadata = GetTierMetadata(tierMetadata, product.Definition),
                 OutputQuantity = product.Quantity,
                 Components = entry.Value
                     .OrderBy(component => component.EntityDefault.Name, StringComparer.OrdinalIgnoreCase)
@@ -432,6 +436,20 @@ internal static class Program
         }
 
         return recipes;
+    }
+
+    private static SparkyEntityTierMetadata? GetTierMetadata(
+        IReadOnlyDictionary<int, SparkyEntityTierMetadata>? metadataByDefinition,
+        int definition)
+    {
+        if (metadataByDefinition is null)
+        {
+            return null;
+        }
+
+        return metadataByDefinition.TryGetValue(definition, out SparkyEntityTierMetadata? metadata)
+            ? metadata
+            : throw new InvalidDataException($"Tier metadata is missing for entity definition ID {definition}.");
     }
 
     private static bool TryExpandRecipe(
@@ -789,16 +807,23 @@ internal static class Program
         string sourceRevision = ReadRepositoryRevision(resolvedSourceRoot);
         var sourceCatalog = SparkyKnowledgeSourceCatalog.Load(resolvedSourceRoot);
         var knowledgeIndex = SparkyKnowledgeIndexBuilder.Build(resolvedSourceRoot, loreRoot, sourceCatalog);
+        SparkyEntityResolutionRules entityResolutionRules = SparkyEntityResolutionRules.Load(resolvedSourceRoot);
+        string entityResolutionRulesPath = SparkyKnowledgeSourceCatalog.ResolveRepositoryFile(
+            resolvedSourceRoot,
+            "tools/sparky-entity-resolution-rules.json");
+        string entityResolutionRulesHash = Hash(File.ReadAllBytes(entityResolutionRulesPath));
         using var runtime = OfflineContentRuntime.Initialize(gameRoot);
         var reader = runtime.Resolve<IEntityDefaultReader>();
         var metadata = LoadAggregateMetadata(dictionaryCatalog.English.Translations);
-        var export = BuildExport(reader, dictionaryCatalog.English.Translations, metadata, dictionaryCatalog);
+        var tierMetadata = SparkyEntityTierMetadataReader.Load();
+        var export = BuildExport(reader, dictionaryCatalog.English.Translations, metadata, dictionaryCatalog, tierMetadata);
         var robotExport = new SparkyRobotKnowledgeBuilder().Build(
             reader,
             runtime.Resolve<IRobotTemplateRelations>(),
             runtime.Resolve<IExtensionReader>(),
             dictionaryCatalog,
-            metadata);
+            metadata,
+            tierMetadata);
         foreach (string diagnostic in robotExport.Diagnostics)
         {
             Console.Error.WriteLine($"Sparky robot export: {diagnostic}");
@@ -809,6 +834,7 @@ internal static class Program
         var dictionaryHashes = dictionaryCatalog.Languages.ToDictionary(language => language.LanguageId, language => language.DictionaryHash);
         var sourceHashes = knowledgeIndex.SourceHashes.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
         sourceHashes["serverRepositoryCommit"] = sourceRevision;
+        sourceHashes["sparkyEntityResolutionRules"] = entityResolutionRulesHash;
         string versionSeed = string.Join("|", new[]
         {
             gameContentRevision,
@@ -843,7 +869,8 @@ internal static class Program
         {
             Robots = robotExport.Robots,
             RobotModules = robotExport.RobotModules,
-            SkippedRobotCount = robotExport.SkippedRobotCount
+            SkippedRobotCount = robotExport.SkippedRobotCount,
+            EntityResolutionRules = entityResolutionRules
         };
         SparkyKnowledgeBundleValidator.Validate(bundle);
         return bundle;
@@ -893,13 +920,22 @@ internal static class Program
 
     internal static SparkyKnowledgeBundle ReadKnowledgeBundle(string path)
     {
-        var bundle = JsonSerializer.Deserialize<SparkyKnowledgeBundle>(File.ReadAllText(path))
-            ?? throw new InvalidDataException("The input file did not contain a Sparky knowledge bundle.");
+        SparkyKnowledgeBundle bundle;
+        try
+        {
+            bundle = JsonSerializer.Deserialize<SparkyKnowledgeBundle>(File.ReadAllText(path))
+                ?? throw new InvalidDataException("The input file did not contain a Sparky knowledge bundle.");
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("The Sparky knowledge bundle is malformed or missing required tier metadata fields.", exception);
+        }
+
         SparkyKnowledgeBundleValidator.Validate(bundle);
         return bundle;
     }
 
-    private static SparkyKnowledgeBundle ReadKnowledgeBundleOrLegacy(string path)
+    internal static SparkyKnowledgeBundle ReadKnowledgeBundleOrLegacy(string path)
     {
         using var json = JsonDocument.Parse(File.ReadAllText(path));
         if (json.RootElement.ValueKind != JsonValueKind.Object)
@@ -942,7 +978,7 @@ internal static class Program
         }
 
         var legacyBundle = new SparkyKnowledgeBundle(
-            SparkyKnowledgeBundle.CurrentSchemaVersion,
+            3,
             new SparkyBundleManifest(
                 $"legacy-{exportHash[..16]}",
                 exportHash,
@@ -1034,6 +1070,7 @@ internal sealed class ProductionRecipe
     public int ProductDefinition { get; init; }
     public string DefinitionName { get; init; } = string.Empty;
     public string? DisplayName { get; init; }
+    public SparkyEntityTierMetadata? TierMetadata { get; init; }
     public int OutputQuantity { get; init; }
     public List<ProductionRecipeComponent> Components { get; init; } = [];
     public ProductionRecipeAnswerView? AnswerView { get; set; }
@@ -1074,6 +1111,7 @@ internal sealed class WeaponItem
 {
     public string DefinitionName { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
+    public SparkyEntityTierMetadata? TierMetadata { get; init; }
     public List<StatValue> BaseStats { get; init; } = [];
     public List<AmmoVariant> AmmoVariants { get; init; } = [];
     public ItemAnswerView AnswerView { get; set; } = new();

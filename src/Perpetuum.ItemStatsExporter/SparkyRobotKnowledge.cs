@@ -11,7 +11,10 @@ internal sealed record SparkyRobotRecord(
     IReadOnlyList<string> ComponentDefinitionNames,
     IReadOnlyList<SparkyRobotCompatibility> Compatibility,
     IReadOnlyList<SparkyRobotChassisBonusSource> ChassisBonusSources,
-    IReadOnlyDictionary<int, SparkyLocalizedRobotView> LocalizedViews);
+    IReadOnlyDictionary<int, SparkyLocalizedRobotView> LocalizedViews)
+{
+    public SparkyEntityTierMetadata? TierMetadata { get; init; }
+}
 
 internal sealed record SparkyRobotChassisBonusSource(
     int ExtensionId,
@@ -50,6 +53,7 @@ internal sealed record SparkyRobotModuleRecord(
     IReadOnlyDictionary<int, SparkyLocalizedRobotModuleView> LocalizedViews)
 {
     public bool? IsLaser { get; init; }
+    public SparkyEntityTierMetadata? TierMetadata { get; init; }
 }
 
 internal sealed record SparkyLocalizedRobotModuleView(

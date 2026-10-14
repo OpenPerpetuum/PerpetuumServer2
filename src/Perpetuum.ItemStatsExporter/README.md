@@ -6,6 +6,8 @@ It uses the server's entity factory and property classes to construct and initia
 
 The versioned knowledge bundle can include any of the game's dictionaries found in a numeric `customDictionary/<language-id>.json` file. Language IDs and display names come from `CustomDictionary.LanguageNames`; `0.json` is mandatory and defines the canonical public translation-key inventory. Missing translated names are kept as missing and incomplete recipes are not exposed as complete recipes.
 
+Versioned bundles also include deterministic tier-aware entity matching. The reviewed alias catalog is `tools/sparky-entity-resolution-rules.json`: it maps exact `tiertype`/`tierlevel` pairs separately for items and robots, with aliases grouped by dictionary language ID. Language `0` is shared English. Edit this file to adjust accepted wording; the offline build validates the catalog and hashes it into bundle provenance. Once the schema 4 runtime is installed, alias-only edits need a bundle refresh and activation, not another executable deployment.
+
 ## Run
 
 From the repository root:
@@ -47,7 +49,7 @@ To resolve an English item name from an export and return only its verified answ
 dotnet run --project src/Perpetuum.ItemStatsExporter -c Release -- --answer <input.json> "What are the stats for Standard medium HCL laser?"
 ```
 
-The lookup matches complete dictionary display names or definition names inside the question. It returns `found`, `not_found`, or `ambiguous`; it does not guess when no complete name matches or several independent item names match.
+This flat-export command uses name-only matching and returns `found`, `not_found`, or `ambiguous`; it does not guess when no complete name matches or several independent item names match. Tier-aware matching is used by the schema 4 versioned bundle service, not by this legacy flat-export command.
 
 To let LM Studio phrase a matched answer, start its local API server and run `--ask` on the LM Studio machine. With the `dotnet run` command below, a repository copy must be available there; a published exporter executable can be used instead. The JSON export must also be available on that machine. Copy it from the machine with the local database; `--ask` reads the JSON only and does not need database access.
 
@@ -75,7 +77,9 @@ The structured router also ranks assembled robot definitions by baseline `speed_
 
 Robot and module answer views are localized from the included custom dictionaries. A missing robot or module name prevents that record from being answerable in that language; a component, field, unit, or bonus without a public translation is omitted. Internal definition names, numeric IDs, and slot masks stay in the bundle for lookup and validation and are excluded from answer facts. The robot export uses the local offline database copy and server calculations; it does not read live data, account or character records, player loadouts, or generate stat and compatibility calculations with the model.
 
-New bundles use schema 3 and include localized robot/module views, validated compatibility references, and the module laser category exported from server category flags. The service accepts schema 1 bundles with empty robot sections and schema 2 bundles without the laser category, so the refresh script can restore a previous bundle after a failed activation. See [`docs/superpowers/sparky-knowledge-refresh.md`](../../docs/superpowers/sparky-knowledge-refresh.md) for build, transfer, validation, activation, and rollback steps.
+New bundles use schema 4 and include localized robot/module views, validated compatibility references, the module laser category exported from server category flags, exact nullable tier metadata for item/recipe/robot/module records, and the reviewed tier-resolution rules. Runtime matching uses translated public names and exact tier pairs; numeric tier metadata and internal definition names are not included in answer evidence. A tier qualifier alone never selects a record, and ties remain ambiguous. Calibration-template aliases (`CT`, `calibration template`, and `blueprint`) apply only to records whose canonical definition/dictionary key ends exactly in `_cprg`.
+
+The service continues to accept schema 1 bundles with empty robot sections and schemas 2–3 under their existing rollback validation. Those legacy schemas keep name-only matching because they lack tier metadata. The AI executable must be updated once for schema 4 support; after that, changing aliases in the rules file requires only rebuilding and activating a new bundle. See [`docs/superpowers/sparky-knowledge-refresh.md`](../../docs/superpowers/sparky-knowledge-refresh.md) for build, transfer, validation, activation, and rollback steps.
 
 ### Recursive recipe expansion
 

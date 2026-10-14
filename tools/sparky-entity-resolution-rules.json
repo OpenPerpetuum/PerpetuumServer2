@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "tierRules": [
+    { "entityKind": "item", "tierType": 1, "tierLevel": 0, "canonicalLabel": "T0", "aliasesByLanguage": { "0": ["T0", "tier 0", "damaged", "flawed", "trash"] } },
+    { "entityKind": "item", "tierType": 1, "tierLevel": 1, "canonicalLabel": "T1", "aliasesByLanguage": { "0": ["T1", "tier 1", "standard"] } },
+    { "entityKind": "item", "tierType": 1, "tierLevel": 2, "canonicalLabel": "T2", "aliasesByLanguage": { "0": ["T2", "tier 2"] } },
+    { "entityKind": "item", "tierType": 1, "tierLevel": 3, "canonicalLabel": "T3", "aliasesByLanguage": { "0": ["T3", "tier 3"] } },
+    { "entityKind": "item", "tierType": 1, "tierLevel": 4, "canonicalLabel": "T4", "aliasesByLanguage": { "0": ["T4", "tier 4"] } },
+    { "entityKind": "item", "tierType": 1, "tierLevel": 5, "canonicalLabel": "T5", "aliasesByLanguage": { "0": ["T5", "tier 5", "season reward", "set item"] } },
+    { "entityKind": "item", "tierType": 2, "tierLevel": 1, "canonicalLabel": "T1P", "aliasesByLanguage": { "0": ["T1P", "T1 prototype", "tier 1 prototype"] } },
+    { "entityKind": "item", "tierType": 2, "tierLevel": 2, "canonicalLabel": "T2P", "aliasesByLanguage": { "0": ["T2P", "T2 prototype", "tier 2 prototype"] } },
+    { "entityKind": "item", "tierType": 2, "tierLevel": 3, "canonicalLabel": "T3P", "aliasesByLanguage": { "0": ["T3P", "T3 prototype", "tier 3 prototype"] } },
+    { "entityKind": "item", "tierType": 2, "tierLevel": 4, "canonicalLabel": "T4P", "aliasesByLanguage": { "0": ["T4P", "T4 prototype", "tier 4 prototype"] } },
+    { "entityKind": "item", "tierType": 3, "tierLevel": 0, "canonicalLabel": "S", "aliasesByLanguage": { "0": ["S", "Syntec", "noob"] } },
+    { "entityKind": "item", "tierType": 3, "tierLevel": 2, "canonicalLabel": "T2+", "aliasesByLanguage": { "0": ["T2+", "tier 2 plus"] } },
+    { "entityKind": "item", "tierType": 3, "tierLevel": 3, "canonicalLabel": "T3-", "aliasesByLanguage": { "0": ["T3-", "tier 3 minus", "Niani item"] } },
+    { "entityKind": "item", "tierType": 3, "tierLevel": 4, "canonicalLabel": "T4+", "aliasesByLanguage": { "0": ["T4+", "tier 4 plus"] } },
+    { "entityKind": "robot", "tierType": 1, "tierLevel": 1, "canonicalLabel": "Mk1", "aliasesByLanguage": { "0": ["Mk1", "Mark 1"] } },
+    { "entityKind": "robot", "tierType": 1, "tierLevel": 2, "canonicalLabel": "Mk2", "aliasesByLanguage": { "0": ["Mk2", "Mark 2"] } },
+    { "entityKind": "robot", "tierType": 1, "tierLevel": 3, "canonicalLabel": "Mk3", "aliasesByLanguage": { "0": ["Mk3", "Mark 3", "season robot", "season reward"] } },
+    { "entityKind": "robot", "tierType": 2, "tierLevel": null, "canonicalLabel": "P", "aliasesByLanguage": { "0": ["P", "prototype"] } }
+  ],
+  "calibrationTemplate": {
+    "suffix": "_cprg",
+    "aliasesByLanguage": { "0": ["calibration template", "CT", "blueprint"] }
+  }
+}
