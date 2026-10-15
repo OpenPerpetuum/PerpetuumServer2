@@ -27,6 +27,7 @@ namespace Perpetuum.Services.EventServices
         private readonly IDiscordPinStateRepository _pinStateRepository;
         private readonly Func<SparkyRequestCoordinator> _sparkyCoordinatorFactory;
         private readonly SparkyQuestionCaptureService _questionCapture;
+        private readonly SparkyDiscordRankConfiguration _sparkyDiscordRankConfiguration;
         private Channel<SparkyDiscordReply>? _sparkyDiscordQueue;
         private CancellationTokenSource? _sparkyDiscordShutdown;
         private Task? _sparkyDiscordWorker;
@@ -49,6 +50,10 @@ namespace Perpetuum.Services.EventServices
             _pinStateRepository = pinStateRepository;
             _sparkyCoordinatorFactory = sparkyCoordinatorFactory;
             _questionCapture = questionCapture;
+            _sparkyDiscordRankConfiguration = new SparkyDiscordRankConfiguration(
+                globalConfiguration.SparkyDiscordOfficerRoleIds,
+                globalConfiguration.SparkyDiscordCeoRoleIds,
+                globalConfiguration.SparkyDiscordCommandDirectorRoleIds);
         }
 
         /// <summary>
@@ -291,10 +296,17 @@ namespace Perpetuum.Services.EventServices
                     if (addressesSparky)
                     {
                         string content = StripBotMention(userMessage.CleanContent, botUser);
+                        var guildMember = message.Author as SocketGuildUser;
+                        var callerRank = SparkyRankResolver.ResolveDiscord(
+                            guildMember is not null,
+                            guildMember?.GuildPermissions.Administrator == true,
+                            guildMember?.Roles.Select(role => role.Id),
+                            _sparkyDiscordRankConfiguration);
                         bool accepted = _sparkyCoordinatorFactory().TrySubmitDiscordQuestion(
                             message.Channel.Id,
                             message.Author.Id,
-                            content);
+                            content,
+                            callerRank);
                         if (!accepted)
                         {
                             Logger.Warning("[Sparky] Discord address was received while the request adapter was disabled.");

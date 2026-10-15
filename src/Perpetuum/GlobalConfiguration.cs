@@ -89,9 +89,19 @@ namespace Perpetuum
 
         public int SparkyContextLifetimeMinutes { get; set; } = 15;
 
+        public int SparkyContextMaxTurns { get; set; } = 8;
+
+        public int SparkyContextMaxCharacters { get; set; } = 6000;
+
         public int SparkyContextCapacity { get; set; } = 2048;
 
         public string SparkySenderCharacterNick { get; set; } = "[OPP] Sparky - The Syndicate Welcome Agent";
+
+        public string SparkyDiscordOfficerRoleIds { get; set; } = string.Empty;
+
+        public string SparkyDiscordCeoRoleIds { get; set; } = string.Empty;
+
+        public string SparkyDiscordCommandDirectorRoleIds { get; set; } = string.Empty;
 
         // Default roaming mode.
         [DefaultValue(RoamingState.RoamingMode.Default)]

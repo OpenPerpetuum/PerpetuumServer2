@@ -17,17 +17,30 @@ public sealed class SparkyDiagnosticExporterTests
         Assert.DoesNotContain("who is SecretName?", json, StringComparison.Ordinal);
         Assert.DoesNotContain("secret answer", json, StringComparison.Ordinal);
         Assert.DoesNotContain("raw search wording", json, StringComparison.Ordinal);
-        Assert.DoesNotContain("PrivateCandidate", json, StringComparison.Ordinal);
         Assert.Contains("selectedSourceIds", json, StringComparison.Ordinal);
         Assert.Contains("source-1", json, StringComparison.Ordinal);
+        Assert.Contains("schemaVersion", json, StringComparison.Ordinal);
+        Assert.Contains("contextMessageCount", json, StringComparison.Ordinal);
+        Assert.Contains("parsedIntent", json, StringComparison.Ordinal);
+        Assert.Contains("effectiveIntent", json, StringComparison.Ordinal);
+        Assert.Contains("comparisonAttributeCategory", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret context turn", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret metric phrase", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("PrivateCandidate", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret value", json, StringComparison.Ordinal);
         Assert.DoesNotContain("accountId", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("characterId", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("reasoning", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("secret-token", json, StringComparison.Ordinal);
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("MechanicsLore", document.RootElement.GetProperty("events")[0].GetProperty("parsedIntent").GetString());
+        Assert.Equal("Fastest", document.RootElement.GetProperty("events")[0].GetProperty("parsedFocus").GetString());
+        Assert.Equal("StructuredItem", document.RootElement.GetProperty("events")[0].GetProperty("effectiveIntent").GetString());
     }
 
     [Fact]
-    public void Content_export_includes_only_captured_question_and_answer_and_stays_bounded()
+    public void Content_export_includes_captured_diagnostics_and_stays_bounded()
     {
         string json = SparkyDiagnosticExporter.Serialize(Timeline(Guid.NewGuid()), [], includeContent: true);
         using var document = JsonDocument.Parse(json);
@@ -35,8 +48,14 @@ public sealed class SparkyDiagnosticExporterTests
 
         Assert.Equal("who is SecretName?", firstEvent.GetProperty("question").GetString());
         Assert.Equal("A secret answer.", firstEvent.GetProperty("answer").GetString());
-        Assert.False(firstEvent.TryGetProperty("searchQuery", out _));
-        Assert.False(firstEvent.TryGetProperty("entityCandidates", out _));
+        Assert.Equal("raw search wording", firstEvent.GetProperty("searchQuery").GetString());
+        Assert.Equal("PrivateCandidate", firstEvent.GetProperty("entityCandidates")[0].GetString());
+        Assert.Equal(2, firstEvent.GetProperty("contextTurns").GetArrayLength());
+        Assert.Equal("secret metric phrase", firstEvent.GetProperty("comparisonDiagnostics").GetProperty("metricPhrase").GetString());
+        Assert.Equal("secret value", firstEvent.GetProperty("comparisonDiagnostics").GetProperty("facts")[0].GetProperty("values")[0].GetString());
+        Assert.Equal(2, firstEvent.GetProperty("contextMessageCount").GetInt32());
+        Assert.Equal(8, firstEvent.GetProperty("conversationHistoryTurns").GetInt32());
+        Assert.Equal(4000, firstEvent.GetProperty("conversationHistoryCharacters").GetInt32());
         Assert.True(System.Text.Encoding.UTF8.GetByteCount(json) <= SparkyDiagnosticExporter.MaximumExportBytes);
     }
 
@@ -58,12 +77,28 @@ public sealed class SparkyDiagnosticExporterTests
         Assert.True(document.RootElement.GetProperty("truncated").GetBoolean());
     }
 
-    private static SparkyTraceTimeline Timeline(Guid requestId) => new(requestId, SparkyApiProfile.Dev,
-    [
-        new SparkyTraceEvent(
+    private static SparkyTraceTimeline Timeline(Guid requestId)
+    {
+        var diagnostics = new SparkyComparisonDiagnostics(
+            "Item",
+            [new SparkyComparisonDiagnosticSubject("PrivateCandidate", "current_question")],
+            "secret metric phrase",
+            "compared",
+            [new SparkyComparisonFact("CPU usage", ["secret value", "40 TF"], "TF", "10", "PrivateCandidate")]);
+        var traceEvent = new SparkyTraceEvent(
             Guid.NewGuid(), requestId, "AI", "answer", "answered", DateTimeOffset.UtcNow,
-            Intent: "MechanicsLore", SearchQuery: "raw search wording", EntityCandidates: ["PrivateCandidate"],
+            Intent: "MechanicsLore", Focus: "Fastest", SearchQuery: "raw search wording", EntityCandidates: ["PrivateCandidate"],
             SelectedSourceIds: ["source-1"], ConfigRevision: "rev-safe", BundleVersion: "bundle-safe", ModelId: "model-safe",
-            Question: "who is SecretName?", Answer: "A secret answer.")
-    ]);
+            ConversationHistoryTurns: 8, ConversationHistoryCharacters: 4000,
+            Question: "who is SecretName?", Answer: "A secret answer.",
+            ContextMessageCount: 2, ContextCharacterCount: 60, HasContextSummary: true,
+            HasPendingClarification: false, ContextBudgetTrimmed: true,
+            EffectiveIntent: "StructuredItem", EffectiveFocus: "Stats", ResolverCategory: "ItemStats",
+            ResolverOutcome: "resolved", ComparisonSubjectCount: 2,
+            ComparisonAttributeCategory: "CpuUsage", ComparisonResultCategory: "compared",
+            ContextTurns: [new SparkyConversationTurn("user", "secret context turn"), new SparkyConversationTurn("assistant", "private context answer")],
+            ContextSummary: "secret context summary",
+            ComparisonDiagnostics: diagnostics);
+        return new SparkyTraceTimeline(requestId, SparkyApiProfile.Dev, [traceEvent]);
+    }
 }

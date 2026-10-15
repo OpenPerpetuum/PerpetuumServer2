@@ -17,7 +17,11 @@ internal sealed record SparkyProfileDraft(
     string PersonaStyle,
     SparkyRetrievalSettings Retrieval,
     IReadOnlyList<SparkyRouteAlias> RouteAliases,
-    string BundleVersion)
+    string BundleVersion,
+    int ConversationHistoryTurns = 8,
+    int ConversationHistoryCharacters = 4000,
+    double AnswerTemperature = 0.2,
+    double AnswerTopP = 0.9)
 {
     public static SparkyProfileDraft CreateDefault(
         string modelId,
@@ -29,7 +33,7 @@ internal sealed record SparkyProfileDraft(
         bool captureContent,
         int contentRetentionDays,
         int metadataRetentionDays) => new(
-            SchemaVersion: 1,
+            SchemaVersion: 2,
             ModelId: modelId,
             MaxAnswerCharacters: Math.Min(maxAnswerCharacters, 2000),
             MaxCompletionTokens: Math.Min(maxCompletionTokens, 4096),
@@ -41,7 +45,11 @@ internal sealed record SparkyProfileDraft(
             PersonaStyle: "Clear, calm, practical, and friendly. Use dry humor only when it fits.",
             Retrieval: new SparkyRetrievalSettings(5, 4200, 0.25),
             RouteAliases: [],
-            BundleVersion: bundleVersion);
+            BundleVersion: bundleVersion,
+            ConversationHistoryTurns: 8,
+            ConversationHistoryCharacters: 4000,
+            AnswerTemperature: 0.2,
+            AnswerTopP: 0.9);
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -74,7 +82,11 @@ internal sealed record SparkyProfileSnapshot(
         MaxAnswerCharacters = Configuration.MaxAnswerCharacters,
         MaxCompletionTokens = Configuration.MaxCompletionTokens,
         InferenceTimeout = TimeSpan.FromSeconds(Configuration.InferenceTimeoutSeconds),
-        MaxConcurrentRequests = Configuration.MaxConcurrentRequests
+        MaxConcurrentRequests = Configuration.MaxConcurrentRequests,
+        ConversationHistoryTurns = Configuration.ConversationHistoryTurns,
+        ConversationHistoryCharacters = Configuration.ConversationHistoryCharacters,
+        AnswerTemperature = Configuration.AnswerTemperature,
+        AnswerTopP = Configuration.AnswerTopP
     };
 }
 

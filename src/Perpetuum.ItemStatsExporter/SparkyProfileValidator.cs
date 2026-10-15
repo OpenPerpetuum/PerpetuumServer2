@@ -24,8 +24,8 @@ internal static class SparkyProfileValidator
             return ["Profile draft is required."];
         }
 
-        if (profile.SchemaVersion != 1)
-            errors.Add("SchemaVersion must be 1.");
+        if (profile.SchemaVersion != 2)
+            errors.Add("SchemaVersion must be 2.");
         if (string.IsNullOrWhiteSpace(profile.ModelId) || !ModelIdPattern.IsMatch(profile.ModelId))
             errors.Add("ModelId contains unsupported characters or exceeds 128 characters.");
         if (profile.MaxAnswerCharacters is < 80 or > 2000)
@@ -34,6 +34,14 @@ internal static class SparkyProfileValidator
             errors.Add("MaxCompletionTokens must be between 32 and 4096.");
         if (profile.InferenceTimeoutSeconds is < 5 or > 300)
             errors.Add("InferenceTimeoutSeconds must be between 5 and 300.");
+        if (profile.ConversationHistoryTurns is < 2 or > 16 || profile.ConversationHistoryTurns % 2 != 0)
+            errors.Add("ConversationHistoryTurns must be an even number between 2 and 16.");
+        if (profile.ConversationHistoryCharacters is < 256 or > 8000)
+            errors.Add("ConversationHistoryCharacters must be between 256 and 8000.");
+        if (!double.IsFinite(profile.AnswerTemperature) || profile.AnswerTemperature is < 0 or > 2)
+            errors.Add("AnswerTemperature must be between 0 and 2.");
+        if (!double.IsFinite(profile.AnswerTopP) || profile.AnswerTopP is < 0.01 or > 1)
+            errors.Add("AnswerTopP must be between 0.01 and 1.");
         if (globalConcurrencyLimit < 1 || profile.MaxConcurrentRequests is < 1 || profile.MaxConcurrentRequests > globalConcurrencyLimit)
             errors.Add($"MaxConcurrentRequests must be between 1 and the code-owned global limit of {Math.Max(1, globalConcurrencyLimit)}.");
         if (profile.ContentRetentionDays is < 1 or > 3650 || profile.MetadataRetentionDays is < 1 or > 3650 ||

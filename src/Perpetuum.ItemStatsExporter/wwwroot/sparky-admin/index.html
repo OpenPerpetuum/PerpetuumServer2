@@ -51,6 +51,10 @@
         <label>Completion token limit<input id="profile-token-limit" type="number" min="32" max="4096"></label>
         <label>Inference timeout (seconds)<input id="profile-timeout" type="number" min="5" max="300"></label>
         <label>Profile concurrency<input id="profile-concurrency" type="number" min="1" max="16"></label>
+        <label>Conversation history messages<input id="profile-history-turns" type="number" min="2" max="16" step="2" aria-describedby="history-hint"></label>
+        <label>Conversation history character budget<input id="profile-history-characters" type="number" min="256" max="8000"></label>
+        <label>Answer temperature<input id="profile-answer-temperature" type="number" min="0" max="2" step="0.01"></label>
+        <label>Answer top-p<input id="profile-answer-top-p" type="number" min="0.01" max="1" step="0.01"></label>
         <label>Capture question and answer<select id="profile-capture"><option value="true">Enabled</option><option value="false">Metadata only</option></select></label>
         <label>Content retention (days)<input id="profile-content-retention" type="number" min="1" max="3650"></label>
         <label>Metadata retention (days)<input id="profile-metadata-retention" type="number" min="1" max="3650"></label>
@@ -62,6 +66,8 @@
         <label class="wide-field">Literal route aliases (JSON)<textarea id="profile-route-aliases" rows="6" spellcheck="false">[]</textarea></label>
         <label class="wide-field">Allowed source categories<select id="profile-source-categories" multiple size="2"><option value="mechanics">Mechanics</option><option value="lore">Lore</option></select></label>
       </div>
+      <p id="history-hint" class="muted">History messages include both player and Sparky turns. The interpreter remains deterministic; temperature and top-p affect answer wording only.</p>
+      <p id="profile-effective-settings" class="muted" aria-live="polite"></p>
       <label class="wide-field">Change reason<input id="profile-reason" maxlength="500" placeholder="Why are you changing this profile?"></label>
       <div class="button-row">
         <button id="save-draft" class="quiet-button" type="button">Save draft</button>
@@ -127,8 +133,10 @@
           </form>
           <form id="evaluation-form" class="review-form">
             <h3>Add reviewed evaluation case</h3>
-            <label>Expected intent<select id="expected-intent"><option value="">Not specified</option><option>StructuredItem</option><option>StructuredRobot</option><option>StructuredModuleCatalog</option><option>MechanicsLore</option><option>Combined</option><option>SmallTalk</option><option>Unsupported</option></select></label>
-            <label>Expected properties (comma separated)<input id="expected-properties" maxlength="600" placeholder="entity:Theseus, focus:Stats"></label>
+            <p class="muted">The selected trace question is prefilled as turn one. Add and reorder follow-ups, then record expected routing and evidence for each turn.</p>
+            <div id="evaluation-turn-list" class="evaluation-sequence"></div>
+            <button id="add-evaluation-turn" class="quiet-button" type="button">Add follow-up turn</button>
+            <label>Sequence note (optional)<textarea id="evaluation-note" maxlength="500" rows="2"></textarea></label>
             <button class="quiet-button" type="submit">Save reviewed case</button>
           </form>
         </div>

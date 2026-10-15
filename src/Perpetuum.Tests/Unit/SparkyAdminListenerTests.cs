@@ -45,7 +45,14 @@ public sealed class SparkyAdminListenerTests
         var traceRequestId = Guid.NewGuid();
         await traceStore.AppendAsync(new SparkyTraceEvent(
             Guid.NewGuid(), traceRequestId, "AI", "answer", "answered", DateTimeOffset.UtcNow,
-            Intent: "MechanicsLore", Question: "Who is Theseus?", Answer: "A local record identifies Theseus."),
+            Intent: "MechanicsLore", Question: "Who is Theseus?", Answer: "A local record identifies Theseus.",
+            EffectiveIntent: "StructuredRobot", EffectiveFocus: "CompareStats", ResolverCategory: "comparison_facts",
+            ResolverOutcome: "resolved", ContextMessageCount: 2, ContextCharacterCount: 80,
+            ConversationHistoryTurns: 8, ConversationHistoryCharacters: 4000,
+            ContextTurns: [new("user", "Kain top speed"), new("assistant", "Verified local data.")],
+            ComparisonSubjectCount: 2, ComparisonAttributeCategory: "MaximumSpeed", ComparisonResultCategory: "resolved",
+            ComparisonDiagnostics: new("Robot", [new("Kain", "conversation_context"), new("Tyrannos", "current_question")],
+                "maximum speed", "resolved", [new("Maximum speed", ["103.32", "93.6"], "kph", "9.72", "Kain")])),
             SparkyApiProfile.Dev, captureContent: true, TestContext.Current.CancellationToken);
         var profileManager = new SparkyProfileManager(traceStore, new FakeBundleCatalog(bundle), options, bundle);
         await profileManager.InitializeAsync(TestContext.Current.CancellationToken);
@@ -147,10 +154,18 @@ public sealed class SparkyAdminListenerTests
             string redactedJson = await redactedExport.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, redactedExport.StatusCode);
             Assert.DoesNotContain("Who is Theseus?", redactedJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("maximum speed", redactedJson, StringComparison.Ordinal);
+            Assert.Contains("contextMessageCount", redactedJson, StringComparison.Ordinal);
+            Assert.Contains("effectiveIntent", redactedJson, StringComparison.Ordinal);
+            Assert.Contains("\"contextMessageCount\":2", redactedJson, StringComparison.Ordinal);
+            Assert.Contains("\"conversationHistoryTurns\":8", redactedJson, StringComparison.Ordinal);
+            Assert.Contains("schemaVersion", redactedJson, StringComparison.Ordinal);
             using var contentExport = await GetWithBearerAsync(client,
                 $"admin/api/traces/{traceRequestId}/export?environment=Dev&includeContent=true", AdminToken);
             string contentJson = await contentExport.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             Assert.Contains("Who is Theseus?", contentJson, StringComparison.Ordinal);
+            Assert.Contains("maximum speed", contentJson, StringComparison.Ordinal);
+            Assert.Contains("103.32", contentJson, StringComparison.Ordinal);
         }
         finally
         {

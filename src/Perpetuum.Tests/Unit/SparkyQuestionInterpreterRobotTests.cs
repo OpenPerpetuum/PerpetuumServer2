@@ -15,7 +15,7 @@ public sealed class SparkyQuestionInterpreterRobotTests
     {
         object?[] arguments =
         [
-            "{\"languageId\":0,\"intent\":\"StructuredRobot\",\"robotFocus\":\"Components\",\"englishSearchQuery\":\"robot components\",\"smallTalkKind\":null,\"mentionedEntities\":[\"Archer\"]}",
+            "{\"languageId\":0,\"intent\":\"StructuredRobot\",\"scope\":\"Game\",\"followUpAction\":\"None\",\"selectedCandidate\":null,\"requestedAnswerType\":\"Components\",\"contextSummary\":null,\"robotFocus\":\"Components\",\"englishSearchQuery\":\"robot components\",\"smallTalkKind\":null,\"mentionedEntities\":[\"Archer\"]}",
             new[] { new SparkySupportedLanguage(0, "English", "hash", new Dictionary<string, string>()) },
             0,
             null
@@ -34,7 +34,7 @@ public sealed class SparkyQuestionInterpreterRobotTests
     {
         object?[] arguments =
         [
-            "{\"languageId\":0,\"intent\":\"StructuredModuleCatalog\",\"catalogFocus\":\"Lasers\",\"englishSearchQuery\":\"list laser modules\",\"robotFocus\":null,\"smallTalkKind\":null,\"mentionedEntities\":[]}",
+            "{\"languageId\":0,\"intent\":\"StructuredModuleCatalog\",\"scope\":\"Game\",\"followUpAction\":\"None\",\"selectedCandidate\":null,\"requestedAnswerType\":\"General\",\"contextSummary\":null,\"catalogFocus\":\"Lasers\",\"englishSearchQuery\":\"list laser modules\",\"robotFocus\":null,\"smallTalkKind\":null,\"mentionedEntities\":[]}",
             new[] { new SparkySupportedLanguage(0, "English", "hash", new Dictionary<string, string>()) },
             0,
             null

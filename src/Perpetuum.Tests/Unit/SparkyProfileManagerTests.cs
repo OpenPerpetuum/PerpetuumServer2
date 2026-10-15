@@ -174,7 +174,15 @@ public sealed class SparkyProfileManagerTests
         var active = Assert.IsType<SparkyProfileSnapshot>(GetSnapshot(manager, SparkyApiProfile.Dev));
         var draft = await manager.SaveDraftAsync(
             SparkyApiProfile.Dev,
-            active.Configuration with { ModelId = "new-model", CaptureContent = false },
+            active.Configuration with
+            {
+                ModelId = "new-model",
+                CaptureContent = false,
+                ConversationHistoryTurns = 6,
+                ConversationHistoryCharacters = 3200,
+                AnswerTemperature = 0.35,
+                AnswerTopP = 0.85
+            },
             "change two settings",
             cancellationToken);
 
@@ -182,7 +190,50 @@ public sealed class SparkyProfileManagerTests
 
         var audit = (await manager.GetDetailsAsync(SparkyApiProfile.Dev, cancellationToken)).Audit
             .First(entry => entry.Action == "activate");
-        Assert.Equal(["modelId", "contentCapture"], audit.ChangedFields);
+        Assert.Equal(["modelId", "conversationContext", "answerModelTuning", "contentCapture"], audit.ChangedFields);
+    }
+
+    [Fact]
+    public async Task Restart_migrates_active_schema_v1_profile_with_conservative_tuning_defaults()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var temp = new TemporaryDirectory();
+        using var certificate = CreateCertificate();
+        var bundle = Bundle("bundle-1234567890abcdef");
+        var catalog = new FakeCatalog(bundle);
+        var store = new SparkyTraceStore(Path.Combine(temp.Path, "legacy-profile.db"));
+        const string legacyJson = """
+            {"schemaVersion":1,"modelId":"legacy-model","maxAnswerCharacters":2000,"maxCompletionTokens":700,"inferenceTimeoutSeconds":120,"maxConcurrentRequests":1,"captureContent":true,"contentRetentionDays":30,"metadataRetentionDays":90,"personaStyle":"Practical and concise.","retrieval":{"maxPassages":5,"maxCharacters":4200,"minimumScore":0.25},"routeAliases":[],"bundleVersion":"bundle-1234567890abcdef"}
+            """;
+        await store.SaveProfileRevisionAsync(new SparkyProfileRevisionRecord(
+            SparkyApiProfile.Dev, "rev-legacy-v1", DateTimeOffset.UtcNow, null, legacyJson,
+            bundle.Manifest.BundleVersion, false, true), "test", "seed old revision", cancellationToken);
+        Assert.True(await store.ActivateProfileRevisionAsync(
+            SparkyApiProfile.Dev, "rev-legacy-v1", "test", "activate", null, null, [], cancellationToken));
+
+        using var options = Options(temp.Path, certificate, liveToken: null);
+        var manager = new SparkyProfileManager(store, catalog, options, bundle);
+        await manager.InitializeAsync(cancellationToken);
+
+        var migrated = Assert.IsType<SparkyProfileSnapshot>(GetSnapshot(manager, SparkyApiProfile.Dev));
+        Assert.Equal(2, migrated.Configuration.SchemaVersion);
+        Assert.Equal(8, migrated.Configuration.ConversationHistoryTurns);
+        Assert.Equal(4000, migrated.Configuration.ConversationHistoryCharacters);
+        Assert.Equal(0.2, migrated.Configuration.AnswerTemperature);
+        Assert.Equal(0.9, migrated.Configuration.AnswerTopP);
+        Assert.Equal("legacy-model", migrated.Configuration.ModelId);
+        SparkyServiceOptions applied = migrated.ApplyTo(options);
+        Assert.Equal(8, applied.ConversationHistoryTurns);
+        Assert.Equal(4000, applied.ConversationHistoryCharacters);
+        Assert.Equal(0.2, applied.AnswerTemperature);
+        Assert.Equal(0.9, applied.AnswerTopP);
+    }
+
+    [Fact]
+    public void Rejects_unknown_profile_schema_instead_of_treating_it_as_a_new_default()
+    {
+        Assert.Throws<System.IO.InvalidDataException>(() =>
+            SparkyProfileManager.DeserializeDraft("{\"schemaVersion\":99}"));
     }
 
     [Fact]
@@ -230,8 +281,9 @@ public sealed class SparkyProfileManagerTests
         manager.TryGetSnapshot(profile, out var snapshot) ? snapshot : null;
 
     private static SparkyProfileDraft Draft(string bundleVersion, string modelId) => new(
-        1, modelId, 2000, 700, 120, 1, false, 30, 90,
-        "Practical and concise.", new SparkyRetrievalSettings(5, 4200, 0.25), [], bundleVersion);
+        2, modelId, 2000, 700, 120, 1, false, 30, 90,
+        "Practical and concise.", new SparkyRetrievalSettings(5, 4200, 0.25), [], bundleVersion,
+        8, 4000, 0.2, 0.9);
 
     private static SparkyKnowledgeBundle Bundle(string version) => new(
         3,

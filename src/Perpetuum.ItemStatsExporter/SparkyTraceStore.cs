@@ -64,7 +64,11 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
                     Question = null,
                     Answer = null,
                     SearchQuery = null,
-                    EntityCandidates = null
+                    EntityCandidates = null,
+                    ContextTurns = null,
+                    ContextSummary = null,
+                    PendingClarification = null,
+                    ComparisonDiagnostics = null
                 };
             string metadataHash = ComputeMetadataHash(storedEvent);
             await using var insert = connection.CreateCommand();
@@ -74,12 +78,24 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
                     Environment, EventId, RequestId, Source, Stage, Outcome, RecordedAtUtc,
                     ElapsedMilliseconds, DetailCode, Intent, Focus, SearchQuery,
                     EntityCandidatesJson, SelectedSourceIdsJson, ModelId, ConfigRevision,
-                    BundleVersion, Question, Answer, FinishStatus, MetadataHash)
+                    BundleVersion, Question, Answer, FinishStatus, AnswerTemperature, AnswerTopP,
+                    ConversationHistoryTurns, ConversationHistoryCharacters,
+                    ContextMessageCount, ContextCharacterCount, HasContextSummary, HasPendingClarification,
+                    ContextBudgetTrimmed, EffectiveIntent, EffectiveFocus, ResolverCategory, ResolverOutcome,
+                    ComparisonSubjectCount, ComparisonAttributeCategory, ComparisonResultCategory,
+                    ContextTurnsJson, ContextSummary, PendingClarificationJson, ComparisonDiagnosticsJson,
+                    MetadataHash)
                 VALUES (
                     $environment, $eventId, $requestId, $source, $stage, $outcome, $recordedAtUtc,
                     $elapsedMilliseconds, $detailCode, $intent, $focus, $searchQuery,
                     $entityCandidatesJson, $selectedSourceIdsJson, $modelId, $configRevision,
-                    $bundleVersion, $question, $answer, $finishStatus, $metadataHash)
+                    $bundleVersion, $question, $answer, $finishStatus, $answerTemperature, $answerTopP,
+                    $conversationHistoryTurns, $conversationHistoryCharacters,
+                    $contextMessageCount, $contextCharacterCount, $hasContextSummary, $hasPendingClarification,
+                    $contextBudgetTrimmed, $effectiveIntent, $effectiveFocus, $resolverCategory, $resolverOutcome,
+                    $comparisonSubjectCount, $comparisonAttributeCategory, $comparisonResultCategory,
+                    $contextTurnsJson, $contextSummary, $pendingClarificationJson, $comparisonDiagnosticsJson,
+                    $metadataHash)
                 ON CONFLICT(Environment, EventId) DO NOTHING;
                 """;
             BindEvent(insert, storedEvent, environment, metadataHash);
@@ -125,7 +141,12 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         command.CommandText = """
             SELECT EventId, RequestId, Source, Stage, Outcome, RecordedAtUtc, ElapsedMilliseconds,
                    DetailCode, Intent, Focus, SearchQuery, EntityCandidatesJson, SelectedSourceIdsJson,
-                   ModelId, ConfigRevision, BundleVersion, Question, Answer, FinishStatus
+                   ModelId, ConfigRevision, BundleVersion, Question, Answer, FinishStatus,
+                   AnswerTemperature, AnswerTopP, ConversationHistoryTurns, ConversationHistoryCharacters,
+                   ContextMessageCount, ContextCharacterCount, HasContextSummary, HasPendingClarification,
+                   ContextBudgetTrimmed, EffectiveIntent, EffectiveFocus, ResolverCategory, ResolverOutcome,
+                   ComparisonSubjectCount, ComparisonAttributeCategory, ComparisonResultCategory,
+                   ContextTurnsJson, ContextSummary, PendingClarificationJson, ComparisonDiagnosticsJson
             FROM Trace
             WHERE Environment = $environment AND RequestId = $requestId
             ORDER BY RecordedAtUtc, EventId;
@@ -433,10 +454,13 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         SparkyApiProfile environment,
         string? expectedIntent,
         IReadOnlyList<string>? expectedProperties,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<SparkyEvaluationTurn>? turns = null,
+        string? note = null)
     {
         if (requestId == Guid.Empty || environment is not (SparkyApiProfile.Dev or SparkyApiProfile.Live) ||
-            !SparkyTraceEventValidator.IsValidEvaluationExpectation(expectedIntent, expectedProperties))
+            !SparkyEvaluationValidator.TryValidate(
+                new SparkyEvaluationExampleRequest(requestId, expectedIntent, expectedProperties, turns, note), out _))
         {
             throw new InvalidDataException("The Sparky evaluation expectation is invalid.");
         }
@@ -453,28 +477,34 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
             question = await getQuestion.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) as string;
         }
 
-        if (string.IsNullOrWhiteSpace(question) || question.Length > 2000)
+        if (string.IsNullOrWhiteSpace(question) || question.Length > SparkyEvaluationValidator.MaximumTurnCharacters)
         {
             await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
             return null;
         }
 
+        var effectiveTurns = turns ?? SparkyEvaluationValidator.FromLegacy(question, expectedIntent, expectedProperties);
+        string? firstExpectedIntent = effectiveTurns[0].ExpectedIntent ?? expectedIntent;
+        IReadOnlyList<string> firstExpectedProperties = effectiveTurns[0].ExpectedProperties ?? expectedProperties!;
         var example = new SparkyEvaluationExample(
-            Guid.NewGuid(), requestId, question, expectedIntent, expectedProperties!.ToArray(), DateTimeOffset.UtcNow);
+            Guid.NewGuid(), requestId, effectiveTurns[0].Question, firstExpectedIntent,
+            firstExpectedProperties.ToArray(), DateTimeOffset.UtcNow, effectiveTurns.ToArray(), note);
         await using (var insert = connection.CreateCommand())
         {
             insert.Transaction = (SqliteTransaction)transaction;
             insert.CommandText = """
-                INSERT INTO EvaluationExample (Environment, ExampleId, RequestId, Question, ExpectedIntent, ExpectedPropertiesJson, CreatedAtUtc)
-                VALUES ($environment, $exampleId, $requestId, $question, $expectedIntent, $expectedPropertiesJson, $createdAtUtc);
+                INSERT INTO EvaluationExample (Environment, ExampleId, RequestId, Question, ExpectedIntent, ExpectedPropertiesJson, CreatedAtUtc, TurnsJson, Note)
+                VALUES ($environment, $exampleId, $requestId, $question, $expectedIntent, $expectedPropertiesJson, $createdAtUtc, $turnsJson, $note);
                 """;
             insert.Parameters.AddWithValue("$environment", environment.ToString());
             insert.Parameters.AddWithValue("$exampleId", example.ExampleId.ToString("D"));
             insert.Parameters.AddWithValue("$requestId", requestId.ToString("D"));
             insert.Parameters.AddWithValue("$question", example.Question);
-            insert.Parameters.AddWithValue("$expectedIntent", (object?)expectedIntent ?? DBNull.Value);
+            insert.Parameters.AddWithValue("$expectedIntent", (object?)firstExpectedIntent ?? DBNull.Value);
             insert.Parameters.AddWithValue("$expectedPropertiesJson", JsonSerializer.Serialize(example.ExpectedProperties, JsonOptions));
             insert.Parameters.AddWithValue("$createdAtUtc", FormatTimestamp(example.CreatedAtUtc));
+            insert.Parameters.AddWithValue("$turnsJson", JsonSerializer.Serialize(effectiveTurns, JsonOptions));
+            insert.Parameters.AddWithValue("$note", (object?)note ?? DBNull.Value);
             await insert.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -490,7 +520,7 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         await using var connection = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT ExampleId, RequestId, Question, ExpectedIntent, ExpectedPropertiesJson, CreatedAtUtc
+            SELECT ExampleId, RequestId, Question, ExpectedIntent, ExpectedPropertiesJson, CreatedAtUtc, TurnsJson, Note
             FROM EvaluationExample WHERE Environment = $environment AND Question IS NOT NULL
             ORDER BY CreatedAtUtc DESC, ExampleId DESC LIMIT $limit;
             """;
@@ -500,13 +530,22 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
+            string question = reader.GetString(2);
+            string? expectedIntent = ReadNullableString(reader, 3);
+            IReadOnlyList<string> expectedProperties = JsonSerializer.Deserialize<string[]>(reader.GetString(4), JsonOptions) ?? [];
+            IReadOnlyList<SparkyEvaluationTurn> turns = reader.IsDBNull(6)
+                ? SparkyEvaluationValidator.FromLegacy(question, expectedIntent, expectedProperties)
+                : JsonSerializer.Deserialize<SparkyEvaluationTurn[]>(reader.GetString(6), JsonOptions) ??
+                  SparkyEvaluationValidator.FromLegacy(question, expectedIntent, expectedProperties);
             examples.Add(new SparkyEvaluationExample(
                 Guid.Parse(reader.GetString(0)),
                 Guid.Parse(reader.GetString(1)),
-                reader.GetString(2),
-                ReadNullableString(reader, 3),
-                JsonSerializer.Deserialize<string[]>(reader.GetString(4), JsonOptions) ?? [],
-                DateTimeOffset.Parse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)));
+                question,
+                expectedIntent,
+                expectedProperties,
+                DateTimeOffset.Parse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                turns,
+                ReadNullableString(reader, 7)));
         }
 
         return examples;
@@ -585,9 +624,13 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         await using var clearContent = connection.CreateCommand();
         clearContent.Transaction = (SqliteTransaction)transaction;
         clearContent.CommandText = """
-            UPDATE Trace SET Question = NULL, Answer = NULL, SearchQuery = NULL, EntityCandidatesJson = NULL
+            UPDATE Trace SET Question = NULL, Answer = NULL, SearchQuery = NULL, EntityCandidatesJson = NULL,
+                ContextTurnsJson = NULL, ContextSummary = NULL, PendingClarificationJson = NULL,
+                ComparisonDiagnosticsJson = NULL
             WHERE RecordedAtUtc < $contentCutoff AND
-              (Question IS NOT NULL OR Answer IS NOT NULL OR SearchQuery IS NOT NULL OR EntityCandidatesJson IS NOT NULL)
+              (Question IS NOT NULL OR Answer IS NOT NULL OR SearchQuery IS NOT NULL OR EntityCandidatesJson IS NOT NULL OR
+               ContextTurnsJson IS NOT NULL OR ContextSummary IS NOT NULL OR PendingClarificationJson IS NOT NULL OR
+               ComparisonDiagnosticsJson IS NOT NULL)
               AND ($environment IS NULL OR Environment = $environment);
             """;
         clearContent.Parameters.AddWithValue("$contentCutoff", FormatTimestamp(now - contentRetention));
@@ -608,7 +651,7 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         await using var clearEvaluationQuestions = connection.CreateCommand();
         clearEvaluationQuestions.Transaction = (SqliteTransaction)transaction;
         clearEvaluationQuestions.CommandText = """
-            UPDATE EvaluationExample SET Question = NULL
+            UPDATE EvaluationExample SET Question = NULL, TurnsJson = NULL, Note = NULL
             WHERE Question IS NOT NULL AND EXISTS (
                 SELECT 1 FROM Trace
                 WHERE Trace.Environment = EvaluationExample.Environment
@@ -753,6 +796,28 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         EnsureColumn(connection, "ProfileRevision", "IsDraft", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "Audit", "Reason", "TEXT NULL");
         EnsureColumn(connection, "EvaluationExample", "Question", "TEXT NULL");
+        EnsureColumn(connection, "EvaluationExample", "TurnsJson", "TEXT NULL");
+        EnsureColumn(connection, "EvaluationExample", "Note", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "AnswerTemperature", "REAL NULL");
+        EnsureColumn(connection, "Trace", "AnswerTopP", "REAL NULL");
+        EnsureColumn(connection, "Trace", "ConversationHistoryTurns", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "ConversationHistoryCharacters", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "ContextMessageCount", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "ContextCharacterCount", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "HasContextSummary", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "HasPendingClarification", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "ContextBudgetTrimmed", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "EffectiveIntent", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "EffectiveFocus", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "ResolverCategory", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "ResolverOutcome", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "ComparisonSubjectCount", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "ComparisonAttributeCategory", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "ComparisonResultCategory", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "ContextTurnsJson", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "ContextSummary", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "PendingClarificationJson", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "ComparisonDiagnosticsJson", "TEXT NULL");
     }
 
     private static async Task InsertAuditAsync(
@@ -834,6 +899,26 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         command.Parameters.AddWithValue("$question", (object?)traceEvent.Question ?? DBNull.Value);
         command.Parameters.AddWithValue("$answer", (object?)traceEvent.Answer ?? DBNull.Value);
         command.Parameters.AddWithValue("$finishStatus", (object?)traceEvent.FinishStatus ?? DBNull.Value);
+        command.Parameters.AddWithValue("$answerTemperature", (object?)traceEvent.AnswerTemperature ?? DBNull.Value);
+        command.Parameters.AddWithValue("$answerTopP", (object?)traceEvent.AnswerTopP ?? DBNull.Value);
+        command.Parameters.AddWithValue("$conversationHistoryTurns", (object?)traceEvent.ConversationHistoryTurns ?? DBNull.Value);
+        command.Parameters.AddWithValue("$conversationHistoryCharacters", (object?)traceEvent.ConversationHistoryCharacters ?? DBNull.Value);
+        command.Parameters.AddWithValue("$contextMessageCount", (object?)traceEvent.ContextMessageCount ?? DBNull.Value);
+        command.Parameters.AddWithValue("$contextCharacterCount", (object?)traceEvent.ContextCharacterCount ?? DBNull.Value);
+        command.Parameters.AddWithValue("$hasContextSummary", traceEvent.HasContextSummary is null ? DBNull.Value : traceEvent.HasContextSummary.Value ? 1 : 0);
+        command.Parameters.AddWithValue("$hasPendingClarification", traceEvent.HasPendingClarification is null ? DBNull.Value : traceEvent.HasPendingClarification.Value ? 1 : 0);
+        command.Parameters.AddWithValue("$contextBudgetTrimmed", traceEvent.ContextBudgetTrimmed is null ? DBNull.Value : traceEvent.ContextBudgetTrimmed.Value ? 1 : 0);
+        command.Parameters.AddWithValue("$effectiveIntent", (object?)traceEvent.EffectiveIntent ?? DBNull.Value);
+        command.Parameters.AddWithValue("$effectiveFocus", (object?)traceEvent.EffectiveFocus ?? DBNull.Value);
+        command.Parameters.AddWithValue("$resolverCategory", (object?)traceEvent.ResolverCategory ?? DBNull.Value);
+        command.Parameters.AddWithValue("$resolverOutcome", (object?)traceEvent.ResolverOutcome ?? DBNull.Value);
+        command.Parameters.AddWithValue("$comparisonSubjectCount", (object?)traceEvent.ComparisonSubjectCount ?? DBNull.Value);
+        command.Parameters.AddWithValue("$comparisonAttributeCategory", (object?)traceEvent.ComparisonAttributeCategory ?? DBNull.Value);
+        command.Parameters.AddWithValue("$comparisonResultCategory", (object?)traceEvent.ComparisonResultCategory ?? DBNull.Value);
+        command.Parameters.AddWithValue("$contextTurnsJson", (object?)SerializeNullable(traceEvent.ContextTurns) ?? DBNull.Value);
+        command.Parameters.AddWithValue("$contextSummary", (object?)traceEvent.ContextSummary ?? DBNull.Value);
+        command.Parameters.AddWithValue("$pendingClarificationJson", (object?)SerializeNullable(traceEvent.PendingClarification) ?? DBNull.Value);
+        command.Parameters.AddWithValue("$comparisonDiagnosticsJson", (object?)SerializeNullable(traceEvent.ComparisonDiagnostics) ?? DBNull.Value);
         command.Parameters.AddWithValue("$metadataHash", metadataHash);
     }
 
@@ -856,7 +941,27 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         ReadNullableString(reader, 15),
         ReadNullableString(reader, 16),
         ReadNullableString(reader, 17),
-        ReadNullableString(reader, 18));
+        ReadNullableString(reader, 18),
+        reader.IsDBNull(19) ? null : reader.GetDouble(19),
+        reader.IsDBNull(20) ? null : reader.GetDouble(20),
+        reader.IsDBNull(21) ? null : reader.GetInt32(21),
+        reader.IsDBNull(22) ? null : reader.GetInt32(22),
+        reader.IsDBNull(23) ? null : reader.GetInt32(23),
+        reader.IsDBNull(24) ? null : reader.GetInt32(24),
+        reader.IsDBNull(25) ? null : reader.GetInt32(25) != 0,
+        reader.IsDBNull(26) ? null : reader.GetInt32(26) != 0,
+        reader.IsDBNull(27) ? null : reader.GetInt32(27) != 0,
+        ReadNullableString(reader, 28),
+        ReadNullableString(reader, 29),
+        ReadNullableString(reader, 30),
+        ReadNullableString(reader, 31),
+        reader.IsDBNull(32) ? null : reader.GetInt32(32),
+        ReadNullableString(reader, 33),
+        ReadNullableString(reader, 34),
+        DeserializeNullable<SparkyConversationTurn[]>(reader, 35),
+        ReadNullableString(reader, 36),
+        DeserializeNullable<SparkyPendingClarification>(reader, 37),
+        DeserializeNullable<SparkyComparisonDiagnostics>(reader, 38));
 
     private static string ComputeMetadataHash(SparkyTraceEvent traceEvent)
     {
@@ -877,7 +982,23 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
             traceEvent.ModelId,
             traceEvent.ConfigRevision,
             traceEvent.BundleVersion,
-            traceEvent.FinishStatus
+            traceEvent.FinishStatus,
+            traceEvent.AnswerTemperature,
+            traceEvent.AnswerTopP,
+            traceEvent.ConversationHistoryTurns,
+            traceEvent.ConversationHistoryCharacters,
+            traceEvent.ContextMessageCount,
+            traceEvent.ContextCharacterCount,
+            traceEvent.HasContextSummary,
+            traceEvent.HasPendingClarification,
+            traceEvent.ContextBudgetTrimmed,
+            traceEvent.EffectiveIntent,
+            traceEvent.EffectiveFocus,
+            traceEvent.ResolverCategory,
+            traceEvent.ResolverOutcome,
+            traceEvent.ComparisonSubjectCount,
+            traceEvent.ComparisonAttributeCategory,
+            traceEvent.ComparisonResultCategory
         }, JsonOptions);
         try
         {
@@ -896,6 +1017,9 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         reader.IsDBNull(ordinal)
             ? null
             : JsonSerializer.Deserialize<string[]>(reader.GetString(ordinal), JsonOptions);
+
+    private static T? DeserializeNullable<T>(SqliteDataReader reader, int ordinal) =>
+        reader.IsDBNull(ordinal) ? default : JsonSerializer.Deserialize<T>(reader.GetString(ordinal), JsonOptions);
 
     private static string? ReadNullableString(SqliteDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
@@ -923,16 +1047,59 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
             result.ExpectedProperties.All(property => !string.IsNullOrWhiteSpace(property) &&
                 SparkyTraceEventValidator.IsContentTextValid(property, 80)) &&
             (result.ExpectedIntent is null || result.ExpectedIntent.Length <= 64) &&
-            IsValidReplayOutput(result.Active) && IsValidReplayOutput(result.Candidate));
+            IsValidReplayOutput(result.Active) && IsValidReplayOutput(result.Candidate) &&
+            (result.Turns is null || result.Turns is { Count: > 0 and <= SparkyEvaluationValidator.MaximumTurns } &&
+             IsValidReplayTurnSequence(result)));
+    }
+
+    private static bool IsValidReplayTurnSequence(SparkyReplayComparison comparison)
+    {
+        var turns = comparison.Turns!;
+        if (!turns.All(IsValidReplayTurn) || turns.Any(turn => turn is null || turn.Expected is null))
+            return false;
+        return SparkyEvaluationValidator.TryValidate(
+            new SparkyEvaluationExampleRequest(
+                Guid.NewGuid(),
+                comparison.ExpectedIntent,
+                comparison.ExpectedProperties,
+                turns.Select(turn => turn.Expected).ToArray()),
+            out _);
+    }
+
+    private static bool IsValidReplayTurn(SparkyReplayTurnResult? turn)
+    {
+        if (turn is null || !SparkyTraceEventValidator.IsContentTextValid(turn.Question, SparkyEvaluationValidator.MaximumTurnCharacters) ||
+            turn.Expected is null || !string.Equals(turn.Question, turn.Expected.Question, StringComparison.Ordinal) ||
+            !IsValidReplayOutput(turn.Active) || !IsValidReplayOutput(turn.Candidate))
+            return false;
+
+        return SparkyEvaluationValidator.TryValidate(
+            new SparkyEvaluationExampleRequest(Guid.NewGuid(), turn.Expected.ExpectedIntent, turn.Expected.ExpectedProperties ?? [], [turn.Expected]),
+            out _);
     }
 
     private static bool IsValidReplayOutput(SparkyReplayOutput? output) =>
         output is not null && !string.IsNullOrWhiteSpace(output.Status) &&
         SparkyTraceEventValidator.IsContentTextValid(output.Status, 32) &&
         SparkyTraceEventValidator.IsContentTextValid(output.Intent, 64) &&
+        SparkyTraceEventValidator.IsContentTextValid(output.EffectiveIntent, 64) &&
+        SparkyTraceEventValidator.IsContentTextValid(output.EffectiveFocus, 64) &&
+        SparkyTraceEventValidator.IsContentTextValid(output.ResolverOutcome, 64) &&
+        SparkyTraceEventValidator.IsContentTextValid(output.ComparisonSummary, 500) &&
+        SparkyTraceEventValidator.IsContentTextValid(output.Scope, 32) &&
+        SparkyTraceEventValidator.IsContentTextValid(output.SearchQuery, 2000) &&
+        SparkyTraceEventValidator.IsContentTextValid(output.StructuredFactsSummary, 500) &&
         SparkyTraceEventValidator.IsContentTextValid(output.Answer, 2000) &&
         IsValidReplayStringList(output.Entities, maxCount: 8, maxCharacters: 64) &&
-        IsValidReplayStringList(output.SelectedSourceIds, maxCount: 32, maxCharacters: 128);
+        IsValidReplayStringList(output.SelectedSourceIds, maxCount: 32, maxCharacters: 128) &&
+        (output.Metadata is null ||
+         !string.IsNullOrWhiteSpace(output.Metadata.ModelId) && output.Metadata.ModelId.Length <= 128 &&
+         !string.IsNullOrWhiteSpace(output.Metadata.ProfileRevisionId) && output.Metadata.ProfileRevisionId.Length <= 80 &&
+         !string.IsNullOrWhiteSpace(output.Metadata.BundleVersion) && output.Metadata.BundleVersion.Length <= 128 &&
+         double.IsFinite(output.Metadata.AnswerTemperature) && output.Metadata.AnswerTemperature is >= 0 and <= 2 &&
+         double.IsFinite(output.Metadata.AnswerTopP) && output.Metadata.AnswerTopP is > 0 and <= 1 &&
+         output.Metadata.ConversationHistoryTurns is >= 2 and <= 16 && output.Metadata.ConversationHistoryTurns % 2 == 0 &&
+         output.Metadata.ConversationHistoryCharacters is >= 256 and <= 8000);
 
     private static bool IsValidReplayStringList(IReadOnlyList<string>? values, int maxCount, int maxCharacters) =>
         values is null || values.Count <= maxCount && values.All(value =>

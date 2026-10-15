@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Services.Sparky;
 using Xunit;
@@ -21,6 +22,58 @@ public sealed class SparkyRequestCorrelationTests
 
         Assert.NotNull(roundTrip);
         Assert.Equal(traceId, roundTrip.RequestId);
+    }
+
+    [Fact]
+    public void Game_api_request_sends_bounded_conversation_and_normalized_rank_without_caller_identity()
+    {
+        var traceId = Guid.NewGuid();
+        var request = new GameApiRequest(
+            traceId,
+            "and the full recipe?",
+            "Da Gama-PLS10",
+            0,
+            [new SparkyConversationTurn("user", "What are T3 sensor amplifier stats?"), new SparkyConversationTurn("assistant", "Which variant do you mean?")],
+            "The player is asking about a T3 sensor amplifier.",
+            new SparkyPendingClarification("What are T3 sensor amplifier stats?", "Stats", ["Da Gama-PLS10", "Desenspure"]),
+            SparkyCallerRank.CommandDirector);
+
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        var json = JsonSerializer.Serialize(request, options);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal("commandDirector", document.RootElement.GetProperty("callerRank").GetString());
+        Assert.Equal(2, document.RootElement.GetProperty("contextTurns").GetArrayLength());
+        Assert.Equal("The player is asking about a T3 sensor amplifier.", document.RootElement.GetProperty("contextSummary").GetString());
+        Assert.False(document.RootElement.TryGetProperty("callerId", out _));
+        Assert.False(document.RootElement.TryGetProperty("characterId", out _));
+        Assert.False(document.RootElement.TryGetProperty("discordRoleIds", out _));
+    }
+
+    [Fact]
+    public void Context_update_keeps_clarification_only_when_answer_and_candidates_show_it_was_offered()
+    {
+        var update = new SparkyConversationUpdate(
+            "The caller asked about a T3 sensor amplifier.",
+            null,
+            new SparkyPendingClarification("What are the stats?", "Stats", ["Da Gama", "Desenspure"]));
+
+        var accepted = SparkyApiClient.ValidateContextUpdate(
+            "answered",
+            "Which variant do you mean: Da Gama or Desenspure?",
+            ["Da Gama", "Desenspure"],
+            update);
+        var mismatched = SparkyApiClient.ValidateContextUpdate(
+            "answered",
+            "Which variant do you mean: Da Gama or Desenspure?",
+            ["Da Gama", "Other"],
+            update);
+        var hidden = SparkyApiClient.ValidateContextUpdate("busy", "Try again later.", ["Da Gama", "Desenspure"], update);
+
+        Assert.Equal(update.PendingClarification?.CandidateNames, accepted?.PendingClarification?.CandidateNames);
+        Assert.Null(mismatched?.PendingClarification);
+        Assert.Null(hidden?.PendingClarification);
     }
 
     [Fact]

@@ -18,6 +18,8 @@ internal sealed record SparkyClientOptions(
     int WorkerCount,
     int PendingPerCallerLimit,
     TimeSpan ContextLifetime,
+    int ContextMaxTurns,
+    int ContextMaxCharacters,
     int ContextCapacity,
     string SenderCharacterNick)
 {
@@ -49,6 +51,8 @@ internal sealed record SparkyClientOptions(
             configuration.SparkyWorkerCount is < 1 or > 16 ||
             configuration.SparkyPendingPerCallerLimit is < 1 or > 10 ||
             configuration.SparkyContextLifetimeMinutes is < 1 or > 1440 ||
+            configuration.SparkyContextMaxTurns is < 2 or > SparkyContextStore.HardMaximumTurns ||
+            configuration.SparkyContextMaxCharacters is < SparkyContextStore.MinimumMaximumCharacters or > SparkyContextStore.HardMaximumCharacters ||
             configuration.SparkyContextCapacity is < 1 or > 100000 ||
             string.IsNullOrWhiteSpace(configuration.SparkySenderCharacterNick) ||
             configuration.SparkySenderCharacterNick.Length > 100 ||
@@ -110,6 +114,8 @@ internal sealed record SparkyClientOptions(
                     configuration.SparkyWorkerCount,
                     configuration.SparkyPendingPerCallerLimit,
                     TimeSpan.FromMinutes(configuration.SparkyContextLifetimeMinutes),
+                    configuration.SparkyContextMaxTurns,
+                    configuration.SparkyContextMaxCharacters,
                     configuration.SparkyContextCapacity,
                     configuration.SparkySenderCharacterNick);
                 return true;

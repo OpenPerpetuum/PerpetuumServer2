@@ -9,8 +9,19 @@ internal sealed record SparkyApiRequest(
     Guid? RequestId,
     string? Question,
     string? ContextItem = null,
-    int? ContextLanguageId = null)
+    int? ContextLanguageId = null,
+    IReadOnlyList<SparkyConversationTurn>? ContextTurns = null,
+    string? ContextSummary = null,
+    SparkyPendingClarification? PendingClarification = null,
+    string? CallerRank = null)
 {
+    public const int MaximumContextTurns = 16;
+    public const int MaximumContextCharacters = 8000;
+    public const int MaximumTurnCharacters = 2000;
+    public const int MaximumSummaryCharacters = 700;
+    public const int MaximumCandidates = 8;
+    public const int MaximumCandidateCharacters = 120;
+
     public bool TryResolveRequestId(SparkyApiProfile profile, out Guid requestId)
     {
         if (RequestId is { } providedRequestId && providedRequestId != Guid.Empty)
@@ -28,6 +39,70 @@ internal sealed record SparkyApiRequest(
         requestId = Guid.Empty;
         return false;
     }
+
+    public bool TryValidateConversationContext(out string error)
+    {
+        error = "invalid_conversation_context";
+        if (ContextTurns is { Count: > MaximumContextTurns } ||
+            ContextSummary?.Length > MaximumSummaryCharacters)
+        {
+            return false;
+        }
+
+        int totalCharacters = 0;
+        foreach (var turn in ContextTurns ?? [])
+        {
+            if (turn is null || turn.Role is not ("user" or "assistant") ||
+                string.IsNullOrWhiteSpace(turn.Content) || turn.Content.Length > MaximumTurnCharacters ||
+                ContainsUnsupportedControlCharacters(turn.Content))
+            {
+                return false;
+            }
+
+            totalCharacters += turn.Content.Length;
+            if (totalCharacters > MaximumContextCharacters)
+            {
+                return false;
+            }
+        }
+
+        if (ContextSummary is not null && ContainsUnsupportedControlCharacters(ContextSummary))
+        {
+            return false;
+        }
+
+        if (PendingClarification is { } pending &&
+            (string.IsNullOrWhiteSpace(pending.OriginalQuestion) ||
+             pending.OriginalQuestion.Length > MaximumTurnCharacters ||
+             ContainsUnsupportedControlCharacters(pending.OriginalQuestion) ||
+             pending.RequestedAnswerType?.Length > 80 ||
+             pending.RequestedAnswerType?.Any(char.IsControl) == true ||
+             pending.CandidateNames is null ||
+             pending.CandidateNames.Count is < 1 or > MaximumCandidates ||
+             pending.CandidateNames.Any(candidate => string.IsNullOrWhiteSpace(candidate) ||
+                                                     candidate.Length > MaximumCandidateCharacters ||
+                                                     ContainsUnsupportedControlCharacters(candidate)) ||
+             pending.CandidateNames.Distinct(StringComparer.OrdinalIgnoreCase).Count() != pending.CandidateNames.Count))
+        {
+            return false;
+        }
+
+        if (CallerRank?.Length > 40 || CallerRank?.Any(char.IsControl) == true)
+        {
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    public SparkyCallerRank NormalizeCallerRank() =>
+        Enum.TryParse(CallerRank, ignoreCase: true, out SparkyCallerRank rank) && Enum.IsDefined(rank)
+            ? rank
+            : SparkyCallerRank.Agent;
+
+    private static bool ContainsUnsupportedControlCharacters(string value) =>
+        value.Any(character => char.IsControl(character) && character is not ('\r' or '\n' or '\t'));
 }
 
 internal sealed record SparkyApiResponse(
@@ -35,9 +110,31 @@ internal sealed record SparkyApiResponse(
     string? Item = null,
     string? Answer = null,
     IReadOnlyList<string>? Candidates = null,
-    int? LanguageId = null);
+    int? LanguageId = null,
+    SparkyConversationUpdate? ContextUpdate = null);
 
 internal sealed record SparkyApiError(string Error);
+
+internal sealed record SparkyConversationTurn(string Role, string Content);
+
+internal sealed record SparkyPendingClarification(
+    string OriginalQuestion,
+    string? RequestedAnswerType,
+    IReadOnlyList<string> CandidateNames);
+
+internal sealed record SparkyConversationUpdate(
+    string? Summary,
+    string? ResolvedEntity,
+    SparkyPendingClarification? PendingClarification);
+
+internal enum SparkyCallerRank
+{
+    Technician,
+    Agent,
+    Officer,
+    CEO,
+    CommandDirector
+}
 
 internal sealed record SparkyLocalizedAnswer(int LanguageId, string Answer, string? FinishStatus = null);
 

@@ -32,7 +32,27 @@ internal sealed record SparkyTraceEvent(
     string? BundleVersion = null,
     string? Question = null,
     string? Answer = null,
-    string? FinishStatus = null);
+    string? FinishStatus = null,
+    double? AnswerTemperature = null,
+    double? AnswerTopP = null,
+    int? ConversationHistoryTurns = null,
+    int? ConversationHistoryCharacters = null,
+    int? ContextMessageCount = null,
+    int? ContextCharacterCount = null,
+    bool? HasContextSummary = null,
+    bool? HasPendingClarification = null,
+    bool? ContextBudgetTrimmed = null,
+    string? EffectiveIntent = null,
+    string? EffectiveFocus = null,
+    string? ResolverCategory = null,
+    string? ResolverOutcome = null,
+    int? ComparisonSubjectCount = null,
+    string? ComparisonAttributeCategory = null,
+    string? ComparisonResultCategory = null,
+    IReadOnlyList<SparkyConversationTurn>? ContextTurns = null,
+    string? ContextSummary = null,
+    SparkyPendingClarification? PendingClarification = null,
+    SparkyComparisonDiagnostics? ComparisonDiagnostics = null);
 
 internal sealed record SparkyTraceAppendResult(
     IReadOnlyList<Guid> AcknowledgedEventIds,
@@ -79,13 +99,27 @@ internal sealed record SparkyEvaluationExample(
     string Question,
     string? ExpectedIntent,
     IReadOnlyList<string> ExpectedProperties,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc,
+    IReadOnlyList<SparkyEvaluationTurn>? Turns = null,
+    string? Note = null);
+
+internal sealed record SparkyEvaluationTurn(
+    string Question,
+    string? ExpectedScope = null,
+    string? ExpectedIntent = null,
+    string? ExpectedEntity = null,
+    IReadOnlyList<string>? ExpectedSourceIds = null,
+    IReadOnlyList<string>? RequiredFacts = null,
+    IReadOnlyList<string>? ForbiddenClaims = null,
+    IReadOnlyList<string>? ExpectedProperties = null);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record SparkyEvaluationExampleRequest(
     Guid RequestId,
     string? ExpectedIntent,
-    IReadOnlyList<string>? ExpectedProperties);
+    IReadOnlyList<string>? ExpectedProperties,
+    IReadOnlyList<SparkyEvaluationTurn>? Turns = null,
+    string? Note = null);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record SparkyReplayRequest(
@@ -98,7 +132,30 @@ internal sealed record SparkyReplayOutput(
     string? Intent,
     IReadOnlyList<string>? Entities,
     IReadOnlyList<string>? SelectedSourceIds,
-    string? Answer);
+    string? Answer,
+    string? Scope = null,
+    string? SearchQuery = null,
+    string? StructuredFactsSummary = null,
+    SparkyReplayProfileMetadata? Metadata = null,
+    string? EffectiveIntent = null,
+    string? EffectiveFocus = null,
+    string? ResolverOutcome = null,
+    string? ComparisonSummary = null);
+
+internal sealed record SparkyReplayProfileMetadata(
+    string ModelId,
+    string ProfileRevisionId,
+    string BundleVersion,
+    double AnswerTemperature,
+    double AnswerTopP,
+    int ConversationHistoryTurns,
+    int ConversationHistoryCharacters);
+
+internal sealed record SparkyReplayTurnResult(
+    string Question,
+    SparkyEvaluationTurn Expected,
+    SparkyReplayOutput Active,
+    SparkyReplayOutput Candidate);
 
 internal sealed record SparkyReplayComparison(
     Guid ExampleId,
@@ -106,7 +163,8 @@ internal sealed record SparkyReplayComparison(
     string? ExpectedIntent,
     IReadOnlyList<string> ExpectedProperties,
     SparkyReplayOutput Active,
-    SparkyReplayOutput Candidate);
+    SparkyReplayOutput Candidate,
+    IReadOnlyList<SparkyReplayTurnResult>? Turns = null);
 
 internal sealed record SparkyReplayRun(
     Guid ReplayId,

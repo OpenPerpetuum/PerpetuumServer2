@@ -236,6 +236,23 @@ internal static class SparkyHttpService
                     return Results.Json(new SparkyApiError("invalid_request"), statusCode: statusCode);
                 }
 
+                if (!request.TryValidateConversationContext(out _))
+                {
+                    outcome = "invalid_request";
+                    statusCode = StatusCodes.Status400BadRequest;
+                    return Results.Json(new SparkyApiError("invalid_conversation_context"), statusCode: statusCode);
+                }
+
+                var boundedConversation = SparkyConversationContextBudget.Apply(
+                    request.ContextTurns,
+                    request.ContextSummary,
+                    request.PendingClarification,
+                    requestOptions.ConversationHistoryTurns,
+                    requestOptions.ConversationHistoryCharacters);
+                int actualContextMessageCount = boundedConversation.Turns.Count;
+                int actualContextCharacterCount = GetContextCharacterCount(boundedConversation);
+                bool contextBudgetTrimmed = WasContextBudgetTrimmed(request, boundedConversation);
+
                 if (!concurrencyLimiter.TryAcquire(profile, requestOptions.MaxConcurrentRequests, options.MaxConcurrentRequests))
                 {
                     int busyLanguageId = requestBundle.Languages.Any(language => language.LanguageId == request.ContextLanguageId)
@@ -279,7 +296,10 @@ internal static class SparkyHttpService
                         requestBundle.Languages,
                         request.ContextLanguageId,
                         context.RequestAborted,
-                        activeSnapshot.Configuration.RouteAliases).ConfigureAwait(false);
+                        activeSnapshot.Configuration.RouteAliases,
+                        boundedConversation.Turns,
+                        boundedConversation.Summary,
+                        boundedConversation.PendingClarification).ConfigureAwait(false);
                     await TryAppendTraceAsync(
                         traceStore,
                         CreateAiEvent(
@@ -290,8 +310,19 @@ internal static class SparkyHttpService
                             focus: interpretation.RobotFocus?.ToString() ?? interpretation.CatalogFocus?.ToString() ?? interpretation.SmallTalkKind?.ToString(),
                             searchQuery: interpretation.EnglishSearchQuery,
                             entityCandidates: interpretation.MentionedEntities,
+                            question: question,
                             bundleVersion: requestBundle.Manifest.BundleVersion,
-                            configRevision: activeSnapshot.RevisionId),
+                            configRevision: activeSnapshot.RevisionId,
+                            contextMessageCount: actualContextMessageCount,
+                            contextCharacterCount: actualContextCharacterCount,
+                            conversationHistoryTurns: requestOptions.ConversationHistoryTurns,
+                            conversationHistoryCharacters: requestOptions.ConversationHistoryCharacters,
+                            hasContextSummary: !string.IsNullOrWhiteSpace(boundedConversation.Summary),
+                            hasPendingClarification: boundedConversation.PendingClarification is not null,
+                            contextBudgetTrimmed: contextBudgetTrimmed,
+                            contextTurns: boundedConversation.Turns,
+                            contextSummary: boundedConversation.Summary,
+                            pendingClarification: boundedConversation.PendingClarification),
                         profile,
                         options,
                         logger,
@@ -304,7 +335,17 @@ internal static class SparkyHttpService
                         requestBundle,
                         request.ContextItem,
                         request.ContextLanguageId,
-                        context.RequestAborted).ConfigureAwait(false);
+                        context.RequestAborted,
+                        boundedConversation.Turns,
+                        boundedConversation.Summary,
+                        boundedConversation.PendingClarification,
+                        request.NormalizeCallerRank()).ConfigureAwait(false);
+                    var conversationUpdate = SparkyConversationUpdateFactory.Create(question, interpretation, answer);
+                    answer = answer with
+                    {
+                        Candidates = (answer.Candidates ?? []).Take(SparkyApiRequest.MaximumCandidates).ToArray(),
+                        ContextUpdate = conversationUpdate
+                    };
                     await TryAppendTraceAsync(
                         traceStore,
                         CreateAiEvent(
@@ -316,6 +357,23 @@ internal static class SparkyHttpService
                             searchQuery: answer.EnglishSearchQuery ?? interpretation.EnglishSearchQuery,
                             entityCandidates: interpretation.MentionedEntities,
                             selectedSourceIds: answer.SelectedSourceIds,
+                            effectiveIntent: answer.EffectiveIntent,
+                            effectiveFocus: answer.EffectiveFocus,
+                            resolverCategory: answer.ResolverCategory,
+                            resolverOutcome: answer.ResolverOutcome,
+                            comparisonSubjectCount: answer.ComparisonSubjectCount,
+                            comparisonAttributeCategory: answer.ComparisonAttributeCategory,
+                            comparisonResultCategory: answer.ComparisonResultCategory,
+                            conversationHistoryTurns: requestOptions.ConversationHistoryTurns,
+                            conversationHistoryCharacters: requestOptions.ConversationHistoryCharacters,
+                            contextMessageCount: actualContextMessageCount,
+                            contextCharacterCount: actualContextCharacterCount,
+                            hasContextSummary: !string.IsNullOrWhiteSpace(boundedConversation.Summary),
+                            hasPendingClarification: boundedConversation.PendingClarification is not null,
+                            contextBudgetTrimmed: contextBudgetTrimmed,
+                            contextTurns: boundedConversation.Turns,
+                            contextSummary: boundedConversation.Summary,
+                            pendingClarification: boundedConversation.PendingClarification,
                             bundleVersion: requestBundle.Manifest.BundleVersion,
                             configRevision: activeSnapshot.RevisionId),
                         profile,
@@ -335,11 +393,32 @@ internal static class SparkyHttpService
                             searchQuery: answer.EnglishSearchQuery ?? interpretation.EnglishSearchQuery,
                             entityCandidates: interpretation.MentionedEntities,
                             selectedSourceIds: answer.SelectedSourceIds,
+                            effectiveIntent: answer.EffectiveIntent,
+                            effectiveFocus: answer.EffectiveFocus,
+                            resolverCategory: answer.ResolverCategory,
+                            resolverOutcome: answer.ResolverOutcome,
+                            comparisonSubjectCount: answer.ComparisonSubjectCount,
+                            comparisonAttributeCategory: answer.ComparisonAttributeCategory,
+                            comparisonResultCategory: answer.ComparisonResultCategory,
                             modelId: requestOptions.ModelId,
                             bundleVersion: requestBundle.Manifest.BundleVersion,
                             configRevision: activeSnapshot.RevisionId,
+                            question: question,
                             answer: answer.Answer,
-                            finishStatus: answer.FinishStatus),
+                            finishStatus: answer.FinishStatus,
+                            answerTemperature: requestOptions.AnswerTemperature,
+                            answerTopP: requestOptions.AnswerTopP,
+                            conversationHistoryTurns: requestOptions.ConversationHistoryTurns,
+                            conversationHistoryCharacters: requestOptions.ConversationHistoryCharacters,
+                            contextMessageCount: actualContextMessageCount,
+                            contextCharacterCount: actualContextCharacterCount,
+                            hasContextSummary: !string.IsNullOrWhiteSpace(boundedConversation.Summary),
+                            hasPendingClarification: boundedConversation.PendingClarification is not null,
+                            contextBudgetTrimmed: contextBudgetTrimmed,
+                            contextTurns: boundedConversation.Turns,
+                            contextSummary: boundedConversation.Summary,
+                            pendingClarification: boundedConversation.PendingClarification,
+                            comparisonDiagnostics: answer.ComparisonDiagnostics),
                         profile,
                         options,
                         logger,
@@ -378,7 +457,7 @@ internal static class SparkyHttpService
                     outcome = answer.Status;
                     statusCode = StatusCodes.Status200OK;
                     return Results.Json(
-                        new SparkyApiResponse(answer.Status, answer.Item, answer.Answer, answer.Candidates, answer.LanguageId),
+                        new SparkyApiResponse(answer.Status, answer.Item, answer.Answer, answer.Candidates, answer.LanguageId, answer.ContextUpdate),
                         JsonOptions);
                 }
                 catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
@@ -578,7 +657,27 @@ internal static class SparkyHttpService
         string? configRevision = null,
         string? question = null,
         string? answer = null,
-        string? finishStatus = null) => new(
+        string? finishStatus = null,
+        double? answerTemperature = null,
+        double? answerTopP = null,
+        int? conversationHistoryTurns = null,
+        int? conversationHistoryCharacters = null,
+        int? contextMessageCount = null,
+        int? contextCharacterCount = null,
+        bool? hasContextSummary = null,
+        bool? hasPendingClarification = null,
+        bool? contextBudgetTrimmed = null,
+        string? effectiveIntent = null,
+        string? effectiveFocus = null,
+        string? resolverCategory = null,
+        string? resolverOutcome = null,
+        int? comparisonSubjectCount = null,
+        string? comparisonAttributeCategory = null,
+        string? comparisonResultCategory = null,
+        IReadOnlyList<SparkyConversationTurn>? contextTurns = null,
+        string? contextSummary = null,
+        SparkyPendingClarification? pendingClarification = null,
+        SparkyComparisonDiagnostics? comparisonDiagnostics = null) => new(
             Guid.NewGuid(),
             requestId,
             "AI",
@@ -596,7 +695,46 @@ internal static class SparkyHttpService
             BundleVersion: bundleVersion,
             Question: question,
             Answer: answer,
-            FinishStatus: finishStatus);
+            FinishStatus: finishStatus,
+            AnswerTemperature: answerTemperature,
+            AnswerTopP: answerTopP,
+            ConversationHistoryTurns: conversationHistoryTurns,
+            ConversationHistoryCharacters: conversationHistoryCharacters,
+            ContextMessageCount: contextMessageCount,
+            ContextCharacterCount: contextCharacterCount,
+            HasContextSummary: hasContextSummary,
+            HasPendingClarification: hasPendingClarification,
+            ContextBudgetTrimmed: contextBudgetTrimmed,
+            EffectiveIntent: effectiveIntent,
+            EffectiveFocus: effectiveFocus,
+            ResolverCategory: resolverCategory,
+            ResolverOutcome: resolverOutcome,
+            ComparisonSubjectCount: comparisonSubjectCount,
+            ComparisonAttributeCategory: comparisonAttributeCategory,
+            ComparisonResultCategory: comparisonResultCategory,
+            ContextTurns: contextTurns,
+            ContextSummary: contextSummary,
+            PendingClarification: pendingClarification,
+            ComparisonDiagnostics: comparisonDiagnostics);
+
+    private static int GetContextCharacterCount(SparkyBoundedConversationContext context)
+    {
+        int count = context.Turns.Sum(turn => turn.Content.Length) + (context.Summary?.Length ?? 0);
+        if (context.PendingClarification is { } pending)
+        {
+            count += pending.OriginalQuestion.Length;
+            count += pending.CandidateNames.Sum(name => name.Length);
+        }
+
+        return count;
+    }
+
+    private static bool WasContextBudgetTrimmed(
+        SparkyApiRequest request,
+        SparkyBoundedConversationContext bounded) =>
+        (request.ContextTurns?.Count ?? 0) != bounded.Turns.Count ||
+        !string.Equals(request.ContextSummary, bounded.Summary, StringComparison.Ordinal) ||
+        request.PendingClarification?.CandidateNames.Count != bounded.PendingClarification?.CandidateNames.Count;
 
     private static async Task TryAppendTraceAsync(
         SparkyTraceStore? store,

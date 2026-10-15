@@ -64,6 +64,83 @@ public sealed class SparkyReplayServiceTests
         Assert.Equal(0, answerer.Calls);
     }
 
+    [Fact]
+    public async Task Replay_runs_ordered_followups_with_isolated_active_and_draft_contexts()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var temp = new TemporaryDirectory();
+        var store = new SparkyTraceStore(Path.Combine(temp.Path, "sequence-traces.db"));
+        var bundle = CreateBundle();
+        var options = CreateOptions(temp.Path);
+        var profiles = new SparkyProfileManager(store, new FakeBundleCatalog(bundle), options, bundle);
+        await profiles.InitializeAsync(cancellationToken);
+        var active = (await profiles.GetDetailsAsync(SparkyApiProfile.Dev, cancellationToken)).ActiveConfiguration!;
+        var draft = await profiles.SaveDraftAsync(SparkyApiProfile.Dev, active with { PersonaStyle = "Use concise field notes." }, "sequence draft", cancellationToken);
+        Assert.True(draft.Success);
+
+        var trace = new SparkyTraceEvent(Guid.NewGuid(), Guid.NewGuid(), "AI", "answer", "answered", DateTimeOffset.UtcNow,
+            Intent: "StructuredItem", Question: "What are T3 sensor amplifier stats?", Answer: "Which one?");
+        await store.AppendAsync(trace, SparkyApiProfile.Dev, captureContent: true, cancellationToken);
+        var turns = new[]
+        {
+            new SparkyEvaluationTurn("What are T3 sensor amplifier stats?", "Game", "StructuredItem", "T3 sensor amplifier"),
+            new SparkyEvaluationTurn("Da Gama", "Game", "StructuredItem", "Da Gama"),
+            new SparkyEvaluationTurn("And its full recipe?", "Game", "StructuredItem", "Da Gama", RequiredFacts: ["Axicoline"])
+        };
+        var example = await store.CreateEvaluationExampleAsync(
+            trace.RequestId, SparkyApiProfile.Dev, turns[0].ExpectedIntent, [], cancellationToken, turns, "clarify then answer");
+        var secondTrace = new SparkyTraceEvent(Guid.NewGuid(), Guid.NewGuid(), "AI", "answer", "answered", DateTimeOffset.UtcNow,
+            Intent: "MechanicsLore", Question: "Who is Theseus?", Answer: "A figure in the lore records.");
+        await store.AppendAsync(secondTrace, SparkyApiProfile.Dev, captureContent: true, cancellationToken);
+        var secondExample = await store.CreateEvaluationExampleAsync(
+            secondTrace.RequestId, SparkyApiProfile.Dev, "MechanicsLore", ["entity:Theseus"], cancellationToken);
+        var storedExample = (await store.GetEvaluationExamplesAsync(SparkyApiProfile.Dev, cancellationToken: cancellationToken))
+            .Single(candidate => candidate.RequestId == trace.RequestId);
+        Assert.Equal(turns.Select(turn => turn.Question), storedExample.Turns!.Select(turn => turn.Question));
+        Assert.Equal("clarify then answer", storedExample.Note);
+
+        var answerer = new FakeAnswerer();
+        var service = new SparkyReplayService(store, profiles, new SparkyConcurrencyLimiter(), options, answerer);
+        var replay = await service.RunAsync(
+            new SparkyReplayRequest(SparkyApiProfile.Dev, draft.RevisionId!, [example!.ExampleId, secondExample!.ExampleId]), cancellationToken);
+
+        Assert.Equal(8, answerer.Calls);
+        Assert.Empty(answerer.Contexts[0]);
+        Assert.Equal(["What are T3 sensor amplifier stats?", "active answer"], answerer.Contexts[1].Select(turn => turn.Content));
+        Assert.Equal(4, answerer.Contexts[2].Count);
+        Assert.Empty(answerer.Contexts[3]);
+        Assert.Equal(["What are T3 sensor amplifier stats?", "draft answer"], answerer.Contexts[4].Select(turn => turn.Content));
+        Assert.Equal(4, answerer.Contexts[5].Count);
+        Assert.Empty(answerer.Contexts[6]);
+        Assert.Empty(answerer.Contexts[7]);
+        Assert.Equal(turns.Select(turn => turn.Question), replay.Results[0].Turns!.Select(turn => turn.Question));
+        Assert.Equal("Game", replay.Results[0].Turns![2].Active.Scope);
+        Assert.Equal("And its full recipe?", replay.Results[0].Turns![2].Question);
+        Assert.Equal("theseus lore query", replay.Results[1].Turns![0].Active.SearchQuery);
+        Assert.Equal(["source-1"], replay.Results[1].Turns![0].Active.SelectedSourceIds);
+        Assert.Equal("StructuredRobot", replay.Results[0].Turns![2].Candidate.EffectiveIntent);
+        Assert.Equal("CompareStats", replay.Results[0].Turns![2].Candidate.EffectiveFocus);
+        Assert.Equal("resolved", replay.Results[0].Turns![2].Candidate.ResolverOutcome);
+        Assert.Equal("resolved: Kain vs Tyrannos; requested maximum speed; Maximum speed: 103.32 vs 93.6 kph (difference 9.72 kph; direction favors Kain)",
+            replay.Results[0].Turns![2].Candidate.ComparisonSummary);
+        Assert.Equal("model", replay.Results[0].Turns![2].Candidate.Metadata!.ModelId);
+        Assert.Equal("draft answer", replay.Results[0].Candidate.Answer);
+    }
+
+    [Fact]
+    public async Task Replay_rejects_an_oversized_or_empty_sequence_before_persisting_it()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var temp = new TemporaryDirectory();
+        var store = new SparkyTraceStore(Path.Combine(temp.Path, "invalid-sequence.db"));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.CreateEvaluationExampleAsync(
+            Guid.NewGuid(), SparkyApiProfile.Dev, null, [], cancellationToken, [], null));
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.CreateEvaluationExampleAsync(
+            Guid.NewGuid(), SparkyApiProfile.Dev, null, [], cancellationToken,
+            [new SparkyEvaluationTurn(new string('x', 2001))], null));
+    }
+
     private static SparkyServiceOptions CreateOptions(string root) => new(
         Path.Combine(root, "legacy.json"), new Uri("https://127.0.0.1:5080/"), null!,
         "dev-token-that-is-long-enough-for-this-test", "http://localhost:1234/v1", "model", null,
@@ -77,12 +154,27 @@ public sealed class SparkyReplayServiceTests
 
     private sealed class FakeAnswerer : ISparkyReplayAnswerer
     {
-        public int Calls { get; private set; }
-        public Task<SparkyReplayOutput> AnswerAsync(string question, SparkyProfileSnapshot snapshot, CancellationToken cancellationToken)
+        public List<IReadOnlyList<SparkyConversationTurn>> Contexts { get; } = [];
+        public int Calls => Contexts.Count;
+        public Task<SparkyReplayStep> AnswerAsync(
+            string question,
+            SparkyProfileSnapshot snapshot,
+            IReadOnlyList<SparkyConversationTurn> contextTurns,
+            string? contextSummary,
+            SparkyPendingClarification? pendingClarification,
+            CancellationToken cancellationToken)
         {
-            Calls++;
+            Contexts.Add(contextTurns.ToArray());
             string status = snapshot.Configuration.PersonaStyle.Contains("concise", StringComparison.Ordinal) ? "draft" : "active";
-            return Task.FromResult(new SparkyReplayOutput("answered", "MechanicsLore", ["Theseus"], ["source-1"], status + " answer"));
+            string answer = status + " answer";
+            var output = new SparkyReplayOutput("answered", "MechanicsLore", ["Theseus"], ["source-1"], answer,
+                "Game", "theseus lore query", "Theseus", new SparkyReplayProfileMetadata(
+                    snapshot.Configuration.ModelId, snapshot.RevisionId, snapshot.Bundle.Manifest.BundleVersion,
+                    snapshot.Configuration.AnswerTemperature, snapshot.Configuration.AnswerTopP,
+                    snapshot.Configuration.ConversationHistoryTurns, snapshot.Configuration.ConversationHistoryCharacters),
+                "StructuredRobot", "CompareStats", "resolved",
+                "resolved: Kain vs Tyrannos; requested maximum speed; Maximum speed: 103.32 vs 93.6 kph (difference 9.72 kph; direction favors Kain)");
+            return Task.FromResult(new SparkyReplayStep(output, new SparkyConversationUpdate(null, null, null)));
         }
     }
 

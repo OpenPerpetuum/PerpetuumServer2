@@ -53,6 +53,26 @@ public sealed class SparkyRobotLookupTests
     }
 
     [Fact]
+    public void ContextualComparisonIsNotConvertedToGlobalFastestRanking()
+    {
+        SparkyKnowledgeBundle bundle = CreateBundle();
+        var interpretation = new SparkyQuestionInterpretation(
+            0,
+            SparkyIntent.StructuredRobot,
+            "which recent robot has higher maximum speed",
+            RobotFocus: SparkyRobotQuestionFocus.Fastest,
+            Scope: SparkyConversationScope.Game,
+            Comparison: new SparkyComparisonIntent(
+                true, true, [], "maximum speed", SparkyComparisonDirection.Higher, false));
+
+        SparkyQuestionInterpretation corrected = SparkyRobotIntentResolver.CorrectStructuredItemQuestion(
+            "Which one is faster?", interpretation, bundle);
+
+        Assert.Equal(SparkyIntent.StructuredRobot, corrected.Intent);
+        Assert.Equal(SparkyRobotQuestionFocus.CompareStats, corrected.RobotFocus);
+    }
+
+    [Fact]
     public void MultiRobotStatComparisonUsesDedicatedStructuredRoute()
     {
         SparkyKnowledgeBundle bundle = CreateBundle() with
@@ -327,7 +347,8 @@ public sealed class SparkyRobotLookupTests
             SparkyIntent.StructuredModuleCatalog,
             "list laser modules",
             MentionedEntities: [],
-            CatalogFocus: SparkyModuleCatalogFocus.Lasers);
+            CatalogFocus: SparkyModuleCatalogFocus.Lasers,
+            Scope: SparkyConversationScope.Game);
 
         SparkyAnswerResult result = await new SparkyAnswerRouter(CreateOptions()).AnswerAsync(
             "What laser modules do you know?",
@@ -388,7 +409,7 @@ public sealed class SparkyRobotLookupTests
     }
 
     [Fact]
-    public async Task RouterClarifiesUnknownModuleWithoutCallingModel()
+    public async Task RouterFallsBackToExactCatalogCandidatesWhenModelUnavailable()
     {
         SparkyKnowledgeBundle bundle = CreateBundle() with
         {
@@ -407,7 +428,8 @@ public sealed class SparkyRobotLookupTests
             0,
             SparkyIntent.StructuredItem,
             "would Standard Heavy Armor Plate fit on Sample robot",
-            MentionedEntities: ["Standard Heavy Armor Plate", "Sample robot"]);
+            MentionedEntities: ["Standard Heavy Armor Plate", "Sample robot"],
+            Scope: SparkyConversationScope.Game);
 
         SparkyAnswerResult result = await router.AnswerAsync(
             "Would Standard Heavy Armor Plate fit on Sample robot?",
@@ -418,6 +440,7 @@ public sealed class SparkyRobotLookupTests
             CancellationToken.None);
 
         Assert.Equal("not_found", result.Status);
+        Assert.Equal("fallback", result.FinishStatus);
         Assert.Contains("I can't match that module name", result.Answer, StringComparison.Ordinal);
         Assert.Contains("Standard large armor plate", result.Answer, StringComparison.Ordinal);
         Assert.Contains("Standard medium armor plate", result.Answer, StringComparison.Ordinal);
@@ -453,7 +476,8 @@ public sealed class SparkyRobotLookupTests
             0,
             SparkyIntent.StructuredItem,
             "what are the stats for T4 medium LCL laser",
-            MentionedEntities: ["T4 medium LCL laser"]);
+            MentionedEntities: ["T4 medium LCL laser"],
+            Scope: SparkyConversationScope.Game);
 
         SparkyAnswerResult result = await new SparkyAnswerRouter(CreateOptions()).AnswerAsync(
             "What are the stats for T4 medium LCL laser?",
@@ -952,7 +976,8 @@ public sealed class SparkyRobotLookupTests
             2,
             SparkyIntent.StructuredRobot,
             "Sample robot stats",
-            RobotFocus: SparkyRobotQuestionFocus.Stats);
+            RobotFocus: SparkyRobotQuestionFocus.Stats,
+            Scope: SparkyConversationScope.Game);
 
         SparkyAnswerResult result = await router.AnswerAsync(
             "What are the stats for Sample robot?",
@@ -974,7 +999,8 @@ public sealed class SparkyRobotLookupTests
             0,
             SparkyIntent.StructuredRobot,
             "Sample robot stats",
-            RobotFocus: SparkyRobotQuestionFocus.Stats);
+            RobotFocus: SparkyRobotQuestionFocus.Stats,
+            Scope: SparkyConversationScope.Game);
 
         SparkyAnswerResult result = await router.AnswerAsync(
             "What are the stats for Sample robot?",
@@ -1152,7 +1178,7 @@ public sealed class SparkyRobotLookupTests
         2000,
         2000,
         700,
-        TimeSpan.FromSeconds(5),
+        TimeSpan.FromMilliseconds(100),
         1,
         null);
 

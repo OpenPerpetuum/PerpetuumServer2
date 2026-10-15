@@ -39,7 +39,7 @@ PerpetuumServer2.sln
 | `Perpetuum.Server` | `Program.cs` — parses CLI args, calls `PerpetuumBootstrapper.Init/Start` |
 | `Perpetuum.ServerService2` | Windows service host wrapping bootstrapper |
 | `Perpetuum.AdminTool` | Standalone WPF tool for admin operations (NPC editing, seasons, loot, etc.) |
-| `Perpetuum.ItemStatsExporter` | Offline multilingual item/recipe/robot export and versioned bundle build, deterministic retrieval and grounded LM Studio routing, profile-based hot configuration, local trace/feedback/evaluation/replay store, loopback HTTPS game/admin listeners, and separately restricted reverse SSH tunnels; uses game entity/property/production-component logic without starting game server services |
+| `Perpetuum.ItemStatsExporter` | Offline multilingual item/recipe/robot export and versioned bundle build, deterministic retrieval and grounded LM Studio routing, migrated profile tuning, multi-turn evaluation/replay, local trace store, loopback HTTPS game/admin listeners, and separately restricted reverse SSH tunnels; uses game entity/property/production-component logic without starting game server services |
 | `Perpetuum.ItemStatsExporterInstaller` | WiX installer for the self-contained Sparky Windows service; does not package machine-specific exports, credentials, SSH keys, or certificates |
 
 ## Source Organisation — `src/Perpetuum/`
@@ -228,6 +228,7 @@ src/Perpetuum.RequestHandlers/
 - `src/Perpetuum.ServerService2/appsettings.json` — sets `GameRoot` path
 - `perpetuum.ini` (inside GameRoot) — SQL connection string, ports, zone config, feature flags
 - Passive Sparky pilot settings and JSONL/session file lifecycle — `docs/superpowers/sparky-question-capture.md`
+- Sparky profile tuning, migration, multi-turn evaluation, replay isolation, and Dev-only operations — `docs/superpowers/sparky-conversation-first-operations.md`
 
 ## Module Organisation (Autofac)
 

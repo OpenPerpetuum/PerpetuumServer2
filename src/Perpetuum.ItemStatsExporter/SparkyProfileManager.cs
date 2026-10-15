@@ -106,6 +106,11 @@ internal sealed class SparkyProfileManager
                 continue;
             }
 
+            // Do not replace a persisted but unreadable active revision with a new default.
+            // Keeping the profile unavailable is safer than silently discarding its configuration.
+            if (active is not null)
+                continue;
+
             if (profile == SparkyApiProfile.Live)
                 continue;
 
@@ -481,9 +486,17 @@ internal sealed class SparkyProfileManager
             IsActive: false,
             IsDraft: isDraft);
 
-    private static SparkyProfileDraft DeserializeDraft(string json) =>
-        JsonSerializer.Deserialize<SparkyProfileDraft>(json, JsonOptions)
-        ?? throw new InvalidDataException("The Sparky profile configuration is empty.");
+    internal static SparkyProfileDraft DeserializeDraft(string json)
+    {
+        var configuration = JsonSerializer.Deserialize<SparkyProfileDraft>(json, JsonOptions)
+            ?? throw new InvalidDataException("The Sparky profile configuration is empty.");
+        return configuration.SchemaVersion switch
+        {
+            1 => configuration with { SchemaVersion = 2 },
+            2 => configuration,
+            _ => throw new InvalidDataException("The Sparky profile schema version is unsupported.")
+        };
+    }
 
     private static IReadOnlyList<string> GetChangedFields(
         SparkyProfileDraft configuration,
@@ -491,7 +504,7 @@ internal sealed class SparkyProfileManager
         previous is null
             ? [
                 "modelId", "personaStyle", "routeAliases", "retrieval", "answerLimits",
-                "inferenceLimits", "bundleVersion", "contentCapture", "retention"
+                "inferenceLimits", "conversationContext", "answerModelTuning", "bundleVersion", "contentCapture", "retention"
             ]
             : GetDifferentFields(configuration, previous);
 
@@ -499,7 +512,7 @@ internal sealed class SparkyProfileManager
         SparkyProfileDraft current,
         SparkyProfileDraft previous)
     {
-        var changed = new List<string>(9);
+        var changed = new List<string>(11);
         if (!string.Equals(current.ModelId, previous.ModelId, StringComparison.Ordinal))
             changed.Add("modelId");
         if (!string.Equals(current.PersonaStyle, previous.PersonaStyle, StringComparison.Ordinal))
@@ -514,6 +527,11 @@ internal sealed class SparkyProfileManager
             current.InferenceTimeoutSeconds != previous.InferenceTimeoutSeconds ||
             current.MaxConcurrentRequests != previous.MaxConcurrentRequests)
             changed.Add("inferenceLimits");
+        if (current.ConversationHistoryTurns != previous.ConversationHistoryTurns ||
+            current.ConversationHistoryCharacters != previous.ConversationHistoryCharacters)
+            changed.Add("conversationContext");
+        if (current.AnswerTemperature != previous.AnswerTemperature || current.AnswerTopP != previous.AnswerTopP)
+            changed.Add("answerModelTuning");
         if (!string.Equals(current.BundleVersion, previous.BundleVersion, StringComparison.Ordinal))
             changed.Add("bundleVersion");
         if (current.CaptureContent != previous.CaptureContent)

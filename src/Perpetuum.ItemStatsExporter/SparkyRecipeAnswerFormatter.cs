@@ -53,16 +53,96 @@ internal static class SparkyRecipeAnswerFormatter
         return true;
     }
 
-    private static bool ContainsRecipeRequest(string question, string? englishSearchQuery)
+    internal static bool ContainsRecipeRequest(string question, string? englishSearchQuery)
     {
         return RecipeOrMaterialsPattern.IsMatch(question) ||
                !string.IsNullOrWhiteSpace(englishSearchQuery) && RecipeOrMaterialsPattern.IsMatch(englishSearchQuery);
     }
 
-    private static bool ContainsFullMaterialsRequest(string question, string? englishSearchQuery)
+    internal static bool ContainsFullMaterialsRequest(string question, string? englishSearchQuery)
     {
         return FullMaterialsPattern.IsMatch(question) ||
                !string.IsNullOrWhiteSpace(englishSearchQuery) && FullMaterialsPattern.IsMatch(englishSearchQuery);
+    }
+
+    public static IReadOnlyList<string> GetRequiredExactStrings(
+        string question,
+        string? englishSearchQuery,
+        ItemStatsLookupAnswer item)
+    {
+        var required = new List<string> { item.DisplayName };
+        if (ContainsRecipeRequest(question, englishSearchQuery))
+        {
+            bool useFullMaterials = ContainsFullMaterialsRequest(question, englishSearchQuery) &&
+                                    item.FullMaterialsAvailable &&
+                                    item.FullMaterials is { Materials.Count: > 0 };
+            int outputQuantity = useFullMaterials
+                ? item.FullMaterials!.OutputQuantity
+                : item.Recipe?.OutputQuantity ?? 0;
+            var components = useFullMaterials
+                ? item.FullMaterials!.Materials
+                : item.Recipe?.Components ?? [];
+            if (outputQuantity > 0)
+            {
+                AddUnique(required, FormatNumber(outputQuantity, item.LanguageId));
+            }
+            foreach (var component in components)
+            {
+                AddUnique(required, $"{FormatNumber(component.Amount, item.LanguageId)} {component.DisplayName}");
+            }
+
+            return required;
+        }
+
+        bool requestsStats = Regex.IsMatch(
+            string.Join(' ', question, englishSearchQuery),
+            @"\b(?:stats?|statistics|attributes|properties|accuracy|damage|range|optimal|falloff|cycle\s*time|cpu|power\s*grid|powergrid|core\s+usage|ammo|ammunition|statistiken|eigenschaften|werte|schaden|reichweite|genauigkeit|dano|alcance|precis[aã]o|характеристик\w*|статистик\w*|урон\w*|дальност\w*|точност\w*)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (requestsStats)
+        {
+            foreach (var stat in item.Stats)
+            {
+                AddUnique(required, $"{stat.Label}: {stat.Value} {stat.Unit}".Trim());
+            }
+        }
+
+        bool requestsAmmo = Regex.IsMatch(
+            string.Join(' ', question, englishSearchQuery),
+            @"\b(?:ammo|ammunition|ammo\s+types?|munitions?|munition|muni[cç][aã]o|боеприпас\w*|аммуниц\w*)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (requestsAmmo)
+        {
+            foreach (var ammo in item.AmmoVariants)
+            {
+                AddUnique(required, ammo.DisplayName);
+                foreach (var damage in ammo.Damage)
+                {
+                    AddUnique(required, $"{damage.Type}: {damage.Value}");
+                }
+            }
+        }
+
+        return required;
+    }
+
+    private static void AddUnique(List<string> values, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && !values.Contains(value, StringComparer.Ordinal))
+        {
+            values.Add(value);
+        }
+    }
+
+    private static string FormatNumber(long value, int languageId)
+    {
+        var culture = languageId switch
+        {
+            2 => CultureInfo.GetCultureInfo("de-DE"),
+            3 => CultureInfo.GetCultureInfo("pt-BR"),
+            4 => CultureInfo.GetCultureInfo("ru-RU"),
+            _ => CultureInfo.GetCultureInfo("en-US")
+        };
+        return value.ToString("N0", culture);
     }
 
     private static string FormatList(

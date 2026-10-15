@@ -284,13 +284,14 @@ internal static class SparkyAdminEndpoints
         {
             if (traceStore is null)
                 return Results.Json(new SparkyApiError("trace_storage_unavailable"), statusCode: StatusCodes.Status503ServiceUnavailable);
-            if (!TryReadEnvironment(context.Request.Query, out var environment) || request.RequestId == Guid.Empty ||
-                !SparkyTraceEventValidator.IsValidEvaluationExpectation(request.ExpectedIntent, request.ExpectedProperties))
+            if (!TryReadEnvironment(context.Request.Query, out var environment) ||
+                !SparkyEvaluationValidator.TryValidate(request, out _))
                 return Results.Json(new SparkyApiError("invalid_evaluation"), statusCode: StatusCodes.Status400BadRequest);
             try
             {
                 var example = await traceStore.CreateEvaluationExampleAsync(
-                    request.RequestId, environment, request.ExpectedIntent, request.ExpectedProperties, context.RequestAborted)
+                    request.RequestId, environment, request.ExpectedIntent, request.ExpectedProperties,
+                    context.RequestAborted, request.Turns, request.Note)
                     .ConfigureAwait(false);
                 return example is null
                     ? Results.Json(new SparkyApiError("captured_question_required"), statusCode: StatusCodes.Status409Conflict)

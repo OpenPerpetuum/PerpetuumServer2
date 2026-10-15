@@ -28,7 +28,11 @@ internal sealed record SparkyServiceOptions(
     int TraceMetadataRetentionDays = 90,
     Uri? AdminServiceUri = null,
     string? AdminApiToken = null,
-    SparkyTunnelOptions? AdminTunnel = null) : IDisposable
+    SparkyTunnelOptions? AdminTunnel = null,
+    int ConversationHistoryTurns = 8,
+    int ConversationHistoryCharacters = 4000,
+    double AnswerTemperature = 0.2,
+    double AnswerTopP = 0.9) : IDisposable
 {
     private const string DefaultModelBaseUrl = "http://localhost:1234/v1";
 
@@ -116,7 +120,11 @@ internal sealed record SparkyServiceOptions(
                 throw new InvalidDataException("The game API and admin tunnels must use different loopback ports on the remote SSH host.");
             }
 
-            var requestBodyBytes = settings.GetPositiveInteger("SPARKY_MAX_REQUEST_BODY_BYTES", 8192);
+            var requestBodyBytes = settings.GetPositiveInteger("SPARKY_MAX_REQUEST_BODY_BYTES", 131072);
+            if (requestBodyBytes is < 8192 or > 1048576)
+            {
+                throw new InvalidDataException("SPARKY_MAX_REQUEST_BODY_BYTES must be between 8192 and 1048576 bytes.");
+            }
             var maxQuestionCharacters = settings.GetPositiveInteger("SPARKY_MAX_QUESTION_CHARACTERS", 2000);
             var maxAnswerCharacters = settings.GetPositiveInteger("SPARKY_MAX_ANSWER_CHARACTERS", 2000);
             var maxCompletionTokens = settings.GetPositiveInteger("SPARKY_LMSTUDIO_MAX_COMPLETION_TOKENS", 700);

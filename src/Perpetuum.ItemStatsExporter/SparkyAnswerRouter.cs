@@ -12,7 +12,18 @@ internal sealed record SparkyAnswerResult(
     IReadOnlyList<string>? Candidates = null,
     string? EnglishSearchQuery = null,
     IReadOnlyList<string>? SelectedSourceIds = null,
-    string? FinishStatus = null);
+    string? FinishStatus = null,
+    SparkyConversationUpdate? ContextUpdate = null,
+    string? ParsedIntent = null,
+    string? ParsedFocus = null,
+    string? EffectiveIntent = null,
+    string? EffectiveFocus = null,
+    string? ResolverCategory = null,
+    string? ResolverOutcome = null,
+    int? ComparisonSubjectCount = null,
+    string? ComparisonAttributeCategory = null,
+    string? ComparisonResultCategory = null,
+    SparkyComparisonDiagnostics? ComparisonDiagnostics = null);
 
 internal sealed record SparkyEntityCoverage(
     IReadOnlyList<string> Present,
@@ -23,15 +34,18 @@ internal sealed class SparkyAnswerRouter
     private readonly SparkyServiceOptions options;
     private readonly SparkyRetrievalSettings retrieval;
     private readonly string? personaStyle;
+    private readonly HttpClient? modelClient;
 
     public SparkyAnswerRouter(
         SparkyServiceOptions options,
         SparkyRetrievalSettings? retrieval = null,
-        string? personaStyle = null)
+        string? personaStyle = null,
+        HttpClient? modelClient = null)
     {
         this.options = options;
         this.retrieval = retrieval ?? new SparkyRetrievalSettings(5, 4200, 0.25);
         this.personaStyle = personaStyle;
+        this.modelClient = modelClient;
     }
 
     private static readonly Regex NumberPattern = new(@"\b\d+(?:\.\d+)?\b", RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -58,13 +72,283 @@ internal sealed class SparkyAnswerRouter
         SparkyKnowledgeBundle bundle,
         string? contextItem,
         int? contextLanguageId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<SparkyConversationTurn>? contextTurns = null,
+        string? contextSummary = null,
+        SparkyPendingClarification? pendingClarification = null,
+        SparkyCallerRank callerRank = SparkyCallerRank.Agent)
     {
-        interpretation = SparkyRobotIntentResolver.CorrectStructuredItemQuestion(question, interpretation, bundle);
+        SparkyAnswerResult result = await AnswerCoreAsync(
+            question, interpretation, bundle, contextItem, contextLanguageId, cancellationToken,
+            contextTurns, contextSummary, pendingClarification, callerRank).ConfigureAwait(false);
+        SparkyQuestionInterpretation effective = GetEffectiveInterpretation(
+            question, interpretation, bundle, contextTurns, pendingClarification);
+        return result with
+        {
+            ParsedIntent = interpretation.Intent.ToString(),
+            ParsedFocus = interpretation.RobotFocus?.ToString(),
+            EffectiveIntent = result.EffectiveIntent ?? effective.Intent.ToString(),
+            EffectiveFocus = result.EffectiveFocus ?? effective.RobotFocus?.ToString(),
+            ResolverCategory = result.ResolverCategory ?? effective.Intent.ToString(),
+            ResolverOutcome = result.ResolverOutcome ?? result.Status
+        };
+    }
+
+    private async Task<SparkyAnswerResult> AnswerCoreAsync(
+        string question,
+        SparkyQuestionInterpretation interpretation,
+        SparkyKnowledgeBundle bundle,
+        string? contextItem,
+        int? contextLanguageId,
+        CancellationToken cancellationToken,
+        IReadOnlyList<SparkyConversationTurn>? contextTurns = null,
+        string? contextSummary = null,
+        SparkyPendingClarification? pendingClarification = null,
+        SparkyCallerRank callerRank = SparkyCallerRank.Agent)
+    {
+        Task<SparkyAnswerResult> ClarifyAsync(
+            string clarifyQuestion,
+            int clarifyLanguageId,
+            string clarifyLanguageName,
+            SparkyClarificationEvidence clarifyEvidence,
+            string clarifyStatus,
+            SparkyResponseTemplateKey fallbackKey,
+            string? clarifyItem,
+            CancellationToken token) => ClarifyCoreAsync(
+                clarifyQuestion,
+                clarifyLanguageId,
+                clarifyLanguageName,
+                clarifyEvidence,
+                clarifyStatus,
+                fallbackKey,
+                clarifyItem,
+                token,
+                contextTurns,
+                contextSummary,
+                pendingClarification,
+                callerRank);
+
+        if (pendingClarification is not null && interpretation.FollowUpAction == SparkyFollowUpAction.Clarify)
+        {
+            int clarificationLanguageId = bundle.Languages.Any(language => language.LanguageId == interpretation.LanguageId)
+                ? interpretation.LanguageId
+                : bundle.Languages.FirstOrDefault(language => language.LanguageId == 0)?.LanguageId ?? 0;
+            var clarificationLanguage = bundle.Languages.FirstOrDefault(language => language.LanguageId == clarificationLanguageId)
+                ?? bundle.Languages[0];
+            return await ClarifyAsync(
+                question,
+                clarificationLanguageId,
+                clarificationLanguage.DisplayName,
+                new SparkyClarificationEvidence(
+                    "The player has not selected one of the exact choices already offered.",
+                    null,
+                    pendingClarification.CandidateNames,
+                    []),
+                "ambiguous",
+                SparkyResponseTemplateKey.AmbiguousItem,
+                contextItem,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        if (pendingClarification is not null && interpretation.SelectedCandidate is { } selectedCandidate)
+        {
+            string requestedType = pendingClarification.RequestedAnswerType ?? interpretation.RequestedAnswerType ?? "General";
+            if (requestedType != "Compatibility")
+            {
+                contextItem = selectedCandidate;
+            }
+            interpretation = interpretation with
+            {
+                EnglishSearchQuery = $"{pendingClarification.OriginalQuestion} {selectedCandidate} {requestedType}",
+                MentionedEntities = (interpretation.MentionedEntities ?? [])
+                    .Append(selectedCandidate)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(8)
+                    .ToArray(),
+                Scope = SparkyConversationScope.Game
+            };
+            if (requestedType is "Stats" or "Recipe" or "FullRecipe" or "Ammo")
+            {
+                interpretation = interpretation with { Intent = SparkyIntent.StructuredItem };
+            }
+        }
+
         int languageId = interpretation.LanguageId;
         var language = bundle.Languages.FirstOrDefault(candidate => candidate.LanguageId == languageId)
             ?? bundle.Languages.First(candidate => candidate.LanguageId == 0);
         languageId = language.LanguageId;
+
+        Task<SparkyLocalizedAnswer> ComposeAsync(
+            object? evidence,
+            SparkyAnswerOutcome outcome = SparkyAnswerOutcome.FactualAnswer,
+            IReadOnlyList<string>? requiredExactStrings = null,
+            string? fallback = null) => ComposeWithFallbackAsync(
+                question,
+                languageId,
+                language.DisplayName,
+                evidence,
+                outcome,
+                contextTurns,
+                contextSummary,
+                pendingClarification,
+                callerRank,
+                requiredExactStrings,
+                fallback ?? SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.UnsupportedEvidence),
+                cancellationToken);
+
+        if (interpretation.Scope is SparkyConversationScope.OutOfScope or SparkyConversationScope.Ambiguous)
+        {
+            bool outOfScope = interpretation.Scope == SparkyConversationScope.OutOfScope;
+            var response = await ComposeAsync(
+                new
+                {
+                    reason = outOfScope
+                        ? "The request is outside Perpetuum game assistance. Do not answer it using general knowledge."
+                        : "The request is ambiguous and cannot be safely resolved from the current turn or its dialogue context."
+                },
+                outOfScope ? SparkyAnswerOutcome.Refusal : SparkyAnswerOutcome.Clarification,
+                fallback: SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.UnsupportedEvidence)).ConfigureAwait(false);
+            return new SparkyAnswerResult("answered", response.Answer, null, response.LanguageId, FinishStatus: response.FinishStatus);
+        }
+
+        if (interpretation.Comparison is { IsComparison: true } comparisonIntent)
+        {
+            SparkyComparisonSubjectResolution subjectResolution = SparkyComparisonSubjectResolver.Resolve(
+                comparisonIntent,
+                question,
+                interpretation.EnglishSearchQuery,
+                contextTurns ?? [],
+                bundle,
+                languageId);
+            string? comparisonDomain = subjectResolution.Domain ??
+                (subjectResolution.Subjects.Select(subject => subject.Domain).Distinct(StringComparer.Ordinal).Count() == 1
+                    ? subjectResolution.Subjects.FirstOrDefault()?.Domain
+                    : null);
+            var comparisonDiagnosticsSubjects = subjectResolution.Subjects
+                .Select(subject => new SparkyComparisonDiagnosticSubject(subject.DisplayName, subject.ReferenceSource))
+                .ToArray();
+
+            if (subjectResolution.Status != "resolved" || subjectResolution.Domain is null || subjectResolution.Subjects.Count != 2)
+            {
+                string reason = subjectResolution.Status switch
+                {
+                    "ambiguous" => "More than two plausible recent entities could be compared.",
+                    "cross_domain" => "The requested subjects belong to different structured game domains.",
+                    "insufficient_subjects" => "Only one supported comparison subject could be resolved.",
+                    _ => "No supported comparison subjects could be resolved from the current turn or dialogue context."
+                };
+                SparkyAnswerResult clarification = await ClarifyAsync(
+                    question,
+                    languageId,
+                    language.DisplayName,
+                    new SparkyClarificationEvidence(reason, comparisonIntent.MetricPhrase,
+                        subjectResolution.CandidateNames, []),
+                    subjectResolution.Status,
+                    subjectResolution.CandidateNames.Count > 0
+                        ? SparkyResponseTemplateKey.AmbiguousItem
+                        : SparkyResponseTemplateKey.MissingTerm,
+                    null,
+                    cancellationToken).ConfigureAwait(false);
+                return clarification with
+                {
+                    EffectiveIntent = comparisonDomain == "Robot" ? SparkyIntent.StructuredRobot.ToString() : null,
+                    EffectiveFocus = comparisonDomain == "Robot" ? SparkyRobotQuestionFocus.CompareStats.ToString() : null,
+                    ResolverCategory = "comparison_subjects",
+                    ResolverOutcome = subjectResolution.Status,
+                    ComparisonSubjectCount = subjectResolution.Subjects.Count,
+                    ComparisonAttributeCategory = CategorizeComparisonMetric(comparisonIntent.MetricPhrase),
+                    ComparisonResultCategory = subjectResolution.Status,
+                    ComparisonDiagnostics = new SparkyComparisonDiagnostics(
+                        comparisonDomain, comparisonDiagnosticsSubjects, comparisonIntent.MetricPhrase,
+                        subjectResolution.Status, [])
+                };
+            }
+
+            var comparisonRequest = new SparkyComparisonRequest(
+                subjectResolution.Domain,
+                subjectResolution.Subjects[0].DefinitionName,
+                subjectResolution.Subjects[1].DefinitionName,
+                comparisonIntent.MetricPhrase,
+                comparisonIntent.Direction,
+                comparisonIntent.CompareAllSharedFields);
+            SparkyComparisonResolution comparisonResolution = SparkyComparisonCoordinator.Resolve(
+                comparisonRequest,
+                bundle,
+                languageId,
+                [new SparkyItemComparisonResolver(), new SparkyRobotComparisonResolver()]);
+            SparkyComparisonDiagnostics diagnostics = new(
+                subjectResolution.Domain,
+                comparisonDiagnosticsSubjects,
+                comparisonIntent.MetricPhrase,
+                comparisonResolution.DiagnosticCategory,
+                comparisonResolution.Facts);
+
+            if (comparisonResolution.Status != "resolved")
+            {
+                string reason = comparisonResolution.Status switch
+                {
+                    "needs_criterion" => "The player asks which subject is better but has not named a measurable criterion.",
+                    "ambiguous_attribute" => "The requested attribute matches more than one structured field.",
+                    _ => "The requested attribute or one of its values is unavailable in local records."
+                };
+                string fallback = comparisonResolution.Status == "needs_criterion"
+                    ? SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.UnsupportedEvidence)
+                    : SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.MissingTerm);
+                SparkyLocalizedAnswer clarification = await ComposeAsync(
+                    new { reason, subjects = comparisonResolution.LocalizedSubjectNames, requestedMetric = comparisonIntent.MetricPhrase },
+                    SparkyAnswerOutcome.Clarification,
+                    requiredExactStrings: comparisonResolution.LocalizedSubjectNames,
+                    fallback: fallback).ConfigureAwait(false);
+                return new SparkyAnswerResult(
+                    comparisonResolution.Status,
+                    clarification.Answer,
+                    null,
+                    clarification.LanguageId,
+                    FinishStatus: clarification.FinishStatus,
+                    EffectiveIntent: subjectResolution.Domain == "Robot" ? SparkyIntent.StructuredRobot.ToString() : SparkyIntent.StructuredItem.ToString(),
+                    EffectiveFocus: subjectResolution.Domain == "Robot" ? SparkyRobotQuestionFocus.CompareStats.ToString() : null,
+                    ResolverCategory: "comparison_facts",
+                    ResolverOutcome: comparisonResolution.Status,
+                    ComparisonSubjectCount: 2,
+                    ComparisonAttributeCategory: CategorizeComparisonMetric(comparisonIntent.MetricPhrase),
+                    ComparisonResultCategory: comparisonResolution.DiagnosticCategory,
+                    ComparisonDiagnostics: diagnostics);
+            }
+
+            IReadOnlyList<string> requiredComparisonStrings = GetRequiredComparisonStrings(comparisonResolution);
+            string comparisonFallback = FormatComparisonFallback(comparisonResolution);
+            SparkyLocalizedAnswer comparisonAnswer = await ComposeAsync(
+                new
+                {
+                    comparisonType = comparisonIntent.CompareAllSharedFields ? "all shared numeric fields" : "one structured field",
+                    domain = subjectResolution.Domain,
+                    subjects = comparisonResolution.LocalizedSubjectNames,
+                    requestedAttribute = comparisonIntent.MetricPhrase,
+                    comparisons = comparisonResolution.Facts,
+                    calculatedDifference = comparisonResolution.Difference,
+                    leadingSubject = comparisonResolution.LeadingSubjectName
+                },
+                requiredExactStrings: requiredComparisonStrings,
+                fallback: comparisonFallback).ConfigureAwait(false);
+            return new SparkyAnswerResult(
+                "answered",
+                comparisonAnswer.Answer,
+                null,
+                comparisonAnswer.LanguageId,
+                EnglishSearchQuery: interpretation.EnglishSearchQuery,
+                SelectedSourceIds: [],
+                FinishStatus: comparisonAnswer.FinishStatus,
+                EffectiveIntent: subjectResolution.Domain == "Robot" ? SparkyIntent.StructuredRobot.ToString() : SparkyIntent.StructuredItem.ToString(),
+                EffectiveFocus: subjectResolution.Domain == "Robot" ? SparkyRobotQuestionFocus.CompareStats.ToString() : null,
+                ResolverCategory: "comparison_facts",
+                ResolverOutcome: "resolved",
+                ComparisonSubjectCount: 2,
+                ComparisonAttributeCategory: CategorizeComparisonMetric(comparisonIntent.MetricPhrase),
+                ComparisonResultCategory: comparisonResolution.DiagnosticCategory,
+                ComparisonDiagnostics: diagnostics);
+        }
+
+        interpretation = SparkyRobotIntentResolver.CorrectStructuredItemQuestion(question, interpretation, bundle);
 
         bool hasMentionedEntities = interpretation.MentionedEntities is { Count: > 0 };
         if (interpretation.Intent == SparkyIntent.Unsupported && !hasMentionedEntities)
@@ -85,8 +369,9 @@ internal sealed class SparkyAnswerRouter
         {
             string? catalogAnswer = SparkyRobotAnswerFormatter.FormatLaserCatalog(
                 bundle, languageId, options.MaxAnswerCharacters);
-            return catalogAnswer is null
-                ? await ClarifyAsync(
+            if (catalogAnswer is null)
+            {
+                return await ClarifyAsync(
                     question,
                     languageId,
                     language.DisplayName,
@@ -94,8 +379,22 @@ internal sealed class SparkyAnswerRouter
                     "not_found",
                     SparkyResponseTemplateKey.MissingTerm,
                     null,
-                    cancellationToken).ConfigureAwait(false)
-                : new SparkyAnswerResult("answered", catalogAnswer, null, languageId);
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            var laserNames = bundle.RobotModules
+                .Where(module => module.IsLaser == true && module.LocalizedViews.TryGetValue(languageId, out var view) &&
+                                 !string.IsNullOrWhiteSpace(view.DisplayName))
+                .Select(module => module.LocalizedViews[languageId].DisplayName!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            var catalogGeneration = await ComposeAsync(
+                new { catalogKind = "translated laser modules", moduleNames = laserNames },
+                requiredExactStrings: laserNames,
+                fallback: catalogAnswer).ConfigureAwait(false);
+            return new SparkyAnswerResult("answered", catalogGeneration.Answer, null, catalogGeneration.LanguageId,
+                FinishStatus: catalogGeneration.FinishStatus);
         }
 
         if (interpretation.Intent == SparkyIntent.SmallTalk && !hasMentionedEntities)
@@ -104,18 +403,10 @@ internal sealed class SparkyAnswerRouter
             if (PersonalCheckInPattern.IsMatch(question) ||
                 interpretation.SmallTalkKind == SparkySmallTalkKind.Banter && !isPlainGreeting)
             {
-                var banter = await LocalModelAnswerer.AnswerBanterAsync(
-                    options.ModelBaseUrl,
-                    options.ModelId,
-                    question,
-                    languageId,
-                    language.DisplayName,
-                    options.MaxAnswerCharacters,
-                    options.MaxCompletionTokens,
-                    options.InferenceTimeout,
-                    apiToken: options.ModelApiToken,
-                    cancellationToken: cancellationToken,
-                    personaStyle: personaStyle).ConfigureAwait(false);
+                var banter = await ComposeAsync(
+                    new { kind = "small talk", category = interpretation.SmallTalkKind?.ToString() },
+                    SparkyAnswerOutcome.SmallTalk,
+                    fallback: SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.Greeting)).ConfigureAwait(false);
                 return new SparkyAnswerResult("answered", banter.Answer, null, banter.LanguageId, FinishStatus: banter.FinishStatus);
             }
 
@@ -128,14 +419,26 @@ internal sealed class SparkyAnswerRouter
                 SparkySmallTalkKind.Thanks => SparkyResponseTemplateKey.Thanks,
                 _ => SparkyResponseTemplateKey.Greeting
             };
-            return Template("answered", languageId, templateKey);
+            var smallTalk = await ComposeAsync(
+                new { kind = "small talk", category = templateKey.ToString() },
+                SparkyAnswerOutcome.SmallTalk,
+                fallback: SparkyResponseTemplates.Get(languageId, templateKey)).ConfigureAwait(false);
+            return new SparkyAnswerResult("answered", smallTalk.Answer, null, smallTalk.LanguageId, FinishStatus: smallTalk.FinishStatus);
         }
 
         if (interpretation.Intent == SparkyIntent.StructuredRobot)
         {
             if (interpretation.RobotFocus is not { } robotFocus)
             {
-                return Template("answered", languageId, SparkyResponseTemplateKey.UnsupportedEvidence);
+                return await ClarifyAsync(
+                    question,
+                    languageId,
+                    language.DisplayName,
+                    new SparkyClarificationEvidence("The robot question could not be assigned a supported focus.", null, [], []),
+                    "answered",
+                    SparkyResponseTemplateKey.UnsupportedEvidence,
+                    null,
+                    cancellationToken).ConfigureAwait(false);
             }
 
             SparkyRobotLookupResult robotLookup = SparkyRobotLookup.Resolve(
@@ -160,11 +463,15 @@ internal sealed class SparkyAnswerRouter
 
             if (robotLookup.Status == "module_not_found")
             {
-                string answer = SparkyRobotAnswerFormatter.FormatUnknownModuleCandidates(
+                return await ClarifyAsync(
+                    question,
                     languageId,
-                    robotLookup.Candidates,
-                    options.MaxAnswerCharacters);
-                return new SparkyAnswerResult("not_found", answer, null, languageId, robotLookup.Candidates);
+                    language.DisplayName,
+                    new SparkyClarificationEvidence("The requested module name did not exactly match a translated module; these are nearby catalog candidates.", null, robotLookup.Candidates, []),
+                    "not_found",
+                    SparkyResponseTemplateKey.MissingTerm,
+                    null,
+                    cancellationToken).ConfigureAwait(false);
             }
 
             if (robotLookup.Status != "found" || robotLookup.Facts is null)
@@ -180,32 +487,19 @@ internal sealed class SparkyAnswerRouter
                     cancellationToken).ConfigureAwait(false);
             }
 
-            var robotAnswer = await LocalModelAnswerer.AnswerGroundedAsync(
-                options.ModelBaseUrl,
-                options.ModelId,
-                question,
-                languageId,
-                language.DisplayName,
+            IReadOnlyList<string> robotRequirements = GetRequiredRobotStrings(robotLookup.Facts);
+            var robotAnswer = await ComposeAsync(
                 robotLookup.Facts,
-                options.MaxAnswerCharacters,
-                options.MaxCompletionTokens,
-                options.InferenceTimeout,
-                apiToken: options.ModelApiToken,
-                cancellationToken: cancellationToken,
-                personaStyle: personaStyle).ConfigureAwait(false);
-            string robotText = robotFocus == SparkyRobotQuestionFocus.ModuleCompatibility
-                ? SparkyRobotAnswerFormatter.AppendCompatibilityScope(
-                    robotAnswer.Answer,
-                    robotAnswer.LanguageId,
-                    options.MaxAnswerCharacters)
-                : robotAnswer.Answer;
+                requiredExactStrings: robotRequirements,
+                fallback: SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.UnsupportedEvidence)).ConfigureAwait(false);
             return new SparkyAnswerResult(
                 "answered",
-                robotText,
+                robotAnswer.Answer,
                 robotLookup.Facts.RobotName,
                 robotAnswer.LanguageId,
                 EnglishSearchQuery: interpretation.EnglishSearchQuery,
-                SelectedSourceIds: []);
+                SelectedSourceIds: [],
+                FinishStatus: robotAnswer.FinishStatus);
         }
 
         ItemStatsLookupAnswer? item = null;
@@ -286,6 +580,7 @@ internal sealed class SparkyAnswerRouter
 
         if (interpretation.Intent == SparkyIntent.StructuredItem && item is not null)
         {
+            string fallbackAnswer = SparkyResponseTemplates.Get(languageId, SparkyResponseTemplateKey.UnsupportedEvidence);
             if (SparkyRecipeAnswerFormatter.TryFormat(
                     question,
                     interpretation.EnglishSearchQuery,
@@ -293,22 +588,16 @@ internal sealed class SparkyAnswerRouter
                     languageId,
                     out string recipeAnswer))
             {
-                return new SparkyAnswerResult("answered", recipeAnswer, item.ContextDisplayName, languageId);
+                fallbackAnswer = recipeAnswer;
             }
 
-            var answer = await LocalModelAnswerer.AnswerLocalizedAsync(
-                options.ModelBaseUrl,
-                options.ModelId,
-                question,
-                item,
-                languageId,
-                language.DisplayName,
-                options.MaxAnswerCharacters,
-                options.MaxCompletionTokens,
-                options.InferenceTimeout,
-                apiToken: options.ModelApiToken,
-                cancellationToken: cancellationToken,
-                personaStyle: personaStyle).ConfigureAwait(false);
+            var answer = await ComposeAsync(
+                LocalModelAnswerer.ToModelItemFacts(item),
+                requiredExactStrings: SparkyRecipeAnswerFormatter.GetRequiredExactStrings(
+                    question,
+                    interpretation.EnglishSearchQuery,
+                    item),
+                fallback: fallbackAnswer).ConfigureAwait(false);
             return new SparkyAnswerResult("answered", answer.Answer, item.ContextDisplayName, answer.LanguageId, FinishStatus: answer.FinishStatus);
         }
 
@@ -415,26 +704,15 @@ internal sealed class SparkyAnswerRouter
                 entityCoverage
             };
 
-        var groundedAnswer = await LocalModelAnswerer.AnswerGroundedAsync(
-            options.ModelBaseUrl,
-            options.ModelId,
-            question,
-            languageId,
-            language.DisplayName,
-            evidence,
-            options.MaxAnswerCharacters,
-            options.MaxCompletionTokens,
-            options.InferenceTimeout,
-            apiToken: options.ModelApiToken,
-            cancellationToken: cancellationToken,
-            personaStyle: personaStyle).ConfigureAwait(false);
+        var groundedAnswer = await ComposeAsync(evidence).ConfigureAwait(false);
         return new SparkyAnswerResult(
             "answered",
             groundedAnswer.Answer,
             item?.ContextDisplayName,
             groundedAnswer.LanguageId,
             EnglishSearchQuery: searchQuery,
-            SelectedSourceIds: selectedSourceIds);
+            SelectedSourceIds: selectedSourceIds,
+            FinishStatus: groundedAnswer.FinishStatus);
     }
 
     private static SparkyEntityCoverage GetEntityCoverage(
@@ -541,16 +819,7 @@ internal sealed class SparkyAnswerRouter
         return false;
     }
 
-    private static SparkyAnswerResult Template(
-        string status,
-        int languageId,
-        SparkyResponseTemplateKey key,
-        string? item = null)
-    {
-        return new SparkyAnswerResult(status, SparkyResponseTemplates.Get(languageId, key), item, languageId);
-    }
-
-    private async Task<SparkyAnswerResult> ClarifyAsync(
+    private async Task<SparkyAnswerResult> ClarifyCoreAsync(
         string question,
         int languageId,
         string languageName,
@@ -558,64 +827,286 @@ internal sealed class SparkyAnswerRouter
         string status,
         SparkyResponseTemplateKey fallbackKey,
         string? item,
+        CancellationToken cancellationToken,
+        IReadOnlyList<SparkyConversationTurn>? contextTurns,
+        string? contextSummary,
+        SparkyPendingClarification? pendingClarification,
+        SparkyCallerRank callerRank)
+    {
+        string[] candidates = evidence.CandidateNames.Take(SparkyApiRequest.MaximumCandidates).ToArray();
+        string fallback = evidence.CandidateNames.Count > 0 && evidence.Reason.Contains("module", StringComparison.OrdinalIgnoreCase)
+            ? SparkyRobotAnswerFormatter.FormatUnknownModuleCandidates(languageId, candidates, options.MaxAnswerCharacters)
+            : GetClarificationFallback(languageId, fallbackKey, evidence with { CandidateNames = candidates });
+        var answer = await ComposeWithFallbackAsync(
+            question,
+            languageId,
+            languageName,
+            evidence with { CandidateNames = candidates },
+            SparkyAnswerOutcome.Clarification,
+            contextTurns,
+            contextSummary,
+            pendingClarification,
+            callerRank,
+            candidates,
+            fallback,
+            cancellationToken).ConfigureAwait(false);
+        return new SparkyAnswerResult(
+            status,
+            answer.Answer,
+            item,
+            answer.LanguageId,
+            Candidates: candidates.Length > 0 ? candidates : null,
+            FinishStatus: answer.FinishStatus);
+    }
+
+    private static SparkyQuestionInterpretation GetEffectiveInterpretation(
+        string question,
+        SparkyQuestionInterpretation interpretation,
+        SparkyKnowledgeBundle bundle,
+        IReadOnlyList<SparkyConversationTurn>? contextTurns,
+        SparkyPendingClarification? pendingClarification)
+    {
+        SparkyQuestionInterpretation prepared = interpretation;
+        if (pendingClarification is not null && prepared.SelectedCandidate is { } selectedCandidate)
+        {
+            string requestedType = pendingClarification.RequestedAnswerType ?? prepared.RequestedAnswerType ?? "General";
+            prepared = prepared with
+            {
+                EnglishSearchQuery = $"{pendingClarification.OriginalQuestion} {selectedCandidate} {requestedType}",
+                MentionedEntities = (prepared.MentionedEntities ?? [])
+                    .Append(selectedCandidate)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(8)
+                    .ToArray(),
+                Scope = SparkyConversationScope.Game,
+                Intent = requestedType is "Stats" or "Recipe" or "FullRecipe" or "Ammo"
+                    ? SparkyIntent.StructuredItem
+                    : prepared.Intent
+            };
+        }
+
+        if (prepared.Comparison is { IsComparison: true } comparison)
+        {
+            SparkyComparisonSubjectResolution resolution = SparkyComparisonSubjectResolver.Resolve(
+                comparison, question, prepared.EnglishSearchQuery, contextTurns ?? [], bundle, prepared.LanguageId);
+            string? domain = resolution.Domain ??
+                (resolution.Subjects.Select(subject => subject.Domain).Distinct(StringComparer.Ordinal).Count() == 1
+                    ? resolution.Subjects.FirstOrDefault()?.Domain
+                    : null);
+            return domain switch
+            {
+                "Robot" => prepared with { Intent = SparkyIntent.StructuredRobot, RobotFocus = SparkyRobotQuestionFocus.CompareStats },
+                "Item" => prepared with { Intent = SparkyIntent.StructuredItem, RobotFocus = null },
+                _ when prepared.Intent == SparkyIntent.StructuredRobot => prepared with { RobotFocus = SparkyRobotQuestionFocus.CompareStats },
+                _ => prepared
+            };
+        }
+
+        return SparkyRobotIntentResolver.CorrectStructuredItemQuestion(question, prepared, bundle);
+    }
+
+    private static IReadOnlyList<string> GetRequiredComparisonStrings(SparkyComparisonResolution resolution)
+    {
+        var required = new List<string>();
+        foreach (SparkyComparisonFact fact in resolution.Facts)
+        {
+            Add(fact.AttributeLabel);
+            foreach (string value in fact.Values)
+            {
+                Add(string.IsNullOrWhiteSpace(fact.Unit) ? value : $"{value} {fact.Unit}");
+            }
+
+            Add(string.IsNullOrWhiteSpace(fact.Unit)
+                ? fact.Difference
+                : $"{fact.Difference} {fact.Unit}");
+            Add(fact.LeadingSubjectName);
+        }
+
+        foreach (string subject in resolution.LocalizedSubjectNames)
+            Add(subject);
+        return required.Take(72).ToArray();
+
+        void Add(string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value) && !required.Contains(value, StringComparer.Ordinal))
+                required.Add(value);
+        }
+    }
+
+    private static string FormatComparisonFallback(SparkyComparisonResolution resolution)
+    {
+        if (resolution.Facts.Count == 1)
+        {
+            SparkyComparisonFact fact = resolution.Facts[0];
+            string first = FormatComparisonValue(fact.Values[0], fact.Unit);
+            string second = FormatComparisonValue(fact.Values[1], fact.Unit);
+            string difference = FormatComparisonValue(fact.Difference, fact.Unit);
+            return $"Records show {resolution.LocalizedSubjectNames[0]} at {first} and {resolution.LocalizedSubjectNames[1]} at {second} for {fact.AttributeLabel}; the difference is {difference}.";
+        }
+
+        return string.Join("\n", resolution.Facts.Take(12).Select(fact =>
+            $"{fact.AttributeLabel}: {resolution.LocalizedSubjectNames[0]} {FormatComparisonValue(fact.Values[0], fact.Unit)}; " +
+            $"{resolution.LocalizedSubjectNames[1]} {FormatComparisonValue(fact.Values[1], fact.Unit)} (difference {FormatComparisonValue(fact.Difference, fact.Unit)})"));
+    }
+
+    private static string FormatComparisonValue(string value, string? unit) =>
+        string.IsNullOrWhiteSpace(unit) ? value : $"{value} {unit}";
+
+    private static string CategorizeComparisonMetric(string? phrase)
+    {
+        if (string.IsNullOrWhiteSpace(phrase))
+            return "all_shared_fields_or_unspecified";
+
+        string normalized = string.Join(' ', Regex.Matches(phrase.ToLowerInvariant(), @"[\p{L}\p{N}]+")
+            .Select(match => match.Value));
+        if (normalized.Contains("speed", StringComparison.Ordinal) ||
+            normalized is "fast" or "faster" or "speedier")
+        {
+            return "speed";
+        }
+
+        if (normalized.Contains("cpu", StringComparison.Ordinal)) return "cpu_usage";
+        if (normalized.Contains("armor", StringComparison.Ordinal)) return "armor";
+        if (normalized.Contains("range", StringComparison.Ordinal)) return "range";
+        return "named_attribute";
+    }
+
+    private async Task<SparkyLocalizedAnswer> ComposeWithFallbackAsync(
+        string question,
+        int languageId,
+        string languageName,
+        object? evidence,
+        SparkyAnswerOutcome outcome,
+        IReadOnlyList<SparkyConversationTurn>? contextTurns,
+        string? contextSummary,
+        SparkyPendingClarification? pendingClarification,
+        SparkyCallerRank callerRank,
+        IReadOnlyList<string>? requiredExactStrings,
+        string fallback,
         CancellationToken cancellationToken)
     {
         try
         {
-            SparkyLocalizedAnswer answer = await LocalModelAnswerer.AnswerGroundedAsync(
+            return await LocalModelAnswerer.AnswerGroundedAsync(
                 options.ModelBaseUrl,
                 options.ModelId,
                 question,
                 languageId,
                 languageName,
-                evidence,
+                evidence ?? new { },
                 options.MaxAnswerCharacters,
                 options.MaxCompletionTokens,
                 options.InferenceTimeout,
                 apiToken: options.ModelApiToken,
                 cancellationToken: cancellationToken,
-                personaStyle: personaStyle).ConfigureAwait(false);
-            return new SparkyAnswerResult(
-                status,
-                answer.Answer,
-                item,
-                answer.LanguageId,
-                Candidates: evidence.CandidateNames.Count > 0 ? evidence.CandidateNames : null,
-                FinishStatus: answer.FinishStatus);
+                personaStyle: personaStyle,
+                outcome: outcome,
+                contextTurns: contextTurns,
+                contextSummary: contextSummary,
+                pendingClarification: pendingClarification,
+                callerRank: callerRank,
+                requiredExactStrings: requiredExactStrings,
+                modelClient: modelClient,
+                answerTemperature: options.AnswerTemperature,
+                answerTopP: options.AnswerTopP).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return ClarificationFallback(status, languageId, fallbackKey, evidence, item);
+            return new SparkyLocalizedAnswer(languageId, fallback, "fallback");
         }
         catch (HttpRequestException)
         {
-            return ClarificationFallback(status, languageId, fallbackKey, evidence, item);
+            return new SparkyLocalizedAnswer(languageId, fallback, "fallback");
         }
         catch (InvalidDataException)
         {
-            return ClarificationFallback(status, languageId, fallbackKey, evidence, item);
+            return new SparkyLocalizedAnswer(languageId, fallback, "fallback");
         }
         catch (JsonException)
         {
-            return ClarificationFallback(status, languageId, fallbackKey, evidence, item);
+            return new SparkyLocalizedAnswer(languageId, fallback, "fallback");
         }
     }
 
-    private static SparkyAnswerResult ClarificationFallback(
-        string status,
+    private static string GetClarificationFallback(
         int languageId,
         SparkyResponseTemplateKey fallbackKey,
-        SparkyClarificationEvidence evidence,
-        string? item)
-    {
-        string fallback = fallbackKey == SparkyResponseTemplateKey.AmbiguousItem
-            ? SparkyResponseTemplates.Format(languageId, fallbackKey, string.Join(", ", evidence.CandidateNames))
+        SparkyClarificationEvidence evidence) =>
+        fallbackKey == SparkyResponseTemplateKey.AmbiguousItem
+            ? SparkyResponseTemplates.Format(languageId, fallbackKey, string.Join(", ", evidence.CandidateNames.Take(SparkyApiRequest.MaximumCandidates)))
             : SparkyResponseTemplates.Get(languageId, fallbackKey);
-        return new SparkyAnswerResult(
-            status,
-            fallback,
-            item,
-            languageId,
-            Candidates: evidence.CandidateNames.Count > 0 ? evidence.CandidateNames : null);
+
+    private static IReadOnlyList<string> GetRequiredRobotStrings(SparkyRobotAnswerFacts facts)
+    {
+        var required = new List<string> { facts.RobotName };
+        static void Add(List<string> values, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value) && !values.Contains(value, StringComparer.Ordinal))
+            {
+                values.Add(value);
+            }
+        }
+
+        static void AddStat(List<string> values, string label, string value, string? unit)
+        {
+            Add(values, $"{label}: {value} {unit}".Trim());
+        }
+
+        switch (facts.Focus)
+        {
+            case SparkyRobotQuestionFocus.Stats:
+                foreach (var stat in facts.AssembledStats)
+                {
+                    AddStat(required, stat.Label, stat.Value, stat.Unit);
+                }
+                break;
+            case SparkyRobotQuestionFocus.Components:
+                foreach (var component in facts.Components)
+                {
+                    Add(required, component.DisplayName);
+                    Add(required, component.SlotCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
+                break;
+            case SparkyRobotQuestionFocus.ChassisBonus:
+                foreach (var bonus in facts.ChassisBonuses)
+                {
+                    Add(required, bonus.ExtensionName);
+                    Add(required, bonus.PropertyName);
+                    Add(required, bonus.Value);
+                    Add(required, bonus.Unit);
+                }
+                break;
+            case SparkyRobotQuestionFocus.ModuleCompatibility when facts.Module is { } module:
+                Add(required, module.DisplayName);
+                foreach (int slot in facts.Components.SelectMany(component => component.EligibleSlots).Distinct())
+                {
+                    Add(required, slot.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
+                Add(required, module.CompatibilityScope);
+                break;
+            case SparkyRobotQuestionFocus.Fastest:
+                foreach (var speed in facts.SpeedRanking ?? [])
+                {
+                    Add(required, speed.RobotName);
+                    Add(required, speed.Speed);
+                    Add(required, speed.Unit);
+                }
+                break;
+            case SparkyRobotQuestionFocus.CompareStats:
+                foreach (var comparison in facts.Comparisons ?? [])
+                {
+                    Add(required, comparison.FirstRobotName);
+                    Add(required, comparison.SecondRobotName);
+                    foreach (var stat in comparison.Stats)
+                    {
+                        AddStat(required, stat.Label, stat.FirstValue, stat.Unit);
+                        Add(required, stat.SecondValue);
+                        Add(required, stat.Difference);
+                    }
+                }
+                break;
+        }
+
+        return required;
     }
 }

@@ -62,6 +62,8 @@
     $('trace-detail').replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Select a trace to inspect its timeline.' }));
     $('capture-indicator').hidden = true;
     $('review-tools').hidden = true;
+    $('evaluation-turn-list').replaceChildren();
+    $('evaluation-note').value = '';
     $('tunnel-list').replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Connect to Sparky to see tunnel status.' }));
     $('evaluation-list').replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Load reviewed cases for the selected profile.' }));
     $('replay-results').replaceChildren();
@@ -72,11 +74,14 @@
     $('profile-route-aliases').value = '[]';
     $('profile-persona').value = '';
     $('profile-model-id').value = '';
+    $('profile-history-turns').value = '';
+    $('profile-history-characters').value = '';
+    $('profile-answer-temperature').value = '';
+    $('profile-answer-top-p').value = '';
     $('profile-summary').textContent = 'Connect to Sparky to inspect Dev and Live profiles.';
     $('profile-operation-result').textContent = '';
     $('review-result').textContent = '';
     $('feedback-note').value = '';
-    $('expected-properties').value = '';
     $('capture-indicator').hidden = true;
     for (const id of ['service-status', 'model-status', 'bundle-status', 'storage-status', 'dev-capture', 'live-capture']) $(id).textContent = '—';
     if (message) setMessage(message, true);
@@ -182,6 +187,8 @@
     try {
       const result = await api(`/admin/api/traces/${encodeURIComponent(requestId)}?environment=${encodeURIComponent(environment)}`);
       state.selectedTrace = { requestId, environment, ...result };
+      const capturedQuestion = result.trace.events.find(event => event.question)?.question ?? '';
+      resetEvaluationTurns(capturedQuestion);
       $('export-trace').disabled = false;
       $('review-tools').hidden = false;
       document.querySelectorAll('.trace-row').forEach(row => row.classList.toggle('selected', row === button));
@@ -210,9 +217,50 @@
         appendText(card, 'Question', event.question);
         appendText(card, 'Answer', event.answer);
         appendText(card, 'Query', event.searchQuery);
-        appendText(card, 'Intent', event.intent);
-        appendText(card, 'Focus', event.focus);
+        appendText(card, 'Parsed route', [event.intent, event.focus].filter(Boolean).join(' · '));
+        appendText(card, 'Effective route', [event.effectiveIntent, event.effectiveFocus].filter(Boolean).join(' · '));
+        appendText(card, 'Resolver', [event.resolverCategory, event.resolverOutcome].filter(Boolean).join(' · '));
+        appendText(card, 'Context used', event.contextMessageCount == null && event.contextCharacterCount == null
+          ? null
+          : `${event.contextMessageCount ?? 0}/${event.conversationHistoryTurns ?? '?'} messages · ${event.contextCharacterCount ?? 0}/${event.conversationHistoryCharacters ?? '?'} characters`);
+        appendText(card, 'Context flags', [
+          event.hasContextSummary ? 'summary' : null,
+          event.hasPendingClarification ? 'pending clarification' : null,
+          event.contextBudgetTrimmed ? 'trimmed to budget' : null
+        ].filter(Boolean).join(' · '));
+        appendText(card, 'Comparison route', [event.comparisonSubjectCount == null ? null : `${event.comparisonSubjectCount} subjects`, event.comparisonAttributeCategory, event.comparisonResultCategory].filter(Boolean).join(' · '));
         appendText(card, 'Selected sources', event.selectedSourceIds?.join(', '));
+        if (event.contextTurns?.length) {
+          appendText(card, 'Context turns', event.contextTurns.map(turn => `${turn.role}: ${turn.content}`).join('\n'));
+        }
+        appendText(card, 'Context summary', event.contextSummary);
+        if (event.pendingClarification) {
+          appendText(card, 'Pending clarification', [
+            event.pendingClarification.originalQuestion,
+            event.pendingClarification.candidateNames?.join(', ')
+          ].filter(Boolean).join(' · '));
+        }
+        if (event.comparisonDiagnostics) {
+          const diagnostics = event.comparisonDiagnostics;
+          appendText(card, 'Comparison subjects', diagnostics.subjects?.map(subject => `${subject.displayName} (${subject.referenceSource})`).join(' vs '));
+          appendText(card, 'Comparison metric', diagnostics.metricPhrase);
+          appendText(card, 'Comparison outcome', diagnostics.resultCategory);
+          if (diagnostics.facts?.length) {
+            appendText(card, 'Verified comparison facts', diagnostics.facts.map(fact => {
+              const values = (fact.values ?? []).join(' vs ');
+              const unit = fact.unit ? ` ${fact.unit}` : '';
+              const difference = fact.difference == null ? '' : ` · difference ${fact.difference}${unit}`;
+              const leader = fact.leadingSubjectName ? ` · directional leader: ${fact.leadingSubjectName}` : '';
+              return `${fact.attributeLabel}: ${values}${unit}${difference}${leader}`;
+            }).join('\n'));
+          }
+        }
+        appendText(card, 'Model', event.modelId);
+        appendText(card, 'Profile revision', event.configRevision);
+        appendText(card, 'Knowledge bundle', event.bundleVersion);
+        if (event.answerTemperature != null || event.answerTopP != null) {
+          appendText(card, 'Answer tuning', `temperature ${event.answerTemperature} · top-p ${event.answerTopP} · history ${event.conversationHistoryTurns}/${event.conversationHistoryCharacters}`);
+        }
         appendText(card, 'Revision', event.configRevision);
         appendText(card, 'Bundle', event.bundleVersion);
         appendText(card, 'Elapsed', event.elapsedMilliseconds == null ? null : `${event.elapsedMilliseconds} ms`);
@@ -253,12 +301,16 @@
 
   function profileRequest() {
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       modelId: $('profile-model-id').value.trim(),
       maxAnswerCharacters: Number($('profile-answer-limit').value),
       maxCompletionTokens: Number($('profile-token-limit').value),
       inferenceTimeoutSeconds: Number($('profile-timeout').value),
       maxConcurrentRequests: Number($('profile-concurrency').value),
+      conversationHistoryTurns: Number($('profile-history-turns').value),
+      conversationHistoryCharacters: Number($('profile-history-characters').value),
+      answerTemperature: Number($('profile-answer-temperature').value),
+      answerTopP: Number($('profile-answer-top-p').value),
       captureContent: $('profile-capture').value === 'true',
       contentRetentionDays: Number($('profile-content-retention').value),
       metadataRetentionDays: Number($('profile-metadata-retention').value),
@@ -281,6 +333,10 @@
     $('profile-token-limit').value = configuration.maxCompletionTokens ?? '';
     $('profile-timeout').value = configuration.inferenceTimeoutSeconds ?? '';
     $('profile-concurrency').value = configuration.maxConcurrentRequests ?? '';
+    $('profile-history-turns').value = configuration.conversationHistoryTurns ?? 8;
+    $('profile-history-characters').value = configuration.conversationHistoryCharacters ?? 4000;
+    $('profile-answer-temperature').value = configuration.answerTemperature ?? 0.2;
+    $('profile-answer-top-p').value = configuration.answerTopP ?? 0.9;
     $('profile-capture').value = String(configuration.captureContent ?? false);
     $('profile-content-retention').value = configuration.contentRetentionDays ?? '';
     $('profile-metadata-retention').value = configuration.metadataRetentionDays ?? '';
@@ -305,6 +361,10 @@
     const configuration = details.draftConfiguration ?? details.activeConfiguration;
     $('profile-summary').textContent = `${summary.profile}: ${summary.enabled ? 'enabled' : 'disabled'} · active ${summary.activeRevisionId ?? 'none'} · bundle ${summary.bundleVersion ?? 'none'}${details.draftRevisionId ? ` · draft ${details.draftRevisionId}` : ''}`;
     fillProfile(configuration);
+    const describeTuning = value => value
+      ? `${value.conversationHistoryTurns ?? 8} history messages / ${value.conversationHistoryCharacters ?? 4000} chars · temperature ${value.answerTemperature ?? 0.2} · top-p ${value.answerTopP ?? 0.9}`
+      : 'not configured';
+    $('profile-effective-settings').textContent = `Active settings: ${describeTuning(details.activeConfiguration)} · Draft settings: ${details.draftConfiguration ? describeTuning(details.draftConfiguration) : 'none'}`;
     const revisions = $('revision-select');
     const revisionOptions = details.revisions.map(revision => {
       const option = new Option(`${revision.isActive ? 'ACTIVE' : revision.isDraft ? 'DRAFT' : 'saved'} · ${revision.revisionId} · ${new Date(revision.createdAtUtc).toLocaleString()}`, revision.revisionId);
@@ -491,7 +551,7 @@
       const question = document.createElement('strong');
       question.textContent = example.question;
       const meta = document.createElement('small');
-      meta.textContent = `${example.expectedIntent || 'intent not set'} · ${example.expectedProperties.join(', ') || 'no expected properties'} · ${new Date(example.createdAtUtc).toLocaleString()}`;
+      meta.textContent = `${example.turns?.length ?? 1} turn${(example.turns?.length ?? 1) === 1 ? '' : 's'} · ${example.expectedIntent || 'intent not set'} · ${example.expectedProperties.join(', ') || 'no expected properties'} · ${new Date(example.createdAtUtc).toLocaleString()}`;
       copy.append(question, meta);
       row.append(check, copy);
       return row;
@@ -539,36 +599,156 @@
       const card = document.createElement('article');
       card.className = 'replay-case';
       const question = document.createElement('strong');
-      question.textContent = result.question;
+      question.textContent = `${result.turns?.length ?? 1} turn${(result.turns?.length ?? 1) === 1 ? '' : 's'} · ${result.question}`;
       const expected = document.createElement('p');
       expected.className = 'muted';
       expected.textContent = `Reviewed expectation: ${result.expectedIntent || 'not specified'} · ${result.expectedProperties.join(', ') || 'no properties'}`;
-      const routeChanged = result.active.intent !== result.candidate.intent || result.active.status !== result.candidate.status;
-      const activeSources = [...(result.active.selectedSourceIds ?? [])].sort().join('|');
-      const candidateSources = [...(result.candidate.selectedSourceIds ?? [])].sort().join('|');
-      const changeSummary = document.createElement('p');
-      changeSummary.className = 'muted';
-      changeSummary.textContent = `Route: ${routeChanged ? 'changed' : 'same'} · selected sources: ${activeSources === candidateSources ? 'same' : 'changed'} · wording: ${result.active.answer === result.candidate.answer ? 'same' : 'changed'}`;
-      card.append(question, expected, changeSummary);
-      const columns = document.createElement('div');
-      columns.className = 'replay-columns';
-      for (const [label, output] of [['Active', result.active], ['Draft', result.candidate]]) {
-        const column = document.createElement('section');
-        column.className = 'replay-column';
-        const title = document.createElement('h4');
-        title.textContent = `${label} · ${output.status} · ${output.intent || 'intent unknown'}`;
-        const entities = document.createElement('p');
-        entities.textContent = `Entities: ${output.entities?.join(', ') || 'none'}`;
-        const sources = document.createElement('p');
-        sources.textContent = `Sources: ${output.selectedSourceIds?.join(', ') || 'none'}`;
-        const answer = document.createElement('p');
-        answer.textContent = output.answer || 'No answer text.';
-        column.append(title, entities, sources, answer);
-        columns.append(column);
-      }
-      card.append(columns);
+      card.append(question, expected);
+      const turns = result.turns?.length ? result.turns : [{
+        question: result.question,
+        expected: { expectedScope: null, expectedIntent: result.expectedIntent, expectedProperties: result.expectedProperties },
+        active: result.active,
+        candidate: result.candidate
+      }];
+      turns.forEach((turn, index) => {
+        const turnCard = document.createElement('section');
+        turnCard.className = 'replay-turn';
+        const turnHeading = document.createElement('h4');
+        turnHeading.textContent = `Turn ${index + 1}/${turns.length}: ${turn.question}`;
+        const expectation = turn.expected || {};
+        const expectationText = document.createElement('p');
+        expectationText.className = 'muted';
+        expectationText.textContent = `Expected: ${expectation.expectedScope || 'scope any'} · ${expectation.expectedIntent || 'intent any'} · ${expectation.expectedEntity || 'entity any'} · sources ${expectation.expectedSourceIds?.join(', ') || 'any'} · required ${expectation.requiredFacts?.join(', ') || 'none'} · forbidden ${expectation.forbiddenClaims?.join(', ') || 'none'} · properties ${expectation.expectedProperties?.join(', ') || 'none'}`;
+        const routeChanged = turn.active.intent !== turn.candidate.intent || turn.active.scope !== turn.candidate.scope || turn.active.status !== turn.candidate.status;
+        const activeSources = [...(turn.active.selectedSourceIds ?? [])].sort().join('|');
+        const candidateSources = [...(turn.candidate.selectedSourceIds ?? [])].sort().join('|');
+        const changeSummary = document.createElement('p');
+        changeSummary.className = 'muted';
+        changeSummary.textContent = `Active vs Draft: route ${routeChanged ? 'changed' : 'same'} · evidence ${activeSources === candidateSources ? 'same' : 'changed'} · resolved entity ${turn.active.structuredFactsSummary === turn.candidate.structuredFactsSummary ? 'same' : 'changed'} · wording ${turn.active.answer === turn.candidate.answer ? 'same' : 'changed'}`;
+        turnCard.append(turnHeading, expectationText, changeSummary);
+        const columns = document.createElement('div');
+        columns.className = 'replay-columns';
+        for (const [label, output] of [['Active', turn.active], ['Draft', turn.candidate]]) {
+          const column = document.createElement('section');
+          column.className = 'replay-column';
+          const title = document.createElement('h4');
+          title.textContent = `${label} · ${output.status} · ${output.scope || 'scope unknown'} / ${output.intent || 'intent unknown'}`;
+          const entities = document.createElement('p');
+          entities.textContent = `Entities: ${output.entities?.join(', ') || 'none'} · resolved: ${output.structuredFactsSummary || 'none'}`;
+          const query = document.createElement('p');
+          query.textContent = `Query: ${output.searchQuery || 'none'}`;
+          const sources = document.createElement('p');
+          sources.textContent = `Sources: ${output.selectedSourceIds?.join(', ') || 'none'}`;
+          const metadata = output.metadata;
+          const tuning = document.createElement('p');
+          tuning.className = 'muted';
+          tuning.textContent = metadata ? `Model ${metadata.modelId} · revision ${metadata.profileRevisionId} · bundle ${metadata.bundleVersion} · temp ${metadata.answerTemperature} · top-p ${metadata.answerTopP} · history ${metadata.conversationHistoryTurns}/${metadata.conversationHistoryCharacters}` : '';
+          const answer = document.createElement('p');
+          answer.textContent = output.answer || 'No answer text.';
+          column.append(title, entities, query, sources, tuning, answer);
+          columns.append(column);
+        }
+        turnCard.append(columns);
+        card.append(turnCard);
+      });
       container.append(card);
     }
+  }
+
+  const intents = ['', 'StructuredItem', 'StructuredRobot', 'StructuredModuleCatalog', 'MechanicsLore', 'Combined', 'SmallTalk', 'Unsupported'];
+  const scopes = ['', 'Game', 'SmallTalk', 'OutOfScope', 'Ambiguous'];
+  function makeField(labelText, field, value = '', multiline = false, placeholder = '') {
+    const label = document.createElement('label');
+    label.textContent = labelText;
+    const input = document.createElement(multiline ? 'textarea' : 'input');
+    input.dataset.field = field;
+    input.value = value ?? '';
+    if (multiline) input.rows = 2;
+    if (placeholder) input.placeholder = placeholder;
+    label.append(input);
+    return label;
+  }
+
+  function makeSelect(labelText, field, values, selected = '') {
+    const label = document.createElement('label');
+    label.textContent = labelText;
+    const select = document.createElement('select');
+    select.dataset.field = field;
+    for (const value of values) select.add(new Option(value || 'Not specified', value));
+    select.value = selected ?? '';
+    label.append(select);
+    return label;
+  }
+
+  function createEvaluationTurn(turn = {}) {
+    const row = document.createElement('fieldset');
+    row.className = 'evaluation-turn';
+    row.append(makeField('Player question', 'question', turn.question ?? '', true));
+    const expectations = document.createElement('div');
+    expectations.className = 'evaluation-turn-grid';
+    expectations.append(
+      makeSelect('Expected scope', 'expectedScope', scopes, turn.expectedScope),
+      makeSelect('Expected intent', 'expectedIntent', intents, turn.expectedIntent),
+      makeField('Resolved entity', 'expectedEntity', turn.expectedEntity ?? ''),
+      makeField('Source IDs (comma separated)', 'expectedSourceIds', (turn.expectedSourceIds ?? []).join(', ')),
+      makeField('Required facts (comma separated)', 'requiredFacts', (turn.requiredFacts ?? []).join(', ')),
+      makeField('Forbidden claims (comma separated)', 'forbiddenClaims', (turn.forbiddenClaims ?? []).join(', ')),
+      makeField('Other expected properties (comma separated)', 'expectedProperties', (turn.expectedProperties ?? []).join(', '))
+    );
+    row.append(expectations);
+    const controls = document.createElement('div');
+    controls.className = 'evaluation-turn-controls';
+    const moveUp = Object.assign(document.createElement('button'), { type: 'button', className: 'quiet-button', textContent: 'Move up' });
+    const moveDown = Object.assign(document.createElement('button'), { type: 'button', className: 'quiet-button', textContent: 'Move down' });
+    const remove = Object.assign(document.createElement('button'), { type: 'button', className: 'quiet-button', textContent: 'Remove turn' });
+    moveUp.addEventListener('click', () => {
+      const previous = row.previousElementSibling;
+      if (previous) row.parentElement.insertBefore(row, previous);
+    });
+    moveDown.addEventListener('click', () => {
+      const next = row.nextElementSibling;
+      if (next) row.parentElement.insertBefore(next, row);
+    });
+    remove.addEventListener('click', () => {
+      if (row.parentElement.children.length > 1) {
+        row.remove();
+        $('add-evaluation-turn').disabled = false;
+      }
+    });
+    controls.append(moveUp, moveDown, remove);
+    row.append(controls);
+    return row;
+  }
+
+  function addEvaluationTurn(turn = {}) {
+    const list = $('evaluation-turn-list');
+    if (list.children.length >= 12) return;
+    list.append(createEvaluationTurn(turn));
+    $('add-evaluation-turn').disabled = list.children.length >= 12;
+  }
+
+  function resetEvaluationTurns(question) {
+    $('evaluation-turn-list').replaceChildren();
+    addEvaluationTurn({ question });
+    $('add-evaluation-turn').disabled = false;
+    $('evaluation-note').value = '';
+  }
+
+  function readEvaluationTurns() {
+    return Array.from($('evaluation-turn-list').children).map(row => {
+      const get = field => row.querySelector(`[data-field="${field}"]`).value.trim();
+      const list = field => get(field).split(',').map(value => value.trim()).filter(Boolean);
+      return {
+        question: get('question'),
+        expectedScope: get('expectedScope') || null,
+        expectedIntent: get('expectedIntent') || null,
+        expectedEntity: get('expectedEntity') || null,
+        expectedSourceIds: list('expectedSourceIds'),
+        requiredFacts: list('requiredFacts'),
+        forbiddenClaims: list('forbiddenClaims'),
+        expectedProperties: list('expectedProperties')
+      };
+    });
   }
 
   async function sendFeedback(event) {
@@ -590,16 +770,21 @@
     event.preventDefault();
     if (!state.selectedTrace) return;
     try {
-      const expectedProperties = $('expected-properties').value.split(',').map(value => value.trim()).filter(Boolean);
+      const turns = readEvaluationTurns();
+      if (turns.length < 1 || turns.some(turn => !turn.question))
+        throw new Error('Each evaluation turn needs a question.');
+      const first = turns[0];
       const result = await api(`/admin/api/evaluations?environment=${encodeURIComponent(state.selectedTrace.environment)}`, {
         method: 'POST', body: JSON.stringify({
           requestId: state.selectedTrace.requestId,
-          expectedIntent: $('expected-intent').value || null,
-          expectedProperties
+          expectedIntent: first.expectedIntent,
+          expectedProperties: first.expectedProperties,
+          turns,
+          note: $('evaluation-note').value.trim() || null
         })
       });
       setMessage(`Reviewed evaluation case saved: ${result.exampleId}`, false, 'review-result');
-      $('expected-properties').value = '';
+      $('evaluation-note').value = '';
       await loadEvaluations();
     } catch (error) {
       if (error.message !== 'unauthorized') setMessage(error.message, true, 'review-result');
@@ -634,6 +819,7 @@
   $('rollback-profile').addEventListener('click', rollbackProfile);
   $('stage-bundle').addEventListener('click', stageBundle);
   $('refresh-evaluations').addEventListener('click', () => loadEvaluations().catch(error => setMessage(error.message, true, 'review-result')));
+  $('add-evaluation-turn').addEventListener('click', () => addEvaluationTurn());
   $('run-replay').addEventListener('click', runReplay);
   $('feedback-form').addEventListener('submit', sendFeedback);
   $('evaluation-form').addEventListener('submit', saveEvaluation);

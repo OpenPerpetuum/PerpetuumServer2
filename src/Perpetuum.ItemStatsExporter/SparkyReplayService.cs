@@ -4,14 +4,25 @@ namespace Perpetuum.ItemStatsExporter;
 
 internal interface ISparkyReplayAnswerer
 {
-    Task<SparkyReplayOutput> AnswerAsync(string question, SparkyProfileSnapshot snapshot, CancellationToken cancellationToken);
+    Task<SparkyReplayStep> AnswerAsync(
+        string question,
+        SparkyProfileSnapshot snapshot,
+        IReadOnlyList<SparkyConversationTurn> contextTurns,
+        string? contextSummary,
+        SparkyPendingClarification? pendingClarification,
+        CancellationToken cancellationToken);
 }
+
+internal sealed record SparkyReplayStep(SparkyReplayOutput Output, SparkyConversationUpdate? ContextUpdate);
 
 internal sealed class SparkyReplayAnswerer(SparkyServiceOptions defaults) : ISparkyReplayAnswerer
 {
-    public async Task<SparkyReplayOutput> AnswerAsync(
+    public async Task<SparkyReplayStep> AnswerAsync(
         string question,
         SparkyProfileSnapshot snapshot,
+        IReadOnlyList<SparkyConversationTurn> contextTurns,
+        string? contextSummary,
+        SparkyPendingClarification? pendingClarification,
         CancellationToken cancellationToken)
     {
         var options = snapshot.ApplyTo(defaults);
@@ -21,7 +32,10 @@ internal sealed class SparkyReplayAnswerer(SparkyServiceOptions defaults) : ISpa
             snapshot.Bundle.Languages,
             contextLanguageId: null,
             cancellationToken,
-            snapshot.Configuration.RouteAliases).ConfigureAwait(false);
+            snapshot.Configuration.RouteAliases,
+            contextTurns,
+            contextSummary,
+            pendingClarification).ConfigureAwait(false);
         var router = new SparkyAnswerRouter(
             options,
             snapshot.Configuration.Retrieval,
@@ -32,13 +46,53 @@ internal sealed class SparkyReplayAnswerer(SparkyServiceOptions defaults) : ISpa
             snapshot.Bundle,
             contextItem: null,
             contextLanguageId: null,
-            cancellationToken).ConfigureAwait(false);
-        return new SparkyReplayOutput(
+            cancellationToken,
+            contextTurns,
+            contextSummary,
+            pendingClarification).ConfigureAwait(false);
+        var output = new SparkyReplayOutput(
             answer.Status,
             interpretation.Intent.ToString(),
             interpretation.MentionedEntities,
             answer.SelectedSourceIds,
-            answer.Answer);
+            answer.Answer,
+            interpretation.Scope.ToString(),
+            answer.EnglishSearchQuery ?? interpretation.EnglishSearchQuery,
+            answer.Item ?? (answer.SelectedSourceIds is { Count: > 0 } sourceIds
+                ? $"{sourceIds.Count} verified knowledge passage(s)"
+                : null),
+            new SparkyReplayProfileMetadata(
+                options.ModelId,
+                snapshot.RevisionId,
+                snapshot.Bundle.Manifest.BundleVersion,
+                options.AnswerTemperature,
+                options.AnswerTopP,
+                options.ConversationHistoryTurns,
+                options.ConversationHistoryCharacters),
+            answer.EffectiveIntent,
+            answer.EffectiveFocus,
+            answer.ResolverOutcome,
+            FormatComparisonSummary(answer.ComparisonDiagnostics));
+        return new SparkyReplayStep(output, SparkyConversationUpdateFactory.Create(question, interpretation, answer));
+    }
+
+    private static string? FormatComparisonSummary(SparkyComparisonDiagnostics? diagnostics)
+    {
+        if (diagnostics is null)
+            return null;
+
+        string subjects = string.Join(" vs ", diagnostics.Subjects.Select(subject => subject.DisplayName));
+        var facts = diagnostics.Facts.Take(8).Select(fact =>
+        {
+            string values = string.Join(" vs ", fact.Values);
+            string unit = string.IsNullOrWhiteSpace(fact.Unit) ? string.Empty : $" {fact.Unit}";
+            string leader = fact.LeadingSubjectName is null ? string.Empty : $"; direction favors {fact.LeadingSubjectName}";
+            return $"{fact.AttributeLabel}: {values}{unit} (difference {fact.Difference}{unit}{leader})";
+        });
+        string summary = $"{diagnostics.ResultCategory}: {subjects}; " +
+            (string.IsNullOrWhiteSpace(diagnostics.MetricPhrase) ? string.Empty : $"requested {diagnostics.MetricPhrase}; ") +
+            string.Join("; ", facts);
+        return summary.Length <= 500 ? summary : summary[..500];
     }
 }
 
@@ -100,15 +154,23 @@ internal sealed class SparkyReplayService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var example = byId[exampleId];
-                var active = await RunBoundedAsync(example.Question, activeSnapshot, cancellationToken).ConfigureAwait(false);
-                var candidate = await RunBoundedAsync(example.Question, candidateSnapshot, cancellationToken).ConfigureAwait(false);
+                IReadOnlyList<SparkyEvaluationTurn> turns = example.Turns ??
+                    SparkyEvaluationValidator.FromLegacy(example.Question, example.ExpectedIntent, example.ExpectedProperties);
+                IReadOnlyList<SparkyReplayOutput> activeTurns = await RunSequenceBoundedAsync(turns, activeSnapshot, cancellationToken).ConfigureAwait(false);
+                IReadOnlyList<SparkyReplayOutput> candidateTurns = await RunSequenceBoundedAsync(turns, candidateSnapshot, cancellationToken).ConfigureAwait(false);
+                var perTurn = turns.Select((turn, index) => new SparkyReplayTurnResult(
+                    turn.Question,
+                    turn,
+                    activeTurns[index],
+                    candidateTurns[index])).ToArray();
                 results.Add(new SparkyReplayComparison(
                     example.ExampleId,
-                    example.Question,
+                    turns[0].Question,
                     example.ExpectedIntent,
                     example.ExpectedProperties,
-                    active,
-                    candidate));
+                    activeTurns[^1],
+                    candidateTurns[^1],
+                    perTurn));
             }
 
             var replay = new SparkyReplayRun(
@@ -135,21 +197,49 @@ internal sealed class SparkyReplayService
             ? Task.FromResult<SparkyReplayRun?>(null)
             : _store.GetReplayAsync(replayId, environment, cancellationToken);
 
-    private async Task<SparkyReplayOutput> RunBoundedAsync(
-        string question,
+    private async Task<IReadOnlyList<SparkyReplayOutput>> RunSequenceBoundedAsync(
+        IReadOnlyList<SparkyEvaluationTurn> turns,
         SparkyProfileSnapshot snapshot,
         CancellationToken cancellationToken)
     {
-        int globalLimit = Math.Max(1, _defaults.MaxConcurrentRequests);
-        if (!_limiter.TryAcquire(snapshot.Profile, snapshot.Configuration.MaxConcurrentRequests, globalLimit))
-            throw new InvalidOperationException("replay_busy");
-        try
+        var history = new List<SparkyConversationTurn>();
+        string? summary = null;
+        SparkyPendingClarification? pending = null;
+        var outputs = new List<SparkyReplayOutput>(turns.Count);
+        foreach (SparkyEvaluationTurn turn in turns)
         {
-            return await _answerer.AnswerAsync(question, snapshot, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            int globalLimit = Math.Max(1, _defaults.MaxConcurrentRequests);
+            if (!_limiter.TryAcquire(snapshot.Profile, snapshot.Configuration.MaxConcurrentRequests, globalLimit))
+                throw new InvalidOperationException("replay_busy");
+            try
+            {
+                var step = await _answerer.AnswerAsync(
+                    turn.Question, snapshot, history.ToArray(), summary, pending, cancellationToken).ConfigureAwait(false);
+                outputs.Add(step.Output);
+                if (!string.IsNullOrWhiteSpace(step.Output.Answer))
+                {
+                    history.Add(new SparkyConversationTurn("user", turn.Question));
+                    history.Add(new SparkyConversationTurn("assistant", step.Output.Answer));
+                }
+                if (step.ContextUpdate is not null)
+                {
+                    summary = step.ContextUpdate.Summary ?? summary;
+                    pending = step.ContextUpdate.PendingClarification;
+                }
+                var bounded = SparkyConversationContextBudget.Apply(
+                    history, summary, pending,
+                    snapshot.Configuration.ConversationHistoryTurns,
+                    snapshot.Configuration.ConversationHistoryCharacters);
+                history = bounded.Turns.ToList();
+                summary = bounded.Summary;
+                pending = bounded.PendingClarification;
+            }
+            finally
+            {
+                _limiter.Release(snapshot.Profile);
+            }
         }
-        finally
-        {
-            _limiter.Release(snapshot.Profile);
-        }
+        return outputs;
     }
 }

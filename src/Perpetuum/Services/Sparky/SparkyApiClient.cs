@@ -1,13 +1,14 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Perpetuum.Services.Sparky;
 
 internal sealed class SparkyApiClient : IDisposable
 {
     private const int MaxResponseBytes = 65536;
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
 
     private readonly HttpClient _httpClient;
     private readonly SparkyClientOptions _options;
@@ -30,14 +31,24 @@ internal sealed class SparkyApiClient : IDisposable
         string question,
         string? contextItem,
         int? contextLanguageId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        SparkyContextEntry? context = null,
+        SparkyCallerRank callerRank = SparkyCallerRank.Agent)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(_options.RequestTimeout);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, _options.ApiUri)
         {
-            Content = JsonContent.Create(new SparkyApiRequest(traceId, question, contextItem, contextLanguageId), options: JsonOptions)
+            Content = JsonContent.Create(new SparkyApiRequest(
+                traceId,
+                question,
+                contextItem,
+                contextLanguageId,
+                context?.Turns,
+                context?.Summary,
+                context?.PendingClarification,
+                callerRank), options: JsonOptions)
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiToken);
 
@@ -58,6 +69,8 @@ internal sealed class SparkyApiClient : IDisposable
             return SparkyApiResult.Unavailable;
         }
 
+        var contextUpdate = ValidateContextUpdate(parsed.Status, parsed.Answer, parsed.Candidates, parsed.ContextUpdate);
+
         return parsed.Status switch
         {
             "answered" when !string.IsNullOrWhiteSpace(parsed.Answer) => new SparkyApiResult(
@@ -65,27 +78,70 @@ internal sealed class SparkyApiClient : IDisposable
                 parsed.Answer,
                 Limit(parsed.Item, 256),
                 [],
-                parsed.LanguageId),
+                parsed.LanguageId,
+                contextUpdate),
             "not_found" => new SparkyApiResult(
                 SparkyResultKind.NotFound,
                 Limit(parsed.Answer, 2000),
                 null,
                 [],
-                parsed.LanguageId),
+                parsed.LanguageId,
+                contextUpdate),
             "ambiguous" => new SparkyApiResult(
                 SparkyResultKind.Ambiguous,
                 Limit(parsed.Answer, 2000),
                 null,
                 (parsed.Candidates ?? []).Take(10).Select(candidate => Limit(candidate, 256)!).ToArray(),
-                parsed.LanguageId),
+                parsed.LanguageId,
+                contextUpdate),
             "busy" => new SparkyApiResult(
                 SparkyResultKind.Busy,
                 Limit(parsed.Answer, 2000),
                 null,
                 [],
-                parsed.LanguageId),
+                parsed.LanguageId,
+                contextUpdate),
             _ => SparkyApiResult.Unavailable
         };
+    }
+
+    internal static SparkyConversationUpdate? ValidateContextUpdate(
+        string? status,
+        string? answer,
+        IReadOnlyList<string>? responseCandidates,
+        SparkyConversationUpdate? update)
+    {
+        if (update?.PendingClarification is not { } pending)
+        {
+            return update;
+        }
+
+        if (status is not ("answered" or "not_found" or "ambiguous") ||
+            string.IsNullOrWhiteSpace(answer) ||
+            responseCandidates is null ||
+            pending.CandidateNames is null ||
+            pending.CandidateNames.Count is < 1 or > SparkyContextStore.MaximumCandidates)
+        {
+            return update with { PendingClarification = null };
+        }
+
+        var offered = responseCandidates
+            .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+            .Select(candidate => Limit(candidate.Trim(), SparkyContextStore.MaximumCandidateCharacters)!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var pendingNames = pending.CandidateNames
+            .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+            .Select(candidate => Limit(candidate.Trim(), SparkyContextStore.MaximumCandidateCharacters)!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        bool choicesWereOffered = pendingNames.Length == pending.CandidateNames.Count &&
+                                  offered.Count == pendingNames.Length &&
+                                  pendingNames.All(candidate =>
+                                      offered.Contains(candidate) &&
+                                      answer.Contains(candidate, StringComparison.OrdinalIgnoreCase));
+        return choicesWereOffered ? update : update with { PendingClarification = null };
     }
 
     private static async Task<byte[]> ReadBoundedAsync(HttpContent content, CancellationToken cancellationToken)
@@ -115,6 +171,13 @@ internal sealed class SparkyApiClient : IDisposable
         }
     }
 
+    private static JsonSerializerOptions CreateJsonOptions()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
+        return options;
+    }
+
     private static string? Limit(string? value, int maxLength)
     {
         if (value is null)
@@ -134,6 +197,7 @@ internal sealed class SparkyApiClient : IDisposable
         public string? Answer { get; init; }
         public string[]? Candidates { get; init; }
         public int? LanguageId { get; init; }
+        public SparkyConversationUpdate? ContextUpdate { get; init; }
     }
 }
 
@@ -141,7 +205,11 @@ internal sealed record SparkyApiRequest(
     Guid RequestId,
     string Question,
     string? ContextItem = null,
-    int? ContextLanguageId = null);
+    int? ContextLanguageId = null,
+    IReadOnlyList<SparkyConversationTurn>? ContextTurns = null,
+    string? ContextSummary = null,
+    SparkyPendingClarification? PendingClarification = null,
+    SparkyCallerRank CallerRank = SparkyCallerRank.Agent);
 
 internal enum SparkyResultKind
 {
@@ -159,7 +227,8 @@ internal sealed record SparkyApiResult(
     string? Answer,
     string? ItemDisplayName,
     IReadOnlyList<string> Candidates,
-    int? LanguageId = null)
+    int? LanguageId = null,
+    SparkyConversationUpdate? ContextUpdate = null)
 {
     public static SparkyApiResult Unavailable { get; } = new(SparkyResultKind.Unavailable, null, null, []);
 }

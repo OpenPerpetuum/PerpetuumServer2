@@ -11,7 +11,8 @@ internal sealed record SparkyDiagnosticExport(
     bool ContentIncluded,
     bool Truncated,
     IReadOnlyList<string> Feedback,
-    IReadOnlyList<SparkyDiagnosticEvent> Events);
+    IReadOnlyList<SparkyDiagnosticEvent> Events,
+    int SchemaVersion = 1);
 
 internal sealed record SparkyDiagnosticEvent(
     DateTimeOffset RecordedAtUtc,
@@ -26,8 +27,32 @@ internal sealed record SparkyDiagnosticEvent(
     string? ModelId,
     string? ConfigRevision,
     string? BundleVersion,
+    double? AnswerTemperature,
+    double? AnswerTopP,
+    int? ConversationHistoryTurns,
+    int? ConversationHistoryCharacters,
     string? Question,
-    string? Answer);
+    string? Answer,
+    int? ContextMessageCount = null,
+    int? ContextCharacterCount = null,
+    bool? HasContextSummary = null,
+    bool? HasPendingClarification = null,
+    bool? ContextBudgetTrimmed = null,
+    string? EffectiveIntent = null,
+    string? EffectiveFocus = null,
+    string? ResolverCategory = null,
+    string? ResolverOutcome = null,
+    int? ComparisonSubjectCount = null,
+    string? ComparisonAttributeCategory = null,
+    string? ComparisonResultCategory = null,
+    string? SearchQuery = null,
+    IReadOnlyList<string>? EntityCandidates = null,
+    IReadOnlyList<SparkyConversationTurn>? ContextTurns = null,
+    string? ContextSummary = null,
+    SparkyPendingClarification? PendingClarification = null,
+    SparkyComparisonDiagnostics? ComparisonDiagnostics = null,
+    string? ParsedIntent = null,
+    string? ParsedFocus = null);
 
 internal static class SparkyDiagnosticExporter
 {
@@ -63,8 +88,32 @@ internal static class SparkyDiagnosticExporter
             traceEvent.ModelId,
             traceEvent.ConfigRevision,
             traceEvent.BundleVersion,
+            traceEvent.AnswerTemperature,
+            traceEvent.AnswerTopP,
+            traceEvent.ConversationHistoryTurns,
+            traceEvent.ConversationHistoryCharacters,
             includeContent ? traceEvent.Question : null,
-            includeContent ? traceEvent.Answer : null)).ToArray();
+            includeContent ? traceEvent.Answer : null,
+            traceEvent.ContextMessageCount,
+            traceEvent.ContextCharacterCount,
+            traceEvent.HasContextSummary,
+            traceEvent.HasPendingClarification,
+            traceEvent.ContextBudgetTrimmed,
+            traceEvent.EffectiveIntent,
+            traceEvent.EffectiveFocus,
+            traceEvent.ResolverCategory,
+            traceEvent.ResolverOutcome,
+            traceEvent.ComparisonSubjectCount,
+            traceEvent.ComparisonAttributeCategory,
+            traceEvent.ComparisonResultCategory,
+            includeContent ? traceEvent.SearchQuery : null,
+            includeContent ? traceEvent.EntityCandidates?.Take(8).ToArray() : null,
+            includeContent ? traceEvent.ContextTurns : null,
+            includeContent ? traceEvent.ContextSummary : null,
+            includeContent ? traceEvent.PendingClarification : null,
+            includeContent ? traceEvent.ComparisonDiagnostics : null,
+            traceEvent.Intent,
+            traceEvent.Focus)).ToArray();
         var document = new SparkyDiagnosticExport(
             timeline.RequestId,
             timeline.Environment,

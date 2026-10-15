@@ -15,13 +15,16 @@ public sealed class SparkyRequestCoordinator : Process
     private readonly Func<EventListenerService> _eventListenerFactory;
     private readonly Func<SparkyTraceUploader> _traceUploaderFactory;
     private readonly SparkyContextStore _contextStore;
+    private readonly SparkyCallerLaneScheduler _callerLaneScheduler = new();
     private readonly object _pendingLock = new();
     private readonly Dictionary<SparkyRequestIdentity, int> _pendingByCaller = new();
+    private int _pendingTotal;
 
     private Channel<SparkyWorkItem>? _queue;
     private CancellationTokenSource? _shutdown;
     private SparkyApiClient? _apiClient;
     private SparkyClientOptions? _options;
+    private SemaphoreSlim? _workConcurrency;
     private SparkyTraceUploader? _traceUploader;
     private Task[] _workers = [];
     private Character? _senderCharacter;
@@ -40,7 +43,11 @@ public sealed class SparkyRequestCoordinator : Process
         _traceUploaderFactory = traceUploaderFactory;
         _contextStore = new SparkyContextStore(
             Math.Clamp(configuration.SparkyContextCapacity, 1, 100000),
-            TimeSpan.FromMinutes(Math.Clamp(configuration.SparkyContextLifetimeMinutes, 1, 1440)));
+            TimeSpan.FromMinutes(Math.Clamp(configuration.SparkyContextLifetimeMinutes, 1, 1440)),
+            Math.Clamp(configuration.SparkyContextMaxTurns, 2, SparkyContextStore.HardMaximumTurns),
+            Math.Clamp(configuration.SparkyContextMaxCharacters,
+                SparkyContextStore.MinimumMaximumCharacters,
+                SparkyContextStore.HardMaximumCharacters));
     }
 
     public bool IsEnabled => Volatile.Read(ref _enabled) == 1;
@@ -99,18 +106,19 @@ public sealed class SparkyRequestCoordinator : Process
             _queue = Channel.CreateBounded<SparkyWorkItem>(new BoundedChannelOptions(_options.QueueCapacity)
             {
                 FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = _options.WorkerCount == 1,
+                SingleReader = true,
                 SingleWriter = false,
                 AllowSynchronousContinuations = false
             });
-            _workers = Enumerable.Range(0, _options.WorkerCount)
-                .Select(_ => WorkerLoopAsync(_queue.Reader, _shutdown.Token))
-                .ToArray();
+            _workConcurrency = new SemaphoreSlim(_options.WorkerCount, _options.WorkerCount);
+            _workers = [WorkerLoopAsync(_queue.Reader, _shutdown.Token)];
             Volatile.Write(ref _enabled, 1);
             Logger.Info("[Sparky] Game and Discord request adapter enabled.");
         }
         catch (Exception)
         {
+            _workConcurrency?.Dispose();
+            _workConcurrency = null;
             _apiClient?.Dispose();
             _apiClient = null;
             _senderCharacter = null;
@@ -125,6 +133,7 @@ public sealed class SparkyRequestCoordinator : Process
         Task traceShutdown = _traceUploader?.StopAsync() ?? Task.CompletedTask;
         _shutdown?.Cancel();
         Task[] shutdownTasks = _workers.Append(traceShutdown).ToArray();
+        bool dispatchAndTraceStopped = true;
         if (shutdownTasks.Length > 0)
         {
             try
@@ -132,6 +141,7 @@ public sealed class SparkyRequestCoordinator : Process
                 if (!Task.WaitAll(shutdownTasks, TimeSpan.FromSeconds(5)))
                 {
                     Logger.Error("[Sparky] Background workers did not stop within the shutdown grace period.");
+                    dispatchAndTraceStopped = false;
                 }
             }
             catch (AggregateException)
@@ -140,19 +150,42 @@ public sealed class SparkyRequestCoordinator : Process
             }
         }
 
+        if (!dispatchAndTraceStopped)
+        {
+            return;
+        }
+
+        Task laneShutdown = _callerLaneScheduler.WaitForIdleAsync();
+        try
+        {
+            if (!laneShutdown.Wait(TimeSpan.FromSeconds(5)))
+            {
+                Logger.Error("[Sparky] Caller conversation lanes did not stop within the shutdown grace period.");
+                return;
+            }
+        }
+        catch (AggregateException)
+        {
+            Logger.Error("[Sparky] A caller conversation lane failed during shutdown.");
+            return;
+        }
+
         _contextStore.Clear();
         lock (_pendingLock)
         {
             _pendingByCaller.Clear();
+            _pendingTotal = 0;
         }
 
-        if (_workers.All(worker => worker.IsCompleted) && traceShutdown.IsCompleted)
+        if (_workers.All(worker => worker.IsCompleted) && traceShutdown.IsCompleted && laneShutdown.IsCompleted)
         {
             _shutdown?.Dispose();
             _apiClient?.Dispose();
             _traceUploader?.Dispose();
+            _workConcurrency?.Dispose();
             _shutdown = null;
             _apiClient = null;
+            _workConcurrency = null;
             _traceUploader = null;
             _workers = [];
             _queue = null;
@@ -174,11 +207,15 @@ public sealed class SparkyRequestCoordinator : Process
         }
 
         var identity = new SparkyRequestIdentity(SparkySource.Game, (ulong)caller.Id);
-        Submit(identity, caller, channelName, 0, question);
+        Submit(identity, caller, channelName, 0, question, SparkyRankResolver.ResolveGame(caller.AccessLevel));
         return true;
     }
 
-    public bool TrySubmitDiscordQuestion(ulong channelId, ulong callerId, string question)
+    internal bool TrySubmitDiscordQuestion(
+        ulong channelId,
+        ulong callerId,
+        string question,
+        SparkyCallerRank callerRank = SparkyCallerRank.Agent)
     {
         if (!IsEnabled)
         {
@@ -187,7 +224,7 @@ public sealed class SparkyRequestCoordinator : Process
         }
 
         var identity = new SparkyRequestIdentity(SparkySource.Discord, callerId);
-        Submit(identity, null, null, channelId, question);
+        Submit(identity, null, null, channelId, question, callerRank);
         return true;
     }
 
@@ -196,7 +233,8 @@ public sealed class SparkyRequestCoordinator : Process
         Character? caller,
         string? channelName,
         ulong discordChannelId,
-        string question)
+        string question,
+        SparkyCallerRank callerRank)
     {
         long requestId = Interlocked.Increment(ref _requestSequence);
         Guid traceId = CreateTraceId();
@@ -221,16 +259,16 @@ public sealed class SparkyRequestCoordinator : Process
             return;
         }
 
-        if (!TryAddPending(identity, _options.PendingPerCallerLimit))
+        if (!TryAddPending(identity, _options.PendingPerCallerLimit, _options.QueueCapacity + _options.WorkerCount))
         {
-            RecordTrace(traceId, identity.Source, "queue", "dropped", detailCode: "caller_limit");
-            Logger.Warning($"[Sparky] {identity.Source} request #{requestId:D6} was rejected because the caller already has the maximum number of pending requests.");
+            RecordTrace(traceId, identity.Source, "queue", "dropped", detailCode: "pending_limit");
+            Logger.Warning($"[Sparky] {identity.Source} request #{requestId:D6} was rejected because the pending request limit was reached.");
             PublishImmediate(requestId, traceId, identity.Source, caller, channelName, discordChannelId, identity.Id,
                 new SparkyApiResult(SparkyResultKind.Busy, null, null, [], fallbackLanguageId));
             return;
         }
 
-        var work = new SparkyWorkItem(requestId, traceId, identity, caller, channelName, discordChannelId, question, context);
+        var work = new SparkyWorkItem(requestId, traceId, identity, caller, channelName, discordChannelId, question, callerRank);
         if (_queue?.Writer.TryWrite(work) != true)
         {
             RemovePending(identity);
@@ -251,55 +289,7 @@ public sealed class SparkyRequestCoordinator : Process
         {
             await foreach (var work in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
-                var timer = Stopwatch.StartNew();
-                SparkyApiResult result;
-                try
-                {
-                    result = await _apiClient!.AnswerAsync(
-                            work.TraceId,
-                            work.Question,
-                            work.Context?.ItemDisplayName,
-                            work.Context?.LanguageId,
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        RecordTrace(work.TraceId, work.Identity.Source, "api", "cancelled", timer.ElapsedMilliseconds);
-                        RemovePending(work.Identity);
-                        return;
-                    }
-
-                    int? languageId = result.LanguageId ?? work.Context?.LanguageId;
-                    if (languageId is not null ||
-                        (result.Kind == SparkyResultKind.Answered && !string.IsNullOrWhiteSpace(result.ItemDisplayName)))
-                    {
-                        string? itemDisplayName = result.ItemDisplayName ?? work.Context?.ItemDisplayName;
-                        _contextStore.Set(work.Identity, itemDisplayName, languageId, DateTimeOffset.UtcNow);
-                    }
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    RecordTrace(work.TraceId, work.Identity.Source, "api", "cancelled", timer.ElapsedMilliseconds);
-                    RemovePending(work.Identity);
-                    return;
-                }
-                catch (Exception exception)
-                {
-                    result = SparkyApiResult.Unavailable with { LanguageId = work.Context?.LanguageId };
-                    Logger.Error($"[Sparky] Upstream request #{work.RequestId:D6} failed ({exception.GetType().Name}).");
-                }
-
-                timer.Stop();
-                RecordTrace(
-                    work.TraceId,
-                    work.Identity.Source,
-                    "api",
-                    GetTraceOutcome(result.Kind),
-                    timer.ElapsedMilliseconds,
-                    "completed");
-                RemovePending(work.Identity);
-                Logger.Info($"[Sparky] {work.Identity.Source} request #{work.RequestId:D6} completed with {result.Kind} in {timer.ElapsedMilliseconds} ms.");
-                PublishImmediate(work.RequestId, work.TraceId, work.Identity.Source, work.Caller, work.ChannelName, work.DiscordChannelId, work.Identity.Id, result);
+                _ = _callerLaneScheduler.Schedule(work.Identity, () => ProcessWorkItemAsync(work, cancellationToken));
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -312,17 +302,104 @@ public sealed class SparkyRequestCoordinator : Process
         }
     }
 
-    private bool TryAddPending(SparkyRequestIdentity identity, int maximum)
+    private async Task ProcessWorkItemAsync(SparkyWorkItem work, CancellationToken cancellationToken)
+    {
+        var timer = Stopwatch.StartNew();
+        SparkyApiResult? result = null;
+        SparkyContextEntry? context = null;
+        bool concurrencySlotAcquired = false;
+        try
+        {
+            await _workConcurrency!.WaitAsync(cancellationToken).ConfigureAwait(false);
+            concurrencySlotAcquired = true;
+
+            // Snapshot only when this request reaches the head of its caller lane. A prior turn can
+            // therefore update clarification and entity state before this request is interpreted.
+            context = _contextStore.GetAndTouch(work.Identity, DateTimeOffset.UtcNow);
+            result = await _apiClient!.AnswerAsync(
+                    work.TraceId,
+                    work.Question,
+                    context?.ItemDisplayName,
+                    context?.LanguageId,
+                    cancellationToken,
+                    context,
+                    work.CallerRank)
+                .ConfigureAwait(false);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                RecordTrace(work.TraceId, work.Identity.Source, "api", "cancelled", timer.ElapsedMilliseconds);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.Answer))
+            {
+                _contextStore.AppendExchange(
+                    work.Identity,
+                    work.TraceId,
+                    work.Question,
+                    result.Answer,
+                    result.ContextUpdate,
+                    result.LanguageId,
+                    DateTimeOffset.UtcNow);
+            }
+            else if (result.LanguageId is not null || result.ItemDisplayName is not null)
+            {
+                _contextStore.Set(
+                    work.Identity,
+                    result.ItemDisplayName ?? context?.ItemDisplayName,
+                    result.LanguageId ?? context?.LanguageId,
+                    DateTimeOffset.UtcNow);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            RecordTrace(work.TraceId, work.Identity.Source, "api", "cancelled", timer.ElapsedMilliseconds);
+            return;
+        }
+        catch (Exception exception)
+        {
+            result = SparkyApiResult.Unavailable with { LanguageId = context?.LanguageId };
+            Logger.Error($"[Sparky] Upstream request #{work.RequestId:D6} failed ({exception.GetType().Name}).");
+        }
+        finally
+        {
+            if (concurrencySlotAcquired)
+            {
+                _workConcurrency!.Release();
+            }
+
+            RemovePending(work.Identity);
+        }
+
+        timer.Stop();
+        if (result is null)
+        {
+            return;
+        }
+
+        RecordTrace(
+            work.TraceId,
+            work.Identity.Source,
+            "api",
+            GetTraceOutcome(result.Kind),
+            timer.ElapsedMilliseconds,
+            "completed");
+        Logger.Info($"[Sparky] {work.Identity.Source} request #{work.RequestId:D6} completed with {result.Kind} in {timer.ElapsedMilliseconds} ms.");
+        PublishImmediate(work.RequestId, work.TraceId, work.Identity.Source, work.Caller, work.ChannelName, work.DiscordChannelId, work.Identity.Id, result);
+    }
+
+    private bool TryAddPending(SparkyRequestIdentity identity, int perCallerMaximum, int totalMaximum)
     {
         lock (_pendingLock)
         {
             var count = _pendingByCaller.GetValueOrDefault(identity);
-            if (count >= maximum)
+            if (count >= perCallerMaximum || _pendingTotal >= totalMaximum)
             {
                 return false;
             }
 
             _pendingByCaller[identity] = count + 1;
+            _pendingTotal++;
             return true;
         }
     }
@@ -336,6 +413,7 @@ public sealed class SparkyRequestCoordinator : Process
                 return;
             }
 
+            _pendingTotal = Math.Max(0, _pendingTotal - 1);
             if (count <= 1)
             {
                 _pendingByCaller.Remove(identity);
@@ -429,5 +507,5 @@ public sealed class SparkyRequestCoordinator : Process
         string? ChannelName,
         ulong DiscordChannelId,
         string Question,
-        SparkyContextEntry? Context);
+        SparkyCallerRank CallerRank);
 }

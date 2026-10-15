@@ -43,6 +43,15 @@ internal static class SparkyRobotIntentResolver
         SparkyQuestionInterpretation interpretation,
         SparkyKnowledgeBundle bundle)
     {
+        if (interpretation.Comparison is { IsComparison: true })
+        {
+            // A conversational comparison is routed by SparkyComparisonSubjectResolver.
+            // Never reinterpret its omitted-subject follow-up as a global Fastest query.
+            return interpretation.Intent == SparkyIntent.StructuredRobot
+                ? interpretation with { RobotFocus = SparkyRobotQuestionFocus.CompareStats }
+                : interpretation;
+        }
+
         string searchText = string.Join(' ', new[] { question, interpretation.EnglishSearchQuery }
             .Where(value => !string.IsNullOrWhiteSpace(value)));
 

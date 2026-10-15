@@ -163,6 +163,8 @@ public sealed class SparkyTraceUploaderTests
             WorkerCount: 1,
             PendingPerCallerLimit: 1,
             ContextLifetime: TimeSpan.FromMinutes(15),
+            ContextMaxTurns: 8,
+            ContextMaxCharacters: 6000,
             ContextCapacity: 100,
             SenderCharacterNick: "Sparky");
         uploader.Start(options);

@@ -75,8 +75,50 @@ public sealed class SparkyProfileValidatorTests
         Assert.Contains(errors, error => error.Contains("retention", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void Accepts_bounded_conversation_and_answer_tuning()
+    {
+        var errors = SparkyProfileValidator.Validate(Draft() with
+        {
+            ConversationHistoryTurns = 8,
+            ConversationHistoryCharacters = 4000,
+            AnswerTemperature = 0.2,
+            AnswerTopP = 0.9
+        }, Languages, globalConcurrencyLimit: 2);
+
+        Assert.Empty(errors);
+    }
+
+    [Theory]
+    [InlineData(0, 4000, 0.2, 0.9)]
+    [InlineData(17, 4000, 0.2, 0.9)]
+    [InlineData(8, 0, 0.2, 0.9)]
+    [InlineData(8, 8001, 0.2, 0.9)]
+    [InlineData(8, 4000, -0.01, 0.9)]
+    [InlineData(8, 4000, 2.01, 0.9)]
+    [InlineData(8, 4000, 0.2, 0.0)]
+    [InlineData(8, 4000, 0.2, 1.01)]
+    public void Rejects_unbounded_conversation_or_answer_tuning(
+        int historyTurns,
+        int historyCharacters,
+        double temperature,
+        double topP)
+    {
+        var errors = SparkyProfileValidator.Validate(Draft() with
+        {
+            ConversationHistoryTurns = historyTurns,
+            ConversationHistoryCharacters = historyCharacters,
+            AnswerTemperature = temperature,
+            AnswerTopP = topP
+        }, Languages, globalConcurrencyLimit: 2);
+
+        Assert.Contains(errors, error => error.Contains("Conversation", StringComparison.OrdinalIgnoreCase) ||
+                                          error.Contains("Temperature", StringComparison.OrdinalIgnoreCase) ||
+                                          error.Contains("TopP", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static SparkyProfileDraft Draft() => new(
-        SchemaVersion: 1,
+        SchemaVersion: 2,
         ModelId: "qwen3-4b-instruct",
         MaxAnswerCharacters: 2000,
         MaxCompletionTokens: 700,
@@ -88,5 +130,9 @@ public sealed class SparkyProfileValidatorTests
         PersonaStyle: "Practical and concise.",
         Retrieval: new SparkyRetrievalSettings(MaxPassages: 5, MaxCharacters: 4200, MinimumScore: 0.25),
         RouteAliases: [],
-        BundleVersion: "legacy-1234567890abcdef");
+        BundleVersion: "legacy-1234567890abcdef",
+        ConversationHistoryTurns: 8,
+        ConversationHistoryCharacters: 4000,
+        AnswerTemperature: 0.2,
+        AnswerTopP: 0.9);
 }
