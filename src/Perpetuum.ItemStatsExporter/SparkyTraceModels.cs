@@ -52,7 +52,12 @@ internal sealed record SparkyTraceEvent(
     IReadOnlyList<SparkyConversationTurn>? ContextTurns = null,
     string? ContextSummary = null,
     SparkyPendingClarification? PendingClarification = null,
-    SparkyComparisonDiagnostics? ComparisonDiagnostics = null);
+    SparkyComparisonDiagnostics? ComparisonDiagnostics = null,
+    string? LiveKnowledgeProvider = null,
+    int? LiveKnowledgeSchemaVersion = null,
+    string? LiveKnowledgeHash = null,
+    double? LiveKnowledgeCaptureAgeMinutes = null,
+    string? LiveKnowledgeFreshness = null);
 
 internal sealed record SparkyTraceAppendResult(
     IReadOnlyList<Guid> AcknowledgedEventIds,
@@ -125,7 +130,8 @@ internal sealed record SparkyEvaluationExampleRequest(
 internal sealed record SparkyReplayRequest(
     SparkyApiProfile Environment,
     string DraftRevisionId,
-    IReadOnlyList<Guid> ExampleIds);
+    IReadOnlyList<Guid> ExampleIds,
+    string? LiveKnowledgeFixtureId = null);
 
 internal sealed record SparkyReplayOutput(
     string Status,
@@ -140,7 +146,8 @@ internal sealed record SparkyReplayOutput(
     string? EffectiveIntent = null,
     string? EffectiveFocus = null,
     string? ResolverOutcome = null,
-    string? ComparisonSummary = null);
+    string? ComparisonSummary = null,
+    SparkyLiveKnowledgeDiagnostics? LiveKnowledge = null);
 
 internal sealed record SparkyReplayProfileMetadata(
     string ModelId,

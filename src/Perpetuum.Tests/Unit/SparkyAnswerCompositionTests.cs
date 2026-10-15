@@ -108,6 +108,59 @@ public sealed class SparkyAnswerCompositionTests
     }
 
     [Fact]
+    public void SeasonStandingGuidanceTellsModelToUseTheVerifiedRankOneName()
+    {
+        string guidance = SparkySeasonStandingResolver.GetPromptGuidance(new SparkySeasonStandingAnswerFacts(
+            SparkySeasonStandingPeriod.Current,
+            SparkySeasonStandingStatus.LeaderFound,
+            "Synthetic Helix Season",
+            "Fixture Leader",
+            875,
+            "live-season-current"));
+
+        Assert.Contains("rank-one points leader", guidance, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("do not say that the records omit the leader", guidance, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RouterSuppliesSeasonLeaderAsRequiredDynamicEvidenceToModel()
+    {
+        var handler = new RecordingHandler(
+            CreateCompletion("{\"languageId\":0,\"answer\":\"The records don't identify a leader.\"}"),
+            CreateCompletion("{\"languageId\":0,\"answer\":\"Fixture Leader leads the Synthetic Helix Season.\"}"));
+        using var client = new HttpClient(handler);
+        var router = new SparkyAnswerRouter(CreateRouterOptions(), modelClient: client);
+        const string question = "Who is the leader of the current season in the game?";
+        var interpretation = new SparkyQuestionInterpretation(
+            0,
+            SparkyIntent.MechanicsLore,
+            "who is the leader of the current season in the game",
+            MentionedEntities: ["current season"],
+            Scope: SparkyConversationScope.Game);
+
+        SparkyAnswerResult result = await router.AnswerAsync(
+            question,
+            interpretation,
+            CreateItemBundle("unused"),
+            null,
+            null,
+            TestContext.Current.CancellationToken,
+            liveKnowledge: SparkyLiveKnowledgeFixtures.CreateReadView(
+                SparkyLiveKnowledgeFixtures.SeasonSampleV1,
+                DateTimeOffset.UtcNow));
+
+        Assert.Equal("Fixture Leader leads the Synthetic Helix Season.", result.Answer);
+        Assert.Equal("who is the leader of the current season in the game", result.EnglishSearchQuery);
+        Assert.Equal(["live-season-current"], result.SelectedSourceIds);
+        Assert.Equal(2, handler.RequestBodies.Count);
+        Assert.Contains("Fixture Leader", handler.RequestBodies[0], StringComparison.Ordinal);
+        Assert.Contains("Synthetic Helix Season", handler.RequestBodies[0], StringComparison.Ordinal);
+        Assert.Contains("rank-one points leader", handler.RequestBodies[0], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("requiredExactStrings", handler.RequestBodies[0], StringComparison.Ordinal);
+        Assert.Contains("Retry correction", handler.RequestBodies[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RecipeRequirementsUseTheRequestedDepthAndLocalizedPublicNames()
     {
         var item = new ItemStatsLookupAnswer

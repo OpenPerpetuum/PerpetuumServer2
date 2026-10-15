@@ -52,7 +52,12 @@ internal sealed record SparkyDiagnosticEvent(
     SparkyPendingClarification? PendingClarification = null,
     SparkyComparisonDiagnostics? ComparisonDiagnostics = null,
     string? ParsedIntent = null,
-    string? ParsedFocus = null);
+    string? ParsedFocus = null,
+    string? LiveKnowledgeProvider = null,
+    int? LiveKnowledgeSchemaVersion = null,
+    string? LiveKnowledgeHash = null,
+    double? LiveKnowledgeCaptureAgeMinutes = null,
+    string? LiveKnowledgeFreshness = null);
 
 internal static class SparkyDiagnosticExporter
 {
@@ -113,7 +118,12 @@ internal static class SparkyDiagnosticExporter
             includeContent ? traceEvent.PendingClarification : null,
             includeContent ? traceEvent.ComparisonDiagnostics : null,
             traceEvent.Intent,
-            traceEvent.Focus)).ToArray();
+            traceEvent.Focus,
+            traceEvent.LiveKnowledgeProvider,
+            traceEvent.LiveKnowledgeSchemaVersion,
+            traceEvent.LiveKnowledgeHash,
+            traceEvent.LiveKnowledgeCaptureAgeMinutes,
+            traceEvent.LiveKnowledgeFreshness)).ToArray();
         var document = new SparkyDiagnosticExport(
             timeline.RequestId,
             timeline.Environment,

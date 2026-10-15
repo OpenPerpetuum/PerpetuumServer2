@@ -21,7 +21,8 @@ internal sealed record SparkyProfileDraft(
     int ConversationHistoryTurns = 8,
     int ConversationHistoryCharacters = 4000,
     double AnswerTemperature = 0.2,
-    double AnswerTopP = 0.9)
+    double AnswerTopP = 0.9,
+    SparkyLiveKnowledgeSettings? LiveKnowledge = null)
 {
     public static SparkyProfileDraft CreateDefault(
         string modelId,
@@ -49,8 +50,11 @@ internal sealed record SparkyProfileDraft(
             ConversationHistoryTurns: 8,
             ConversationHistoryCharacters: 4000,
             AnswerTemperature: 0.2,
-            AnswerTopP: 0.9);
+            AnswerTopP: 0.9,
+            LiveKnowledge: new SparkyLiveKnowledgeSettings());
 }
+
+internal sealed record SparkyLiveKnowledgeSettings(int CurrentSnapshotMaxAgeMinutes = 15);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record SparkyRetrievalSettings(

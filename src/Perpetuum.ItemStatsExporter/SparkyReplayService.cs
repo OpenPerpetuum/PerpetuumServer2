@@ -10,7 +10,8 @@ internal interface ISparkyReplayAnswerer
         IReadOnlyList<SparkyConversationTurn> contextTurns,
         string? contextSummary,
         SparkyPendingClarification? pendingClarification,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        SparkyLiveKnowledgeReadView? liveKnowledge);
 }
 
 internal sealed record SparkyReplayStep(SparkyReplayOutput Output, SparkyConversationUpdate? ContextUpdate);
@@ -23,7 +24,8 @@ internal sealed class SparkyReplayAnswerer(SparkyServiceOptions defaults) : ISpa
         IReadOnlyList<SparkyConversationTurn> contextTurns,
         string? contextSummary,
         SparkyPendingClarification? pendingClarification,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        SparkyLiveKnowledgeReadView? liveKnowledge)
     {
         var options = snapshot.ApplyTo(defaults);
         var interpreter = new SparkyQuestionInterpreter(options);
@@ -49,7 +51,8 @@ internal sealed class SparkyReplayAnswerer(SparkyServiceOptions defaults) : ISpa
             cancellationToken,
             contextTurns,
             contextSummary,
-            pendingClarification).ConfigureAwait(false);
+            pendingClarification,
+            liveKnowledge: liveKnowledge).ConfigureAwait(false);
         var output = new SparkyReplayOutput(
             answer.Status,
             interpretation.Intent.ToString(),
@@ -72,7 +75,8 @@ internal sealed class SparkyReplayAnswerer(SparkyServiceOptions defaults) : ISpa
             answer.EffectiveIntent,
             answer.EffectiveFocus,
             answer.ResolverOutcome,
-            FormatComparisonSummary(answer.ComparisonDiagnostics));
+            FormatComparisonSummary(answer.ComparisonDiagnostics),
+            liveKnowledge?.Diagnostics);
         return new SparkyReplayStep(output, SparkyConversationUpdateFactory.Create(question, interpretation, answer));
     }
 
@@ -106,6 +110,7 @@ internal sealed class SparkyReplayService
     private readonly SparkyConcurrencyLimiter _limiter;
     private readonly SparkyServiceOptions _defaults;
     private readonly ISparkyReplayAnswerer _answerer;
+    private readonly SparkyLiveKnowledgeCatalog? _liveKnowledgeCatalog;
     private readonly SemaphoreSlim _runGate = new(1, 1);
 
     public SparkyReplayService(
@@ -113,13 +118,15 @@ internal sealed class SparkyReplayService
         SparkyProfileManager profiles,
         SparkyConcurrencyLimiter limiter,
         SparkyServiceOptions defaults,
-        ISparkyReplayAnswerer? answerer = null)
+        ISparkyReplayAnswerer? answerer = null,
+        SparkyLiveKnowledgeCatalog? liveKnowledgeCatalog = null)
     {
         _store = store;
         _profiles = profiles;
         _limiter = limiter;
         _defaults = defaults;
         _answerer = answerer ?? new SparkyReplayAnswerer(defaults);
+        _liveKnowledgeCatalog = liveKnowledgeCatalog;
     }
 
     public async Task<SparkyReplayRun> RunAsync(
@@ -128,6 +135,11 @@ internal sealed class SparkyReplayService
     {
         if (_store is null)
             throw new InvalidOperationException("trace_storage_unavailable");
+        if (request.LiveKnowledgeFixtureId is not (null or SparkyLiveKnowledgeFixtures.SeasonSampleV1) ||
+            (request.LiveKnowledgeFixtureId is not null && request.Environment != SparkyApiProfile.Dev))
+        {
+            throw new InvalidDataException("The requested live-knowledge fixture is invalid for this replay profile.");
+        }
         if (request.Environment is not (SparkyApiProfile.Dev or SparkyApiProfile.Live) ||
             string.IsNullOrWhiteSpace(request.DraftRevisionId) || request.DraftRevisionId.Length > 80 ||
             request.ExampleIds is not { Count: > 0 and <= MaximumExamples } ||
@@ -139,6 +151,13 @@ internal sealed class SparkyReplayService
             request.Environment, request.DraftRevisionId, cancellationToken).ConfigureAwait(false);
         if (candidateSnapshot is null)
             throw new InvalidDataException("draft_not_found");
+
+        SparkyLiveKnowledgeReadView? liveKnowledge = request.LiveKnowledgeFixtureId is { } fixtureId
+            ? SparkyLiveKnowledgeFixtures.CreateReadView(fixtureId, DateTimeOffset.UtcNow)
+            : _liveKnowledgeCatalog?.GetReadView(
+                request.Environment,
+                DateTimeOffset.UtcNow,
+                TimeSpan.FromMinutes(activeSnapshot.Configuration.LiveKnowledge?.CurrentSnapshotMaxAgeMinutes ?? 15));
 
         await _runGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -156,8 +175,8 @@ internal sealed class SparkyReplayService
                 var example = byId[exampleId];
                 IReadOnlyList<SparkyEvaluationTurn> turns = example.Turns ??
                     SparkyEvaluationValidator.FromLegacy(example.Question, example.ExpectedIntent, example.ExpectedProperties);
-                IReadOnlyList<SparkyReplayOutput> activeTurns = await RunSequenceBoundedAsync(turns, activeSnapshot, cancellationToken).ConfigureAwait(false);
-                IReadOnlyList<SparkyReplayOutput> candidateTurns = await RunSequenceBoundedAsync(turns, candidateSnapshot, cancellationToken).ConfigureAwait(false);
+                IReadOnlyList<SparkyReplayOutput> activeTurns = await RunSequenceBoundedAsync(turns, activeSnapshot, liveKnowledge, cancellationToken).ConfigureAwait(false);
+                IReadOnlyList<SparkyReplayOutput> candidateTurns = await RunSequenceBoundedAsync(turns, candidateSnapshot, liveKnowledge, cancellationToken).ConfigureAwait(false);
                 var perTurn = turns.Select((turn, index) => new SparkyReplayTurnResult(
                     turn.Question,
                     turn,
@@ -200,6 +219,7 @@ internal sealed class SparkyReplayService
     private async Task<IReadOnlyList<SparkyReplayOutput>> RunSequenceBoundedAsync(
         IReadOnlyList<SparkyEvaluationTurn> turns,
         SparkyProfileSnapshot snapshot,
+        SparkyLiveKnowledgeReadView? liveKnowledge,
         CancellationToken cancellationToken)
     {
         var history = new List<SparkyConversationTurn>();
@@ -215,7 +235,7 @@ internal sealed class SparkyReplayService
             try
             {
                 var step = await _answerer.AnswerAsync(
-                    turn.Question, snapshot, history.ToArray(), summary, pending, cancellationToken).ConfigureAwait(false);
+                    turn.Question, snapshot, history.ToArray(), summary, pending, cancellationToken, liveKnowledge).ConfigureAwait(false);
                 outputs.Add(step.Output);
                 if (!string.IsNullOrWhiteSpace(step.Output.Answer))
                 {

@@ -14,7 +14,7 @@ PerpetuumServer2.sln
 ├── src/Perpetuum.ServerService2/       # Windows service wrapper
 ├── src/Perpetuum.ServerService2Installer/ # Windows service installer
 ├── src/Perpetuum.AdminTool/            # WPF admin/tooling application
-├── src/Perpetuum.ItemStatsExporter/    # Offline item/recipe export, HTTPS loopback API, and supervised reverse SSH client
+├── src/Perpetuum.ItemStatsExporter/    # Offline knowledge export, HTTPS loopback APIs, admin panel, and supervised reverse SSH clients
 ├── src/Perpetuum.ItemStatsExporterInstaller/ # Self-contained Windows service installer for Sparky
 ├── src/Open.Nat/                       # UPnP library (vendored)
 ├── docs/                               # Architecture, DB schema, curated Sparky knowledge, and project docs
@@ -32,14 +32,14 @@ PerpetuumServer2.sln
 
 | Project | Role |
 |---------|------|
-| `Perpetuum` | All game logic: entities, zones, modules, robots, players, services |
+| `Perpetuum` | All game logic: entities, zones, modules, robots, players, services; season service publishes cached season snapshots asynchronously to Sparky |
 | `Perpetuum.Bootstrapper` | Autofac container assembly; one `Module` per subsystem |
 | `Perpetuum.RequestHandlers` | Handler class per command; no game logic, thin orchestration |
 | `Perpetuum.ExportedTypes` | Enums/flags shared across projects (`AggregateField`, `CategoryFlags`, `EffectType`, etc.) |
 | `Perpetuum.Server` | `Program.cs` — parses CLI args, calls `PerpetuumBootstrapper.Init/Start` |
 | `Perpetuum.ServerService2` | Windows service host wrapping bootstrapper |
 | `Perpetuum.AdminTool` | Standalone WPF tool for admin operations (NPC editing, seasons, loot, etc.) |
-| `Perpetuum.ItemStatsExporter` | Offline multilingual item/recipe/robot export and versioned bundle build, deterministic retrieval and grounded LM Studio routing, migrated profile tuning, multi-turn evaluation/replay, local trace store, loopback HTTPS game/admin listeners, and separately restricted reverse SSH tunnels; uses game entity/property/production-component logic without starting game server services |
+| `Perpetuum.ItemStatsExporter` | Offline multilingual item/recipe/robot export and versioned bundle build, deterministic retrieval and grounded LM Studio routing, migrated profile tuning, multi-turn evaluation/replay, local trace store, durable live-season snapshot catalog, loopback HTTPS game/admin listeners, and separately restricted reverse SSH tunnels; uses game entity/property/production-component logic without starting game server services |
 | `Perpetuum.ItemStatsExporterInstaller` | WiX installer for the self-contained Sparky Windows service; does not package machine-specific exports, credentials, SSH keys, or certificates |
 
 ## Source Organisation — `src/Perpetuum/`
@@ -95,9 +95,9 @@ src/Perpetuum/
 │   ├── MarketEngine/       # Market orders, pricing, auto-orders
 │   ├── MissionEngine/      # Missions, targets, transport assignments, data cache
 │   ├── ProductionEngine/   # Crafting, research, calibration, reprocessing
-│   ├── Seasons/            # Season lifecycle and bonus system
+│   ├── Seasons/            # Season lifecycle and bonus system; cached Sparky snapshot builder
 │   ├── EventServices/      # Pub/sub event bus, Discord bridge, async Sparky response delivery
-│   ├── Sparky/             # AI API client, volatile follow-up context, local passive question capture
+│   ├── Sparky/             # AI API client, volatile follow-up context, local passive question capture, async live-knowledge publisher and durable finalization outbox
 │   ├── Standing/           # Faction/corp standing
 │   ├── Social/             # Friends, blocks, social list
 │   ├── Channels/           # Chat channels, chat commands
@@ -229,6 +229,7 @@ src/Perpetuum.RequestHandlers/
 - `perpetuum.ini` (inside GameRoot) — SQL connection string, ports, zone config, feature flags
 - Passive Sparky pilot settings and JSONL/session file lifecycle — `docs/superpowers/sparky-question-capture.md`
 - Sparky profile tuning, migration, multi-turn evaluation, replay isolation, and Dev-only operations — `docs/superpowers/sparky-conversation-first-operations.md`
+- Sparky live-season snapshot routes, freshness, durable finalization outbox, and Dev fixture — `src/Perpetuum.ItemStatsExporter/README.md` and `docs/codebase/INTEGRATIONS.md`
 
 ## Module Organisation (Autofac)
 

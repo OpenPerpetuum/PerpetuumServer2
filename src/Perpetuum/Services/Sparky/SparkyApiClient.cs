@@ -8,22 +8,29 @@ namespace Perpetuum.Services.Sparky;
 internal sealed class SparkyApiClient : IDisposable
 {
     private const int MaxResponseBytes = 65536;
+    private const int MaxLiveKnowledgeRequestBytes = 256 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
 
     private readonly HttpClient _httpClient;
     private readonly SparkyClientOptions _options;
 
     public SparkyApiClient(SparkyClientOptions options)
-    {
-        _options = options;
-        _httpClient = new HttpClient(new SocketsHttpHandler
+        : this(options, new HttpClient(new SocketsHttpHandler
         {
             AllowAutoRedirect = false,
             UseProxy = false
         })
         {
             Timeout = Timeout.InfiniteTimeSpan
-        };
+        })
+    {
+    }
+
+    internal SparkyApiClient(SparkyClientOptions options, HttpClient httpClient)
+    {
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _httpClient.Timeout = Timeout.InfiniteTimeSpan;
     }
 
     public async Task<SparkyApiResult> AnswerAsync(
@@ -102,6 +109,122 @@ internal sealed class SparkyApiClient : IDisposable
                 parsed.LanguageId,
                 contextUpdate),
             _ => SparkyApiResult.Unavailable
+        };
+    }
+
+    public async Task<SparkyLiveKnowledgePublishResult> PublishCurrentAsync(
+        SparkyLiveKnowledgeUpdate update,
+        CancellationToken cancellationToken) =>
+        (await PublishLiveKnowledgeAsync(update, "replace-current", ["applied", "refreshed", "unchanged"], cancellationToken)
+            .ConfigureAwait(false)) with { FullSnapshotSent = true };
+
+    public Task<SparkyLiveKnowledgePublishResult> RefreshCurrentAsync(
+        SparkyLiveKnowledgeUpdate update,
+        CancellationToken cancellationToken) =>
+        PublishLiveKnowledgeAsync(update, "refresh-current", ["refreshed", "unchanged"], cancellationToken);
+
+    public async Task<SparkyLiveKnowledgePublishResult> PublishCurrentWithHeartbeatAsync(
+        SparkyLiveKnowledgeUpdate update,
+        bool contentHashWasPreviouslyAcknowledged,
+        CancellationToken cancellationToken)
+    {
+        if (!contentHashWasPreviouslyAcknowledged)
+            return await PublishCurrentAsync(update, cancellationToken).ConfigureAwait(false);
+
+        var heartbeat = await RefreshCurrentAsync(update with
+        {
+            Operation = "refresh-current",
+            Current = null
+        }, cancellationToken).ConfigureAwait(false);
+        if (heartbeat.Status is "current_missing" or "hash_mismatch")
+            return await PublishCurrentAsync(update, cancellationToken).ConfigureAwait(false);
+        return heartbeat with { FullSnapshotSent = false };
+    }
+
+    public Task<SparkyLiveKnowledgePublishResult> PublishFinalizationAsync(
+        SparkyLiveKnowledgeUpdate update,
+        CancellationToken cancellationToken) =>
+        PublishLiveKnowledgeAsync(update, "finalize-season", ["finalized", "duplicate"], cancellationToken);
+
+    private async Task<SparkyLiveKnowledgePublishResult> PublishLiveKnowledgeAsync(
+        SparkyLiveKnowledgeUpdate update,
+        string expectedOperation,
+        string[] acceptedStatuses,
+        CancellationToken cancellationToken)
+    {
+        if (!IsValidLiveUpdate(update, expectedOperation))
+            return new SparkyLiveKnowledgePublishResult(false, "invalid_update", 0);
+
+        byte[] body = JsonSerializer.SerializeToUtf8Bytes(update, JsonOptions);
+        if (body.Length > MaxLiveKnowledgeRequestBytes)
+            return new SparkyLiveKnowledgePublishResult(false, "payload_too_large", 0);
+
+        string route = expectedOperation switch
+        {
+            "replace-current" => "/v1/live-knowledge/current",
+            "refresh-current" => "/v1/live-knowledge/current/refresh",
+            "finalize-season" => $"/v1/live-knowledge/seasons/{update.Finalization!.SeasonId}/finalize",
+            _ => throw new InvalidOperationException("Unsupported Sparky live-knowledge operation.")
+        };
+        var authority = new Uri(_options.ApiUri.GetLeftPart(UriPartial.Authority));
+        var uri = new Uri(authority, route);
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_options.RequestTimeout);
+        using var request = new HttpRequestMessage(
+            expectedOperation == "replace-current" ? HttpMethod.Put : HttpMethod.Post,
+            uri)
+        {
+            Content = new ByteArrayContent(body)
+        };
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiToken);
+
+        using var response = await _httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            timeout.Token).ConfigureAwait(false);
+        byte[] responseBytes = await ReadBoundedAsync(response.Content, timeout.Token).ConfigureAwait(false);
+        SparkyLiveKnowledgeAcknowledgement? acknowledgement;
+        try
+        {
+            acknowledgement = JsonSerializer.Deserialize<SparkyLiveKnowledgeAcknowledgement>(responseBytes, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            acknowledgement = null;
+        }
+
+        if (acknowledgement is null ||
+            !string.Equals(acknowledgement.Operation, expectedOperation, StringComparison.Ordinal) ||
+            !string.Equals(acknowledgement.ContentHash, update.ContentHash, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(acknowledgement.Status))
+        {
+            return new SparkyLiveKnowledgePublishResult(false, "invalid_acknowledgement", (int)response.StatusCode);
+        }
+
+        bool accepted = response.IsSuccessStatusCode && acceptedStatuses.Contains(acknowledgement.Status, StringComparer.Ordinal);
+        return new SparkyLiveKnowledgePublishResult(accepted, acknowledgement.Status, (int)response.StatusCode);
+    }
+
+    private bool IsValidLiveUpdate(SparkyLiveKnowledgeUpdate? update, string expectedOperation)
+    {
+        if (update is null || update.SchemaVersion != 1 || update.Provider != "seasons" ||
+            update.Profile != _options.Profile || update.Operation != expectedOperation ||
+            update.CapturedAtUtc.Offset != TimeSpan.Zero || string.IsNullOrEmpty(update.ContentHash) || update.ContentHash.Length != 64 ||
+            !update.ContentHash.All(Uri.IsHexDigit))
+        {
+            return false;
+        }
+
+        return expectedOperation switch
+        {
+            "replace-current" => update.Current is not null && update.Finalization is null &&
+                string.Equals(update.ContentHash, SparkyLiveKnowledgeHash.ComputeCurrent(update), StringComparison.OrdinalIgnoreCase),
+            "refresh-current" => update.Current is null && update.Finalization is null,
+            "finalize-season" => update.Current is null && update.Finalization is { SeasonId: > 0 } finalization &&
+                string.Equals(update.ContentHash, SparkyLiveKnowledgeHash.ComputeFinalization(update), StringComparison.OrdinalIgnoreCase),
+            _ => false
         };
     }
 
@@ -199,7 +322,21 @@ internal sealed class SparkyApiClient : IDisposable
         public int? LanguageId { get; init; }
         public SparkyConversationUpdate? ContextUpdate { get; init; }
     }
+
+    private sealed class SparkyLiveKnowledgeAcknowledgement
+    {
+        public string? Status { get; init; }
+        public string? ContentHash { get; init; }
+        public string? Operation { get; init; }
+        public int? Revision { get; init; }
+    }
 }
+
+internal sealed record SparkyLiveKnowledgePublishResult(
+    bool IsAcknowledged,
+    string Status,
+    int HttpStatusCode,
+    bool FullSnapshotSent = false);
 
 internal sealed record SparkyApiRequest(
     Guid RequestId,

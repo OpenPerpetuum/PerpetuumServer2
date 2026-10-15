@@ -181,7 +181,8 @@ public sealed class SparkyProfileManagerTests
                 ConversationHistoryTurns = 6,
                 ConversationHistoryCharacters = 3200,
                 AnswerTemperature = 0.35,
-                AnswerTopP = 0.85
+                AnswerTopP = 0.85,
+                LiveKnowledge = new SparkyLiveKnowledgeSettings(30)
             },
             "change two settings",
             cancellationToken);
@@ -190,7 +191,7 @@ public sealed class SparkyProfileManagerTests
 
         var audit = (await manager.GetDetailsAsync(SparkyApiProfile.Dev, cancellationToken)).Audit
             .First(entry => entry.Action == "activate");
-        Assert.Equal(["modelId", "conversationContext", "answerModelTuning", "contentCapture"], audit.ChangedFields);
+        Assert.Equal(["modelId", "conversationContext", "answerModelTuning", "liveKnowledge", "contentCapture"], audit.ChangedFields);
     }
 
     [Fact]
@@ -221,6 +222,7 @@ public sealed class SparkyProfileManagerTests
         Assert.Equal(4000, migrated.Configuration.ConversationHistoryCharacters);
         Assert.Equal(0.2, migrated.Configuration.AnswerTemperature);
         Assert.Equal(0.9, migrated.Configuration.AnswerTopP);
+        Assert.Equal(15, migrated.Configuration.LiveKnowledge!.CurrentSnapshotMaxAgeMinutes);
         Assert.Equal("legacy-model", migrated.Configuration.ModelId);
         SparkyServiceOptions applied = migrated.ApplyTo(options);
         Assert.Equal(8, applied.ConversationHistoryTurns);

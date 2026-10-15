@@ -18,7 +18,8 @@ internal static class SparkyAdminEndpoints
         SparkyKnowledgeBundle bundle,
         SparkyTunnelStatusRegistry tunnelStatuses,
         SparkyProfileManager profileManager,
-        SparkyReplayService replayService)
+        SparkyReplayService replayService,
+        SparkyLiveKnowledgeCatalog? liveKnowledgeCatalog = null)
     {
         app.Use(async (context, next) =>
         {
@@ -75,6 +76,32 @@ internal static class SparkyAdminEndpoints
         }));
 
         app.MapGet("/admin/api/profiles", () => Results.Json(profileManager.GetSummaries()));
+
+        app.MapGet("/admin/api/live-knowledge/status", (HttpContext context) =>
+        {
+            if (!TryReadEnvironment(context.Request.Query, out var environment))
+                return Results.Json(new SparkyApiError("invalid_profile"), statusCode: StatusCodes.Status400BadRequest);
+            if (liveKnowledgeCatalog is null)
+                return Results.Json(new SparkyApiError("live_knowledge_unavailable"), statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            int maximumAgeMinutes = profileManager.TryGetSnapshot(environment, out var snapshot)
+                ? snapshot.Configuration.LiveKnowledge?.CurrentSnapshotMaxAgeMinutes ?? 15
+                : 15;
+            var view = liveKnowledgeCatalog.GetReadView(
+                environment,
+                DateTimeOffset.UtcNow,
+                TimeSpan.FromMinutes(maximumAgeMinutes));
+            return Results.Json(new
+            {
+                environment = environment.ToString(),
+                view.Diagnostics.Provider,
+                view.Diagnostics.SchemaVersion,
+                view.Diagnostics.ContentHash,
+                view.Diagnostics.CaptureAgeMinutes,
+                view.Diagnostics.Freshness,
+                view.Diagnostics.CompletedSeasonCount
+            });
+        });
 
         app.MapGet("/admin/api/profiles/{profile}", async (string profile, HttpContext context) =>
         {

@@ -29,22 +29,38 @@ internal static class SparkyHttpService
         CancellationToken cancellationToken)
     {
         SparkyTraceStore? traceStore = null;
+        var commonApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        if (string.IsNullOrWhiteSpace(commonApplicationData))
+            commonApplicationData = Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory) ?? string.Empty, "ProgramData");
+        string traceDatabasePath = options.TraceDatabasePath ?? Path.Combine(
+            commonApplicationData,
+            "Sparky",
+            "traces",
+            "sparky-traces.db");
         try
         {
-            traceStore = new SparkyTraceStore(options.TraceDatabasePath ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "Sparky",
-                "traces",
-                "sparky-traces.db"));
+            traceStore = new SparkyTraceStore(traceDatabasePath);
         }
         catch
         {
             // Tracing is intentionally optional for answering; the listener still starts.
         }
 
-        string commonApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        if (string.IsNullOrWhiteSpace(commonApplicationData))
-            commonApplicationData = Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory) ?? string.Empty, "ProgramData");
+        SparkyLiveKnowledgeCatalog? liveKnowledgeCatalog = null;
+        Exception? liveKnowledgeStoreError = null;
+        try
+        {
+            string traceDirectory = Path.GetDirectoryName(Path.GetFullPath(traceDatabasePath))!;
+            var liveKnowledgeStore = new SparkyLiveKnowledgeStore(Path.Combine(traceDirectory, "live-knowledge.db"));
+            await liveKnowledgeStore.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            liveKnowledgeCatalog = new SparkyLiveKnowledgeCatalog(liveKnowledgeStore, SparkyLiveKnowledgePassageBuilder.BuildSupplement);
+            await liveKnowledgeCatalog.InitializeAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            liveKnowledgeStoreError = exception;
+        }
+
         var bundleCatalog = new SparkyBundleCatalog(
             Path.Combine(commonApplicationData, "Sparky", "bundles"),
             Program.ReadKnowledgeBundle);
@@ -106,7 +122,7 @@ internal static class SparkyHttpService
         {
             serverOptions.Limits.MaxRequestBodySize = Math.Max(
                 options.MaxRequestBodyBytes,
-                SparkyTraceEventValidator.MaxBodyBytes);
+                Math.Max(SparkyTraceEventValidator.MaxBodyBytes, SparkyLiveKnowledgeValidator.MaxBodyBytes));
             serverOptions.Listen(IPAddress.Loopback, options.ServiceUri.Port, listenOptions =>
             {
                 listenOptions.UseHttps(httpsOptions =>
@@ -122,6 +138,12 @@ internal static class SparkyHttpService
         {
             logger.LogError("Sparky trace storage could not be initialized; answering remains enabled, but trace uploads and request history are unavailable.");
         }
+        if (liveKnowledgeCatalog is null)
+        {
+            logger.LogWarning(
+                liveKnowledgeStoreError,
+                "Sparky live-knowledge storage could not be initialized; current and historical live facts are unavailable, but ordinary answers remain enabled.");
+        }
         if (profileStorageFallback)
             logger.LogError("Sparky profile storage could not be initialized; the service is using in-memory legacy Dev settings and profile edits will not persist.");
 
@@ -136,6 +158,116 @@ internal static class SparkyHttpService
                 : bundle.Manifest.BundleVersion[..Math.Min(bundle.Manifest.BundleVersion.Length, 16)],
             profiles = profileManager.GetSummaries()
         }));
+        app.MapPut("/v1/live-knowledge/current", async (HttpContext context) =>
+        {
+            if (liveKnowledgeCatalog is null)
+            {
+                return Results.Json(new SparkyApiError("live_knowledge_unavailable"), statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            var parsed = await ReadLiveKnowledgeUpdateAsync(context, options, credentialResolver).ConfigureAwait(false);
+            if (parsed.Error is not null)
+            {
+                return parsed.Error;
+            }
+
+            try
+            {
+                var result = await liveKnowledgeCatalog.ApplyAsync(
+                    parsed.Profile,
+                    parsed.Update!,
+                    context.RequestAborted).ConfigureAwait(false);
+                return LiveKnowledgeAcknowledgement(result with { Operation = parsed.Update!.Operation });
+            }
+            catch (InvalidDataException)
+            {
+                return Results.Json(new SparkyApiError("invalid_live_knowledge_update"), statusCode: StatusCodes.Status400BadRequest);
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                return Results.Empty;
+            }
+            catch
+            {
+                logger.LogWarning("Sparky live current snapshot persistence failed for profile {Profile}.", parsed.Profile);
+                return Results.Json(new SparkyApiError("live_knowledge_unavailable"), statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+        });
+        app.MapPost("/v1/live-knowledge/current/refresh", async (HttpContext context) =>
+        {
+            if (liveKnowledgeCatalog is null)
+            {
+                return Results.Json(new SparkyApiError("live_knowledge_unavailable"), statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            var parsed = await ReadLiveKnowledgeUpdateAsync(context, options, credentialResolver).ConfigureAwait(false);
+            if (parsed.Error is not null)
+            {
+                return parsed.Error;
+            }
+
+            try
+            {
+                var result = await liveKnowledgeCatalog.RefreshCurrentAsync(
+                    parsed.Profile,
+                    parsed.Update!,
+                    context.RequestAborted).ConfigureAwait(false);
+                return LiveKnowledgeAcknowledgement(result with { Operation = parsed.Update!.Operation });
+            }
+            catch (InvalidDataException)
+            {
+                return Results.Json(new SparkyApiError("invalid_live_knowledge_update"), statusCode: StatusCodes.Status400BadRequest);
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                return Results.Empty;
+            }
+            catch
+            {
+                logger.LogWarning("Sparky live snapshot freshness update failed for profile {Profile}.", parsed.Profile);
+                return Results.Json(new SparkyApiError("live_knowledge_unavailable"), statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+        });
+        app.MapPost("/v1/live-knowledge/seasons/{seasonId:int}/finalize", async (int seasonId, HttpContext context) =>
+        {
+            if (liveKnowledgeCatalog is null)
+            {
+                return Results.Json(new SparkyApiError("live_knowledge_unavailable"), statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            var parsed = await ReadLiveKnowledgeUpdateAsync(context, options, credentialResolver).ConfigureAwait(false);
+            if (parsed.Error is not null)
+            {
+                return parsed.Error;
+            }
+
+            if (parsed.Update!.Finalization?.SeasonId != seasonId)
+            {
+                return Results.Json(new SparkyApiError("invalid_live_knowledge_update"), statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            try
+            {
+                var result = await liveKnowledgeCatalog.ApplyAsync(
+                    parsed.Profile,
+                    parsed.Update!,
+                    context.RequestAborted).ConfigureAwait(false);
+                return LiveKnowledgeAcknowledgement(result with { Operation = parsed.Update!.Operation });
+            }
+            catch (InvalidDataException)
+            {
+                return Results.Json(new SparkyApiError("invalid_live_knowledge_update"), statusCode: StatusCodes.Status400BadRequest);
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                return Results.Empty;
+            }
+            catch
+            {
+                logger.LogWarning("Sparky season finalization persistence failed for profile {Profile}.", parsed.Profile);
+                return Results.Json(new SparkyApiError("live_knowledge_unavailable"), statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+        });
         app.MapPost("/v1/answer", async (HttpContext context) =>
         {
             var timer = Stopwatch.StartNew();
@@ -164,6 +296,10 @@ internal static class SparkyHttpService
                 activeSnapshot = resolvedSnapshot;
                 requestOptions = activeSnapshot.ApplyTo(options);
                 var requestBundle = activeSnapshot.Bundle;
+                var liveKnowledgeView = liveKnowledgeCatalog?.GetReadView(
+                    profile,
+                    DateTimeOffset.UtcNow,
+                    TimeSpan.FromMinutes(activeSnapshot.Configuration.LiveKnowledge?.CurrentSnapshotMaxAgeMinutes ?? 15));
 
                 if (!IsJsonRequest(context.Request.ContentType))
                 {
@@ -339,7 +475,8 @@ internal static class SparkyHttpService
                         boundedConversation.Turns,
                         boundedConversation.Summary,
                         boundedConversation.PendingClarification,
-                        request.NormalizeCallerRank()).ConfigureAwait(false);
+                        request.NormalizeCallerRank(),
+                        liveKnowledgeView).ConfigureAwait(false);
                     var conversationUpdate = SparkyConversationUpdateFactory.Create(question, interpretation, answer);
                     answer = answer with
                     {
@@ -374,6 +511,7 @@ internal static class SparkyHttpService
                             contextTurns: boundedConversation.Turns,
                             contextSummary: boundedConversation.Summary,
                             pendingClarification: boundedConversation.PendingClarification,
+                            liveKnowledge: liveKnowledgeView?.Diagnostics,
                             bundleVersion: requestBundle.Manifest.BundleVersion,
                             configRevision: activeSnapshot.RevisionId),
                         profile,
@@ -418,7 +556,8 @@ internal static class SparkyHttpService
                             contextTurns: boundedConversation.Turns,
                             contextSummary: boundedConversation.Summary,
                             pendingClarification: boundedConversation.PendingClarification,
-                            comparisonDiagnostics: answer.ComparisonDiagnostics),
+                            comparisonDiagnostics: answer.ComparisonDiagnostics,
+                            liveKnowledge: liveKnowledgeView?.Diagnostics),
                         profile,
                         options,
                         logger,
@@ -581,7 +720,8 @@ internal static class SparkyHttpService
             bundle,
             tunnelStatuses,
             profileManager,
-            new SparkyReplayService(traceStore, profileManager, concurrencyLimiter, options));
+            new SparkyReplayService(traceStore, profileManager, concurrencyLimiter, options, liveKnowledgeCatalog: liveKnowledgeCatalog),
+            liveKnowledgeCatalog);
 
         logger.LogInformation("Sparky local HTTPS service listening on {ServiceUrl}", options.ServiceUri);
         logger.LogInformation("Sparky local HTTPS admin panel listening on {AdminServiceUrl}", options.AdminServiceUri);
@@ -610,6 +750,60 @@ internal static class SparkyHttpService
         }
 
         return credentialResolver.TryResolve(authorization.Parameter, out profile);
+    }
+
+    private static async Task<(SparkyApiProfile Profile, SparkyLiveKnowledgeUpdate? Update, IResult? Error)> ReadLiveKnowledgeUpdateAsync(
+        HttpContext context,
+        SparkyServiceOptions options,
+        SparkyApiCredentialResolver credentialResolver)
+    {
+        if (!TryResolveBearerProfile(context, credentialResolver, out var profile))
+        {
+            return (default, null, Results.Json(new SparkyApiError("unauthorized"), statusCode: StatusCodes.Status401Unauthorized));
+        }
+
+        if (!IsJsonRequest(context.Request.ContentType))
+        {
+            return (profile, null, Results.Json(new SparkyApiError("unsupported_content_type"), statusCode: StatusCodes.Status415UnsupportedMediaType));
+        }
+
+        int maximumBytes = Math.Min(options.MaxRequestBodyBytes, SparkyLiveKnowledgeValidator.MaxBodyBytes);
+        if (context.Request.ContentLength > maximumBytes)
+        {
+            return (profile, null, Results.Json(new SparkyApiError("payload_too_large"), statusCode: StatusCodes.Status413PayloadTooLarge));
+        }
+
+        byte[]? requestBytes = await ReadBoundedBodyAsync(context.Request.Body, maximumBytes, context.RequestAborted).ConfigureAwait(false);
+        if (requestBytes is null)
+        {
+            return (profile, null, Results.Json(new SparkyApiError("payload_too_large"), statusCode: StatusCodes.Status413PayloadTooLarge));
+        }
+
+        if (!SparkyLiveKnowledgeValidator.TryDeserializeUpdate(
+                requestBytes,
+                profile,
+                DateTimeOffset.UtcNow,
+                out var update,
+                out var rejectionCode))
+        {
+            int statusCode = rejectionCode == "payload_too_large"
+                ? StatusCodes.Status413PayloadTooLarge
+                : StatusCodes.Status400BadRequest;
+            return (profile, null, Results.Json(new SparkyApiError(rejectionCode ?? "invalid_live_knowledge_update"), statusCode: statusCode));
+        }
+
+        return (profile, update, null);
+    }
+
+    private static IResult LiveKnowledgeAcknowledgement(SparkyLiveKnowledgeApplyResult result)
+    {
+        int statusCode = result.Status switch
+        {
+            "applied" or "refreshed" or "unchanged" or "duplicate" or "finalized" => StatusCodes.Status200OK,
+            "current_missing" or "hash_mismatch" or "out_of_order" => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest
+        };
+        return Results.Json(result, statusCode: statusCode);
     }
 
     private static bool IsJsonRequest(string? contentType)
@@ -677,7 +871,8 @@ internal static class SparkyHttpService
         IReadOnlyList<SparkyConversationTurn>? contextTurns = null,
         string? contextSummary = null,
         SparkyPendingClarification? pendingClarification = null,
-        SparkyComparisonDiagnostics? comparisonDiagnostics = null) => new(
+        SparkyComparisonDiagnostics? comparisonDiagnostics = null,
+        SparkyLiveKnowledgeDiagnostics? liveKnowledge = null) => new(
             Guid.NewGuid(),
             requestId,
             "AI",
@@ -715,7 +910,12 @@ internal static class SparkyHttpService
             ContextTurns: contextTurns,
             ContextSummary: contextSummary,
             PendingClarification: pendingClarification,
-            ComparisonDiagnostics: comparisonDiagnostics);
+            ComparisonDiagnostics: comparisonDiagnostics,
+            LiveKnowledgeProvider: liveKnowledge?.Provider,
+            LiveKnowledgeSchemaVersion: liveKnowledge?.SchemaVersion,
+            LiveKnowledgeHash: liveKnowledge?.ContentHash,
+            LiveKnowledgeCaptureAgeMinutes: liveKnowledge?.CaptureAgeMinutes,
+            LiveKnowledgeFreshness: liveKnowledge?.Freshness);
 
     private static int GetContextCharacterCount(SparkyBoundedConversationContext context)
     {

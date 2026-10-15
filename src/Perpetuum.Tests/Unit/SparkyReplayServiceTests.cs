@@ -45,6 +45,67 @@ public sealed class SparkyReplayServiceTests
     }
 
     [Fact]
+    public async Task Dev_season_fixture_is_shared_by_active_and_draft_without_changing_durable_live_state()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var temp = new TemporaryDirectory();
+        var store = new SparkyTraceStore(Path.Combine(temp.Path, "traces.db"));
+        var bundle = CreateBundle();
+        var options = CreateOptions(temp.Path);
+        var profiles = new SparkyProfileManager(store, new FakeBundleCatalog(bundle), options, bundle);
+        await profiles.InitializeAsync(cancellationToken);
+        var active = (await profiles.GetDetailsAsync(SparkyApiProfile.Dev, cancellationToken)).ActiveConfiguration!;
+        var draft = await profiles.SaveDraftAsync(SparkyApiProfile.Dev, active with { PersonaStyle = "Use concise field notes." }, "fixture draft", cancellationToken);
+        Assert.True(draft.Success);
+
+        var trace = new SparkyTraceEvent(Guid.NewGuid(), Guid.NewGuid(), "AI", "answer", "answered", DateTimeOffset.UtcNow,
+            Intent: "MechanicsLore", Question: "Who won the previous season?", Answer: "Fixture Champion.");
+        await store.AppendAsync(trace, SparkyApiProfile.Dev, captureContent: true, cancellationToken);
+        var example = await store.CreateEvaluationExampleAsync(trace.RequestId, SparkyApiProfile.Dev, "MechanicsLore", ["entity:FixtureChampion"], cancellationToken);
+        var liveStore = new SparkyLiveKnowledgeStore(Path.Combine(temp.Path, "live-knowledge.db"));
+        await liveStore.InitializeAsync(cancellationToken);
+        var liveCatalog = new SparkyLiveKnowledgeCatalog(liveStore, SparkyLiveKnowledgePassageBuilder.BuildSupplement);
+        await liveCatalog.InitializeAsync(cancellationToken);
+        var answerer = new FakeAnswerer();
+        var service = new SparkyReplayService(
+            store, profiles, new SparkyConcurrencyLimiter(), options, answerer, liveCatalog);
+
+        await service.RunAsync(
+            new SparkyReplayRequest(SparkyApiProfile.Dev, draft.RevisionId!, [example!.ExampleId], "season-sample-v1"),
+            cancellationToken);
+
+        Assert.Equal(2, answerer.Calls);
+        Assert.NotNull(answerer.LiveKnowledgeViews[0]);
+        Assert.Same(answerer.LiveKnowledgeViews[0], answerer.LiveKnowledgeViews[1]);
+        Assert.Equal("fresh", answerer.LiveKnowledgeViews[0]!.Diagnostics.Freshness);
+        Assert.Equal(2, answerer.LiveKnowledgeViews[0]!.Diagnostics.CompletedSeasonCount);
+        Assert.Contains(answerer.LiveKnowledgeViews[0]!.Supplement.Passages,
+            passage => passage.SourceId == "live-season-final-1002" && passage.Text.Contains("Previous Fixture Champion", StringComparison.Ordinal));
+
+        var durableState = await liveStore.LoadProfileAsync(SparkyApiProfile.Dev, cancellationToken);
+        Assert.Null(durableState.Current);
+        Assert.Empty(durableState.FinalizedSeasons);
+    }
+
+    [Fact]
+    public async Task Synthetic_live_fixture_is_rejected_for_live_replay()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var temp = new TemporaryDirectory();
+        var store = new SparkyTraceStore(Path.Combine(temp.Path, "traces.db"));
+        var bundle = CreateBundle();
+        var options = CreateOptions(temp.Path);
+        var profiles = new SparkyProfileManager(store, new FakeBundleCatalog(bundle), options, bundle);
+        await profiles.InitializeAsync(cancellationToken);
+        var answerer = new FakeAnswerer();
+        var service = new SparkyReplayService(store, profiles, new SparkyConcurrencyLimiter(), options, answerer);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => service.RunAsync(
+            new SparkyReplayRequest(SparkyApiProfile.Live, "draft", [Guid.NewGuid()], "season-sample-v1"), cancellationToken));
+        Assert.Equal(0, answerer.Calls);
+    }
+
+    [Fact]
     public async Task Replay_rejects_more_than_one_hundred_examples_before_inference()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -155,6 +216,7 @@ public sealed class SparkyReplayServiceTests
     private sealed class FakeAnswerer : ISparkyReplayAnswerer
     {
         public List<IReadOnlyList<SparkyConversationTurn>> Contexts { get; } = [];
+        public List<SparkyLiveKnowledgeReadView?> LiveKnowledgeViews { get; } = [];
         public int Calls => Contexts.Count;
         public Task<SparkyReplayStep> AnswerAsync(
             string question,
@@ -162,9 +224,11 @@ public sealed class SparkyReplayServiceTests
             IReadOnlyList<SparkyConversationTurn> contextTurns,
             string? contextSummary,
             SparkyPendingClarification? pendingClarification,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            SparkyLiveKnowledgeReadView? liveKnowledge)
         {
             Contexts.Add(contextTurns.ToArray());
+            LiveKnowledgeViews.Add(liveKnowledge);
             string status = snapshot.Configuration.PersonaStyle.Contains("concise", StringComparison.Ordinal) ? "draft" : "active";
             string answer = status + " answer";
             var output = new SparkyReplayOutput("answered", "MechanicsLore", ["Theseus"], ["source-1"], answer,

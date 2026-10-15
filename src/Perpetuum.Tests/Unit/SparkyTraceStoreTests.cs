@@ -175,7 +175,12 @@ public sealed class SparkyTraceStoreTests
             AnswerTemperature = 0.55,
             AnswerTopP = 0.8,
             ConversationHistoryTurns = 6,
-            ConversationHistoryCharacters = 3000
+            ConversationHistoryCharacters = 3000,
+            LiveKnowledgeProvider = "seasons",
+            LiveKnowledgeSchemaVersion = 1,
+            LiveKnowledgeHash = new string('a', 64),
+            LiveKnowledgeCaptureAgeMinutes = 3.5,
+            LiveKnowledgeFreshness = "fresh"
         };
 
         await store.AppendAsync(traceEvent, SparkyApiProfile.Dev, captureContent: false, cancellationToken);
@@ -185,6 +190,11 @@ public sealed class SparkyTraceStoreTests
         Assert.Equal(0.8, result.AnswerTopP);
         Assert.Equal(6, result.ConversationHistoryTurns);
         Assert.Equal(3000, result.ConversationHistoryCharacters);
+        Assert.Equal("seasons", result.LiveKnowledgeProvider);
+        Assert.Equal(1, result.LiveKnowledgeSchemaVersion);
+        Assert.Equal(new string('a', 64), result.LiveKnowledgeHash);
+        Assert.Equal(3.5, result.LiveKnowledgeCaptureAgeMinutes);
+        Assert.Equal("fresh", result.LiveKnowledgeFreshness);
         Assert.Null(result.Question);
     }
 
@@ -248,6 +258,7 @@ public sealed class SparkyTraceStoreTests
         var cancellationToken = TestContext.Current.CancellationToken;
         using var temp = new TemporaryDirectory();
         string path = Path.Combine(temp.Path, "legacy-trace.db");
+        Directory.CreateDirectory(temp.Path);
         var connectionString = new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString();
         await using (var connection = new SqliteConnection(connectionString))
         {

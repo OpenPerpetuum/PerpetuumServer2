@@ -42,6 +42,8 @@ internal static class SparkyProfileValidator
             errors.Add("AnswerTemperature must be between 0 and 2.");
         if (!double.IsFinite(profile.AnswerTopP) || profile.AnswerTopP is < 0.01 or > 1)
             errors.Add("AnswerTopP must be between 0.01 and 1.");
+        if (profile.LiveKnowledge is { CurrentSnapshotMaxAgeMinutes: < 5 or > 1440 })
+            errors.Add("LiveKnowledge.CurrentSnapshotMaxAgeMinutes must be between 5 and 1440.");
         if (globalConcurrencyLimit < 1 || profile.MaxConcurrentRequests is < 1 || profile.MaxConcurrentRequests > globalConcurrencyLimit)
             errors.Add($"MaxConcurrentRequests must be between 1 and the code-owned global limit of {Math.Max(1, globalConcurrencyLimit)}.");
         if (profile.ContentRetentionDays is < 1 or > 3650 || profile.MetadataRetentionDays is < 1 or > 3650 ||

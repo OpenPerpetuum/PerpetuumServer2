@@ -84,6 +84,8 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
                     ContextBudgetTrimmed, EffectiveIntent, EffectiveFocus, ResolverCategory, ResolverOutcome,
                     ComparisonSubjectCount, ComparisonAttributeCategory, ComparisonResultCategory,
                     ContextTurnsJson, ContextSummary, PendingClarificationJson, ComparisonDiagnosticsJson,
+                    LiveKnowledgeProvider, LiveKnowledgeSchemaVersion, LiveKnowledgeHash,
+                    LiveKnowledgeCaptureAgeMinutes, LiveKnowledgeFreshness,
                     MetadataHash)
                 VALUES (
                     $environment, $eventId, $requestId, $source, $stage, $outcome, $recordedAtUtc,
@@ -95,6 +97,8 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
                     $contextBudgetTrimmed, $effectiveIntent, $effectiveFocus, $resolverCategory, $resolverOutcome,
                     $comparisonSubjectCount, $comparisonAttributeCategory, $comparisonResultCategory,
                     $contextTurnsJson, $contextSummary, $pendingClarificationJson, $comparisonDiagnosticsJson,
+                    $liveKnowledgeProvider, $liveKnowledgeSchemaVersion, $liveKnowledgeHash,
+                    $liveKnowledgeCaptureAgeMinutes, $liveKnowledgeFreshness,
                     $metadataHash)
                 ON CONFLICT(Environment, EventId) DO NOTHING;
                 """;
@@ -146,7 +150,9 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
                    ContextMessageCount, ContextCharacterCount, HasContextSummary, HasPendingClarification,
                    ContextBudgetTrimmed, EffectiveIntent, EffectiveFocus, ResolverCategory, ResolverOutcome,
                    ComparisonSubjectCount, ComparisonAttributeCategory, ComparisonResultCategory,
-                   ContextTurnsJson, ContextSummary, PendingClarificationJson, ComparisonDiagnosticsJson
+                   ContextTurnsJson, ContextSummary, PendingClarificationJson, ComparisonDiagnosticsJson,
+                   LiveKnowledgeProvider, LiveKnowledgeSchemaVersion, LiveKnowledgeHash,
+                   LiveKnowledgeCaptureAgeMinutes, LiveKnowledgeFreshness
             FROM Trace
             WHERE Environment = $environment AND RequestId = $requestId
             ORDER BY RecordedAtUtc, EventId;
@@ -818,6 +824,11 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         EnsureColumn(connection, "Trace", "ContextSummary", "TEXT NULL");
         EnsureColumn(connection, "Trace", "PendingClarificationJson", "TEXT NULL");
         EnsureColumn(connection, "Trace", "ComparisonDiagnosticsJson", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "LiveKnowledgeProvider", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "LiveKnowledgeSchemaVersion", "INTEGER NULL");
+        EnsureColumn(connection, "Trace", "LiveKnowledgeHash", "TEXT NULL");
+        EnsureColumn(connection, "Trace", "LiveKnowledgeCaptureAgeMinutes", "REAL NULL");
+        EnsureColumn(connection, "Trace", "LiveKnowledgeFreshness", "TEXT NULL");
     }
 
     private static async Task InsertAuditAsync(
@@ -919,6 +930,11 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         command.Parameters.AddWithValue("$contextSummary", (object?)traceEvent.ContextSummary ?? DBNull.Value);
         command.Parameters.AddWithValue("$pendingClarificationJson", (object?)SerializeNullable(traceEvent.PendingClarification) ?? DBNull.Value);
         command.Parameters.AddWithValue("$comparisonDiagnosticsJson", (object?)SerializeNullable(traceEvent.ComparisonDiagnostics) ?? DBNull.Value);
+        command.Parameters.AddWithValue("$liveKnowledgeProvider", (object?)traceEvent.LiveKnowledgeProvider ?? DBNull.Value);
+        command.Parameters.AddWithValue("$liveKnowledgeSchemaVersion", (object?)traceEvent.LiveKnowledgeSchemaVersion ?? DBNull.Value);
+        command.Parameters.AddWithValue("$liveKnowledgeHash", (object?)traceEvent.LiveKnowledgeHash ?? DBNull.Value);
+        command.Parameters.AddWithValue("$liveKnowledgeCaptureAgeMinutes", (object?)traceEvent.LiveKnowledgeCaptureAgeMinutes ?? DBNull.Value);
+        command.Parameters.AddWithValue("$liveKnowledgeFreshness", (object?)traceEvent.LiveKnowledgeFreshness ?? DBNull.Value);
         command.Parameters.AddWithValue("$metadataHash", metadataHash);
     }
 
@@ -961,7 +977,12 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
         DeserializeNullable<SparkyConversationTurn[]>(reader, 35),
         ReadNullableString(reader, 36),
         DeserializeNullable<SparkyPendingClarification>(reader, 37),
-        DeserializeNullable<SparkyComparisonDiagnostics>(reader, 38));
+        DeserializeNullable<SparkyComparisonDiagnostics>(reader, 38),
+        ReadNullableString(reader, 39),
+        reader.IsDBNull(40) ? null : reader.GetInt32(40),
+        ReadNullableString(reader, 41),
+        reader.IsDBNull(42) ? null : reader.GetDouble(42),
+        ReadNullableString(reader, 43));
 
     private static string ComputeMetadataHash(SparkyTraceEvent traceEvent)
     {
@@ -998,7 +1019,12 @@ internal sealed class SparkyTraceStore : ISparkyProfileRepository
             traceEvent.ResolverOutcome,
             traceEvent.ComparisonSubjectCount,
             traceEvent.ComparisonAttributeCategory,
-            traceEvent.ComparisonResultCategory
+            traceEvent.ComparisonResultCategory,
+            traceEvent.LiveKnowledgeProvider,
+            traceEvent.LiveKnowledgeSchemaVersion,
+            traceEvent.LiveKnowledgeHash,
+            traceEvent.LiveKnowledgeCaptureAgeMinutes,
+            traceEvent.LiveKnowledgeFreshness
         }, JsonOptions);
         try
         {

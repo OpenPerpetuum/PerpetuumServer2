@@ -23,12 +23,16 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
         IReadOnlyList<string>? mentionedEntities = null,
         bool prioritizeEntityDefinitions = false,
         double minimumRelevanceScore = MinimumRelevanceScore,
-        IReadOnlyList<string>? sourceCategories = null)
+        IReadOnlyList<string>? sourceCategories = null,
+        SparkyLiveKnowledgeReadView? liveKnowledge = null)
     {
+        IReadOnlyList<SparkyKnowledgePassage> passages = liveKnowledge is null || liveKnowledge.Supplement.Passages.Count == 0
+            ? bundle.KnowledgePassages
+            : bundle.KnowledgePassages.Concat(liveKnowledge.Supplement.Passages).ToArray();
         if ((string.IsNullOrWhiteSpace(playerQuery) && string.IsNullOrWhiteSpace(englishQuery)) ||
             maxPassages <= 0 || maxCharacters <= 0 ||
             !double.IsFinite(minimumRelevanceScore) || minimumRelevanceScore is < 0 or > 1 ||
-            bundle.KnowledgePassages.Count == 0)
+            passages.Count == 0)
         {
             return [];
         }
@@ -62,9 +66,9 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
         var entityDefinitionPassages = new HashSet<int>();
         if (entityDefinitionPatterns.Length > 0)
         {
-            for (int index = 0; index < bundle.KnowledgePassages.Count; index++)
+            for (int index = 0; index < passages.Count; index++)
             {
-                if (entityDefinitionPatterns.Any(pattern => pattern.IsMatch(bundle.KnowledgePassages[index].Text)))
+                if (entityDefinitionPatterns.Any(pattern => pattern.IsMatch(passages[index].Text)))
                 {
                     entityDefinitionPassages.Add(index);
                 }
@@ -78,13 +82,30 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
             double totalWeight = 0;
             foreach (string token in queryTokens)
             {
-                if (!bundle.SearchIndex.TokenToPassageIndexes.TryGetValue(token, out var passageIndexes) ||
-                    passageIndexes.Count == 0)
+                bundle.SearchIndex.TokenToPassageIndexes.TryGetValue(token, out var bundleIndexes);
+                IReadOnlyList<int>? liveIndexes = null;
+                if (liveKnowledge is not null)
+                {
+                    liveKnowledge.Supplement.SearchIndex.TokenToPassageIndexes.TryGetValue(token, out liveIndexes);
+                }
+                int bundleCount = bundleIndexes?.Count ?? 0;
+                int liveCount = liveIndexes?.Count ?? 0;
+                if (bundleCount + liveCount == 0)
                 {
                     continue;
                 }
 
-                double weight = Math.Log(1d + (double)bundle.KnowledgePassages.Count / (passageIndexes.Count + 1d));
+                var passageIndexes = new List<int>(bundleCount + liveCount);
+                if (bundleIndexes is not null)
+                {
+                    passageIndexes.AddRange(bundleIndexes);
+                }
+                if (liveIndexes is not null)
+                {
+                    passageIndexes.AddRange(liveIndexes.Select(index => index + bundle.KnowledgePassages.Count));
+                }
+
+                double weight = Math.Log(1d + (double)passages.Count / (bundleCount + liveCount + 1d));
                 tokenWeights.Add((passageIndexes, weight));
                 totalWeight += weight;
             }
@@ -128,7 +149,8 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
 
         int[] rankedIndexes = passageMatches
             .Where(entry => sourceCategories is null || sourceCategories.Contains(
-                bundle.KnowledgePassages[entry.Key].SourceCategory, StringComparer.Ordinal))
+                passages[entry.Key].SourceCategory, StringComparer.Ordinal))
+            .Where(entry => liveKnowledge is null || !liveKnowledge.ExcludedSourceIds.Contains(passages[entry.Key].SourceId))
             .OrderByDescending(entry => entry.Value.HasEntityDefinition)
             .ThenByDescending(entry => entry.Value.BestScore)
             .ThenByDescending(entry => entry.Value.QueryMatchCount)
@@ -142,14 +164,14 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
             .DefaultIfEmpty(0)
             .Max();
         IEnumerable<int> selectedIndexes = maximumKnownQueryTerms <= 1
-            ? SelectSourceDiversePassages(rankedIndexes, maxPassages)
+            ? SelectSourceDiversePassages(rankedIndexes, maxPassages, passages)
             : rankedIndexes.Take(maxPassages);
 
         var results = new List<SparkyKnowledgePassage>();
         int usedCharacters = 0;
         foreach (int index in selectedIndexes)
         {
-            var passage = bundle.KnowledgePassages[index];
+            var passage = passages[index];
             if (usedCharacters + passage.Text.Length > maxCharacters)
             {
                 continue;
@@ -162,7 +184,10 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
         return results;
     }
 
-    private int[] SelectSourceDiversePassages(IReadOnlyList<int> rankedIndexes, int maxPassages)
+    private static int[] SelectSourceDiversePassages(
+        IReadOnlyList<int> rankedIndexes,
+        int maxPassages,
+        IReadOnlyList<SparkyKnowledgePassage> passages)
     {
         var selectedIndexes = new List<int>(maxPassages);
         var selectedPassages = new HashSet<int>();
@@ -170,7 +195,7 @@ internal sealed class SparkyKnowledgeRetriever(SparkyKnowledgeBundle bundle)
 
         foreach (int index in rankedIndexes)
         {
-            string sourceId = bundle.KnowledgePassages[index].SourceId;
+            string sourceId = passages[index].SourceId;
             if (selectedSources.Add(sourceId))
             {
                 selectedIndexes.Add(index);

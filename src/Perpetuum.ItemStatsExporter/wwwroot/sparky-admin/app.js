@@ -66,6 +66,9 @@
     $('evaluation-note').value = '';
     $('tunnel-list').replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Connect to Sparky to see tunnel status.' }));
     $('evaluation-list').replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Load reviewed cases for the selected profile.' }));
+    $('live-knowledge-status').textContent = 'Live season data status will appear here.';
+    $('live-knowledge-fixture').value = '';
+    $('live-knowledge-fixture').disabled = false;
     $('replay-results').replaceChildren();
     $('bundle-list').replaceChildren();
     $('revision-select').replaceChildren();
@@ -230,6 +233,14 @@
         ].filter(Boolean).join(' · '));
         appendText(card, 'Comparison route', [event.comparisonSubjectCount == null ? null : `${event.comparisonSubjectCount} subjects`, event.comparisonAttributeCategory, event.comparisonResultCategory].filter(Boolean).join(' · '));
         appendText(card, 'Selected sources', event.selectedSourceIds?.join(', '));
+        const liveKnowledge = [
+          event.liveKnowledgeProvider,
+          event.liveKnowledgeSchemaVersion ? `schema ${event.liveKnowledgeSchemaVersion}` : null,
+          event.liveKnowledgeFreshness,
+          Number.isFinite(event.liveKnowledgeCaptureAgeMinutes) ? `age ${event.liveKnowledgeCaptureAgeMinutes.toFixed(1)} min` : null,
+          event.liveKnowledgeHash ? `hash ${event.liveKnowledgeHash}` : null
+        ].filter(Boolean).join(' · ');
+        appendText(card, 'Live knowledge', liveKnowledge);
         if (event.contextTurns?.length) {
           appendText(card, 'Context turns', event.contextTurns.map(turn => `${turn.role}: ${turn.content}`).join('\n'));
         }
@@ -309,6 +320,7 @@
       maxConcurrentRequests: Number($('profile-concurrency').value),
       conversationHistoryTurns: Number($('profile-history-turns').value),
       conversationHistoryCharacters: Number($('profile-history-characters').value),
+      liveKnowledge: { currentSnapshotMaxAgeMinutes: Number($('profile-live-snapshot-age').value) },
       answerTemperature: Number($('profile-answer-temperature').value),
       answerTopP: Number($('profile-answer-top-p').value),
       captureContent: $('profile-capture').value === 'true',
@@ -335,6 +347,7 @@
     $('profile-concurrency').value = configuration.maxConcurrentRequests ?? '';
     $('profile-history-turns').value = configuration.conversationHistoryTurns ?? 8;
     $('profile-history-characters').value = configuration.conversationHistoryCharacters ?? 4000;
+    $('profile-live-snapshot-age').value = configuration.liveKnowledge?.currentSnapshotMaxAgeMinutes ?? 15;
     $('profile-answer-temperature').value = configuration.answerTemperature ?? 0.2;
     $('profile-answer-top-p').value = configuration.answerTopP ?? 0.9;
     $('profile-capture').value = String(configuration.captureContent ?? false);
@@ -362,9 +375,12 @@
     $('profile-summary').textContent = `${summary.profile}: ${summary.enabled ? 'enabled' : 'disabled'} · active ${summary.activeRevisionId ?? 'none'} · bundle ${summary.bundleVersion ?? 'none'}${details.draftRevisionId ? ` · draft ${details.draftRevisionId}` : ''}`;
     fillProfile(configuration);
     const describeTuning = value => value
-      ? `${value.conversationHistoryTurns ?? 8} history messages / ${value.conversationHistoryCharacters ?? 4000} chars · temperature ${value.answerTemperature ?? 0.2} · top-p ${value.answerTopP ?? 0.9}`
+      ? `${value.conversationHistoryTurns ?? 8} history messages / ${value.conversationHistoryCharacters ?? 4000} chars · temperature ${value.answerTemperature ?? 0.2} · top-p ${value.answerTopP ?? 0.9} · live data max age ${value.liveKnowledge?.currentSnapshotMaxAgeMinutes ?? 15} min`
       : 'not configured';
     $('profile-effective-settings').textContent = `Active settings: ${describeTuning(details.activeConfiguration)} · Draft settings: ${details.draftConfiguration ? describeTuning(details.draftConfiguration) : 'none'}`;
+    const fixture = $('live-knowledge-fixture');
+    fixture.disabled = summary.profile !== 'Dev';
+    if (fixture.disabled) fixture.value = '';
     const revisions = $('revision-select');
     const revisionOptions = details.revisions.map(revision => {
       const option = new Option(`${revision.isActive ? 'ACTIVE' : revision.isDraft ? 'DRAFT' : 'saved'} · ${revision.revisionId} · ${new Date(revision.createdAtUtc).toLocaleString()}`, revision.revisionId);
@@ -425,7 +441,19 @@
     const profile = selectedProfile();
     const [details] = await Promise.all([api(`/admin/api/profiles/${encodeURIComponent(profile)}`), loadBundles()]);
     renderProfile(details);
-    await loadEvaluations();
+    await Promise.all([loadEvaluations(), refreshLiveKnowledgeStatus(profile)]);
+  }
+
+  async function refreshLiveKnowledgeStatus(profile = selectedProfile()) {
+    const statusElement = $('live-knowledge-status');
+    try {
+      const status = await api(`/admin/api/live-knowledge/status?environment=${encodeURIComponent(profile)}`);
+      const age = Number.isFinite(status.captureAgeMinutes) ? `${status.captureAgeMinutes.toFixed(1)} min old` : 'no current snapshot';
+      const hash = status.contentHash ? ` · hash ${status.contentHash.slice(0, 12)}` : '';
+      statusElement.textContent = `${profile} season data: ${status.freshness} · ${age} · ${status.completedSeasonCount} archived season(s)${hash}`;
+    } catch (error) {
+      statusElement.textContent = `${profile} season data status unavailable (${error.message}).`;
+    }
   }
 
   async function loadProfiles() {
@@ -573,7 +601,12 @@
     setMessage(`Replaying ${selected.length} case${selected.length === 1 ? '' : 's'} against the active and draft revisions.`, false, 'profile-operation-result');
     try {
       const replay = await api('/admin/api/replays', {
-        method: 'POST', body: JSON.stringify({ environment: selectedProfile(), draftRevisionId, exampleIds: selected })
+        method: 'POST', body: JSON.stringify({
+          environment: selectedProfile(),
+          draftRevisionId,
+          exampleIds: selected,
+          liveKnowledgeFixtureId: $('live-knowledge-fixture').value || null
+        })
       });
       const persisted = await api(`/admin/api/replays/${encodeURIComponent(replay.replayId)}?environment=${encodeURIComponent(replay.environment)}`);
       renderReplay(persisted);
@@ -639,13 +672,19 @@
           query.textContent = `Query: ${output.searchQuery || 'none'}`;
           const sources = document.createElement('p');
           sources.textContent = `Sources: ${output.selectedSourceIds?.join(', ') || 'none'}`;
+          const liveKnowledge = output.liveKnowledge;
+          const liveStatus = document.createElement('p');
+          liveStatus.className = 'muted';
+          liveStatus.textContent = liveKnowledge
+            ? `Season data: ${liveKnowledge.freshness} · ${Number.isFinite(liveKnowledge.captureAgeMinutes) ? `${liveKnowledge.captureAgeMinutes.toFixed(1)} min old` : 'no current snapshot'} · ${liveKnowledge.completedSeasonCount} archived season(s)`
+            : 'Season data: not attached to this replay.';
           const metadata = output.metadata;
           const tuning = document.createElement('p');
           tuning.className = 'muted';
           tuning.textContent = metadata ? `Model ${metadata.modelId} · revision ${metadata.profileRevisionId} · bundle ${metadata.bundleVersion} · temp ${metadata.answerTemperature} · top-p ${metadata.answerTopP} · history ${metadata.conversationHistoryTurns}/${metadata.conversationHistoryCharacters}` : '';
           const answer = document.createElement('p');
           answer.textContent = output.answer || 'No answer text.';
-          column.append(title, entities, query, sources, tuning, answer);
+          column.append(title, entities, query, sources, liveStatus, tuning, answer);
           columns.append(column);
         }
         turnCard.append(columns);
@@ -812,6 +851,7 @@
     updateReplayButton();
   });
   $('replay-draft-revision').addEventListener('change', updateReplayButton);
+  $('live-knowledge-fixture').addEventListener('change', updateReplayButton);
   $('save-draft').addEventListener('click', saveDraft);
   $('validate-draft').addEventListener('click', validateDraft);
   $('activate-draft').addEventListener('click', activateRevision);

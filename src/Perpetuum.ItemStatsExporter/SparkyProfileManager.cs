@@ -490,6 +490,7 @@ internal sealed class SparkyProfileManager
     {
         var configuration = JsonSerializer.Deserialize<SparkyProfileDraft>(json, JsonOptions)
             ?? throw new InvalidDataException("The Sparky profile configuration is empty.");
+        configuration = configuration with { LiveKnowledge = configuration.LiveKnowledge ?? new SparkyLiveKnowledgeSettings() };
         return configuration.SchemaVersion switch
         {
             1 => configuration with { SchemaVersion = 2 },
@@ -504,7 +505,7 @@ internal sealed class SparkyProfileManager
         previous is null
             ? [
                 "modelId", "personaStyle", "routeAliases", "retrieval", "answerLimits",
-                "inferenceLimits", "conversationContext", "answerModelTuning", "bundleVersion", "contentCapture", "retention"
+                "inferenceLimits", "conversationContext", "answerModelTuning", "liveKnowledge", "bundleVersion", "contentCapture", "retention"
             ]
             : GetDifferentFields(configuration, previous);
 
@@ -532,6 +533,8 @@ internal sealed class SparkyProfileManager
             changed.Add("conversationContext");
         if (current.AnswerTemperature != previous.AnswerTemperature || current.AnswerTopP != previous.AnswerTopP)
             changed.Add("answerModelTuning");
+        if (!JsonEqual(current.LiveKnowledge, previous.LiveKnowledge))
+            changed.Add("liveKnowledge");
         if (!string.Equals(current.BundleVersion, previous.BundleVersion, StringComparison.Ordinal))
             changed.Add("bundleVersion");
         if (current.CaptureContent != previous.CaptureContent)

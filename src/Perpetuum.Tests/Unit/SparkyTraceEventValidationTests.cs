@@ -66,6 +66,26 @@ public sealed class SparkyTraceEventValidationTests
         Assert.False(SparkyTraceEventValidator.TryDeserializeBatch(oversized, out _));
     }
 
+    [Fact]
+    public void Live_knowledge_trace_diagnostics_are_bounded_and_hash_validated()
+    {
+        var valid = new SparkyTraceEvent(
+            Guid.Parse("10000000-0000-0000-0000-000000000009"),
+            Guid.Parse("20000000-0000-0000-0000-000000000001"),
+            "AI", "answer", "answered", new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero),
+            LiveKnowledgeProvider: "seasons",
+            LiveKnowledgeSchemaVersion: 1,
+            LiveKnowledgeHash: new string('a', 64),
+            LiveKnowledgeCaptureAgeMinutes: 8.5,
+            LiveKnowledgeFreshness: "stale");
+        var invalidHash = valid with { LiveKnowledgeHash = "not-a-hash" };
+        var invalidFreshness = valid with { LiveKnowledgeFreshness = "unknown" };
+
+        Assert.True(SparkyTraceEventValidator.IsValidStoreEvent(valid));
+        Assert.False(SparkyTraceEventValidator.IsValidStoreEvent(invalidHash));
+        Assert.False(SparkyTraceEventValidator.IsValidStoreEvent(invalidFreshness));
+    }
+
     private static SparkyTraceEventRequest Event(string eventId, string source, string stage, string outcome) => new(
         Guid.Parse(eventId),
         Guid.Parse("20000000-0000-0000-0000-000000000001"),

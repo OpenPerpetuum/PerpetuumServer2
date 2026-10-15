@@ -53,6 +53,7 @@
         <label>Profile concurrency<input id="profile-concurrency" type="number" min="1" max="16"></label>
         <label>Conversation history messages<input id="profile-history-turns" type="number" min="2" max="16" step="2" aria-describedby="history-hint"></label>
         <label>Conversation history character budget<input id="profile-history-characters" type="number" min="256" max="8000"></label>
+        <label>Live season snapshot freshness (minutes)<input id="profile-live-snapshot-age" type="number" min="5" max="1440"></label>
         <label>Answer temperature<input id="profile-answer-temperature" type="number" min="0" max="2" step="0.01"></label>
         <label>Answer top-p<input id="profile-answer-top-p" type="number" min="0.01" max="1" step="0.01"></label>
         <label>Capture question and answer<select id="profile-capture"><option value="true">Enabled</option><option value="false">Metadata only</option></select></label>
@@ -91,9 +92,11 @@
         <button id="refresh-evaluations" class="quiet-button" type="button">Load cases</button>
       </div>
       <p class="muted">Only examples you explicitly review are saved. Replay compares the active revision with a selected draft and never sends a message to game chat or Discord.</p>
+      <p id="live-knowledge-status" class="muted" aria-live="polite">Live season data status will appear here.</p>
       <div id="evaluation-list" class="evaluation-list"><p class="muted">Load reviewed cases for the selected profile.</p></div>
       <div class="button-row">
         <label>Draft revision to compare<select id="replay-draft-revision"></select></label>
+        <label>Dev live-data fixture<select id="live-knowledge-fixture"><option value="">Use profile snapshot</option><option value="season-sample-v1">Synthetic season sample</option></select></label>
         <button id="run-replay" class="primary-button" type="button" disabled>Replay selected cases</button>
       </div>
       <div id="replay-results" class="replay-results" aria-live="polite"></div>

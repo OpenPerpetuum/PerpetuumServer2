@@ -134,6 +134,11 @@ internal static partial class SparkyTraceEventValidator
         (traceEvent.ComparisonSubjectCount is null || traceEvent.ComparisonSubjectCount is >= 0 and <= 8) &&
         IsOptionalCategory(traceEvent.ComparisonAttributeCategory, 64) &&
         IsOptionalCategory(traceEvent.ComparisonResultCategory, 64) &&
+        IsOptionalCategory(traceEvent.LiveKnowledgeProvider, 32) &&
+        (traceEvent.LiveKnowledgeSchemaVersion is null || traceEvent.LiveKnowledgeSchemaVersion is >= 1 and <= 16) &&
+        (traceEvent.LiveKnowledgeHash is null || traceEvent.LiveKnowledgeHash.Length == 64 && traceEvent.LiveKnowledgeHash.All(Uri.IsHexDigit)) &&
+        (traceEvent.LiveKnowledgeCaptureAgeMinutes is null || double.IsFinite(traceEvent.LiveKnowledgeCaptureAgeMinutes.Value) && traceEvent.LiveKnowledgeCaptureAgeMinutes is >= 0 and <= 52_596_000) &&
+        (traceEvent.LiveKnowledgeFreshness is null or "fresh" or "stale" or "missing" or "rejected") &&
         IsContentTextValid(traceEvent.Question, 2000) &&
         IsContentTextValid(traceEvent.Answer, 2000) &&
         IsContextTurnsValid(traceEvent.ContextTurns) &&

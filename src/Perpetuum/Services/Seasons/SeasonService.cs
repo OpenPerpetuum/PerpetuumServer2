@@ -4,6 +4,7 @@ using Perpetuum.EntityFramework;
 using Perpetuum.Services.Channels;
 using Perpetuum.Services.EventServices.EventMessages;
 using Perpetuum.Services.Mail;
+using Perpetuum.Services.Sparky;
 using Perpetuum.Threading.Process;
 using System.Collections.Immutable;
 using System.Text;
@@ -26,6 +27,7 @@ namespace Perpetuum.Services.Seasons
         private readonly ICustomDictionary _customDictionary;
         private readonly Lazy<Character> _announcer = new(() => Character.GetByNick(AnnouncerNick));
         private readonly Lazy<IChannelManager> _channelManager;
+        private readonly Func<SparkyRequestCoordinator> _sparkyCoordinatorFactory;
 
         // Replaced atomically on refresh — reads are always against a stable snapshot.
         private volatile Season? _activeSeason;
@@ -33,6 +35,7 @@ namespace Perpetuum.Services.Seasons
         private ImmutableList<SeasonObjective> _activeObjectives = ImmutableList<SeasonObjective>.Empty;
         private ImmutableList<SeasonTier> _activeTiers = ImmutableList<SeasonTier>.Empty;
         private ImmutableList<SeasonLeaderboardReward> _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+        private ImmutableList<SparkySeasonStanding> _sparkyCurrentTopTen = ImmutableList<SparkySeasonStanding>.Empty;
 
         // Trigger immediate load on first Update tick
         private TimeSpan _cacheAge = CacheRefreshInterval;
@@ -46,12 +49,14 @@ namespace Perpetuum.Services.Seasons
             SeasonRepository repository,
             ICharacterProfileRepository characterProfileRepository,
             ICustomDictionary customDictionary,
-            Lazy<IChannelManager> channelManager)
+            Lazy<IChannelManager> channelManager,
+            Func<SparkyRequestCoordinator> sparkyCoordinatorFactory)
         {
             _repository = repository;
             _characterProfileRepository = characterProfileRepository;
             _customDictionary = customDictionary;
             _channelManager = channelManager;
+            _sparkyCoordinatorFactory = sparkyCoordinatorFactory;
         }
 
         // ── Process loop ─────────────────────────────────────────────────────
@@ -121,7 +126,10 @@ namespace Perpetuum.Services.Seasons
                     _activeObjectives = ImmutableList<SeasonObjective>.Empty;
                     _activeTiers = ImmutableList<SeasonTier>.Empty;
                     _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+                    _sparkyCurrentTopTen = ImmutableList<SparkySeasonStanding>.Empty;
                     _dailyPool = EmptyDailyPool;
+
+                    PublishCurrentKnowledge(null, []);
 
                     var pending = _repository.GetPendingRecurringSeason();
                     if (pending != null)
@@ -134,7 +142,10 @@ namespace Perpetuum.Services.Seasons
             _activeObjectives = _repository.GetObjectives(season.Id).ToImmutableList();
             _activeTiers = _repository.GetTiers(season.Id).ToImmutableList();
             _activeLeaderboard = _repository.GetLeaderboardRewards(season.Id).ToImmutableList();
+            if (previous?.Id != season.Id)
+                _sparkyCurrentTopTen = ImmutableList<SparkySeasonStanding>.Empty;
             _activeSeason = season; // assign last so readers see a consistent snapshot
+            PublishCurrentKnowledge(season, _sparkyCurrentTopTen);
 
             // Pool maintenance: reset when pooling is off; compute silently on season load/change.
             if (!season.DailyObjectivesPerDay.HasValue)
@@ -404,6 +415,8 @@ namespace Perpetuum.Services.Seasons
             var rankings = _repository.GetParticipantRankings(season.Id)
                 .Where(r => !Character.Get(r.CharacterId).IsInTraining())
                 .ToList();
+            var publicFinalStandings = ToPublicStandings(rankings);
+            TryPublishSeasonFinalization(season, publicFinalStandings);
             var leaderboard = _activeLeaderboard;
 
             for (int rank = 1; rank <= rankings.Count; rank++)
@@ -433,7 +446,9 @@ namespace Perpetuum.Services.Seasons
             _activeObjectives = ImmutableList<SeasonObjective>.Empty;
             _activeTiers = ImmutableList<SeasonTier>.Empty;
             _activeLeaderboard = ImmutableList<SeasonLeaderboardReward>.Empty;
+            _sparkyCurrentTopTen = ImmutableList<SparkySeasonStanding>.Empty;
             _dailyPool = EmptyDailyPool;
+            PublishCurrentKnowledge(null, []);
 
             var chatMessage = new StringBuilder();
             chatMessage.AppendLine();
@@ -468,6 +483,9 @@ namespace Perpetuum.Services.Seasons
             var rankings = _repository.GetParticipantRankings(season.Id)
                 .Where(r => !Character.Get(r.CharacterId).IsInTraining())
                 .ToList();
+            var publicStandings = ToPublicStandings(rankings);
+            _sparkyCurrentTopTen = publicStandings.ToImmutableList();
+            PublishCurrentKnowledge(season, _sparkyCurrentTopTen);
             int displayCount = Math.Min(10, rankings.Count);
 
             if (displayCount == 0)
@@ -485,6 +503,67 @@ namespace Perpetuum.Services.Seasons
             chatMessage.AppendLine("Way to go, Agents!");
 
             _channelManager.Value.PinnedAnnouncement(SeasonChannelName, _announcer.Value, chatMessage.ToString(), PinSlot.Leaderboard);
+        }
+
+        private static IReadOnlyList<SparkySeasonStanding> ToPublicStandings(
+            IReadOnlyList<SeasonCharacterPoints> rankings)
+        {
+            return rankings
+                .Take(10)
+                .Select((entry, index) => new SparkySeasonStanding(
+                    index + 1,
+                    Character.Get(entry.CharacterId).Nick,
+                    entry.TotalPoints))
+                .ToArray();
+        }
+
+        private void PublishCurrentKnowledge(Season? season, IReadOnlyList<SparkySeasonStanding> topTen)
+        {
+            try
+            {
+                var coordinator = _sparkyCoordinatorFactory();
+                if (!coordinator.IsEnabled || coordinator.Profile is not { } profile)
+                    return;
+
+                var update = SparkySeasonKnowledgeSnapshotBuilder.BuildCurrent(
+                    season,
+                    season is null ? [] : _activeRates,
+                    season is null ? [] : _activeObjectives,
+                    season is null ? [] : _activeTiers,
+                    topTen,
+                    DateTimeOffset.UtcNow,
+                    profile);
+                coordinator.TryPublishCurrentSnapshot(update);
+            }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    $"[SeasonService] Could not queue Sparky's current season snapshot ({exception.GetType().Name}).");
+            }
+        }
+
+        private void TryPublishSeasonFinalization(
+            Season season,
+            IReadOnlyList<SparkySeasonStanding> publicStandings)
+        {
+            try
+            {
+                var coordinator = _sparkyCoordinatorFactory();
+                if (coordinator.IsEnabled && coordinator.Profile is { } profile)
+                {
+                    var update = SparkySeasonKnowledgeSnapshotBuilder.BuildFinal(
+                        season,
+                        publicStandings,
+                        DateTimeOffset.UtcNow,
+                        profile);
+                    coordinator.TryPublishSeasonFinalization(update);
+                }
+            }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    $"[SeasonService] Could not queue Sparky's season finalization ({exception.GetType().Name}).");
+            }
         }
 
         private static ImmutableHashSet<int> SelectDailyPool(

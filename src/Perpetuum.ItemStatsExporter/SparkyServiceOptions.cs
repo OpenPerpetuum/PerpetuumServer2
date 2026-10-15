@@ -120,7 +120,7 @@ internal sealed record SparkyServiceOptions(
                 throw new InvalidDataException("The game API and admin tunnels must use different loopback ports on the remote SSH host.");
             }
 
-            var requestBodyBytes = settings.GetPositiveInteger("SPARKY_MAX_REQUEST_BODY_BYTES", 131072);
+            var requestBodyBytes = settings.GetPositiveInteger("SPARKY_MAX_REQUEST_BODY_BYTES", 262144);
             if (requestBodyBytes is < 8192 or > 1048576)
             {
                 throw new InvalidDataException("SPARKY_MAX_REQUEST_BODY_BYTES must be between 8192 and 1048576 bytes.");

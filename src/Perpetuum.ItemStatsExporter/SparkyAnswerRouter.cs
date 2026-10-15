@@ -76,11 +76,12 @@ internal sealed class SparkyAnswerRouter
         IReadOnlyList<SparkyConversationTurn>? contextTurns = null,
         string? contextSummary = null,
         SparkyPendingClarification? pendingClarification = null,
-        SparkyCallerRank callerRank = SparkyCallerRank.Agent)
+        SparkyCallerRank callerRank = SparkyCallerRank.Agent,
+        SparkyLiveKnowledgeReadView? liveKnowledge = null)
     {
         SparkyAnswerResult result = await AnswerCoreAsync(
             question, interpretation, bundle, contextItem, contextLanguageId, cancellationToken,
-            contextTurns, contextSummary, pendingClarification, callerRank).ConfigureAwait(false);
+            contextTurns, contextSummary, pendingClarification, callerRank, liveKnowledge).ConfigureAwait(false);
         SparkyQuestionInterpretation effective = GetEffectiveInterpretation(
             question, interpretation, bundle, contextTurns, pendingClarification);
         return result with
@@ -104,7 +105,8 @@ internal sealed class SparkyAnswerRouter
         IReadOnlyList<SparkyConversationTurn>? contextTurns = null,
         string? contextSummary = null,
         SparkyPendingClarification? pendingClarification = null,
-        SparkyCallerRank callerRank = SparkyCallerRank.Agent)
+        SparkyCallerRank callerRank = SparkyCallerRank.Agent,
+        SparkyLiveKnowledgeReadView? liveKnowledge = null)
     {
         Task<SparkyAnswerResult> ClarifyAsync(
             string clarifyQuestion,
@@ -603,6 +605,23 @@ internal sealed class SparkyAnswerRouter
 
         string searchQuery = interpretation.EnglishSearchQuery ??
                              (hasMentionedEntities ? string.Join(" ", interpretation.MentionedEntities!) : string.Empty);
+        if (SparkySeasonStandingResolver.TryResolve(question, searchQuery, liveKnowledge, out var seasonFacts))
+        {
+            var seasonAnswer = await ComposeAsync(
+                seasonFacts,
+                requiredExactStrings: SparkySeasonStandingResolver.GetRequiredExactStrings(seasonFacts)).ConfigureAwait(false);
+            var seasonResult = new SparkyAnswerResult(
+                "answered",
+                seasonAnswer.Answer,
+                null,
+                seasonAnswer.LanguageId,
+                FinishStatus: seasonAnswer.FinishStatus);
+            IReadOnlyList<string> seasonSourceIds = seasonFacts.SourceId is { Length: > 0 } sourceId
+                ? [sourceId]
+                : [];
+            return WithKnowledgeDiagnostics(seasonResult, searchQuery, seasonSourceIds);
+        }
+
         bool prioritizeEntityDefinitions =
             (interpretation.Intent is SparkyIntent.MechanicsLore or SparkyIntent.Combined) &&
             hasMentionedEntities &&
@@ -615,7 +634,8 @@ internal sealed class SparkyAnswerRouter
             minimumRelevanceScore: retrieval.MinimumScore,
             sourceCategories: retrieval.SourceCategories,
             maxPassages: retrieval.MaxPassages,
-            maxCharacters: retrieval.MaxCharacters);
+            maxCharacters: retrieval.MaxCharacters,
+            liveKnowledge: liveKnowledge);
         string[] selectedSourceIds = passages
             .Select(passage => passage.SourceId)
             .Distinct(StringComparer.Ordinal)

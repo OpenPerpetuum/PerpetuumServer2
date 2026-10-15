@@ -24,6 +24,7 @@ public sealed class SparkyDiagnosticExporterTests
         Assert.Contains("parsedIntent", json, StringComparison.Ordinal);
         Assert.Contains("effectiveIntent", json, StringComparison.Ordinal);
         Assert.Contains("comparisonAttributeCategory", json, StringComparison.Ordinal);
+        Assert.Contains("liveKnowledgeFreshness", json, StringComparison.Ordinal);
         Assert.DoesNotContain("secret context turn", json, StringComparison.Ordinal);
         Assert.DoesNotContain("secret metric phrase", json, StringComparison.Ordinal);
         Assert.DoesNotContain("PrivateCandidate", json, StringComparison.Ordinal);
@@ -53,6 +54,8 @@ public sealed class SparkyDiagnosticExporterTests
         Assert.Equal(2, firstEvent.GetProperty("contextTurns").GetArrayLength());
         Assert.Equal("secret metric phrase", firstEvent.GetProperty("comparisonDiagnostics").GetProperty("metricPhrase").GetString());
         Assert.Equal("secret value", firstEvent.GetProperty("comparisonDiagnostics").GetProperty("facts")[0].GetProperty("values")[0].GetString());
+        Assert.Equal("seasons", firstEvent.GetProperty("liveKnowledgeProvider").GetString());
+        Assert.Equal("fresh", firstEvent.GetProperty("liveKnowledgeFreshness").GetString());
         Assert.Equal(2, firstEvent.GetProperty("contextMessageCount").GetInt32());
         Assert.Equal(8, firstEvent.GetProperty("conversationHistoryTurns").GetInt32());
         Assert.Equal(4000, firstEvent.GetProperty("conversationHistoryCharacters").GetInt32());
@@ -98,7 +101,12 @@ public sealed class SparkyDiagnosticExporterTests
             ComparisonAttributeCategory: "CpuUsage", ComparisonResultCategory: "compared",
             ContextTurns: [new SparkyConversationTurn("user", "secret context turn"), new SparkyConversationTurn("assistant", "private context answer")],
             ContextSummary: "secret context summary",
-            ComparisonDiagnostics: diagnostics);
+            ComparisonDiagnostics: diagnostics,
+            LiveKnowledgeProvider: "seasons",
+            LiveKnowledgeSchemaVersion: 1,
+            LiveKnowledgeHash: new string('a', 64),
+            LiveKnowledgeCaptureAgeMinutes: 0.2,
+            LiveKnowledgeFreshness: "fresh");
         return new SparkyTraceTimeline(requestId, SparkyApiProfile.Dev, [traceEvent]);
     }
 }

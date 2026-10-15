@@ -162,6 +162,9 @@ internal static class LocalModelAnswerer
         string clarificationGuidance = verifiedEvidence is SparkyClarificationEvidence
             ? BuildClarificationGuidance()
             : string.Empty;
+        string seasonStandingGuidance = verifiedEvidence is SparkySeasonStandingAnswerFacts seasonFacts
+            ? SparkySeasonStandingResolver.GetPromptGuidance(seasonFacts)
+            : string.Empty;
         SparkyAnswerOutcome selectedOutcome = outcome ??
             (verifiedEvidence is SparkyClarificationEvidence
                 ? SparkyAnswerOutcome.Clarification
@@ -172,7 +175,7 @@ internal static class LocalModelAnswerer
             selectedOutcome,
             callerRank,
             personaStyle,
-            $"{robotFactGuidance}\n{clarificationGuidance}");
+            $"{robotFactGuidance}\n{clarificationGuidance}\n{seasonStandingGuidance}");
         string userPayload = SparkyResponseComposer.BuildUserPayload(
             question,
             contextTurns,

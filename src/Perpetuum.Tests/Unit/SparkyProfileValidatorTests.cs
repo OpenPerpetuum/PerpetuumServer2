@@ -90,6 +90,21 @@ public sealed class SparkyProfileValidatorTests
     }
 
     [Theory]
+    [InlineData(5, true)]
+    [InlineData(1440, true)]
+    [InlineData(4, false)]
+    [InlineData(1441, false)]
+    public void Validates_live_knowledge_snapshot_age(int minutes, bool valid)
+    {
+        var errors = SparkyProfileValidator.Validate(Draft() with
+        {
+            LiveKnowledge = new SparkyLiveKnowledgeSettings(minutes)
+        }, Languages, globalConcurrencyLimit: 2);
+
+        Assert.Equal(valid, errors.All(error => !error.Contains("CurrentSnapshotMaxAgeMinutes", StringComparison.Ordinal)));
+    }
+
+    [Theory]
     [InlineData(0, 4000, 0.2, 0.9)]
     [InlineData(17, 4000, 0.2, 0.9)]
     [InlineData(8, 0, 0.2, 0.9)]
