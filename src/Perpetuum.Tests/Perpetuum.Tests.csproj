@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Perpetuum\Perpetuum.csproj" />
     <ProjectReference Include="..\Perpetuum.RequestHandlers\Perpetuum.RequestHandlers.csproj" />
+    <ProjectReference Include="..\Perpetuum.CliClient\Perpetuum.CliClient.csproj" />
   </ItemGroup>
 
 </Project>
