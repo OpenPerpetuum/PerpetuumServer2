@@ -2,14 +2,14 @@
 using Perpetuum.Items;
 using Perpetuum.Modules;
 using Perpetuum.Units;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Robots
 {
     public partial class Robot
     {
         private UnitOptionalProperty<int> decay;
-        private UnitOptionalProperty<Color> tint;
+        private UnitOptionalProperty<SKColor> tint;
 
         private ItemProperty powerGridMax;
         private ItemProperty powerGrid;
@@ -30,7 +30,7 @@ namespace Perpetuum.Robots
             };
             OptionalProperties.Add(decay);
 
-            tint = new UnitOptionalProperty<Color>(this, UnitDataType.Tint, k.tint, () => ED.Config.Tint);
+            tint = new UnitOptionalProperty<SKColor>(this, UnitDataType.Tint, k.tint, () => ED.Config.Tint);
             OptionalProperties.Add(tint);
 
             powerGridMax = new UnitProperty(this, AggregateField.powergrid_max, AggregateField.powergrid_max_modifier);
@@ -85,7 +85,7 @@ namespace Perpetuum.Robots
             set => decay.Value = value & 255;
         }
 
-        public Color Tint
+        public SKColor Tint
         {
             get => tint.Value;
             set => tint.Value = value;
@@ -215,7 +215,7 @@ namespace Perpetuum.Robots
         protected virtual double CamouflageBonus()
         {
             // Average value of color components.
-            double average = (Tint.R + Tint.G + Tint.B) / 3.0;
+            double average = (Tint.Red + Tint.Green + Tint.Blue) / 3.0;
             if (Zone == null)
             {
                 return 0;
@@ -224,11 +224,11 @@ namespace Perpetuum.Robots
             var oneColor = Zone.Configuration.RaceId switch
             {
                 // Pelistal
-                1 => Tint.G,
+                1 => Tint.Green,
                 // Nuimqol
-                2 => Tint.B,
+                2 => Tint.Blue,
                 // Thelodica
-                3 => Tint.R,
+                3 => Tint.Red,
                 // Default for 0.00rF .
                 _ => average,
             };

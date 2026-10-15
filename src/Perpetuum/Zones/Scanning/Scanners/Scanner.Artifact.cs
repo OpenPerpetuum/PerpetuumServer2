@@ -1,6 +1,4 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
-using System.Transactions;
+﻿using System.Transactions;
 using Perpetuum.Data;
 using Perpetuum.EntityFramework;
 using Perpetuum.Zones.Artifacts.Scanners;

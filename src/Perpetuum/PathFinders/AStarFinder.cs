@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Threading;
-using Perpetuum.Collections;
-using Perpetuum.ExportedTypes;
-using Perpetuum.Zones;
+﻿using Perpetuum.Collections;
+using SkiaSharp;
 
 namespace Perpetuum.PathFinders
 {
@@ -27,7 +22,7 @@ namespace Perpetuum.PathFinders
         /// <param name="start">Start point</param>
         /// <param name="end">End point</param>
         /// <returns>True if path is found and shorter than MAX_DEPTH</returns>
-        public bool HasPath(Point start, Point end)
+        public bool HasPath(SKPointI start, SKPointI end)
         {
             if (!_passableHandler(end.X, end.Y))
                 return false;
@@ -92,7 +87,7 @@ namespace Perpetuum.PathFinders
 
         public int Weight { get; set; }
 
-        public override Point[] FindPath(Point start, Point end,CancellationToken cancellationToken)
+        public override SKPointI[] FindPath(SKPointI start, SKPointI end, CancellationToken cancellationToken)
         {
             if (!_passableHandler(end.X, end.Y))
                 return null;
@@ -138,9 +133,9 @@ namespace Perpetuum.PathFinders
             return null;
         }
 
-        protected Point[] Backtrace(Node node)
+        protected SKPointI[] Backtrace(Node node)
         {
-            var stack = new Stack<Point>();
+            var stack = new Stack<SKPointI>();
 
             while (node != null)
             {

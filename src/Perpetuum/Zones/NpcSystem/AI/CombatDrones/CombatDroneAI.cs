@@ -6,7 +6,7 @@ using Perpetuum.Units;
 using Perpetuum.Zones.Locking.Locks;
 using Perpetuum.Zones.Movements;
 using Perpetuum.Zones.RemoteControl;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 {
@@ -131,7 +131,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             WriteLog("Enter evade mode.");
         }
 
-        protected Task<List<Point>> FindNewAttackPositionAsync(Unit hostile)
+        protected Task<List<SKPointI>> FindNewAttackPositionAsync(Unit hostile)
         {
             source?.Cancel();
             source = new CancellationTokenSource();
@@ -192,7 +192,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
                             return;
                         }
 
-                        List<Point> path = t.Result;
+                        List<SKPointI> path = t.Result;
 
                         if (path == null)
                         {
@@ -254,9 +254,9 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             return isNewLock;
         }
 
-        private List<Point> FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)
+        private List<SKPointI> FindNewAttackPosition(Unit hostile, CancellationToken cancellationToken)
         {
-            Point end = hostile.CurrentPosition.GetRandomPositionInRange2D(0, smartCreature.BestActionRange - 1).ToPoint();
+            SKPointI end = hostile.CurrentPosition.GetRandomPositionInRange2D(0, smartCreature.BestActionRange - 1).ToPoint();
 
             smartCreature.StopMoving();
             // Nulling movement so that the unit does not resume it at zero speed if the path is not found.
@@ -268,7 +268,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
 
             priorityQueue.Enqueue(startNode);
 
-            HashSet<Point> closed = new HashSet<Point>
+            HashSet<SKPointI> closed = new HashSet<SKPointI>
             {
                 startNode.position
             };
@@ -286,7 +286,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
                     return BuildPath(current);
                 }
 
-                foreach (Point n in current.position.GetNeighbours())
+                foreach (SKPointI n in current.position.GetNeighbours())
                 {
                     if (closed.Contains(n))
                     {
@@ -321,7 +321,7 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             return null;
         }
 
-        private bool IsValidAttackPosition(Unit hostile, Point position)
+        private bool IsValidAttackPosition(Unit hostile, SKPointI position)
         {
             Position position3 = smartCreature.Zone.FixZ(position.ToPosition()).AddToZ(smartCreature.Height);
 
@@ -335,9 +335,9 @@ namespace Perpetuum.Zones.NpcSystem.AI.CombatDrones
             return !r.hit;
         }
 
-        private static List<Point> BuildPath(Node current)
+        private static List<SKPointI> BuildPath(Node current)
         {
-            Stack<Point> stack = new Stack<Point>();
+            Stack<SKPointI> stack = new Stack<SKPointI>();
             Node node = current;
 
             while (node != null)

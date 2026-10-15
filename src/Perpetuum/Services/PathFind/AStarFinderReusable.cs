@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
+using SkiaSharp;
 using System.Threading;
 
 namespace Perpetuum.PathFinders
@@ -21,7 +21,7 @@ namespace Perpetuum.PathFinders
         /// <summary>
         /// Finds a path using the A* algorithm based on the provided pathfinding information.
         /// </summary>
-        public Point[]? FindPathHome(IPathFindInfo pathFindInfo, CancellationToken cancellationToken)
+        public SKPointI[]? FindPathHome(IPathFindInfo pathFindInfo, CancellationToken cancellationToken)
         {
             var start = pathFindInfo.Start;
             var end = pathFindInfo.End;
@@ -41,7 +41,7 @@ namespace Perpetuum.PathFinders
 
             if (start == end)
             {
-                return Array.Empty<Point>();
+                return Array.Empty<SKPointI>();
             }
 
             _openList.Clear();
@@ -84,7 +84,7 @@ namespace Perpetuum.PathFinders
         }
 
         [Conditional("DEBUG")]
-        private static void TestPath(Point[] path, Point start, Point end)
+        private static void TestPath(SKPointI[] path, SKPointI start, SKPointI end)
         {
             if (path.Length < 2)
             {
@@ -105,16 +105,16 @@ namespace Perpetuum.PathFinders
             }
         }
 
-        private static Point[] Backtrace(Node node, uint[] list)
+        private static SKPointI[] Backtrace(Node node, uint[] list)
         {
-            var stack = new Stack<Point>();
+            var stack = new Stack<SKPointI>();
 
             int hash = (int)(node.HashCode & 0x3FFFFF);
             while (true)
             {
                 int x = hash & 0x7FF;
                 int y = (hash >> 11) & 0x7FF;
-                stack.Push(new Point(x, y));
+                stack.Push(new SKPointI(x, y));
 
                 uint parent = list[hash] & 0x3FFFFF;
                 if (parent == (uint)hash)

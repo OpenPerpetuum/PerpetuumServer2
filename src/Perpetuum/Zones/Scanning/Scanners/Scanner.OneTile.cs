@@ -1,8 +1,7 @@
-﻿using System.Drawing;
-using System.Linq;
-using Perpetuum.EntityFramework;
+﻿using Perpetuum.EntityFramework;
 using Perpetuum.Zones.Scanning.Ammos;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Scanning.Scanners
 {
@@ -17,7 +16,7 @@ namespace Perpetuum.Zones.Scanning.Scanners
             OnMineralScanned(MaterialProbeType.OneTile);
         }
 
-        private Packet BuildScanOneTileResultPacket(Point location)
+        private Packet BuildScanOneTileResultPacket(SKPointI location)
         {
             var packet = new Packet(ZoneCommand.ScanOneTileResult);
             packet.AppendLong(_module.Eid); //module EID

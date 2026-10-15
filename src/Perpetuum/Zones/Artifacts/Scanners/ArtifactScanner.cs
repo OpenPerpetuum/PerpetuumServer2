@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Players;
 using Perpetuum.Services.Looting;

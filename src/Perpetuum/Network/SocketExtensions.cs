@@ -1,5 +1,4 @@
-﻿using System;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using Perpetuum.Log;
 
 namespace Perpetuum.Network
@@ -9,7 +8,19 @@ namespace Perpetuum.Network
         [UsedImplicitly]
         public static void SetKeepAlive(this Socket socket, bool state, TimeSpan time, TimeSpan interval)
         {
-            socket.SetKeepAlive(state, (uint)time.TotalMilliseconds, (uint)interval.TotalMilliseconds);
+            double keepAliveTime, keepAliveInterval;
+            if (OperatingSystem.IsWindows())
+            {
+                keepAliveTime = time.TotalMilliseconds;
+                keepAliveInterval = interval.TotalMilliseconds;
+                socket.SetKeepAlive(state, (uint)keepAliveTime, (uint)keepAliveInterval);
+            }
+            // else
+            // {
+            //     // Disabled: Not supported by linux
+            //     keepAliveTime = time.Seconds;
+            //     keepAliveInterval = interval.Seconds;
+            // }
         }
         
         public static void SetKeepAlive(this Socket socket, bool state, uint time, uint interval)

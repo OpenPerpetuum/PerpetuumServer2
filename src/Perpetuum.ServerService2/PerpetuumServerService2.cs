@@ -23,11 +23,12 @@ namespace Perpetuum.ServerService2
         {
             // assumes the server is in the default installation directory.
             string gameroot = _configuration.GetValue<string>("GameRoot") ?? "C:\\PerpetuumServer\\data";
+            bool distributedTransactions = _configuration.GetValue<bool>("DistributedTransactions", true);
             _logger.LogInformation("Perpetuum Dedicated Server v2 - starting");
 
             try
             {
-                Bootstrapper.Init(gameroot);
+                Bootstrapper.Init(gameroot, distributedTransactions);
             }
             catch (Exception ex)
             {

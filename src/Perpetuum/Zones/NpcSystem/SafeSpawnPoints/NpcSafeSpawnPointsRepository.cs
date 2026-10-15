@@ -1,7 +1,5 @@
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using Perpetuum.Data;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.NpcSystem.SafeSpawnPoints
 {
@@ -45,7 +43,7 @@ namespace Perpetuum.Zones.NpcSystem.SafeSpawnPoints
                 {
                     Id = r.GetValue<int>("id"), 
                     ZoneId = r.GetValue<int>("zoneId"), 
-                    Location = new Point(r.GetValue<int>("x"), r.GetValue<int>("y"))
+                    Location = new SKPointI(r.GetValue<int>("x"), r.GetValue<int>("y"))
                 };
 
                 return point;

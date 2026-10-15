@@ -143,15 +143,36 @@ namespace Perpetuum.Zones.Terrains
 
         public T GetValue(int x, int y)
         {
-            Debug.Assert(x >= 0 && x < Width && y >= 0 && y < Height, "invalid position!");
-            return RawData[y * Width + x];
+            if (RawData == null || RawData.Length == 0 || Width <= 0 || Height <= 0)
+                return default;
+
+            x = Math.Clamp(x, 0, Width - 1);
+            y = Math.Clamp(y, 0, Height - 1);
+            int idx = y * Width + x;
+            if (idx < 0 || idx >= RawData.Length)
+            {
+                return default;
+            }
+
+            return RawData[idx];
         }
 
         public void SetValue(int x, int y, T value)
         {
-            Debug.Assert(x >= 0 && x < Width && y >= 0 && y < Height, "invalid position!");
+            if (RawData == null || RawData.Length == 0 || Width <= 0 || Height <= 0)
+                return;
+
+            if (x < 0 || x >= Width || y < 0 || y >= Height)
+                return;
+
+            int idx = y * Width + x;
+            if (idx < 0 || idx >= RawData.Length)
+            {
+                return;
+            }
+
             OnUpdating(x, y, ref value);
-            RawData[y * Width + x] = value;
+            RawData[idx] = value;
             OnUpdated(x, y);
         }
 

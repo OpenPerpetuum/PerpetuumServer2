@@ -61,7 +61,7 @@ namespace Perpetuum.Modules
 
 
                         Debug.Assert(ParentRobot != null, "ParentRobot != null");
-                        Robots.RobotInventory container = ParentRobot.GetContainer();
+                    Robots.RobotInventory container = ParentRobot.GetContainer();
                         Debug.Assert(container != null, "container != null");
                         container.EnlistTransaction();
                         Player player = ParentRobot is RemoteControlledCreature remoteControlledCreature &&

@@ -3,7 +3,7 @@ using Perpetuum.Services.RiftSystem;
 using Perpetuum.Zones;
 using Perpetuum.Zones.Beams;
 using Perpetuum.Zones.Intrusion;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum.Services.Relics.RelicManagers
 {
@@ -127,7 +127,7 @@ namespace Perpetuum.Services.Relics.RelicManagers
             return info;
         }
 
-        protected override Point FindRelicPosition(RelicInfo info)
+        protected override SKPointI FindRelicPosition(RelicInfo info)
         {
             if (info.HasStaticPosistion) //If the relic spawn info has a valid static position defined - use that
             {

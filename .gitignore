@@ -19,6 +19,15 @@ src/Perpetuum.ServerService2/data/layers/
 src/Perpetuum.ServerService2/data/logs/
 bin/
 Releases/
+
+custom-assets/
+
+# User-provided additional map layers assets
+custom-layers/
+
+# Original directory folder from Stream: Perpetuum Dedicated Server installer
+perpetuum-data/
+
 .claude/settings.local.json
 .planning/
 *.log
