@@ -21,9 +21,11 @@ namespace Perpetuum.Zones
         static LineOfSight()
         {
             Debug = false;
+            HeightfieldPrecheck = true;
         }
 
         public static bool Debug { private get; set; }
+        public static bool HeightfieldPrecheck { get; set; }
 
         private const double MAX_DISTANCE  = 40.0;
         private const double MAX_AMPLITUDE = 16.0;
@@ -112,7 +114,7 @@ namespace Perpetuum.Zones
                 return losResult;
             }
 
-            if (RayPassesAboveAllCrossedChunks(zone, origin, direction, distance))
+            if (HeightfieldPrecheck && RayPassesAboveAllCrossedChunks(zone, origin, direction, distance))
             {
                 return LOSResult.None;
             }

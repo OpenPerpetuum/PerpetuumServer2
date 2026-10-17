@@ -184,6 +184,20 @@ namespace Perpetuum.Services.Channels.ChatCommands
             ZoneIdleThrottling.Enabled = enabled;
             SendMessageToAll(data, $"Zone idle throttling {(enabled ? "enabled" : "disabled")}.");
         }
+        [ChatCommand("RayPass")]
+        public static void RayPass(AdminCommandData data)
+        {
+            // #raypass[,true|false] — runtime on/off for the SIMD heightfield LOS precheck.
+            bool enabled = true;
+            if (data.Command.Args.Length > 0 && !bool.TryParse(data.Command.Args[0], out enabled))
+            {
+                SendMessageToAll(data, "Usage: #raypass[,true|false]");
+                return;
+            }
+
+            LineOfSight.HeightfieldPrecheck = enabled;
+            SendMessageToAll(data, $"Heightfield LOS precheck {(enabled ? "enabled" : "disabled")}.");
+        }
         [ChatCommand("Shutdown")]
         public static void Shutdown(AdminCommandData data)
         {
