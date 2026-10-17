@@ -50,7 +50,25 @@ namespace Perpetuum.Zones
 
         public ZoneConfiguration Configuration { get; set; }
 
-        public ITerrain Terrain { get; set; }
+        private ITerrain _terrain;
+
+        public ITerrain Terrain
+        {
+            get => _terrain;
+            set
+            {
+                _terrain = value;
+
+                // Baked once at assignment (the zone factory populates all layers before this runs);
+                // later mutations are tracked incrementally by TerrainUpdateMonitor and drained in Update.
+                Heightfield = value?.Altitude != null
+                    ? HeightfieldMetadata.ExtractFrom(value.Altitude, value.Blocks)
+                    : null;
+            }
+        }
+
+        [CanBeNull]
+        public HeightfieldMetadata Heightfield { get; private set; }
         public CorporationHandler CorporationHandler { get; set; }
         public IPlantHandler PlantHandler { get; set; }
         public IBeamService Beams { get; set; }
@@ -331,6 +349,7 @@ namespace Perpetuum.Zones
         }
 
         private readonly ShiftedConsumerTimer _updateUnitsTimer = new ShiftedConsumerTimer(500);
+        private readonly IntervalTimer _idleUpdateTimer = new IntervalTimer(1000);
 
         private Action<TimeSpan> _updateProfiler;
 
@@ -347,18 +366,54 @@ namespace Perpetuum.Zones
 
         public override void Update(TimeSpan time)
         {
+            UpdateHeightfield();
             UpdatePlayerPresence(time);
             UpdateSessions(time);
 
+            // Throttle unit physics, AI, and visibility processing when no players are in the zone.
+            // Units only receive an update on the throttle tick, so they are handed the
+            // accumulated elapsed time: all unit systems are timer/elapsed driven
+            // (cooldowns, movement integration, recharge, AI cycles), so passing the full
+            // elapsed keeps them running at real speed. The throttle can be switched off at
+            // runtime (zoneIdleThrottleSet) to measure its CPU savings without a restart.
+            TimeSpan unitTime = time;
+            if (_players.IsEmpty && ZoneIdleThrottling.Enabled)
+            {
+                _idleUpdateTimer.Update(time);
+                if (!_idleUpdateTimer.Passed)
+                {
+                    RiftManager?.Update(time);
+                    RelicManager?.Update(time);
+                    MiningLogHandler.Update(time);
+                    HarvestLogHandler.Update(time);
+                    return;
+                }
+
+                unitTime = _idleUpdateTimer.Elapsed;
+                _idleUpdateTimer.Reset();
+            }
+
             _updateUnitsTimer.Update(time).IsPassed(ProcessUpdatedUnits);
 
-            UpdateUnits(time);
+            UpdateUnits(unitTime);
 
             RiftManager?.Update(time);
             RelicManager?.Update(time);
             MiningLogHandler.Update(time);
             HarvestLogHandler.Update(time);
             MeasureUpdate(time);
+        }
+
+        private void UpdateHeightfield()
+        {
+            HeightfieldMetadata heightfield = Heightfield;
+            ITerrain terrain = Terrain;
+            if (heightfield == null || terrain == null || terrain.Altitude == null || !heightfield.HasDirtyChunks)
+            {
+                return;
+            }
+
+            heightfield.RecomputeDirty(terrain.Altitude, terrain.Blocks);
         }
 
         /// <summary>
