@@ -128,6 +128,12 @@ db-partial: $(DBTOOL_BIN) ## Reset DB and migrate only up to a specific patch (u
 	 echo "  Run 'make db-migrate' to catch up to latest."; \
 	 echo "  Then 'make up' to start the full stack."
 
-.PHONY: help status up start stop down delete restart reset clean-cache log-asset log-db log-server test-smoke test-unit test-integration check-assets extract-models build-dbtool test-dbtool test-dbtool-integration db-status db-migrate db-backup db-restore db-list db-verify db-shell db-partial db-migrate-dry
+.PHONY: help status up start stop down delete restart reset clean-cache log-asset log-db log-server test-smoke test-unit test-integration check-assets extract-models build-dbtool test-dbtool test-dbtool-integration db-status db-migrate db-backup db-restore db-list db-verify db-shell db-partial db-migrate-dry cli create-account
+cli: ## Run the CLI client in a container (connect, login, character select)
+	./script/cli.sh $(ARGS)
+
+create-account: ## Create a new account with optional admin privileges (interactive or EMAIL=... PASSWORD=... ADMIN=true/false)
+	./script/create-account.sh $(ARGS)
+
 
 
