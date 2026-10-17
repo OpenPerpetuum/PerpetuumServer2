@@ -15,9 +15,10 @@ services:
   db-init:
     image: busybox
     restart: "no"
-    command: chown -R 10001:0 /var/opt/mssql
+    command: sh -c "chown -R 10001:0 /var/opt/mssql && mkdir -p /backups && chmod 777 /backups"
     volumes:
       - openperpetuum-db:/var/opt/mssql
+      - "${BACKUP_HOST_DIR:-./backups}:/backups"
 
   db:
     image: mcr.microsoft.com/mssql/server:2025-latest
@@ -66,6 +67,8 @@ services:
       - openperpetuum-db:/var/opt/mssql
       # Mount perpetuum database path that contains the perpetuumsa.bak
       - "${PERPETUUM_DATA}/database:/data"
+      # Host-visible backup directory (shared between host and container)
+      - "${BACKUP_HOST_DIR:-./backups}:/backups"
 
   migration:
     build:
@@ -81,6 +84,7 @@ services:
     environment:
       DB_PASSWORD: ${DB_PASSWORD}
       FORCE_MIGRATION: ${FORCE_MIGRATION}
+      MAX_PATCH: ${MAX_PATCH:-}
     networks:
       - dev_env
     volumes:

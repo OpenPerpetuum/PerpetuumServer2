@@ -33,6 +33,18 @@ runSqlCmd () {
     set -x
 }
 
+# Record a patch version in the schema_migrations table (version tracking)
+# This enables incremental migration (dbtool migrate) on restored databases.
+recordVersion () {
+    local version="$1"
+    sqlcmd -S db -d perpetuumsa -C -U sa -P "${DB_PASSWORD}" -b -Q "
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'schema_migrations' AND schema_id = SCHEMA_ID('dbo'))
+            CREATE TABLE dbo.schema_migrations (version VARCHAR(50) NOT NULL PRIMARY KEY, applied_at DATETIME NOT NULL DEFAULT GETDATE(), source_file VARCHAR(500) NULL);
+        IF NOT EXISTS (SELECT 1 FROM dbo.schema_migrations WHERE version = '${version}')
+            INSERT INTO dbo.schema_migrations (version, source_file) VALUES ('${version}', '${version}');
+    " 2>/dev/null || true
+}
+
 # 2. Compute SHA-256 hash of all migration sources
 compute_migration_hash() {
     (
@@ -48,8 +60,12 @@ CACHED_HASH=""
 [ -f "$CACHE_HASH_FILE" ] && CACHED_HASH=$(cat "$CACHE_HASH_FILE")
 
 USE_CACHE=false
-if [ "$FORCE_MIGRATION" != "true" ] && [ -f "$CACHE_BAK" ] && [ "$CURRENT_HASH" = "$CACHED_HASH" ]; then
+if [ "$FORCE_MIGRATION" != "true" ] && [ -z "${MAX_PATCH:-}" ] && [ -f "$CACHE_BAK" ] && [ "$CURRENT_HASH" = "$CACHED_HASH" ]; then
     USE_CACHE=true
+fi
+
+if [ -n "${MAX_PATCH:-}" ]; then
+    echo "==> MAX_PATCH set to '$MAX_PATCH' - will stop migration after this patch."
 fi
 
 # 3. Restore from cache OR run automated full migration
@@ -78,6 +94,16 @@ else
     for patch_dir in $PATCH_DIRS; do
         [ -d "$patch_dir" ] || continue
         patch_name=$(basename "$patch_dir")
+
+        # Stop after MAX_PATCH if set
+        if [ -n "${MAX_PATCH:-}" ]; then
+            # Check if we've already passed the max patch
+            if [ "${LAST_APPLIED:-}" = "$MAX_PATCH" ]; then
+                echo "==> Reached MAX_PATCH ($MAX_PATCH). Stopping migration."
+                break
+            fi
+        fi
+
         echo "==> Applying patch: $patch_name"
 
         # Check for consolidated patch file
@@ -96,20 +122,28 @@ else
                 runSqlCmd "$sql_file"
             done
         fi
+
+        # Record version for incremental migration tracking
+        recordVersion "$patch_name"
+        LAST_APPLIED="$patch_name"
     done
 
     # Add test account (user: test, pass: test)
     runSqlCmd "/migration/Tools/TOOL_test_account.sql"
 
-    echo "==> Creating compressed migration database snapshot..."
-    set +x
-    sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -b -I -Q "BACKUP DATABASE perpetuumsa TO DISK = '/data/perpetuumsa_migrated.bak' WITH FORMAT, INIT, COMPRESSION"
-    set -x
+    if [ -z "${MAX_PATCH:-}" ]; then
+        echo "==> Creating compressed migration database snapshot..."
+        set +x
+        sqlcmd -S db -C -U sa -P "${DB_PASSWORD}" -b -I -Q "BACKUP DATABASE perpetuumsa TO DISK = '/data/perpetuumsa_migrated.bak' WITH FORMAT, INIT, COMPRESSION"
+        set -x
 
-    # Save hash and set permissions
-    echo "$CURRENT_HASH" > "$CACHE_HASH_FILE"
-    chmod 666 "$CACHE_BAK" "$CACHE_HASH_FILE" 2>/dev/null || true
-    echo "==> Migration snapshot cache saved."
+        # Save hash and set permissions
+        echo "$CURRENT_HASH" > "$CACHE_HASH_FILE"
+        chmod 666 "$CACHE_BAK" "$CACHE_HASH_FILE" 2>/dev/null || true
+        echo "==> Migration snapshot cache saved."
+    else
+        echo "==> Skipping snapshot cache (MAX_PATCH mode). Use 'make db-migrate' to catch up."
+    fi
 fi
 
 touch /data/done
