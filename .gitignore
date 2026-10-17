@@ -39,3 +39,5 @@ graphify-out/
 
 # Claude Code worktrees
 .claude/worktrees/
+tools/dbtool/dbtool
+backups/

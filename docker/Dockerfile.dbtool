@@ -1,0 +1,11 @@
+FROM golang:alpine AS builder
+
+WORKDIR /build
+COPY tools/dbtool/go.mod tools/dbtool/go.sum ./
+RUN go mod download
+COPY tools/dbtool/ .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/dbtool .
+
+FROM alpine:3.19
+COPY --from=builder /out/dbtool /usr/local/bin/dbtool
+ENTRYPOINT ["dbtool"]
