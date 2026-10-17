@@ -7,10 +7,6 @@ namespace Perpetuum.RequestHandlers
     public class EPBonusEvent : IRequestHandler
     {
         private readonly EPBonusEventService _eventService;
-        private readonly TimeSpan MAX_DURATION = TimeSpan.FromDays(14);
-        private const int MIN_BONUS = 0;
-        private const int MAX_BONUS = 25;
-
         public EPBonusEvent(EPBonusEventService eventService)
         {
             _eventService = eventService;
@@ -19,19 +15,10 @@ namespace Perpetuum.RequestHandlers
         public void HandleRequest(IRequest request)
         {
             using System.Transactions.TransactionScope scope = Db.CreateTransaction();
-            int existingBonus = _eventService.GetBonus();
             int bonusAmount = request.Data.GetOrDefault<int>(k.bonus);
-            int resultingBonus = existingBonus + bonusAmount;
+            int durationHours = request.Data.GetOrDefault<int>(k.duration);
 
-            double timeRemained = _eventService.GetTimeRemained().TotalHours;
-            double durationHours = request.Data.GetOrDefault<int>(k.duration);
-            double resultingTime = timeRemained + durationHours;
-
-            bool checkArgs = resultingBonus is >= MIN_BONUS and <= MAX_BONUS;
-            checkArgs = checkArgs && resultingTime <= MAX_DURATION.TotalHours;
-            checkArgs.ThrowIfFalse(ErrorCodes.InputTooHigh);
-
-            _eventService.SetEvent(resultingBonus, TimeSpan.FromHours(resultingTime));
+            _eventService.Activate(bonusAmount, TimeSpan.FromHours(durationHours));
 
             scope.Complete();
         }

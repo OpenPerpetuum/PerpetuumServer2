@@ -373,6 +373,17 @@ namespace Perpetuum.RequestHandlers
                 Transaction.Current.OnCommited(() =>
                 {
                     accountRepository.Update(account);
+                    Message.Builder
+                        .SetCommand(Commands.ServerMessage)
+                        .WithData(new Dictionary<string, object>
+                        {
+                            { k.message, MessageConstants.ServerWideEpBonusActivated },
+                            { k.type, 0 },
+                            { k.recipients, 0 },
+                            { k.translate, 1 },
+                        })
+                        .ToAll()
+                        .Send();
                 });
 
                 scope.Complete();
