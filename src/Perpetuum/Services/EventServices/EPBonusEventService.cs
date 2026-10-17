@@ -1,139 +1,133 @@
-﻿using Perpetuum.Threading;
+using Perpetuum.Data;
 using Perpetuum.Threading.Process;
+using System.Transactions;
 
 namespace Perpetuum.Services.EventServices
 {
-    public class EPBonusEventService : Process, IDisposable
+    /// <summary>
+    /// Caches the database-authoritative aggregate server-wide EP bonus.
+    /// All persisted timestamps are real UTC instants; game day/night presentation is unrelated.
+    /// </summary>
+    public class EPBonusEventService : Process
     {
-        private readonly TimeSpan THREAD_TIMEOUT = TimeSpan.FromSeconds(1);
-        private bool _disposedValue = false;
+        public static readonly TimeSpan MaxDuration = TimeSpan.FromDays(14);
+        public const int MaxBonus = 25;
 
-        private TimeSpan _duration;
-        private TimeSpan _elapsed;
-        private bool _eventStarted;
-        private bool _endingEvent;
-        private int _bonus;
-        private ReaderWriterLockSlim? _lock;
+        private readonly IServerWideEpBonusRepository _repository;
+        private readonly object _sync = new();
+        private ServerWideEpBonusState _state = ServerWideEpBonusState.None;
 
-        public EPBonusEventService()
+        public EPBonusEventService(IServerWideEpBonusRepository repository)
         {
-            _lock = new ReaderWriterLockSlim();
-            Init();
-        }
-
-        private void Init()
-        {
-            using (_lock.Write(THREAD_TIMEOUT))
-            {
-                _bonus = 0;
-                _duration = TimeSpan.MaxValue;
-                _elapsed = TimeSpan.Zero;
-                _eventStarted = false;
-                _endingEvent = false;
-            }
+            _repository = repository;
         }
 
         public int GetBonus()
         {
-            using (_lock.Read(THREAD_TIMEOUT))
+            var now = DateTime.UtcNow;
+            lock (_sync)
             {
-                return _bonus;
+                return _state.IsActive(now) ? _state.Bonus : 0;
             }
         }
 
         public TimeSpan GetTimeRemained()
         {
-            using (_lock.Read(THREAD_TIMEOUT))
+            var now = DateTime.UtcNow;
+            lock (_sync)
             {
-                return !_eventStarted ? TimeSpan.Zero : _duration - _elapsed;
+                return _state.GetRemaining(now);
             }
         }
 
-        public void SetEvent(int bonus, TimeSpan duration)
+        /// <summary>
+        /// Must run inside the transaction that consumes the booster item. The repository row lock
+        /// serializes concurrent activations across server processes.
+        /// </summary>
+        public void Activate(int bonusAmount, TimeSpan duration)
         {
-            using (_lock.Write(THREAD_TIMEOUT))
+            var now = DateTime.UtcNow;
+            var nextState = CalculateNextState(_repository.GetForUpdate(), bonusAmount, duration, now);
+            _repository.Save(nextState, now);
+
+            if (Transaction.Current == null)
             {
-                _bonus = bonus;
-                _elapsed = TimeSpan.Zero;
-                _duration = duration;
-                _endingEvent = false;
-                _eventStarted = true;
+                PublishCommittedState(nextState);
+                return;
             }
+
+            Transaction.Current.OnCommited(() => PublishCommittedState(nextState));
         }
 
-        private void EndEvent()
+        public static ServerWideEpBonusState CalculateNextState(ServerWideEpBonusState persistedState, int bonusAmount, TimeSpan duration, DateTime utcNow)
         {
-            using (_lock.Write(THREAD_TIMEOUT))
-            {
-                _bonus = 0;
-                _elapsed = TimeSpan.Zero;
-                _duration = TimeSpan.MaxValue;
-                _eventStarted = false;
-                _endingEvent = false;
-            }
-        }
+            var activeState = persistedState.IsActive(utcNow) ? persistedState : ServerWideEpBonusState.None;
+            var resultingBonus = activeState.Bonus + bonusAmount;
+            var resultingDuration = activeState.GetRemaining(utcNow) + duration;
 
-        public override void Update(TimeSpan time)
-        {
-            using (_lock.Read(THREAD_TIMEOUT))
-            {
+            (resultingBonus is >= 0 and <= MaxBonus && resultingDuration <= MaxDuration)
+                .ThrowIfFalse(ErrorCodes.InputTooHigh);
 
-                if (!_eventStarted)
-                {
-                    return;
-                }
-
-                if (_endingEvent)
-                {
-                    return;
-                }
-            }
-
-            using (_lock.Write(THREAD_TIMEOUT))
-            {
-                _elapsed += time;
-                if (_elapsed < _duration)
-                {
-                    return;
-                }
-
-                _endingEvent = true;
-            }
-
-            Task.Run(EndEvent);
-        }
-
-        public override void Stop()
-        {
-            base.Stop();
+            return resultingBonus == 0 || resultingDuration <= TimeSpan.Zero
+                ? ServerWideEpBonusState.None
+                : new ServerWideEpBonusState(resultingBonus, utcNow + resultingDuration);
         }
 
         public override void Start()
         {
-            Init();
+            RestoreFromDatabase();
             base.Start();
         }
 
-        #region IDisposable Support
-
-        protected virtual void Dispose(bool disposing)
+        public override void Update(TimeSpan time)
         {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    _lock?.Dispose();
-                    _lock = null; // This shouldn't be necessary but added for good practice
-                }
+            var now = DateTime.UtcNow;
+            var expired = false;
 
-                _disposedValue = true;
+            lock (_sync)
+            {
+                if (!_state.IsActive(now) && _state.Bonus > 0)
+                {
+                    _state = ServerWideEpBonusState.None;
+                    expired = true;
+                }
+            }
+
+            if (expired)
+            {
+                // The predicate prevents an older expiry pass from clearing a newer extension.
+                _repository.ClearExpired(now);
             }
         }
 
-        public void Dispose()
+        private void RestoreFromDatabase()
         {
-            Dispose(true);
+            var now = DateTime.UtcNow;
+            var persistedState = _repository.Get();
+            if (!persistedState.IsActive(now))
+            {
+                _repository.ClearExpired(now);
+                persistedState = ServerWideEpBonusState.None;
+            }
+
+            lock (_sync)
+            {
+                _state = persistedState;
+            }
         }
-        #endregion
+
+        private void PublishCommittedState(ServerWideEpBonusState state)
+        {
+            lock (_sync)
+            {
+                // A delayed completion callback must not overwrite a later committed extension.
+                if (_state.ExpiresAtUtc != null && state.ExpiresAtUtc != null && state.ExpiresAtUtc < _state.ExpiresAtUtc)
+                {
+                    return;
+                }
+
+                _state = state;
+            }
+        }
     }
 }
