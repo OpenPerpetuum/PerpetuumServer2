@@ -171,12 +171,24 @@ namespace Perpetuum.Zones.Terrains
 
         private void OnAreaUpdated(LayerType layerType, Area area)
         {
+            // Altitude and blocking heights feed the zone's heightfield chunk bounds; any mutation
+            // to them (plant growth, terraforming, PBS construction) invalidates the affected chunks.
+            if (layerType == LayerType.Altitude || layerType == LayerType.Blocks)
+            {
+                _zone.Heightfield?.MarkDirtyArea(area);
+            }
+
             var info = new AreaUpdateInfo(layerType, area);
             AddUpdateInfo(info);
         }
 
         private void OnTileUpdated(LayerType layerType, int x, int y)
         {
+            if (layerType == LayerType.Altitude || layerType == LayerType.Blocks)
+            {
+                _zone.Heightfield?.MarkDirtyTile(x, y);
+            }
+
             var info = new TileUpdateInfo(layerType, new SKPointI(x,y));
             AddUpdateInfo(info);
         }
