@@ -1,8 +1,7 @@
-using System.Collections.Generic;
-using System.Drawing;
 using Perpetuum.Data;
 using Perpetuum.Host.Requests;
 using Perpetuum.Robots;
+using SkiaSharp;
 
 namespace Perpetuum.RequestHandlers
 {
@@ -13,7 +12,7 @@ namespace Perpetuum.RequestHandlers
             using (var scope = Db.CreateTransaction())
             {
                 var robotEid = request.Data.GetOrDefault<long>(k.robotEID);
-                var tint = request.Data.GetOrDefault<Color>(k.tint);
+                var tint = request.Data.GetOrDefault<SKColor>(k.tint);
 
                 var robot = Robot.GetOrThrow(robotEid);
                 robot.Tint = tint;

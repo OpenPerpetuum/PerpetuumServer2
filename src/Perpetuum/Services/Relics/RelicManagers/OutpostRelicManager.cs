@@ -1,12 +1,9 @@
 ﻿using Perpetuum.Zones;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
 using Perpetuum.ExportedTypes;
 using Perpetuum.Zones.Beams;
 using Perpetuum.Zones.Intrusion;
 using Perpetuum.Zones.Finders.PositionFinders;
-using System.Threading;
+using SkiaSharp;
 
 namespace Perpetuum.Services.Relics
 {
@@ -75,7 +72,7 @@ namespace Perpetuum.Services.Relics
             return _sapRelicInfo;
         }
 
-        protected override Point FindRelicPosition(RelicInfo info)
+        protected override SKPointI FindRelicPosition(RelicInfo info)
         {
             for(int i = 0; i < 10; i++)
             {
@@ -90,7 +87,7 @@ namespace Perpetuum.Services.Relics
                     return p;
                 }
             }
-            return Point.Empty;
+            return SKPointI.Empty;
         }
 
         protected override void RefreshBeam(IRelic relic)

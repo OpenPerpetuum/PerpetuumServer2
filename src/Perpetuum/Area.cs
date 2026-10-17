@@ -1,7 +1,5 @@
 using Perpetuum.Zones;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
+using SkiaSharp;
 
 namespace Perpetuum
 {
@@ -50,7 +48,7 @@ namespace Perpetuum
             return FromRadius(position.intX, position.intY, radius);
         }
 
-        public static Area FromRadius(Point position, int radius)
+        public static Area FromRadius(SKPointI position, int radius)
         {
             return FromRadius(position.X, position.Y, radius);
         }
@@ -95,7 +93,7 @@ namespace Perpetuum
             get { return new Position((_x1 + _x2) / 2.0, (_y1 + _y2) / 2.0); }
         }
 
-        public Point Center
+        public SKPointI Center
         {
             get { return new Position((Width >> 1) + _x1, (Height >> 1) + _y1); }
         }
@@ -116,7 +114,7 @@ namespace Perpetuum
             return x + y * Width;
         }
 
-        public bool Contains(Point target)
+        public bool Contains(SKPointI target)
         {
             return Contains(target.X, target.Y);
         }
@@ -152,7 +150,7 @@ namespace Perpetuum
             return $"X1 = {X1} Y1 = {Y1} X2 = {X2} Y2 = {Y2} Width = {Width} Height = {Height}";
         }
 
-        public Area Clamp(Size size)
+        public Area Clamp(SKSizeI size)
         {
             return Clamp(size.Width, size.Height);
         }
@@ -207,11 +205,11 @@ namespace Perpetuum
             } while (y1 < _y2);
         }
 
-        public Point GetRandomPosition()
+        public SKPointI GetRandomPosition()
         {
             var x = FastRandom.NextInt(_x1,_x2);
             var y = FastRandom.NextInt(_y1,_y2);
-            return new Point(x, y);
+            return new SKPointI(x, y);
         }
 
         public Area AddBorder(int border)
@@ -230,7 +228,7 @@ namespace Perpetuum
             }
         }
 
-        public double Distance(Point p)
+        public double Distance(SKPointI p)
         {
             return Distance(p.X,p.Y);
         }
@@ -240,7 +238,7 @@ namespace Perpetuum
             return Math.Sqrt(SqrDistance(x, y));
         }
 
-        public double SqrDistance(Point p)
+        public double SqrDistance(SKPointI p)
         {
             return SqrDistance(p.X,p.Y);
         }

@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+﻿using SkiaSharp;
 
 namespace Perpetuum.Zones.Artifacts.Scanners
 {
@@ -8,7 +8,7 @@ namespace Perpetuum.Zones.Artifacts.Scanners
     public class ArtifactScanResult
     {
         public Artifact scannedArtifact;
-        public Point estimatedPosition;
+        public SKPointI estimatedPosition;
         public double radius;
     }
 }

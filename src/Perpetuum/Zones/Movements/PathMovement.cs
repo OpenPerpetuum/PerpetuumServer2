@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using System.Numerics;
 using Perpetuum.Units;
+using SkiaSharp;
 
 namespace Perpetuum.Zones.Movements
 {
@@ -12,7 +9,7 @@ namespace Perpetuum.Zones.Movements
         private readonly Queue<WaypointMovement> _path = new Queue<WaypointMovement>();
         private WaypointMovement _movement;
 
-        public PathMovement(IEnumerable<Point> path)
+        public PathMovement(IEnumerable<SKPointI> path)
         {
             foreach (var point in path.Skip(1))
             {

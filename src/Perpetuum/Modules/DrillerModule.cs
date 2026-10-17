@@ -15,8 +15,8 @@ using Perpetuum.Zones.Terrains;
 using Perpetuum.Zones.Terrains.Materials;
 using Perpetuum.Zones.Terrains.Materials.Minerals;
 using System.Diagnostics;
-using System.Drawing;
 using System.Transactions;
+using SkiaSharp;
 
 namespace Perpetuum.Modules
 {
@@ -69,7 +69,7 @@ namespace Perpetuum.Modules
             base.UpdateProperty(field);
         }
 
-        public List<ItemInfo> Extract(MineralLayer layer, Point location, uint amount)
+        public List<ItemInfo> Extract(MineralLayer layer, SKPointI location, uint amount)
         {
             if (!layer.HasMineral(location))
             {

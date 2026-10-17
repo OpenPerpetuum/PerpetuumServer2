@@ -1,0 +1,33 @@
+# Development dockerfile for PerpetuumServer2
+
+# Stage 1: Build the project
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+ARG RUNTIME_IDENTIFIER
+
+WORKDIR /build
+
+COPY src ./src/
+
+# Dedicated restore command to cache the layer for faster container boot time=
+RUN dotnet restore src/Perpetuum.ServerService2/Perpetuum.ServerService2.csproj
+
+# Build the project
+# Provides a self-contained executable (no dotnet runtime required)
+RUN dotnet publish --force src/Perpetuum.ServerService2/Perpetuum.ServerService2.csproj --configuration Release --self-contained --runtime $RUNTIME_IDENTIFIER -o out
+
+# Stage 2: Runtime image
+# Using runtime-deps, it includes the dependencies for dotnet without the runtime.
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0
+
+# Install the missing GSSAPI/Kerberos dependency used by the SQL client
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 curl && rm -rf /var/lib/apt/lists/*
+
+# Install GDI+
+RUN curl https://raw.githubusercontent.com/stulzq/awesome-dotnetcore-image/master/install/ubuntu.sh|sh
+
+WORKDIR /runtime
+
+COPY --from=build /build/out .
+
+ENTRYPOINT ["/runtime/Perpetuum.ServerService2"]

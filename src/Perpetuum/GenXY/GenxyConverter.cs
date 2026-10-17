@@ -1,8 +1,8 @@
 using Perpetuum.Zones;
 using System.Collections;
 using System.Diagnostics;
-using System.Drawing;
 using System.Dynamic;
+using SkiaSharp;
 
 namespace Perpetuum.GenXY
 {
@@ -33,9 +33,9 @@ namespace Perpetuum.GenXY
             RegisterConverter<decimal[]>(ConvertDecimalArray);
             RegisterConverter<float>(ConvertFloat);
             RegisterConverter<double>(CreateDoubleConverter);
-            RegisterConverter<Color>(ConvertColor);
+            RegisterConverter<SKColor>(ConvertColor);
             RegisterConverter<DateTime>(ConvertDateTime);
-            RegisterConverter<Point>(ConvertPoint);
+            RegisterConverter<SKPointI>(ConvertPoint);
             RegisterConverter<Position>(ConvertPosition);
             RegisterConverter<Position[]>(ConvertPositionArray);
             RegisterConverter<Area>(ConvertArea);
@@ -127,16 +127,16 @@ namespace Perpetuum.GenXY
             ConvertFloat(writer, (float)value);
         }
 
-        private static void ConvertColor(GenxyWriter writer, Color color)
+        private static void ConvertColor(GenxyWriter writer, SKColor color)
         {
             writer.WriteToken(GenxyToken.Color);
-            writer.WriteHexInteger(color.R);
+            writer.WriteHexInteger(color.Red);
             writer.WriteChar('.');
-            writer.WriteHexInteger(color.G);
+            writer.WriteHexInteger(color.Green);
             writer.WriteChar('.');
-            writer.WriteHexInteger(color.B);
+            writer.WriteHexInteger(color.Blue);
             writer.WriteChar('.');
-            writer.WriteHexInteger(color.A);
+            writer.WriteHexInteger(color.Alpha);
         }
 
         private static void ConvertDateTime(GenxyWriter writer, DateTime date)
@@ -155,7 +155,7 @@ namespace Perpetuum.GenXY
             writer.WriteInteger(date.Second);
         }
 
-        private static void ConvertPoint(GenxyWriter writer, Point point)
+        private static void ConvertPoint(GenxyWriter writer, SKPointI point)
         {
             writer.WriteToken(GenxyToken.Point);
             writer.WriteHexInteger(point.X);

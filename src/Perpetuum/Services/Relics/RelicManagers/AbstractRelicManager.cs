@@ -1,11 +1,7 @@
 ﻿using Perpetuum.Zones;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Drawing;
 using Perpetuum.Log;
-using System.Threading;
 using Perpetuum.Threading;
+using SkiaSharp;
 
 namespace Perpetuum.Services.Relics
 {
@@ -112,7 +108,7 @@ namespace Perpetuum.Services.Relics
         //Abstract methods for extension of behaviour'
         protected abstract void RefreshBeam(IRelic relic);
 
-        protected abstract Point FindRelicPosition(RelicInfo info);
+        protected abstract SKPointI FindRelicPosition(RelicInfo info);
 
         protected abstract RelicInfo GetNextRelicType();
 
@@ -152,7 +148,7 @@ namespace Perpetuum.Services.Relics
             }
 
             attempts = 0;
-            Point pt = FindRelicPosition(info);
+            SKPointI pt = FindRelicPosition(info);
             while (IsSpawnTooClose(pt) || !IsValidPos(pt))
             {
                 pt = FindRelicPosition(info);
@@ -166,7 +162,7 @@ namespace Perpetuum.Services.Relics
             AddRelicToZone(info, pt.ToPosition());
         }
 
-        private bool IsValidPos(Point pt)
+        private bool IsValidPos(SKPointI pt)
         {
             return Zone.IsWalkable(pt);
         }
@@ -183,7 +179,7 @@ namespace Perpetuum.Services.Relics
             }
         }
 
-        private bool IsSpawnTooClose(Point point)
+        private bool IsSpawnTooClose(SKPointI point)
         {
             using (Lock.Read(THREAD_TIMEOUT))
             {
