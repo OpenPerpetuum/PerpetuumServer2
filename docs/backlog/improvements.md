@@ -1,6 +1,138 @@
 # Last ID used
 
-045
+047
+
+## IMPROVEMENT-046 - AdminTool UI/UX pass from a content author's point of view
+
+Status: TODO
+Priority: MEDIUM
+Area: AdminTool / UX
+
+### Description
+
+Requested by the lead developer on 2026-08-17. His words, paraphrased: the original intent was a
+convenient tool for creating and managing content, but it was built by someone technical, so it reads
+as a mess to anyone who is not. He asked for a pass that looks at it from the user's point of view.
+
+**This entry is deliberately not a list of fixes.** He asked that a human think about what should
+improve before the problem is handed to Claude, and a UX judgement made by reading the XAML would be
+exactly the wrong artefact — the whole point is the experience of someone using the tool to author
+content, which is not visible in the code. The entry exists so the request is on the record and so the
+findings have somewhere to land.
+
+### Impact
+
+The AdminTool is the only supported way to author content without writing SQL by hand. Every hour it
+costs a content author is paid on every item, robot and season, and the people best placed to report
+the friction are the least likely to open a pull request about it.
+
+### Proposed Implementation
+
+1. Someone authors real content with the tool and writes down the friction as it happens, rather than
+   auditing screens in the abstract.
+2. The findings land here as a list, each with the screen and the concrete cost.
+3. Only then does anything get designed or built. Fixes are likely to be small and independent, so
+   they can ship one at a time rather than as a redesign.
+
+### Notes
+
+- One observation recorded from a session on 2026-08-17, as a single data point rather than the review:
+  in the **New Item** dialog, `DefinitionName` renders its validation error inline in red under the
+  field, while `CategoryFlags == 0` also blocks Save but shows nothing at the field — only the italic
+  `undefined` that the description converter produces, which reads as information rather than as an
+  error (`NewItem/BasicPanelViewModel.cs:56`). A first-time user sees Save refuse with a footer message
+  naming two fields, one of which is visibly marked and one of which is not.
+- Related and already shipped: Enter and Esc now work in the New Item and New Robot dialogs
+  ([PerpetuumServer2#54](https://github.com/OpenPerpetuum/PerpetuumServer2/pull/54)). That change came
+  from the same direction of travel and is the kind of thing this entry is meant to collect.
+
+---
+
+## IMPROVEMENT-047 - Export a robot or item as a complete, self-contained SQL script
+
+Status: TODO
+Priority: HIGH
+Area: AdminTool / Content pipeline
+
+### Description
+
+Requested by the lead developer on 2026-08-17. Creating content in the tool spreads one logical thing
+across many tables — for a robot: the component definitions for head, chassis, legs and inventory, the
+stats for each, the crafting tables, the tech tree. He asked that exporting a robot or an item produce
+one SQL script containing everything related, and noted the UI for it needs thought.
+
+**He gave the reason, and it is the important part: he has already damaged the live database by
+accidentally adding a new robot to it.** An export that can be trusted to be complete is what makes it
+safe to build against a copy and move the finished result, instead of authoring against the database
+that matters.
+
+### Current state, measured 2026-08-17 against `cfa0591`
+
+Export is not missing. `ItemExporter`, `RobotExporter` and `SeasonExporter` exist, reachable from the
+Entities, Robot Templates and Season screens, and `RobotExporter` calls `ItemExporter` for each
+component definition it finds (`Export/RobotExporter.cs:29`), so a robot export already carries its
+parts rather than just the template row.
+
+What it does not carry is narrower and specific. Comparing the tables the create wizards write against
+the tables the exporters read:
+
+| Table | Written by the wizard | Read by either exporter |
+|---|---|---|
+| `aggregatemodifiers` | yes | **no** |
+| `modulepropertymodifiers` | yes | **no** |
+| `productionduration` | yes | **no** |
+| `robottemplaterelation` | yes, robots only | **no** |
+
+The first two are the entire **Property Modifiers** tab and the third is the **Production** tab, so an
+item created through the wizard can hold data that re-exporting it will not reproduce. Translations are
+also absent from every export: `SeedTranslations()` runs on save in both apply modes, but it writes to
+the translation store rather than into the script, so a script applied elsewhere produces an entity
+whose name and description do not resolve. That absence is intended rather than a gap — see step 3
+of Proposed Implementation.
+
+### Impact
+
+- The gap is silent. A script that is 90% of an item looks exactly like a script that is all of it, and
+  the missing parts are the ones a content author is least likely to notice missing.
+- Without a complete export there is no safe round trip, which is what pushes people towards editing
+  the live database directly — the failure that prompted this request.
+
+### Proposed Implementation
+
+1. Close the four table gaps above in `ItemExporter` and `RobotExporter`. This is the cheapest part and
+   it is independent of any UI work.
+2. Export `productionduration`, guarded. Answered on 2026-08-19: it belongs in the export, "if
+   applicable". The table is keyed by category rather than by definition
+   (`productionduration (category, durationmodifier)`), so the script must not overwrite a row the
+   target database already holds. Emit it through `SqlExportBuilder.IfNotExistsInsert`, which is the
+   same rule the wizard already applies through
+   `ProductionPanelViewModel.ShouldWriteProductionDuration` — a target that already defines the
+   category keeps its own value, and one that does not gets the exported item's.
+3. Leave translations out of the script, and say so. Answered on 2026-08-19: they are not needed. No
+   dictionary rows are added, so the only work here is the statement — the export has to say that
+   names and descriptions are not carried, because silence reads as completeness.
+4. Design the UI. He flagged this as needing thought and it is not settled here.
+5. Cover the round trip at the integration tier: export an entity, apply the script to a clean
+   database, and assert the two are equal across every table the wizard can write.
+
+### Notes
+
+- Step 5 is the only part that can prove the feature. A completeness claim that is checked by reading
+  is the same claim that is wrong today.
+- The live-database accident has a second possible mitigation that is **not** filed as an entry,
+  because it was not asked for: nothing in the tool marks a connection as production. The apply mode
+  already defaults to the safe one (`AppSettings.DefaultApplyMode = ApplyMode.SqlScript`) and the
+  status bar shows the current mode, so the default is not the problem — but the tool cannot tell the
+  operator that the server they are pointed at is the live one. Worth a maintainer's decision.
+- Priority set to HIGH rather than MEDIUM because the requester named live-database damage as the
+  motivation. He did not assign one.
+- The two questions this entry raised were answered by the lead developer on 2026-08-19, in chat
+  rather than on [PerpetuumServer2#55](https://github.com/OpenPerpetuum/PerpetuumServer2/pull/55):
+  `productionduration` yes, if applicable; translations not needed. Both answers are folded into
+  Proposed Implementation above, and are repeated on the pull request so the direction sits on the
+  public record and not only in a chat log.
+
+---
 
 ## IMPROVEMENT-045 - Automated test suite
 
