@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -63,6 +64,9 @@ namespace Perpetuum.Services.Sessions
 
     public class Session : ISession
     {
+        private const string CorporationCreatePriceKey = "corporationcreate_price";
+        private const string CorporationFoundingPriceToken = "{%PRICE%}";
+
         private readonly GlobalConfiguration _globalConfiguration;
         private readonly IAccountManager _accountManager;
         private readonly IZoneManager _zoneManager;
@@ -244,7 +248,7 @@ namespace Perpetuum.Services.Sessions
                     AccountId = account.Id;
 
                     var response = account.ToDictionary();
-                    var customDictionary = _customDictionary.GetDictionary(language);
+                    var customDictionary = GetCustomDictionaryForSignIn(language);
                     if (customDictionary != null && customDictionary.Count > 0)
                     {
                         response.Add(k.customDictionary, customDictionary);
@@ -256,6 +260,31 @@ namespace Perpetuum.Services.Sessions
 
                 scope.Complete();
             }
+        }
+
+        private Dictionary<string, object>? GetCustomDictionaryForSignIn(int language)
+        {
+            var sourceDictionary = _customDictionary.GetDictionary(language);
+            if (sourceDictionary == null || sourceDictionary.Count == 0)
+                return sourceDictionary;
+
+            var customDictionary = new Dictionary<string, object>(sourceDictionary);
+            if (customDictionary.TryGetValue(CorporationCreatePriceKey, out var value) && value is string template)
+            {
+                var culture = language switch
+                {
+                    2 => CultureInfo.GetCultureInfo("de-DE"),
+                    3 => CultureInfo.GetCultureInfo("pt-BR"),
+                    4 => CultureInfo.GetCultureInfo("ru-RU"),
+                    _ => CultureInfo.GetCultureInfo("en-US")
+                };
+
+                customDictionary[CorporationCreatePriceKey] = template.Replace(
+                    CorporationFoundingPriceToken,
+                    _globalConfiguration.Corporation.FoundingPrice.ToString("N0", culture));
+            }
+
+            return customDictionary;
         }
 
         public void SignOut()
