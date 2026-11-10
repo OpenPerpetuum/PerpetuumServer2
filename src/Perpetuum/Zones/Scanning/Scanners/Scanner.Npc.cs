@@ -12,9 +12,16 @@ namespace Perpetuum.Zones.Scanning.Scanners
 
         public void Visit(NpcScannerAmmo ammo)
         {
+            var scanRange = ammo.GetScanRange(_player.Character);
+            if (scanRange <= 0)
+            {
+                // Recheck at firing time for charges loaded before the skill requirement changed.
+                throw new PerpetuumException(ErrorCodes.ExtensionLevelMismatchTerrain);
+            }
+
             var origin = _player.CurrentPosition;
             Npc closest = null;
-            var closestDistance = double.PositiveInfinity;
+            var closestDistance = scanRange * scanRange;
 
             foreach (var unit in _zone.Units)
             {
@@ -27,7 +34,7 @@ namespace Perpetuum.Zones.Scanning.Scanners
                 var dx = position.X - origin.X;
                 var dy = position.Y - origin.Y;
                 var distance = dx * dx + dy * dy;
-                if (distance < closestDistance || (distance == closestDistance && closest != null && npc.Eid < closest.Eid))
+                if (distance < closestDistance || (distance == closestDistance && (closest == null || npc.Eid < closest.Eid)))
                 {
                     closest = npc;
                     closestDistance = distance;
