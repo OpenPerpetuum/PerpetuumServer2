@@ -9,31 +9,28 @@ namespace Perpetuum.Network
         [UsedImplicitly]
         public static void SetKeepAlive(this Socket socket, bool state, TimeSpan time, TimeSpan interval)
         {
-            socket.SetKeepAlive(state, (uint)time.TotalMilliseconds, (uint)interval.TotalMilliseconds);
-        }
-        
-        public static void SetKeepAlive(this Socket socket, bool state, uint time, uint interval)
-        {
             try
             {
-                var data = new byte[12];
-
-                unsafe
+                if (state)
                 {
-                    fixed (byte* p = data)
-                    {
-                        *(uint*)p = (uint)(state ? 1 : 0);
-                        *(uint*)(p + 4) = time;
-                        *(uint*)(p + 8) = interval;
-                    }
+                    // TCP keepalive timers use whole seconds. Round up to preserve the minimum delay.
+                    socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime,
+                        checked((int)Math.Ceiling(time.TotalSeconds)));
+                    socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval,
+                        checked((int)Math.Ceiling(interval.TotalSeconds)));
                 }
 
-                socket.IOControl(IOControlCode.KeepAliveValues, data, null);
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, state);
             }
             catch (Exception ex)
             {
                 Logger.Exception(ex);
             }
+        }
+
+        public static void SetKeepAlive(this Socket socket, bool state, uint time, uint interval)
+        {
+            socket.SetKeepAlive(state, TimeSpan.FromMilliseconds(time), TimeSpan.FromMilliseconds(interval));
         }
 
     }
