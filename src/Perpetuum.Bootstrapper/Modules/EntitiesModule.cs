@@ -192,6 +192,7 @@ namespace Perpetuum.Bootstrapper.Modules
             RegisterEntity<OneTileScannerAmmo>(builder);
             RegisterEntity<ArtifactScannerAmmo>(builder);
             RegisterEntity<IntrusionScannerAmmo>(builder);
+            RegisterEntity<NpcScannerAmmo>(builder);
             RegisterEntity<DirectionalScannerAmmo>(builder);
             RegisterEntity<DefaultSystemContainer>(builder);
             RegisterEntity<PublicContainer>(builder);
@@ -407,6 +408,12 @@ namespace Perpetuum.Bootstrapper.Modules
                 ByCategoryFlags<OneTileScannerAmmo>(CategoryFlags.cf_mining_probe_ammo_one_tile);
                 ByCategoryFlags<ArtifactScannerAmmo>(CategoryFlags.cf_mining_probe_ammo_artifact);
                 ByCategoryFlags<IntrusionScannerAmmo>(CategoryFlags.cf_mining_probe_ammo_intrusion);
+                var npcScannerAmmo = ctx.Resolve<IEntityDefaultReader>().GetByName(NpcScannerAmmo.DefinitionName);
+                if (npcScannerAmmo != EntityDefault.None)
+                {
+                    ByDefinition<NpcScannerAmmo>(npcScannerAmmo.Definition);
+                }
+
                 ByCategoryFlags<DirectionalScannerAmmo>(CategoryFlags.cf_mining_probe_ammo_direction);
 
                 ByCategoryFlags<DefaultSystemContainer>(CategoryFlags.cf_system_container);
