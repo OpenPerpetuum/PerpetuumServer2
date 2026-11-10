@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using Perpetuum.EntityFramework;
+using Perpetuum.Threading.Process;
+using Perpetuum.Timers;
 using Perpetuum.Zones.NpcSystem;
 using Perpetuum.Zones.Scanning.Ammos;
 
@@ -51,14 +53,33 @@ namespace Perpetuum.Zones.Scanning.Scanners
             const byte strokeEnd = 2;
 
             var target = closest.CurrentPosition;
+            var session = _player.Session;
             // The radar joins consecutive points with the same sender and stroke ID.
             var strokeId = unchecked((byte)Interlocked.Increment(ref _npcScanStrokeId));
-            SendNpcScanDoodle(strokePoint, origin, strokeId, 0);
-            SendNpcScanDoodle(strokeEnd, target, strokeId, 1);
-            SendNpcScanDoodle(radarPing, target, 0, 0);
+            SendNpcScanDoodle(session, strokePoint, origin, strokeId, 0);
+            SendNpcScanDoodle(session, strokeEnd, target, strokeId, 1);
+            SendNpcScanDoodle(session, radarPing, target, 0, 0);
+
+            var repeatAt = GlobalTimer.Elapsed + TimeSpan.FromSeconds(3);
+            IProcess repeat = null;
+            repeat = new AnonymousProcess(_ =>
+            {
+                if (_player.Zone != _zone || _player.Session != session)
+                {
+                    _processManager.RemoveProcess(repeat);
+                    return;
+                }
+
+                if (GlobalTimer.Elapsed >= repeatAt)
+                {
+                    _processManager.RemoveProcess(repeat);
+                    SendNpcScanDoodle(session, radarPing, target, 0, 0);
+                }
+            });
+            _processManager.AddProcess(repeat);
         }
 
-        private void SendNpcScanDoodle(byte type, Position position, byte strokeId, ushort pointIndex)
+        private void SendNpcScanDoodle(IZoneSession session, byte type, Position position, byte strokeId, ushort pointIndex)
         {
             // The client decodes GangDoodle coordinates as unsigned fixed-point values with five fractional bits.
             const int radarUnitsPerTile = 32;
@@ -69,7 +90,7 @@ namespace Perpetuum.Zones.Scanning.Scanners
             packet.AppendUShort((ushort)Math.Clamp(position.Y * radarUnitsPerTile, 0, ushort.MaxValue));
             packet.AppendByte(strokeId);
             packet.AppendUShort(pointIndex);
-            _player.Session.SendPacket(packet);
+            session.SendPacket(packet);
         }
     }
 }
