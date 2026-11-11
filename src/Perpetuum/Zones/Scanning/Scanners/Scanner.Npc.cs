@@ -52,7 +52,7 @@ namespace Perpetuum.Zones.Scanning.Scanners
             const byte strokePoint = 1;
             const byte strokeEnd = 2;
 
-            var target = closest.CurrentPosition;
+            var target = GetNpcScanPosition(closest.CurrentPosition);
             var session = _player.Session;
             // The radar joins consecutive points with the same sender and stroke ID.
             var strokeId = unchecked((byte)Interlocked.Increment(ref _npcScanStrokeId));
@@ -77,6 +77,23 @@ namespace Perpetuum.Zones.Scanning.Scanners
                 }
             });
             _processManager.AddProcess(repeat);
+        }
+
+        private Position GetNpcScanPosition(Position position)
+        {
+            // One tile is 10 meters. Accuracy is a fraction, with 1 meaning 100%.
+            const double maxErrorRadius = 50;
+            var errorRadius = maxErrorRadius * (1 - _module.ScanAccuracy.Clamp());
+            if (errorRadius <= 0)
+            {
+                return position;
+            }
+
+            var estimated = position.GetRandomPositionInRange2D(0, errorRadius);
+            return new Position(
+                Math.Clamp(estimated.X, 0, Math.BitDecrement((double)_zone.Size.Width)),
+                Math.Clamp(estimated.Y, 0, Math.BitDecrement((double)_zone.Size.Height)),
+                position.Z);
         }
 
         private void SendNpcScanDoodle(IZoneSession session, byte type, Position position, byte strokeId, ushort pointIndex)
