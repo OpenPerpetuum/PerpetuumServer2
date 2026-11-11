@@ -1,5 +1,6 @@
 using Perpetuum.Players;
 using Perpetuum.Services.MissionEngine.MissionTargets;
+using Perpetuum.Threading.Process;
 using Perpetuum.Zones.Scanning.Modules;
 using Perpetuum.Zones.Terrains.Materials;
 
@@ -11,15 +12,17 @@ namespace Perpetuum.Zones.Scanning.Scanners
         private readonly Player _player;
         private readonly GeoScannerModule _module;
         private readonly MaterialHelper _materialHelper;
+        private readonly IProcessManager _processManager;
 
         public delegate Scanner Factory(IZone zone, Player player, GeoScannerModule module);
 
-        public Scanner(IZone zone,Player player,GeoScannerModule module,MaterialHelper materialHelper)
+        public Scanner(IZone zone, Player player, GeoScannerModule module, MaterialHelper materialHelper, IProcessManager processManager)
         {
             _zone = zone;
             _player = player;
             _module = module;
             _materialHelper = materialHelper;
+            _processManager = processManager;
         }
 
         private void OnMineralScanned(MaterialProbeType materialProbeType,MaterialType materialType = MaterialType.Undefined)
