@@ -31,7 +31,7 @@ namespace Perpetuum.Network
             _socket.NoDelay = true;
             _socket.ReceiveBufferSize = RECEIVE_BUFFER_SIZE;
             _socket.SendBufferSize = SEND_BUFFER_SIZE;
-            _socket.SetKeepAlive(true, 1000 * 60 * 60 * 2, 5000);
+            _socket.SetKeepAlive(true, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(5));
 
             _activity = new ConnectionActivity(DateTime.Now);
 
