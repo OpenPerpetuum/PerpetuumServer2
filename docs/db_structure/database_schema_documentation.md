@@ -269,6 +269,7 @@ Generated from DBML structure.
 - [season_tier_claims](#season-tier-claims)
 - [season_tiers](#season-tiers)
 - [seasons](#seasons)
+- [serverwideepbonus](#serverwideepbonus)
 - [serverinfo](#serverinfo)
 - [settings](#settings)
 - [siegeitems](#siegeitems)
@@ -6341,6 +6342,27 @@ Rows older than 90 days are pruned by `recalculate_raw_material_prices`.
 - `id` → `season_character_points.season_id`
 - `id` → `season_objective_progress.season_id`
 - `id` → `season_tier_claims.season_id`
+
+---
+
+## serverwideepbonus
+
+**Schema:** `dbo`
+
+Singleton persistence for the currently active aggregate server-wide EP bonus. Timestamps are real UTC instants; this is unrelated to the three-hour in-game day/night presentation.
+
+### Columns
+
+| Column | Definition |
+|---|---|
+| `id` | `tinyint [not null, pk, check: 1]` |
+| `bonus` | `int [not null, check: 0..25]` |
+| `expiresatutc` | `datetime2(3) [null]` |
+| `updatedatutc` | `datetime2(3) [not null]` |
+
+### Constraints
+
+- `bonus = 0` requires `expiresatutc` to be `NULL`; an active bonus requires a UTC expiry.
 
 ---
 

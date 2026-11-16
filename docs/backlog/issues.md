@@ -277,7 +277,7 @@ Tracking: https://github.com/OpenPerpetuum/PerpetuumServer2/issues/51
 ### Problem
 Players are sometimes shown as online after they have logged out and closed the game client. Reported
 from live server experience; previous attempts were made to address it and none is confirmed to have
-fixed it. Not reproduced in a development environment.
+fixed it. The reported graceful-logout failure has not been reproduced in a development environment.
 
 A mechanism that produces exactly this symptom is already documented inside [[ISSUE-038]], which found
 it while investigating memory growth:
@@ -295,8 +295,8 @@ it while investigating memory growth:
 and explicitly deferred the robust fix, recording an application-level idle timeout as "Deliberately
 not done ... user was offered this as an option and did not request it. Worth reconsidering if 2h
 keepalive still isn't tight enough after real-world observation." **That observation has now been
-reported, so the deferral is due for review.** The 2-hour value is confirmed shipped and live in
-`TcpConnection.cs:32`.
+reported, so the deferral is due for review.** `TcpConnection` now configures a 60-second delay
+before the first TCP keepalive probe and a five-second interval between unanswered probes.
 
 **The detail that did not fit is now explained, and it points at a second, independent mechanism.**
 The keepalive above covers only *ungraceful* disconnects, while the report describes a *graceful* exit.
@@ -396,6 +396,20 @@ silence on that session is exactly what `ConnectionActivity` records.
 It cannot be attributed with certainty, because the log of the day could not distinguish the two
 mechanisms. That is what the step 1 instrumentation fixes, and the next occurrence will say which it
 was.
+
+### TCP keepalive validation, 2026-11-10
+
+On a Windows research server, the CLI selected a docked character and kept one relay connection
+open. With inbound traffic for that connection blocked and the CLI still running, the server logged
+`TimedOut`, deselected the character, and disconnected relay before the block was lifted. With the
+existing `ReceiveCallback` guard, this took 110.0 seconds from the last receive, about 96 seconds
+after blocking started. No incoming FIN or RST and no repeat sign-in triggered teardown. Two
+earlier runs with an experimental receive guard logged 110.1 and 110.0 seconds of receive silence.
+
+A separate forced-close test found that `ReceiveCallback` could return before `EndReceive` when
+`Socket.Connected` was already false. An experimental guard allowed that close to be processed.
+That guard is outside the scope of the keepalive change. An application-level idle timeout also
+remains open for cases where the game client stops responding while its TCP stack still answers.
 
 ### The half still open
 
