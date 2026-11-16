@@ -37,20 +37,6 @@ namespace Perpetuum.Items
 
             session.HandleLocalRequest(epBoost);
 
-            Request message = new Request
-            {
-                Command = Commands.ServerMessage,
-                Session = session,
-                Data = new Dictionary<string, object>
-                {
-                    { k.message, MessageConstants.ServerWideEpBonusActivated },
-                    { k.type, 0 },
-                    { k.recipients, 0 },
-                    { k.translate, 1 },
-                },
-            };
-
-            session.HandleLocalRequest(message);
         }
     }
 }

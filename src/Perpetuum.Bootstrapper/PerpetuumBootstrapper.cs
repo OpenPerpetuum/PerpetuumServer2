@@ -611,6 +611,7 @@ namespace Perpetuum.Bootstrapper
             _ = _builder.RegisterType<GoodiePackHandler>();
 
             // OPP: EPBonusEventService singleton
+            _ = _builder.RegisterType<ServerWideEpBonusRepository>().As<IServerWideEpBonusRepository>().SingleInstance();
             _ = _builder.RegisterType<EPBonusEventService>().SingleInstance().OnActivated(e =>
             {
                 e.Context.Resolve<IProcessManager>().AddProcess(e.Instance.ToAsync().AsTimed(TimeSpan.FromMinutes(1)));
