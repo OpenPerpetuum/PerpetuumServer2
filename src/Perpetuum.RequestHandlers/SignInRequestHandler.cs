@@ -13,17 +13,41 @@ namespace Perpetuum.RequestHandlers
         private readonly ISessionManager _sessionManager;
         private readonly IAccountRepository _accountRepository;
         private readonly ILoginQueueService _loginQueueService;
+        private readonly GlobalConfiguration _configuration;
 
-        protected SignInRequestHandler(IRelayStateService relayStateService,ISessionManager sessionManager,IAccountRepository accountRepository,ILoginQueueService loginQueueService)
+        protected SignInRequestHandler(IRelayStateService relayStateService,ISessionManager sessionManager,IAccountRepository accountRepository,ILoginQueueService loginQueueService,GlobalConfiguration configuration)
         {
             _relayStateService = relayStateService;
             _sessionManager = sessionManager;
             _accountRepository = accountRepository;
             _loginQueueService = loginQueueService;
+            _configuration = configuration;
+        }
+
+        /// <summary>
+        /// Rejects a new-style client whose build is below the configured minimum. A client that
+        /// reports no buildId (the legacy client, or a build with no launcher number) is never checked.
+        /// </summary>
+        public static void ThrowIfClientOutdated(IRequest request, int minimumBuild)
+        {
+            if (minimumBuild <= 0)
+                return;
+
+            if (!request.Data.TryGetValue(k.buildId, out var raw) || raw == null)
+                return;
+
+            var build = request.Data.GetOrDefault<int>(k.buildId);
+            if (build < minimumBuild)
+            {
+                Logger.Info("sign in refused: client build " + build + " is below the minimum " + minimumBuild + " clientKind:" + request.Data.GetOrDefault<string>(k.clientKind));
+                throw new PerpetuumException(ErrorCodes.ClientUpdateRequired).SetData(k.buildId, minimumBuild);
+            }
         }
 
         public void HandleRequest(IRequest request)
         {
+            ThrowIfClientOutdated(request, _configuration.MinimumClientBuild);
+
             var account = LoadAccount(request);
             if (account == null)
                 throw new PerpetuumException(ErrorCodes.NoSuchUser);

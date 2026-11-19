@@ -116,6 +116,7 @@ namespace Perpetuum
         public const string boostFactor = "boostFactor";
         public const string both = "both";
         public const string branchMissionId = "branchMissionId";
+        public const string buildId = "buildId";
         public const string bulletinID = "bulletinID";
         public const string bulletTime = "bullettime";
         public const string buildings = "buildings";
@@ -154,6 +155,7 @@ namespace Perpetuum
         public const string clear = "clear";
         public const string client = "client";
         public const string clientID = "clientID";
+        public const string clientKind = "clientKind";
         public const string clientver = "clientVer";
         public const string clockOffset = "clockOffset";
         public const string clockStart = "clockStart";

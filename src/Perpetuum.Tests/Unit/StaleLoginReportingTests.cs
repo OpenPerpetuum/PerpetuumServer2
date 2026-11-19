@@ -27,8 +27,8 @@ namespace Perpetuum.Tests.Unit
             _fixture.Logger.Clear();
         }
 
-        private sealed class TestSignInHandler(IRelayStateService relayState, ISessionManager sessions, IAccountRepository accounts, ILoginQueueService queue, Account account)
-            : SignInRequestHandler(relayState, sessions, accounts, queue)
+        private sealed class TestSignInHandler(IRelayStateService relayState, ISessionManager sessions, IAccountRepository accounts, ILoginQueueService queue, Account account, GlobalConfiguration configuration)
+            : SignInRequestHandler(relayState, sessions, accounts, queue, configuration)
         {
             protected override Account LoadAccount(IRequest request) => account;
         }
@@ -37,7 +37,7 @@ namespace Perpetuum.Tests.Unit
         {
             FakeSession connecting = new(accountId: 0);
 
-            return (new TestSignInHandler(new FakeRelayStateService(), _sessions, new FakeAccountRepository(account), new FakeLoginQueueService(), account), connecting);
+            return (new TestSignInHandler(new FakeRelayStateService(), _sessions, new FakeAccountRepository(account), new FakeLoginQueueService(), account, new GlobalConfiguration()), connecting);
         }
 
         [Fact]
