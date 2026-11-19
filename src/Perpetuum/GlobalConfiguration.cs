@@ -29,6 +29,13 @@ namespace Perpetuum
 
         public bool StartServerInAdminOnlyMode { get; set; }
 
+        /// <summary>
+        /// Lowest launcher build number a new-style client may sign in with. 0 disables the check.
+        /// Only clients that report a buildId at sign in are checked; the legacy client never does.
+        /// </summary>
+        [DefaultValue(0), JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public int MinimumClientBuild { get; set; }
+
         // Default NIC value for new player.
         [DefaultValue(500000), JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public int StartCredit { get; set; }

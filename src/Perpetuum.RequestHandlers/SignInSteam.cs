@@ -11,7 +11,7 @@ namespace Perpetuum.RequestHandlers
         private readonly ISteamManager _steamManager;
         private readonly IAccountRepository _accountRepository;
 
-        public SignInSteam(ISteamManager steamManager,IRelayStateService relayStateService, ISessionManager sessionManager, IAccountRepository accountRepository, ILoginQueueService loginQueueService) : base(relayStateService, sessionManager, accountRepository, loginQueueService)
+        public SignInSteam(ISteamManager steamManager,IRelayStateService relayStateService, ISessionManager sessionManager, IAccountRepository accountRepository, ILoginQueueService loginQueueService, GlobalConfiguration configuration) : base(relayStateService, sessionManager, accountRepository, loginQueueService, configuration)
         {
             _steamManager = steamManager;
             _accountRepository = accountRepository;

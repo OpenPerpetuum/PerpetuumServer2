@@ -9,7 +9,7 @@ namespace Perpetuum.RequestHandlers
     {
         private readonly IAccountRepository _accountRepository;
 
-        public SignIn(IRelayStateService relayStateService, ISessionManager sessionManager, IAccountRepository accountRepository, ILoginQueueService loginQueueService) : base(relayStateService, sessionManager, accountRepository, loginQueueService)
+        public SignIn(IRelayStateService relayStateService, ISessionManager sessionManager, IAccountRepository accountRepository, ILoginQueueService loginQueueService, GlobalConfiguration configuration) : base(relayStateService, sessionManager, accountRepository, loginQueueService, configuration)
         {
             _accountRepository = accountRepository;
         }

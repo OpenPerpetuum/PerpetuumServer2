@@ -718,5 +718,7 @@ namespace Perpetuum
         PlasmaNotFound,
         Overheat,
         NotAllowedOnThisBot,
+        // Must stay last: the numeric value (682) is mirrored by the Unity client's ErrorCodes.
+        ClientUpdateRequired,
     }
 }
